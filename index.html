@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>네이버 블로그 제목 생성기 | 클릭을 부르는 제목 냉장고</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Black+Han+Sans&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --positive: #00C73C;
+    --positive-light: #E8FFF0;
+    --threat: #FF4757;
+    --threat-light: #FFF0F1;
+    --curiosity: #2E86FF;
+    --curiosity-light: #EEF5FF;
+    --dark: #1A1A2E;
+    --gray: #6B7280;
+    --light-gray: #F3F4F6;
+    --border: #E5E7EB;
+    --white: #FFFFFF;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #F8F9FD;
+    color: var(--dark);
+    min-height: 100vh;
+  }
+
+  /* 상단 광고 */
+  .ad-top {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    text-align: center;
+  }
+  .ad-box {
+    background: var(--light-gray);
+    border: 2px dashed #CBD5E1;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94A3B8;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+  .ad-top .ad-box { height: 90px; max-width: 728px; margin: 0 auto; }
+
+  /* 헤더 */
+  header {
+    background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+    padding: 48px 20px 40px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 30% 50%, rgba(0,199,60,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 70% 30%, rgba(46,134,255,0.08) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  header h1 {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: clamp(22px, 4.5vw, 38px);
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+  header h1 span { color: var(--positive); }
+  header p {
+    color: rgba(255,255,255,0.6);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .badge-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 20px;
+  }
+  .badge {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .badge-g { background: rgba(0,199,60,0.15); color: var(--positive); border: 1px solid rgba(0,199,60,0.3); }
+  .badge-r { background: rgba(255,71,87,0.15); color: var(--threat); border: 1px solid rgba(255,71,87,0.3); }
+  .badge-b { background: rgba(46,134,255,0.15); color: var(--curiosity); border: 1px solid rgba(46,134,255,0.3); }
+
+  /* 메인 */
+  .container { max-width: 860px; margin: 0 auto; padding: 32px 20px; }
+
+  /* 입력 섹션 */
+  .input-section {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+    margin-bottom: 24px;
+  }
+  .input-section h2 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--dark);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  @media(max-width: 580px) { .form-row { grid-template-columns: 1fr; } }
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+
+  select, input[type="text"] {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--dark);
+    background: #fff;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  select:focus, input[type="text"]:focus {
+    border-color: var(--curiosity);
+    box-shadow: 0 0 0 3px rgba(46,134,255,0.1);
+  }
+
+  .keyword-hint {
+    background: var(--light-gray);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: var(--gray);
+    display: none;
+  }
+  .keyword-hint.show { display: block; }
+  .keyword-hint strong { color: var(--dark); }
+  .hint-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .hint-tag {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--dark);
+  }
+  .hint-tag:hover { background: var(--curiosity); color: #fff; border-color: var(--curiosity); }
+
+  .generate-btn {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #00C73C, #00A830);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: -0.3px;
+  }
+  .generate-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,199,60,0.35); }
+  .generate-btn:active { transform: translateY(0); }
+
+  /* 결과 섹션 */
+  .results { display: none; }
+  .results.show { display: block; }
+
+  /* 광고 중간 */
+  .ad-mid { margin: 24px 0; }
+  .ad-mid .ad-box { height: 250px; }
+
+  /* 챕터 */
+  .chapter {
+    background: var(--white);
+    border-radius: 16px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+  }
+  .chapter-header {
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .chapter-header.positive { background: linear-gradient(135deg, #00C73C, #00A830); }
+  .chapter-header.threat { background: linear-gradient(135deg, #FF4757, #E83245); }
+  .chapter-header.curiosity { background: linear-gradient(135deg, #2E86FF, #1A6FE0); }
+
+  .chapter-icon { font-size: 24px; }
+  .chapter-info { flex: 1; }
+  .chapter-title { font-size: 16px; font-weight: 700; color: #fff; }
+  .chapter-desc { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 2px; }
+
+  .chapter-body { padding: 20px 24px; }
+
+  .pattern-group { margin-bottom: 20px; }
+  .pattern-group:last-child { margin-bottom: 0; }
+  .pattern-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .pattern-label.positive { color: var(--positive); }
+  .pattern-label.threat { color: var(--threat); }
+  .pattern-label.curiosity { color: var(--curiosity); }
+  .pattern-label::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 14px;
+    border-radius: 2px;
+    background: currentColor;
+  }
+
+  .title-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    background: #F8F9FD;
+    border-radius: 8px;
+    margin-bottom: 7px;
+    transition: background 0.15s;
+  }
+  .title-item:hover { background: #EFF2FA; }
+  .title-text { flex: 1; font-size: 14px; line-height: 1.5; color: var(--dark); }
+
+  .copy-btn {
+    flex-shrink: 0;
+    padding: 5px 12px;
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    color: var(--gray);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .copy-btn:hover { border-color: var(--curiosity); color: var(--curiosity); background: var(--curiosity-light); }
+  .copy-btn.copied { background: var(--positive); border-color: var(--positive); color: #fff; }
+
+  /* 전체 복사 */
+  .copy-all-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+  }
+  .copy-all-btn {
+    padding: 8px 18px;
+    background: var(--dark);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .copy-all-btn:hover { background: #374151; }
+
+  /* 하단 광고 */
+  .ad-bottom { margin: 24px 0; }
+  .ad-bottom .ad-box { height: 90px; }
+
+  /* 팁 섹션 */
+  .tips {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+    margin-bottom: 24px;
+  }
+  .tips h3 { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+  .tip-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: #4B5563;
+    line-height: 1.6;
+  }
+  .tip-num {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    background: var(--curiosity);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 1px;
+  }
+
+  footer {
+    text-align: center;
+    padding: 24px 20px;
+    color: #9CA3AF;
+    font-size: 12px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<!-- 상단 광고 -->
+<div class="ad-top">
+  <div class="ad-box">📢 광고 영역 (728 × 90) — Google AdSense</div>
+</div>
+
+<!-- 헤더 -->
+<header>
+  <h1>네이버 블로그 <span>제목 생성기</span></h1>
+  <p>업종과 키워드만 입력하면 클릭을 부르는 제목을 자동으로 만들어드립니다</p>
+  <div class="badge-row">
+    <span class="badge badge-g">✅ 긍정 메시지</span>
+    <span class="badge badge-r">⚠️ 위협 메시지</span>
+    <span class="badge badge-b">🔥 호기심 메시지</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- 입력 섹션 -->
+  <div class="input-section">
+    <h2>🎯 업종과 키워드를 입력하세요</h2>
+    <div class="form-row">
+      <div>
+        <label>업종 선택</label>
+        <select id="category" onchange="showHints()">
+          <option value="">— 업종을 선택하세요 —</option>
+          <option value="wedding">💍 웨딩/결혼</option>
+          <option value="food">🍽️ 요식업/카페</option>
+          <option value="edu">📚 온라인 강의/교육</option>
+          <option value="beauty">💄 뷰티/피부/헤어</option>
+          <option value="realty">🏠 부동산/인테리어</option>
+          <option value="fitness">💪 헬스/운동</option>
+          <option value="marketing">📣 마케팅/블로그</option>
+          <option value="other">🔧 기타</option>
+        </select>
+      </div>
+      <div>
+        <label>핵심 키워드</label>
+        <input type="text" id="keyword" placeholder="예: 웨딩홀 비용, 식당 창업" maxlength="30">
+      </div>
+    </div>
+
+    <div class="keyword-hint" id="hintBox">
+      <strong>💡 추천 키워드</strong>
+      <div class="hint-tags" id="hintTags"></div>
+    </div>
+
+    <button class="generate-btn" onclick="generateTitles()">✨ 클릭을 부르는 제목 12가지 패턴 생성하기</button>
+  </div>
+
+  <!-- 결과 -->
+  <div class="results" id="results">
+
+    <div class="copy-all-row">
+      <button class="copy-all-btn" onclick="copyAll()">📋 전체 제목 복사</button>
+    </div>
+
+    <!-- Chapter 1: 긍정 -->
+    <div class="chapter">
+      <div class="chapter-header positive">
+        <div class="chapter-icon">💚</div>
+        <div class="chapter-info">
+          <div class="chapter-title">Chapter 1. 긍정 메시지</div>
+          <div class="chapter-desc">고객이 얻을 수 있는 이득을 보여주는 제목 — 사실 고객은 무엇이 필요한지 모른다</div>
+        </div>
+      </div>
+      <div class="chapter-body">
+        <div class="pattern-group">
+          <div class="pattern-label positive">패턴 1 — 이득 + 숫자형</div>
+          <div id="p1"></div>
+        </div>
+        <div class="pattern-group">
+          <div class="pattern-label positive">패턴 2 — 성공 사례형</div>
+          <div id="p2"></div>
+        </div>
+        <div class="pattern-group">
+          <div class="pattern-label positive">패턴 3 — 전문가 가이드형</div>
+          <div id="p3"></div>
+        </div>
+        <div class="pattern-group">
+          <div class="pattern-label positive">패턴 4 — 방법 + 체크리스트형</div>
+          <div id="p4"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 중간 광고 -->
+    <div class="ad-mid">
+      <div class="ad-box">📢 광고 영역 (336 × 250) — Google AdSense</div>
+    </div>
+
+    <!-- Chapter 2: 위협 -->
+    <div class="chapter">
+      <div class="chapter-header threat">
+        <div class="chapter-icon">🚨</div>
+        <div class="chapter-info">
+          <div class="chapter-title">Chapter 2. 위협 메시지</div>
+          <div class="chapter-desc">내 고객은 언제 지갑을 열까? — 무언가를 잃을 위기에 처했을 때</div>
+        </div>
+      </div>
+      <div class="chapter-body">
+        <div class="pattern-group">
+          <div class="pattern-label threat">패턴 5 — 모르면 손해형</div>
+          <div id="p5"></div>
+        </div>
+        <div class="pattern-group">
+          <div class="pattern-label threat">패턴 6 — 공통점 경고형</div>
+          <div id="p6"></div>
+        </div>
+        <div class="pattern-group">
+          <div class="pattern-label threat">패턴 7 — 의심하라형</div>
+          <div id="p7"></div>
+        </div>
+        <div class="pattern-group">
+          <div class="pattern-label threat">패턴 8 — 공동의 적형</div>
+          <div id="p8"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chapter 3: 호기심 -->
+    <div class="chapter">
+      <div class="chapter-header curiosity">
+        <div class="chapter-icon">🔵</div>
+        <div class="chapter-info">
+          <div class="chapter-title">Chapter 3. 호기심 메시지</div>
+          <div class="chapter-desc">고객이 뻔한 광고를 거르는 법 — 예측 불가능이 클릭을 만든다</div>
+        </div>
+      </div>
+      <div class="chapter-body">
+        <div class="pattern-group">
+          <div class="pattern-label curiosity">패턴 9 — 가치 입증형</div>
+          <div id="p9"></div>
+        </div>
+        <div class="pattern-group">
+          <div class="pattern-label curiosity">패턴 10 — 상식 파괴형</div>
+          <div id="p10"></div>
+        </div>
+        <div class="pattern-group">
+          <div class="pattern-label curiosity">패턴 11 — 질문 & 비교형</div>
+          <div id="p11"></div>
+        </div>
+        <div class="pattern-group">
+          <div class="pattern-label curiosity">패턴 12 — 타깃 호출형</div>
+          <div id="p12"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 팁 -->
+    <div class="tips">
+      <h3>📌 제목 쓸 때 꼭 기억하세요</h3>
+      <div class="tip-item"><span class="tip-num">1</span><span>핵심 키워드는 제목 <strong>맨 왼쪽</strong>에 배치하세요. 네이버는 앞쪽 단어에 더 높은 가중치를 줍니다.</span></div>
+      <div class="tip-item"><span class="tip-num">2</span><span><strong>롱테일 키워드</strong>가 오히려 강합니다. "웨딩홀"보다 "강남 웨딩홀 비용 실제 후기"처럼 2~3단어 조합이 경쟁이 낮고 상위 노출이 쉽습니다.</span></div>
+      <div class="tip-item"><span class="tip-num">3</span><span>숫자는 <strong>구체적일수록</strong> 좋습니다. '몇 가지'보다 '3가지', '2주'보다 '14일'이 클릭율이 높습니다.</span></div>
+      <div class="tip-item"><span class="tip-num">4</span><span><strong>모바일 제목은 28~32자</strong>에서 잘립니다. 핵심 내용을 반드시 앞쪽에 배치하세요.</span></div>
+      <div class="tip-item"><span class="tip-num">5</span><span><strong>"2026년 기준"</strong>처럼 연도를 넣으면 최신 정보라는 신뢰감과 검색 정확도가 동시에 올라갑니다.</span></div>
+      <div class="tip-item"><span class="tip-num">6</span><span><strong>AI 검색(큐:) 대응</strong> — "~하는 방법"보다 "왜 ~할까요?" 같은 질문형 제목이 네이버 AI 답변 소스로 채택될 확률이 높습니다.</span></div>
+      <div class="tip-item"><span class="tip-num">7</span><span><strong>"업계 사람만 아는", "아직 모르는 분이 많은"</strong> 같은 표현은 나만의 정보라는 느낌을 줘서 클릭 욕구를 자극합니다.</span></div>
+      <div class="tip-item"><span class="tip-num">8</span><span>과도한 키워드 도배는 <strong>저품질 위험</strong>이 있습니다. 제목과 관련 없는 키워드는 오히려 이탈율을 높입니다.</span></div>
+      <div class="tip-item"><span class="tip-num">9</span><span>2025년부터 네이버 홈피드는 <strong>블로그 지수보다 반응</strong>을 봅니다. 체류시간과 재방문율이 높은 글이 알고리즘의 선택을 받습니다.</span></div>
+      <div class="tip-item"><span class="tip-num">10</span><span>작성 전 1분 만에 <strong>상위 노출 글을 검색</strong>해보세요. 그들과 차별화할 포인트를 찾는 것이 핵심입니다.</span></div>
+    </div>
+
+    <!-- 하단 광고 -->
+    <div class="ad-bottom">
+      <div class="ad-box">📢 광고 영역 (728 × 90) — Google AdSense</div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  © 2024 네이버 블로그 제목 생성기 | 100개 이상의 브랜드 성공사례로 검증된 제목 패턴
+</footer>
+
+<script>
+const hints = {
+  wedding: {
+    label: '웨딩/결혼',
+    tags: ['웨딩홀 비용', '스드메 가격', '웨딩드레스', '결혼 준비 순서', '웨딩 촬영', '신혼여행 추천']
+  },
+  food: {
+    label: '요식업/카페',
+    tags: ['카페 창업 비용', '식당 개업', '메뉴 개발', '카페 인테리어', '식당 마케팅', '배달 매출']
+  },
+  edu: {
+    label: '온라인 강의/교육',
+    tags: ['온라인 강의 만들기', '클래스 판매', '지식창업', '전자책 출판', '코칭 프로그램', '수강생 모집']
+  },
+  beauty: {
+    label: '뷰티/피부/헤어',
+    tags: ['피부 관리', '헤어 스타일', '네일아트', '다이어트 방법', '피부 트러블', '미용실 추천']
+  },
+  realty: {
+    label: '부동산/인테리어',
+    tags: ['아파트 청약', '전세 계약', '인테리어 비용', '셀프 인테리어', '부동산 투자', '이사 준비']
+  },
+  fitness: {
+    label: '헬스/운동',
+    tags: ['다이어트 식단', '홈트 방법', '헬스장 추천', '살 빠지는 운동', '체중 감량', '단백질 식품']
+  },
+  marketing: {
+    label: '마케팅/블로그',
+    tags: ['블로그 상위 노출', '네이버 SEO', 'SNS 마케팅', '인스타 팔로워', '광고비 없는 마케팅', '블로그 수익화']
+  },
+  other: {
+    label: '기타',
+    tags: ['키워드를 직접 입력해보세요']
+  }
+};
+
+const templates = {
+  p1: [
+    (kw) => `${kw} 시작 전 꼭 알아야 할 3가지, 이것만 알면 됩니다`,
+    (kw) => `따라만 해도 달라지는 ${kw} 핵심 정리`
+  ],
+  p2: [
+    (kw) => `${kw} 2개월 만에 매출 2배 올린 사장님의 공통점`,
+    (kw) => `${kw} 해봤더니 생각보다 쉬웠습니다 — 실제 후기`
+  ],
+  p3: [
+    (kw) => `19년 경력 전문가가 말하는 ${kw} 준비 방법`,
+    (kw) => `전문가들이 ${kw}에서 가장 먼저 확인하는 것`
+  ],
+  p4: [
+    (kw) => `${kw} 전 꼭 확인해야 할 주의사항 3가지 체크리스트`,
+    (kw) => `${kw}, 3분 안에 핵심만 이해시켜드리겠습니다`
+  ],
+  p5: [
+    (kw) => `설마 아직도 ${kw} 모르고 계세요? 이것 놓치면 손해입니다`,
+    (kw) => `${kw} 모르면 결국 이렇게 됩니다 — 충격 실제 사례`
+  ],
+  p6: [
+    (kw) => `${kw}에서 돈 날리는 사람들의 3가지 공통점`,
+    (kw) => `${kw} 실패하는 분들이 반드시 놓치는 것`
+  ],
+  p7: [
+    (kw) => `${kw}에 이것이 있다면 당장 의심해봐야 합니다`,
+    (kw) => `${kw}를 시작하기 전에 반드시 읽어보세요`
+  ],
+  p8: [
+    (kw) => `${kw}로 내 돈이 새고 있다는 사실 알고 계셨나요?`,
+    (kw) => `아직도 ${kw}에서 이렇게 하고 있다면 큰일 납니다`
+  ],
+  p9: [
+    (kw) => `누적 3,500명이 선택한 ${kw}의 비밀은 무엇일까요?`,
+    (kw) => `왜 멀리서까지 ${kw}를 찾아오는 걸까요?`
+  ],
+  p10: [
+    (kw) => `${kw}는 하면 안 된다고요? 사실은 정반대입니다`,
+    (kw) => `당연하다고 생각했던 ${kw}의 불편한 진실`
+  ],
+  p11: [
+    (kw) => `${kw} vs 기존 방법, 뭐가 다를까요? 비교해봤습니다`,
+    (kw) => `왜 어떤 분들은 ${kw}로 바로 성과를 내는 걸까요?`
+  ],
+  p12: [
+    (kw) => `${kw}로 고민하고 계신 분만 보세요`,
+    (kw) => `${kw} 때문에 답답하셨던 분들에게만 알려드립니다`
+  ]
+};
+
+function showHints() {
+  const cat = document.getElementById('category').value;
+  const hintBox = document.getElementById('hintBox');
+  const hintTags = document.getElementById('hintTags');
+  if (!cat || !hints[cat]) { hintBox.classList.remove('show'); return; }
+  hintBox.classList.add('show');
+  hintTags.innerHTML = hints[cat].tags.map(tag =>
+    `<span class="hint-tag" onclick="useTag('${tag}')">${tag}</span>`
+  ).join('');
+}
+
+function useTag(tag) {
+  document.getElementById('keyword').value = tag;
+}
+
+function makeItem(text) {
+  return `<div class="title-item"><span class="title-text">${text}</span><button class="copy-btn" onclick="copyOne(this, '${text.replace(/'/g, "\\'")}')">복사</button></div>`;
+}
+
+function generateTitles() {
+  const kw = document.getElementById('keyword').value.trim();
+  if (!kw) { alert('키워드를 입력해주세요!'); return; }
+
+  for (let i = 1; i <= 12; i++) {
+    const pid = 'p' + i;
+    const tpls = templates[pid];
+    document.getElementById(pid).innerHTML = tpls.map(fn => makeItem(fn(kw))).join('');
+  }
+
+  const results = document.getElementById('results');
+  results.classList.add('show');
+  setTimeout(() => results.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+}
+
+function copyOne(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✅ 복사됨';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+function copyAll() {
+  const items = document.querySelectorAll('.title-text');
+  const all = Array.from(items).map(el => el.textContent).join('\n');
+  navigator.clipboard.writeText(all).then(() => {
+    const btn = document.querySelector('.copy-all-btn');
+    btn.textContent = '✅ 전체 복사 완료!';
+    setTimeout(() => { btn.textContent = '📋 전체 제목 복사'; }, 2000);
+  });
+}
+</script>
+</body>
+</html>
