@@ -3,127 +3,96 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>이용약관 | 네이버 블로그 제목 생성기</title>
+<meta name="robots" content="index, follow" />
+<meta name="description" content="뚝딱툴 이용약관 - 서비스 이용 조건 및 면책 조항 안내" />
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-C61VWMGQ8R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-C61VWMGQ8R');
+</script>
+<title>이용약관 | 뚝딱툴</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Noto Sans KR', sans-serif;
-    background: #F8F9FD;
-    color: #1A1A2E;
-    line-height: 1.8;
+  body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1A2E; line-height: 1.8; }
+  .navbar {
+    background: #fff; border-bottom: 1px solid #E5E7EB;
+    padding: 0 20px; display: flex; align-items: center;
+    justify-content: space-between; height: 52px;
+    position: sticky; top: 0; z-index: 100;
   }
-  header {
-    background: linear-gradient(135deg, #1A1A2E 0%, #0F3460 100%);
-    padding: 32px 20px;
-    text-align: center;
+  .navbar-logo { font-size: 18px; font-weight: 900; color: #1A1A2E; text-decoration: none; }
+  .navbar-logo span { color: #00C73C; }
+  .navbar-links { display: flex; gap: 4px; }
+  .navbar-links a {
+    padding: 7px 14px; border-radius: 8px; font-size: 13px;
+    font-weight: 500; color: #6B7280; text-decoration: none;
+    transition: background 0.15s, color 0.15s;
   }
-  header h1 {
-    color: #fff;
-    font-size: 22px;
-    font-weight: 700;
-    margin-bottom: 8px;
-  }
-  header p {
-    color: rgba(255,255,255,0.6);
-    font-size: 13px;
-  }
-  header a {
-    display: inline-block;
-    margin-top: 16px;
-    color: #00C73C;
-    font-size: 13px;
-    text-decoration: none;
-  }
-  header a:hover { text-decoration: underline; }
-
-  .container {
-    max-width: 760px;
-    margin: 40px auto;
-    padding: 0 20px 60px;
-  }
-  .card {
-    background: #fff;
-    border-radius: 16px;
-    padding: 36px;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.06);
-  }
-  h2 {
-    font-size: 16px;
-    font-weight: 700;
-    color: #1A1A2E;
-    margin: 28px 0 10px;
-    padding-left: 10px;
-    border-left: 3px solid #00C73C;
-  }
+  .navbar-links a:hover { background: #F3F4F6; color: #1A1A2E; }
+  .page-header { background: linear-gradient(135deg, #1A1A2E 0%, #0F3460 100%); padding: 32px 20px; text-align: center; }
+  .page-header h1 { color: #fff; font-size: 22px; font-weight: 700; }
+  .page-header p { color: rgba(255,255,255,0.6); font-size: 13px; margin-top: 6px; }
+  .container { max-width: 760px; margin: 40px auto; padding: 0 20px 60px; }
+  .card { background: #fff; border-radius: 16px; padding: 36px; box-shadow: 0 2px 20px rgba(0,0,0,0.06); }
+  h2 { font-size: 16px; font-weight: 700; color: #1A1A2E; margin: 28px 0 10px; padding-left: 10px; border-left: 3px solid #00C73C; }
   h2:first-child { margin-top: 0; }
-  p {
-    font-size: 14px;
-    color: #374151;
-    margin-bottom: 10px;
-  }
-  .updated {
-    font-size: 13px;
-    color: #9CA3AF;
-    text-align: right;
-    margin-bottom: 24px;
-  }
-  footer {
-    text-align: center;
-    padding: 24px;
-    color: #9CA3AF;
-    font-size: 12px;
-    border-top: 1px solid #E5E7EB;
-  }
+  p { font-size: 14px; color: #374151; margin-bottom: 10px; }
+  .updated { font-size: 13px; color: #9CA3AF; text-align: right; margin-bottom: 24px; }
+  footer { text-align: center; padding: 28px 20px; font-size: 13px; color: #9CA3AF; border-top: 1px solid #E5E7EB; background: #fff; }
+  footer a { color: #9CA3AF; text-decoration: none; margin: 0 8px; }
+  footer a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
-
-<header>
+<nav class="navbar">
+  <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
+  <div class="navbar-links">
+    <a href="about.html">소개</a>
+    <a href="contact.html">연락처</a>
+    <a href="privacy.html">개인정보</a>
+  </div>
+</nav>
+<div class="page-header">
   <h1>이용약관</h1>
-  <p>네이버 블로그 제목 생성기</p>
-  <a href="index.html">← 제목 생성기로 돌아가기</a>
-</header>
-
+  <p>뚝딱툴 · 네이버 블로그 제목 생성기</p>
+</div>
 <div class="container">
   <div class="card">
     <p class="updated">시행일: 2026년 02월 25일</p>
-
     <h2>1. 서비스 소개</h2>
-    <p>네이버 블로그 제목 생성기(이하 "본 서비스")는 블로그 운영자가 클릭률 높은 제목을 손쉽게 만들 수 있도록 돕는 무료 도구입니다.</p>
-
+    <p>뚝딱툴(이하 "본 서비스")은 블로그 운영자가 클릭률 높은 제목을 손쉽게 만들 수 있도록 돕는 무료 도구입니다.</p>
     <h2>2. 서비스 이용</h2>
     <p>본 서비스는 누구나 무료로 이용할 수 있습니다. 회원가입 없이 사용 가능하며, 생성된 제목은 자유롭게 활용하실 수 있습니다.</p>
-
     <h2>3. 생성 결과물의 활용</h2>
     <p>본 서비스를 통해 생성된 제목은 개인 및 상업적 목적으로 자유롭게 사용할 수 있습니다. 다만 생성된 제목의 효과(노출, 클릭률 등)는 보장하지 않습니다.</p>
-
     <h2>4. 금지 행위</h2>
     <p>다음과 같은 행위는 금지됩니다.</p>
     <p>· 본 서비스를 통해 타인을 기만하거나 허위 정보를 유포하는 행위</p>
     <p>· 서비스의 정상적인 운영을 방해하는 행위</p>
     <p>· 본 서비스 자체를 무단으로 복제하여 배포하는 행위</p>
-
     <h2>5. 면책 조항</h2>
     <p>본 서비스는 제공되는 제목 템플릿의 검색 노출 효과를 보증하지 않습니다. 네이버 알고리즘 변경에 따라 효과가 달라질 수 있으며, 이로 인한 손해에 대해 책임을 지지 않습니다.</p>
     <p>서비스 중단, 오류 등으로 인해 발생하는 손해에 대해서도 책임을 지지 않습니다.</p>
-
     <h2>6. 서비스 변경 및 중단</h2>
     <p>운영상 필요에 따라 서비스 내용을 변경하거나 중단할 수 있습니다. 이 경우 별도 공지 없이 진행될 수 있습니다.</p>
-
     <h2>7. 약관 변경</h2>
     <p>본 약관은 필요에 따라 변경될 수 있으며, 변경 시 본 페이지를 통해 공지합니다. 변경된 약관은 공지 후 즉시 효력이 발생합니다.</p>
-
     <h2>8. 문의</h2>
     <p>서비스 이용 관련 문의는 이메일로 연락해 주세요.<br>
     📧 <a href="mailto:onixuri@gmail.com" style="color:#2E86FF;">onixuri@gmail.com</a></p>
   </div>
 </div>
-
 <footer>
-  © 2026 네이버 블로그 제목 생성기 |
-  <a href="privacy.html" style="color:#9CA3AF;">개인정보처리방침</a>
+  © 2026 뚝딱툴 &nbsp;|&nbsp;
+  <a href="/">홈</a>
+  <a href="about.html">소개</a>
+  <a href="contact.html">연락처</a>
+  <a href="privacy.html">개인정보처리방침</a>
+  <a href="terms.html">이용약관</a>
 </footer>
-
 </body>
 </html>

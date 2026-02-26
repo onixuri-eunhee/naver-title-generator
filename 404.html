@@ -81,9 +81,23 @@
   }
   footer a { color: #9CA3AF; text-decoration: none; }
   footer a:hover { text-decoration: underline; }
+  .navbar { background:#fff; border-bottom:1px solid #E5E7EB; padding:0 20px; display:flex; align-items:center; justify-content:space-between; height:52px; position:sticky; top:0; z-index:100; }
+  .navbar-logo { font-size:18px; font-weight:900; color:#1A1A2E; text-decoration:none; }
+  .navbar-logo span { color:#00C73C; }
+  .navbar-links { display:flex; gap:4px; }
+  .navbar-links a { padding:7px 14px; border-radius:8px; font-size:13px; font-weight:500; color:#6B7280; text-decoration:none; }
+  .navbar-links a:hover { background:#F3F4F6; color:#1A1A2E; }
 </style>
 </head>
 <body>
+<nav class="navbar">
+  <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
+  <div class="navbar-links">
+    <a href="about.html">소개</a>
+    <a href="contact.html">연락처</a>
+    <a href="privacy.html">개인정보</a>
+  </div>
+</nav>
   <div class="container">
     <span class="icon">🔧</span>
     <h1>페이지를 찾을 수 없어요</h1>

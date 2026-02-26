@@ -3,124 +3,94 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>개인정보처리방침 | 네이버 블로그 제목 생성기</title>
+<meta name="robots" content="index, follow" />
+<meta name="description" content="뚝딱툴 개인정보처리방침 - 수집 정보, 광고 정책, 쿠키 사용 안내" />
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-C61VWMGQ8R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-C61VWMGQ8R');
+</script>
+<title>개인정보처리방침 | 뚝딱툴</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Noto Sans KR', sans-serif;
-    background: #F8F9FD;
-    color: #1A1A2E;
-    line-height: 1.8;
+  body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1A2E; line-height: 1.8; }
+  .navbar {
+    background: #fff; border-bottom: 1px solid #E5E7EB;
+    padding: 0 20px; display: flex; align-items: center;
+    justify-content: space-between; height: 52px;
+    position: sticky; top: 0; z-index: 100;
   }
-  header {
-    background: linear-gradient(135deg, #1A1A2E 0%, #0F3460 100%);
-    padding: 32px 20px;
-    text-align: center;
+  .navbar-logo { font-size: 18px; font-weight: 900; color: #1A1A2E; text-decoration: none; }
+  .navbar-logo span { color: #00C73C; }
+  .navbar-links { display: flex; gap: 4px; }
+  .navbar-links a {
+    padding: 7px 14px; border-radius: 8px; font-size: 13px;
+    font-weight: 500; color: #6B7280; text-decoration: none;
+    transition: background 0.15s, color 0.15s;
   }
-  header h1 {
-    color: #fff;
-    font-size: 22px;
-    font-weight: 700;
-    margin-bottom: 8px;
-  }
-  header p {
-    color: rgba(255,255,255,0.6);
-    font-size: 13px;
-  }
-  header a {
-    display: inline-block;
-    margin-top: 16px;
-    color: #00C73C;
-    font-size: 13px;
-    text-decoration: none;
-  }
-  header a:hover { text-decoration: underline; }
-
-  .container {
-    max-width: 760px;
-    margin: 40px auto;
-    padding: 0 20px 60px;
-  }
-  .card {
-    background: #fff;
-    border-radius: 16px;
-    padding: 36px;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.06);
-  }
-  h2 {
-    font-size: 16px;
-    font-weight: 700;
-    color: #1A1A2E;
-    margin: 28px 0 10px;
-    padding-left: 10px;
-    border-left: 3px solid #2E86FF;
-  }
+  .navbar-links a:hover { background: #F3F4F6; color: #1A1A2E; }
+  .page-header { background: linear-gradient(135deg, #1A1A2E 0%, #0F3460 100%); padding: 32px 20px; text-align: center; }
+  .page-header h1 { color: #fff; font-size: 22px; font-weight: 700; }
+  .page-header p { color: rgba(255,255,255,0.6); font-size: 13px; margin-top: 6px; }
+  .container { max-width: 760px; margin: 40px auto; padding: 0 20px 60px; }
+  .card { background: #fff; border-radius: 16px; padding: 36px; box-shadow: 0 2px 20px rgba(0,0,0,0.06); }
+  h2 { font-size: 16px; font-weight: 700; color: #1A1A2E; margin: 28px 0 10px; padding-left: 10px; border-left: 3px solid #2E86FF; }
   h2:first-child { margin-top: 0; }
-  p {
-    font-size: 14px;
-    color: #374151;
-    margin-bottom: 10px;
-  }
-  .updated {
-    font-size: 13px;
-    color: #9CA3AF;
-    text-align: right;
-    margin-bottom: 24px;
-  }
-  footer {
-    text-align: center;
-    padding: 24px;
-    color: #9CA3AF;
-    font-size: 12px;
-    border-top: 1px solid #E5E7EB;
-  }
+  p { font-size: 14px; color: #374151; margin-bottom: 10px; }
+  .updated { font-size: 13px; color: #9CA3AF; text-align: right; margin-bottom: 24px; }
+  footer { text-align: center; padding: 28px 20px; font-size: 13px; color: #9CA3AF; border-top: 1px solid #E5E7EB; background: #fff; }
+  footer a { color: #9CA3AF; text-decoration: none; margin: 0 8px; }
+  footer a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
-
-<header>
+<nav class="navbar">
+  <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
+  <div class="navbar-links">
+    <a href="about.html">소개</a>
+    <a href="contact.html">연락처</a>
+    <a href="privacy.html">개인정보</a>
+  </div>
+</nav>
+<div class="page-header">
   <h1>개인정보처리방침</h1>
-  <p>네이버 블로그 제목 생성기</p>
-  <a href="index.html">← 제목 생성기로 돌아가기</a>
-</header>
-
+  <p>뚝딱툴 · 네이버 블로그 제목 생성기</p>
+</div>
 <div class="container">
   <div class="card">
     <p class="updated">시행일: 2026년 02월 25일</p>
-
     <h2>1. 개요</h2>
-    <p>네이버 블로그 제목 생성기(이하 "본 서비스")는 이용자의 개인정보를 중요하게 생각합니다. 본 방침은 본 서비스가 어떤 정보를 수집하고 어떻게 사용하는지 안내합니다.</p>
-
+    <p>뚝딱툴(이하 "본 서비스")은 이용자의 개인정보를 중요하게 생각합니다. 본 방침은 본 서비스가 어떤 정보를 수집하고 어떻게 사용하는지 안내합니다.</p>
     <h2>2. 수집하는 정보</h2>
     <p>본 서비스는 회원가입, 로그인 등을 요구하지 않으며, 이용자의 이름·이메일·전화번호 등 개인 식별 정보를 직접 수집하지 않습니다.</p>
     <p>다만 서비스 개선을 위해 Google Analytics 등 통계 도구를 통해 방문자 수, 페이지 체류 시간 등 <strong>비식별 통계 데이터</strong>가 자동으로 수집될 수 있습니다.</p>
-
     <h2>3. 입력 데이터 처리</h2>
     <p>이용자가 입력하는 업종, 키워드 등의 데이터는 브라우저 내에서만 처리되며 서버로 전송되거나 저장되지 않습니다.</p>
-
     <h2>4. 광고 서비스</h2>
     <p>본 서비스는 Google AdSense 광고를 게재할 수 있습니다. Google은 쿠키를 사용하여 이용자에게 맞춤 광고를 제공할 수 있으며, 이는 Google의 개인정보처리방침을 따릅니다.</p>
     <p>Google 광고 정책에 대한 자세한 내용은 <a href="https://policies.google.com/privacy" target="_blank" style="color:#2E86FF;">Google 개인정보처리방침</a>을 참고하세요.</p>
-
     <h2>5. 쿠키(Cookie)</h2>
     <p>본 서비스는 광고 및 통계 목적으로 쿠키를 사용할 수 있습니다. 브라우저 설정에서 쿠키 사용을 거부할 수 있으나, 일부 기능이 제한될 수 있습니다.</p>
-
     <h2>6. 제3자 링크</h2>
     <p>본 서비스는 외부 사이트로의 링크를 포함할 수 있습니다. 외부 사이트의 개인정보처리방침은 해당 사이트의 정책을 따르며, 본 서비스는 이에 대한 책임을 지지 않습니다.</p>
-
     <h2>7. 방침 변경</h2>
     <p>본 개인정보처리방침은 법령 또는 서비스 변경에 따라 업데이트될 수 있습니다. 변경 시 본 페이지를 통해 공지합니다.</p>
-
     <h2>8. 문의</h2>
     <p>개인정보 관련 문의 사항이 있으시면 이메일로 연락해 주세요.<br>
     📧 <a href="mailto:onixuri@gmail.com" style="color:#2E86FF;">onixuri@gmail.com</a></p>
   </div>
 </div>
-
 <footer>
-  © 2026 네이버 블로그 제목 생성기
+  © 2026 뚝딱툴 &nbsp;|&nbsp;
+  <a href="/">홈</a>
+  <a href="about.html">소개</a>
+  <a href="contact.html">연락처</a>
+  <a href="privacy.html">개인정보처리방침</a>
+  <a href="terms.html">이용약관</a>
 </footer>
-
 </body>
 </html>
