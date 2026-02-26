@@ -56,6 +56,44 @@
     min-height: 100vh;
   }
 
+  /* 네비게이션 */
+  .navbar {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 52px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .navbar-logo {
+    font-size: 18px;
+    font-weight: 900;
+    color: #1A1A2E;
+    text-decoration: none;
+  }
+  .navbar-logo span { color: #00C73C; }
+  .navbar-links {
+    display: flex;
+    gap: 4px;
+  }
+  .navbar-links a {
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6B7280;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+  }
+  .navbar-links a:hover {
+    background: #F3F4F6;
+    color: #1A1A2E;
+  }
+
   /* 상단 광고 */
   .ad-top {
     background: #fff;
@@ -377,6 +415,16 @@
 <body>
 
 <!-- 상단 광고 -->
+<!-- 네비게이션 -->
+<nav class="navbar">
+  <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
+  <div class="navbar-links">
+    <a href="about.html">소개</a>
+    <a href="contact.html">연락처</a>
+    <a href="privacy.html">개인정보</a>
+  </div>
+</nav>
+
 <div class="ad-top">
   <div class="ad-box">📢 광고 영역 (728 × 90) — Google AdSense</div>
 </div>
