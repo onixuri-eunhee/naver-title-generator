@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="index, follow" />
+<meta name="description" content="자영업자를 위한 SNS 후킹문구 생성기. 업종과 키워드를 입력하면 클릭을 부르는 후킹문구 15개를 즉시 생성합니다." />
+<meta name="keywords" content="후킹문구, SNS 마케팅, 자영업자 마케팅, 인스타그램 후킹, 릴스 후킹문구, 카피라이팅" />
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-C61VWMGQ8R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-C61VWMGQ8R');
+</script>
+<title>SNS 후킹문구 생성기 | 뚝딱툴</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --primary: #1A1A2E;
+  --accent: #00C73C;
+  --accent2: #FF5C5C;
+  --accent3: #2E86FF;
+  --bg: #F8F9FD;
+  --white: #fff;
+  --gray: #9CA3AF;
+  --border: #E5E7EB;
+  --text: #374151;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--primary); line-height: 1.7; }
+
+/* NAVBAR */
+.navbar {
+  background: var(--white); border-bottom: 1px solid var(--border);
+  padding: 0 20px; display: flex; align-items: center;
+  justify-content: space-between; height: 52px;
+  position: sticky; top: 0; z-index: 100;
+}
+.navbar-logo { font-size: 18px; font-weight: 900; color: var(--primary); text-decoration: none; }
+.navbar-logo span { color: var(--accent); }
+.navbar-links { display: flex; gap: 4px; }
+.navbar-links a {
+  padding: 7px 14px; border-radius: 8px; font-size: 13px;
+  font-weight: 500; color: var(--gray); text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.navbar-links a:hover { background: #F3F4F6; color: var(--primary); }
+
+/* HERO — index.html과 동일 스타일 */
+header {
+  background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+  padding: 48px 20px 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 30% 50%, rgba(0,199,60,0.08) 0%, transparent 50%),
+              radial-gradient(circle at 70% 30%, rgba(46,134,255,0.08) 0%, transparent 50%);
+  pointer-events: none;
+}
+.hero-badge {
+  display: inline-block;
+  background: rgba(0,199,60,0.15);
+  color: var(--accent);
+  border: 1px solid rgba(0,199,60,0.3);
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; margin-bottom: 16px;
+  letter-spacing: 0.05em;
+}
+header h1 {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: clamp(22px, 4.5vw, 38px);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.5px;
+  margin-bottom: 12px;
+  line-height: 1.3;
+}
+header h1 span { color: var(--accent); }
+header p {
+  color: rgba(255,255,255,0.6);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.badge-row {
+  display: flex; gap: 8px; justify-content: center;
+  flex-wrap: wrap; margin-top: 20px;
+}
+.badge {
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 12px; font-weight: 700;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.7);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+/* TOOL CARD */
+.container { max-width: 740px; margin: 0 auto; padding: 32px 20px 80px; }
+.card {
+  background: var(--white); border-radius: 20px;
+  padding: 32px; box-shadow: 0 4px 30px rgba(0,0,0,0.07);
+  margin-bottom: 24px;
+}
+
+.input-group { margin-bottom: 20px; }
+.input-label {
+  display: block; font-size: 14px; font-weight: 700;
+  color: var(--primary); margin-bottom: 8px;
+}
+.input-label .required {
+  color: var(--accent2); font-size: 11px; margin-left: 4px;
+  background: rgba(255,92,92,0.1); padding: 1px 6px; border-radius: 4px;
+}
+.input-sub { font-size: 12px; color: var(--gray); margin-bottom: 8px; display: block; }
+.input-field {
+  width: 100%; padding: 14px 16px;
+  border: 1.5px solid var(--border); border-radius: 12px;
+  font-size: 15px; font-family: 'Noto Sans KR', sans-serif;
+  color: var(--primary); background: #FAFAFA;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+.input-field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,199,60,0.12); background: var(--white); }
+.input-field::placeholder { color: #C4C9D4; }
+
+/* TAGS */
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.tag {
+  padding: 5px 12px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--white);
+  font-size: 12px; color: var(--gray); cursor: pointer;
+  transition: all 0.15s;
+}
+.tag:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,199,60,0.06); }
+
+/* GENERATE BTN */
+.generate-btn {
+  width: 100%; padding: 17px;
+  background: linear-gradient(135deg, #00C73C 0%, #00A832 100%);
+  color: var(--white); border: none; border-radius: 14px;
+  font-size: 16px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer; transition: all 0.2s; letter-spacing: -0.01em;
+  box-shadow: 0 4px 14px rgba(0,199,60,0.3);
+}
+.generate-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,199,60,0.4); }
+.generate-btn:active { transform: translateY(0); }
+
+/* RESULTS */
+.results { display: none; }
+.results.show { display: block; }
+.results-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+}
+.results-title { font-size: 16px; font-weight: 700; color: var(--primary); }
+.copy-all-btn {
+  padding: 9px 18px; background: var(--primary); color: var(--white);
+  border: none; border-radius: 10px; font-size: 13px; font-weight: 600;
+  font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: background 0.15s;
+}
+.copy-all-btn:hover { background: #374151; }
+
+.hook-item {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; padding: 16px; border-radius: 12px;
+  border: 1.5px solid var(--border); margin-bottom: 10px;
+  background: var(--white); transition: border-color 0.2s, box-shadow 0.2s;
+}
+.hook-item:hover { border-color: #D1D5DB; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.hook-num {
+  min-width: 26px; height: 26px; border-radius: 50%;
+  background: var(--bg); color: var(--gray); font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+}
+.hook-text { font-size: 15px; color: var(--primary); line-height: 1.6; flex: 1; word-break: keep-all; }
+.copy-btn {
+  padding: 6px 14px; border: 1.5px solid var(--border);
+  border-radius: 8px; background: var(--white);
+  font-size: 12px; font-weight: 600; color: var(--gray);
+  font-family: 'Noto Sans KR', sans-serif; cursor: pointer;
+  transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+}
+.copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+.copy-btn.copied { background: var(--accent); border-color: var(--accent); color: var(--white); }
+
+/* INFO */
+.info-section h2 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+.hook-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 540px) { .hook-grid { grid-template-columns: 1fr; } }
+.hook-card { padding: 16px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--white); }
+.hook-card-icon { font-size: 20px; margin-bottom: 6px; }
+.hook-card-title { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+.hook-card-desc { font-size: 12px; color: var(--gray); line-height: 1.6; }
+
+/* FAQ */
+.faq-item { border-bottom: 1px solid var(--border); }
+.faq-q {
+  width: 100%; padding: 16px 0; text-align: left; background: none;
+  border: none; font-size: 14px; font-weight: 600; color: var(--primary);
+  font-family: 'Noto Sans KR', sans-serif; cursor: pointer;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.faq-arrow { color: var(--gray); transition: transform 0.2s; font-size: 12px; }
+.faq-a { font-size: 14px; color: var(--text); line-height: 1.8; padding-bottom: 16px; display: none; }
+.faq-item.open .faq-arrow { transform: rotate(180deg); }
+.faq-item.open .faq-a { display: block; }
+
+/* FOOTER */
+footer {
+  text-align: center; padding: 28px 20px; font-size: 13px;
+  color: var(--gray); border-top: 1px solid var(--border); background: var(--white);
+}
+footer a { color: var(--gray); text-decoration: none; margin: 0 8px; }
+footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
+  <div class="navbar-links">
+    <a href="about.html">소개</a>
+    <a href="contact.html">연락처</a>
+    <a href="privacy.html">개인정보</a>
+  </div>
+</nav>
+
+<header>
+  <div class="hero-badge">🔥 SNS 후킹문구 생성기</div>
+  <h1>첫 줄이 전부입니다<br><span>스크롤 멈추는 문구</span>를 뚝딱</h1>
+  <p>업종과 키워드를 입력하면<br>심리학 기반 후킹문구 15개를 즉시 생성합니다</p>
+  <div class="badge-row">
+    <span class="badge">🧠 심리학 기반</span>
+    <span class="badge">⚡ 즉시 생성</span>
+    <span class="badge">📋 복사 기능</span>
+    <span class="badge">✅ 완전 무료</span>
+  </div>
+</header>
+
+<div class="container">
+  <div class="card">
+    <div class="input-group">
+      <label class="input-label">업종 <span class="required">필수</span></label>
+      <span class="input-sub">아래 태그를 클릭하거나 직접 입력하세요</span>
+      <input type="text" id="industry" class="input-field" placeholder="예) 미용실" maxlength="30" />
+      <div class="tag-row" id="industry-tags">
+        <!-- 뷰티 -->
+        <span class="tag" onclick="setTag('industry','미용실')">미용실</span>
+        <span class="tag" onclick="setTag('industry','헤어샵')">헤어샵</span>
+        <span class="tag" onclick="setTag('industry','피부관리실')">피부관리실</span>
+        <span class="tag" onclick="setTag('industry','네일샵')">네일샵</span>
+        <span class="tag" onclick="setTag('industry','속눈썹샵')">속눈썹샵</span>
+        <span class="tag" onclick="setTag('industry','왁싱샵')">왁싱샵</span>
+        <span class="tag" onclick="setTag('industry','타투샵')">타투샵</span>
+        <span class="tag" onclick="setTag('industry','반영구샵')">반영구샵</span>
+        <!-- 운동/건강 -->
+        <span class="tag" onclick="setTag('industry','헬스장')">헬스장</span>
+        <span class="tag" onclick="setTag('industry','필라테스')">필라테스</span>
+        <span class="tag" onclick="setTag('industry','요가')">요가</span>
+        <span class="tag" onclick="setTag('industry','PT샵')">PT샵</span>
+        <span class="tag" onclick="setTag('industry','복싱짐')">복싱짐</span>
+        <span class="tag" onclick="setTag('industry','수영장')">수영장</span>
+        <span class="tag" onclick="setTag('industry','클라이밍')">클라이밍</span>
+        <!-- 음식 -->
+        <span class="tag" onclick="setTag('industry','카페')">카페</span>
+        <span class="tag" onclick="setTag('industry','식당')">식당</span>
+        <span class="tag" onclick="setTag('industry','베이커리')">베이커리</span>
+        <span class="tag" onclick="setTag('industry','디저트샵')">디저트샵</span>
+        <span class="tag" onclick="setTag('industry','분식집')">분식집</span>
+        <span class="tag" onclick="setTag('industry','치킨집')">치킨집</span>
+        <span class="tag" onclick="setTag('industry','한식당')">한식당</span>
+        <span class="tag" onclick="setTag('industry','샌드위치카페')">샌드위치카페</span>
+        <!-- 교육 -->
+        <span class="tag" onclick="setTag('industry','공부방')">공부방</span>
+        <span class="tag" onclick="setTag('industry','학원')">학원</span>
+        <span class="tag" onclick="setTag('industry','영어학원')">영어학원</span>
+        <span class="tag" onclick="setTag('industry','수학학원')">수학학원</span>
+        <span class="tag" onclick="setTag('industry','미술학원')">미술학원</span>
+        <span class="tag" onclick="setTag('industry','음악학원')">음악학원</span>
+        <span class="tag" onclick="setTag('industry','태권도')">태권도</span>
+        <span class="tag" onclick="setTag('industry','발레학원')">발레학원</span>
+        <span class="tag" onclick="setTag('industry','코딩학원')">코딩학원</span>
+        <span class="tag" onclick="setTag('industry','줄넘기교실')">줄넘기교실</span>
+        <!-- 전문직/서비스 -->
+        <span class="tag" onclick="setTag('industry','부동산')">부동산</span>
+        <span class="tag" onclick="setTag('industry','웨딩플래너')">웨딩플래너</span>
+        <span class="tag" onclick="setTag('industry','사진관')">사진관</span>
+        <span class="tag" onclick="setTag('industry','세탁소')">세탁소</span>
+        <span class="tag" onclick="setTag('industry','인테리어')">인테리어</span>
+        <span class="tag" onclick="setTag('industry','청소업체')">청소업체</span>
+        <span class="tag" onclick="setTag('industry','꽃집')">꽃집</span>
+        <span class="tag" onclick="setTag('industry','반려동물샵')">반려동물샵</span>
+        <span class="tag" onclick="setTag('industry','동물병원')">동물병원</span>
+        <span class="tag" onclick="setTag('industry','한의원')">한의원</span>
+        <span class="tag" onclick="setTag('industry','마사지샵')">마사지샵</span>
+        <span class="tag" onclick="setTag('industry','코칭')">코칭</span>
+        <span class="tag" onclick="setTag('industry','온라인강의')">온라인강의</span>
+        <span class="tag" onclick="setTag('industry','공방')">공방</span>
+        <span class="tag" onclick="setTag('industry','독서실')">독서실</span>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label class="input-label">키워드 / 주제 <span class="required">필수</span></label>
+      <span class="input-sub">아래 태그를 클릭하거나 직접 입력하세요</span>
+      <input type="text" id="keyword" class="input-field" placeholder="예) 탈모" maxlength="30" />
+      <div class="tag-row" id="keyword-tags">
+        <!-- 고객 유입/관리 -->
+        <span class="tag" onclick="setTag('keyword','첫 방문')">첫 방문</span>
+        <span class="tag" onclick="setTag('keyword','단골 만들기')">단골 만들기</span>
+        <span class="tag" onclick="setTag('keyword','재방문율')">재방문율</span>
+        <span class="tag" onclick="setTag('keyword','신규 고객')">신규 고객</span>
+        <span class="tag" onclick="setTag('keyword','입소문')">입소문</span>
+        <span class="tag" onclick="setTag('keyword','예약률')">예약률</span>
+        <span class="tag" onclick="setTag('keyword','리뷰 관리')">리뷰 관리</span>
+        <!-- 뷰티 -->
+        <span class="tag" onclick="setTag('keyword','탈모')">탈모</span>
+        <span class="tag" onclick="setTag('keyword','두피 관리')">두피 관리</span>
+        <span class="tag" onclick="setTag('keyword','염색')">염색</span>
+        <span class="tag" onclick="setTag('keyword','펌')">펌</span>
+        <span class="tag" onclick="setTag('keyword','피부 트러블')">피부 트러블</span>
+        <span class="tag" onclick="setTag('keyword','여드름')">여드름</span>
+        <span class="tag" onclick="setTag('keyword','리프팅')">리프팅</span>
+        <span class="tag" onclick="setTag('keyword','미백')">미백</span>
+        <span class="tag" onclick="setTag('keyword','모공')">모공</span>
+        <span class="tag" onclick="setTag('keyword','피부 탄력')">피부 탄력</span>
+        <!-- 운동/건강 -->
+        <span class="tag" onclick="setTag('keyword','다이어트')">다이어트</span>
+        <span class="tag" onclick="setTag('keyword','체형 교정')">체형 교정</span>
+        <span class="tag" onclick="setTag('keyword','허리 통증')">허리 통증</span>
+        <span class="tag" onclick="setTag('keyword','골반 교정')">골반 교정</span>
+        <span class="tag" onclick="setTag('keyword','복근')">복근</span>
+        <span class="tag" onclick="setTag('keyword','근육량')">근육량</span>
+        <span class="tag" onclick="setTag('keyword','자세 교정')">자세 교정</span>
+        <span class="tag" onclick="setTag('keyword','거북목')">거북목</span>
+        <!-- 음식/카페 -->
+        <span class="tag" onclick="setTag('keyword','가성비')">가성비</span>
+        <span class="tag" onclick="setTag('keyword','메뉴 개발')">메뉴 개발</span>
+        <span class="tag" onclick="setTag('keyword','원가 절감')">원가 절감</span>
+        <span class="tag" onclick="setTag('keyword','포장·배달')">포장·배달</span>
+        <span class="tag" onclick="setTag('keyword','시그니처 메뉴')">시그니처 메뉴</span>
+        <!-- 교육/아이 -->
+        <span class="tag" onclick="setTag('keyword','성적 향상')">성적 향상</span>
+        <span class="tag" onclick="setTag('keyword','집중력')">집중력</span>
+        <span class="tag" onclick="setTag('keyword','공부 습관')">공부 습관</span>
+        <span class="tag" onclick="setTag('keyword','자기주도학습')">자기주도학습</span>
+        <span class="tag" onclick="setTag('keyword','학습 자존감')">학습 자존감</span>
+        <span class="tag" onclick="setTag('keyword','기초 학력')">기초 학력</span>
+        <span class="tag" onclick="setTag('keyword','창의력')">창의력</span>
+        <span class="tag" onclick="setTag('keyword','표현력')">표현력</span>
+        <!-- 매출/마케팅 -->
+        <span class="tag" onclick="setTag('keyword','매출 올리기')">매출 올리기</span>
+        <span class="tag" onclick="setTag('keyword','SNS 마케팅')">SNS 마케팅</span>
+        <span class="tag" onclick="setTag('keyword','가격 경쟁')">가격 경쟁</span>
+        <span class="tag" onclick="setTag('keyword','차별화')">차별화</span>
+        <span class="tag" onclick="setTag('keyword','시즌 마케팅')">시즌 마케팅</span>
+        <span class="tag" onclick="setTag('keyword','팔로워 늘리기')">팔로워 늘리기</span>
+        <span class="tag" onclick="setTag('keyword','릴스 후킹')">릴스 후킹</span>
+        <!-- 기타 -->
+        <span class="tag" onclick="setTag('keyword','실패하지 않는 법')">실패하지 않는 법</span>
+        <span class="tag" onclick="setTag('keyword','초보자')">초보자</span>
+        <span class="tag" onclick="setTag('keyword','관리 루틴')">관리 루틴</span>
+        <span class="tag" onclick="setTag('keyword','비용 절약')">비용 절약</span>
+        <span class="tag" onclick="setTag('keyword','재능 발견')">재능 발견</span>
+        <span class="tag" onclick="setTag('keyword','정서 안정')">정서 안정</span>
+      </div>
+    </div>
+
+    <button class="generate-btn" onclick="generateHooks()">🔥 스크롤 멈추는 후킹문구 15개 생성하기</button>
+  </div>
+
+  <div class="results card" id="results">
+    <div class="results-header">
+      <span class="results-title" id="results-title">후킹문구 15개</span>
+      <button class="copy-all-btn" onclick="copyAll()">📋 전체 복사</button>
+    </div>
+    <div id="hook-list"></div>
+  </div>
+
+  <!-- INFO SECTION -->
+  <div class="info-section">
+    <div class="card">
+      <h2>📌 후킹문구, 왜 첫 줄이 전부일까요?</h2>
+      <p style="font-size:14px; color:var(--text); line-height:1.9; margin-bottom:16px;">
+        사람들이 SNS 피드를 스크롤하는 속도는 평균 <strong>0.3초</strong>입니다. 이 0.3초 안에 멈추지 않으면, 아무리 좋은 서비스도 보여줄 기회조차 없습니다. 후킹문구는 단순한 제목이 아니라 <strong>상대방의 심리를 건드리는 첫 번째 신호</strong>입니다.
+      </p>
+      <p style="font-size:14px; color:var(--text); line-height:1.9;">
+        19년간 3,500쌍 이상의 웨딩 상담을 하면서 알게 된 사실이 있어요. 고객은 서비스를 사는 게 아니라 <strong>자신의 문제가 해결되는 장면</strong>을 삽니다. 후킹문구는 그 장면을 보여주는 창문입니다.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>🧠 이 도구가 사용하는 10가지 심리 후킹 공식</h2>
+      <div class="hook-grid">
+        <div class="hook-card"><div class="hook-card-icon">😰</div><div class="hook-card-title">문제공감 후킹</div><div class="hook-card-desc">고객이 겪는 실제 불편을 먼저 꺼낸다. "왜 살이 안 빠질까요?"</div></div>
+        <div class="hook-card"><div class="hook-card-icon">💸</div><div class="hook-card-title">손실회피 후킹</div><div class="hook-card-desc">모르면 손해, 잘못하면 망한다. 인간은 이익보다 손실에 2배 반응한다.</div></div>
+        <div class="hook-card"><div class="hook-card-icon">🤔</div><div class="hook-card-title">호기심 폭발 후킹</div><div class="hook-card-desc">정보 격차를 만든다. 알고 싶지만 모른다는 느낌이 클릭을 부른다.</div></div>
+        <div class="hook-card"><div class="hook-card-icon">💡</div><div class="hook-card-title">상식 비틀기 후킹</div><div class="hook-card-desc">다들 좋다는 것의 역습. "운동이 오히려 건강을 망친다"</div></div>
+        <div class="hook-card"><div class="hook-card-icon">🔥</div><div class="hook-card-title">욕망 자극 후킹</div><div class="hook-card-desc">예뻐지고 싶다, 돈 벌고 싶다, 인정받고 싶다. 근본 욕구를 건드린다.</div></div>
+        <div class="hook-card"><div class="hook-card-icon">🏆</div><div class="hook-card-title">권위부여 후킹</div><div class="hook-card-desc">경력, 실적, 고객 수 등 신뢰를 자연스럽게 심어준다.</div></div>
+        <div class="hook-card"><div class="hook-card-icon">⚡</div><div class="hook-card-title">즉시성 후킹</div><div class="hook-card-desc">"지금 당장", "바로 써먹을 수 있는" — 행동 유도 최강 패턴.</div></div>
+        <div class="hook-card"><div class="hook-card-icon">🔢</div><div class="hook-card-title">구체성·수치 후킹</div><div class="hook-card-desc">3가지, 5단계, 단 1분 — 수치가 신뢰도와 집중도를 높인다.</div></div>
+        <div class="hook-card"><div class="hook-card-icon">🤫</div><div class="hook-card-title">비밀·은밀함 후킹</div><div class="hook-card-desc">"전문가만 아는 진실", "고객이 말 안 해주는 속사정"</div></div>
+        <div class="hook-card"><div class="hook-card-icon">⚖️</div><div class="hook-card-title">비교 자극 후킹</div><div class="hook-card-desc">A vs B. 인간의 뇌는 비교에 강하게 반응한다.</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>💬 자주 묻는 질문</h2>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">생성된 문구를 그대로 써도 되나요?<span class="faq-arrow">▼</span></button>
+        <div class="faq-a">네, 그대로 쓰셔도 됩니다. 다만 실제 사례나 구체적인 숫자를 추가하면 더 효과적입니다. 예를 들어 "10명 중 9명이 모르는 탈모 관리법" 뒤에 본인 샵 이야기를 붙여주시면 좋아요.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">어디에 활용할 수 있나요?<span class="faq-arrow">▼</span></button>
+        <div class="faq-a">인스타그램 릴스·카드뉴스 첫 줄, 네이버 블로그 제목, 유튜브 쇼츠 자막, 스레드·페이스북 포스팅 첫 문장, 카카오톡 채널 메시지, 전단지 헤드라인 등 모든 SNS와 마케팅 채널에 활용하실 수 있습니다.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">같은 업종·키워드를 다시 누르면 다른 문구가 나오나요?<span class="faq-arrow">▼</span></button>
+        <div class="faq-a">네, 매번 다른 조합의 후킹문구가 생성됩니다. 여러 번 눌러서 마음에 드는 문구를 골라 사용하세요.</div>
+      </div>
+      <div class="faq-item" style="border-bottom:none">
+        <button class="faq-q" onclick="toggleFaq(this)">무료인가요?<span class="faq-arrow">▼</span></button>
+        <div class="faq-a">네, 완전 무료입니다. 회원가입 없이 바로 사용하실 수 있습니다.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  © 2026 뚝딱툴 &nbsp;|&nbsp;
+  <a href="/">홈</a>
+  <a href="about.html">소개</a>
+  <a href="contact.html">연락처</a>
+  <a href="privacy.html">개인정보처리방침</a>
+  <a href="terms.html">이용약관</a>
+</footer>
+
+<script>
+
+// ── 한국어 조사 자동 처리 ──────────────────────────
+function josa(word, type) {
+  if (!word) return type.split('/')[1] || '';
+  const code = word.charCodeAt(word.length - 1);
+  if (code < 0xAC00 || code > 0xD7A3) {
+    // 한글 아닌 경우 기본값(두 번째 항목)
+    const def = {'이/가':'가','은/는':'는','을/를':'를','으로/로':'로','와/과':'와'};
+    return def[type] || '';
+  }
+  const jong = (code - 0xAC00) % 28; // 종성 인덱스
+  const hasBatchim = jong !== 0;
+  switch(type) {
+    case '이/가':   return hasBatchim ? '이' : '가';
+    case '은/는':   return hasBatchim ? '은' : '는';
+    case '을/를':   return hasBatchim ? '을' : '를';
+    case '으로/로': return (jong === 0 || jong === 8) ? '로' : '으로'; // ㄹ=8
+    case '와/과':   return hasBatchim ? '과' : '와';
+    default: return '';
+  }
+}
+// 단축 헬퍼
+const ga  = w => w + josa(w,'이/가');
+const neun= w => w + josa(w,'은/는');
+const reul= w => w + josa(w,'을/를');
+const ro  = w => w + josa(w,'으로/로');
+const wa  = w => w + josa(w,'와/과');
+
+const HOOKS = [
+  // A. 알면이득 / 모르면손해형
+  (I,K) => `이거 알면 ${I}에서 ${reul(K)} 고민 끝납니다🚨`,
+  (I,K) => `${reul(K)} 모르면 ${I} 하면서 손해봅니다`,
+  (I,K) => `이걸 몰랐다면 당신은 아직 ${I} 초보`,
+  (I,K) => `${I}에서 ${reul(K)} 이거 알기 전엔 절대 시작하지 마세요`,
+  (I,K) => `모르면 망하는 ${I} ${K} 상식`,
+  (I,K) => `${K}에 대해 이걸 모르면 ${I}에서 손해보는 거예요`,
+  (I,K) => `${I} 하면서 ${reul(K)} 이거 모르면 아직 왕초보입니다😅`,
+
+  // B. 전문가·권위 소환형
+  (I,K) => `${I} 전문가가 절대 말해주지 않는 ${K} 비밀`,
+  (I,K) => `${I} 업계 고수들만 아는 ${K} 노하우`,
+  (I,K) => `상위 1% ${I} 사장님이 실제로 쓰는 ${K} 방법`,
+  (I,K) => `수천 명 고객 상담에서 나온 ${I} ${K} 공식`,
+  (I,K) => `19년 경력이 알려주는 ${I} ${K} 진짜 해법`,
+  (I,K) => `${I} 오래 한 사람들만 아는 ${K} 진실`,
+  (I,K) => `전문가들이 숨겨두는 ${I} ${K} 내부 이야기`,
+
+  // C. 수치·비교·극단값형
+  (I,K) => `${I}에서 ${K} 성공하는 딱 3가지 공식`,
+  (I,K) => `${I} 고객 10명 중 9명이 ${reul(K)} 잘못하고 있어요`,
+  (I,K) => `${I}에서 ${K} 효과 보는 5가지 루틴`,
+  (I,K) => `단 1가지만 바꿔도 달라지는 ${I} ${K}`,
+  (I,K) => `5분 만에 ${I} ${K} 고민 끝내는 방법`,
+  (I,K) => `1분만 봐도 달라지는 ${I} ${K} 핵심`,
+  (I,K) => `${I} ${K}로 매출 2배 올린 단 한 가지`,
+
+  // D. 상식 뒤집기·역설형
+  (I,K) => `${I}에서 ${ga(K)} 좋다는 말, 사실은 반대일 수 있어요`,
+  (I,K) => `열심히 ${K} 했는데 ${I}에서 효과 없는 이유`,
+  (I,K) => `${K}의 역습 — ${I}에서 아무도 말 안 해주는 이야기`,
+  (I,K) => `${I}에서 ${reul(K)} 많이 할수록 오히려 나빠지는 경우`,
+  (I,K) => `다들 좋다는 ${K}… ${I}에선 독이 될 수 있습니다`,
+  (I,K) => `누가 요즘 ${I}에서 그렇게 ${reul(K)} 해요? (이건 구시대 방법)`,
+  (I,K) => `${I}에서 ${ga(K)} 답이라고요? 아닐 수도 있습니다`,
+
+  // E. 욕망 직격형
+  (I,K) => `${I}에서 ${K}로 달라진 고객들의 공통점`,
+  (I,K) => `${K} 하나로 ${I} 매출이 달라집니다`,
+  (I,K) => `지금보다 더 잘 되고 싶다면 ${I} ${K}부터 바꾸세요`,
+  (I,K) => `${reul(K)} 잡으면 ${I} 인생이 달라지는 이유`,
+  (I,K) => `${I}에서 ${K}로 성공하는 사람들이 늘고 있습니다`,
+  (I,K) => `${I} ${K}로 효과 본 고객들의 특징`,
+  (I,K) => `${K} 때문에 ${I} 단골이 되는 사람들의 비밀`,
+
+  // F. FOMO·위기·긴장 유발형
+  (I,K) => `이거 모르면 ${I}에서 ${K} 계속 실패합니다🚨`,
+  (I,K) => `${reul(K)} 모르면 ${I} 운영이 힘들어집니다`,
+  (I,K) => `${I}에서 ${reul(K)} 안 하면 나중에 무조건 후회합니다`,
+  (I,K) => `아직도 ${I}에서 ${reul(K)} 이렇게 하세요? (이건 손해)`,
+  (I,K) => `${I} ${K}에 대해 지금 모르면 뒤처집니다`,
+  (I,K) => `이 실수만 안 해도 ${I} ${ga(K)} 달라집니다`,
+  (I,K) => `${I}에서 ${reul(K)} 잘못하면 생기는 일 ❌`,
+
+  // G. 감정·상상 자극형
+  (I,K) => `${I}에서 ${K} 이거 보고 너무 놀랐어요🤯`,
+  (I,K) => `${I} ${K}, 말로 설명이 안 될 정도입니다`,
+  (I,K) => `이 ${I} ${K} 방법을 이제야 알려준다고요?`,
+  (I,K) => `${I}에서 ${K}로 인생이 달라지는 순간`,
+  (I,K) => `이 영상 보면 ${I} ${ga(K)} 바뀝니다`,
+  (I,K) => `${I}에서 ${reul(K)} 경험하면 다시는 예전으로 못 돌아가요`,
+
+  // H. 금지·경고형
+  (I,K) => `아직도 ${I}에서 ${reul(K)} 이렇게 하고 계세요?`,
+  (I,K) => `${I}에서 ${reul(K)} 할 때 절대 이렇게 하지 마세요`,
+  (I,K) => `${I} ${K} 잘못 건드리면 돌이킬 수 없습니다`,
+  (I,K) => `내 돈으로 ${I} ${K} 하는 시대는 끝났습니다`,
+  (I,K) => `${I}에서 ${K} 시작 전 반드시 피해야 할 행동`,
+  (I,K) => `${I} 사장님, ${reul(K)} 이렇게 하면 안 됩니다🚫`,
+
+  // I. 공감 기반·불편 해소형
+  (I,K) => `${I}에서 ${K} 때문에 불편하셨죠? 이젠 이렇게 해보세요`,
+  (I,K) => `솔직히 ${ga(K)} 힘드신 거, 당신 잘못이 아닙니다`,
+  (I,K) => `${I} 하면서 ${K} 때문에 속상했던 적 있으신가요?`,
+  (I,K) => `${I}에서 ${K} 이 문제, 저도 겪어봤습니다`,
+  (I,K) => `${K} 고민 다들 비슷합니다. ${I}에서 이렇게 해결했어요`,
+  (I,K) => `${I}에서 ${K} 때문에 포기하려는 분들께`,
+
+  // J. 타깃 직격형
+  (I,K) => `${I} 사장님 중 ${K} 때문에 고민하는 분, 꼭 보세요`,
+  (I,K) => `${K} 준비 중이세요? ${I}에서 이것만 알면 됩니다`,
+  (I,K) => `${I} 처음 시작하는 분들에게 ${K} 핵심만 알려드릴게요`,
+  (I,K) => `${K} 때문에 ${I} 못 하고 계신 분들 여기 보세요`,
+  (I,K) => `${I} 하면서 ${K} 이 고민 가진 분들 전부 다 여기로`,
+
+  // K. 즉시이득·바로 적용형
+  (I,K) => `지금 당장 ${I}에서 ${K} 해결하는 방법, 바로 알려드릴게요`,
+  (I,K) => `바로 써먹을 수 있는 ${I} ${K} 핵심 정리`,
+  (I,K) => `오늘부터 ${I} ${K} 바꾸는 단 한 가지 행동`,
+  (I,K) => `${I} ${K} 이 영상 하나로 끝냅니다`,
+  (I,K) => `핵심만 딱 알려드릴게요 — ${I} ${K}`,
+  (I,K) => `${I} ${K} 딱 3가지만 기억하면 됩니다`,
+
+  // L. 스토리 기반 후킹
+  (I,K) => `${I}에서 ${reul(K)} 했더니 벌어진 일`,
+  (I,K) => `${I} ${K} 시작하고 3개월 만에 달라진 것들`,
+  (I,K) => `${K} 때문에 ${I} 포기하려다가 이걸 알게 됐어요`,
+  (I,K) => `${I}에서 ${K}로 실패한 이야기, 솔직하게 말씀드릴게요`,
+  (I,K) => `처음엔 저도 ${I} ${K} 몰랐어요. 그래서 이렇게 했습니다`,
+
+  // M. 권위+결론 선공개형
+  (I,K) => `${I} ${K}, 이것 하나만 기억하세요`,
+  (I,K) => `${I}에서 ${K} 성공하려면 이것만 합니다`,
+  (I,K) => `${I} ${K} 정답, 바로 보여드릴게요`,
+  (I,K) => `${I} ${K} 핵심만 10초 만에 알려드립니다`,
+  (I,K) => `${I}에서 ${K} 찾은 정답 공개합니다`,
+
+  // N. 비교 자극형
+  (I,K) => `${K} 성공하는 ${I} vs 실패하는 ${I}, 차이가 뭘까요?`,
+  (I,K) => `${I} 잘되는 사람 vs 안 되는 사람 — ${K} 차이입니다`,
+  (I,K) => `${reul(K)} 아는 ${I} 사장님 vs 모르는 사장님`,
+  (I,K) => `${I} 처음 시작할 때 vs 6개월 후 — ${K}의 변화`,
+  (I,K) => `${K} 전 vs 후 — ${I}에서 달라지는 것들`,
+
+  // O. 브랜드·자극·논란형
+  (I,K) => `${I} 업계가 이 ${K} 방법을 싫어하는 이유`,
+  (I,K) => `${I}에서 ${K} 잘하는 사람들이 입 다무는 이유`,
+  (I,K) => `${K} 잘하는 ${I} 사장님들이 절대 공개 안 하는 비법`,
+
+  // P. 문제공감형
+  (I,K) => `${K} 고민하는 ${I} 고객님들이 가장 많이 하는 실수 3가지`,
+  (I,K) => `${I}에서 ${reul(K)} 해결 못하는 사람들의 공통점`,
+  (I,K) => `${I} 다녀도 ${ga(K)} 안 해결되는 진짜 이유`,
+  (I,K) => `${I} 고객 10명 중 8명이 ${K}에 대해 오해하는 것`,
+  (I,K) => `${I} 사장님들이 ${K} 때문에 가장 많이 후회하는 결정`,
+
+  // Q. 비밀·은밀함형
+  (I,K) => `${I} 고객이 말 안 해주는 ${K}에 대한 속사정`,
+  (I,K) => `${I} 사장님들이 절대 말 안 해주는 ${K} 비밀`,
+  (I,K) => `업계 관계자가 공개하는 ${I} ${K} 진실`,
+  (I,K) => `${I}에서 ${K}에 대해 아무도 안 알려주는 이유`,
+  (I,K) => `${I}에서 ${K}로 성공하는 사람들만 아는 비밀`,
+];
+
+function setTag(field, val) { document.getElementById(field).value = val; }
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function makeItem(num, text) {
+  const safe = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  return `<div class="hook-item">
+    <span class="hook-num">${num}</span>
+    <span class="hook-text">${text}</span>
+    <button class="copy-btn" onclick="copyOne(this,'${safe}')">복사</button>
+  </div>`;
+}
+
+function generateHooks() {
+  const I = document.getElementById('industry').value.trim();
+  const K = document.getElementById('keyword').value.trim();
+  if (!I) { alert('업종을 입력해주세요!'); return; }
+  if (!K) { alert('키워드 / 주제를 입력해주세요!'); return; }
+
+  const picked = shuffle(HOOKS).slice(0, 15);
+  document.getElementById('hook-list').innerHTML = picked.map((fn, i) => makeItem(i + 1, fn(I, K))).join('');
+  document.getElementById('results-title').textContent = `✅ ${I} × ${K} 후킹문구 15개`;
+
+  const results = document.getElementById('results');
+  results.classList.add('show');
+  setTimeout(() => results.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+}
+
+function copyOne(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✅ 복사됨';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+function copyAll() {
+  const items = document.querySelectorAll('.hook-text');
+  const all = Array.from(items).map((el, i) => `${i+1}. ${el.textContent}`).join('\n');
+  navigator.clipboard.writeText(all).then(() => {
+    const btn = document.querySelector('.copy-all-btn');
+    btn.textContent = '✅ 전체 복사 완료!';
+    setTimeout(() => { btn.textContent = '📋 전체 복사'; }, 2000);
+  });
+}
+
+function toggleFaq(btn) { btn.closest('.faq-item').classList.toggle('open'); }
+
+document.addEventListener('DOMContentLoaded', () => {
+  ['industry','keyword'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') generateHooks();
+    });
+  });
+});
+</script>
+</body>
+</html>
