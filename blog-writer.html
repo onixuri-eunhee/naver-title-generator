@@ -298,6 +298,7 @@ footer a { color: var(--muted); text-decoration: none; margin: 0 8px; }
     <button class="btn-generate" id="btn-generate" onclick="generateBlog()">
       ✍️ 블로그 글 생성하기
     </button>
+    <div id="remainingCount" style="margin-top:10px; font-size:12px; color:#888; text-align:right;">남은 횟수 확인 중...</div>
 
   </div>
 
@@ -512,6 +513,11 @@ async function generateBlog() {
     generatedData = parsed;
     renderResult(parsed);
 
+    // 남은 횟수 갱신
+    if (typeof data.remaining === 'number') {
+      updateRemainingUI(data.remaining);
+    }
+
   } catch (err) {
     console.error(err);
     stopLoadingSteps();
@@ -602,6 +608,25 @@ function resetForm() {
   document.getElementById('error-box').classList.remove('show');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+// 페이지 로드 시 남은 횟수 조회
+async function loadRemaining() {
+  try {
+    const res = await fetch('/api/generate');
+    const data = await res.json();
+    updateRemainingUI(data.remaining);
+  } catch {
+    document.getElementById('remainingCount').textContent = '';
+  }
+}
+
+function updateRemainingUI(remaining) {
+  const el = document.getElementById('remainingCount');
+  el.textContent = `오늘 남은 횟수: ${remaining}회`;
+  el.style.color = remaining <= 1 ? '#e74c3c' : '#888';
+}
+
+loadRemaining();
 </script>
 </body>
 </html>

@@ -311,6 +311,7 @@
       <button class="btn-generate" id="generateBtn" onclick="generate()">✦ 생성하기</button>
       <button class="btn-random" onclick="fillRandom()">랜덤</button>
     </div>
+    <div id="remainingCount" style="margin-top:10px; font-size:12px; color:#888; text-align:right;">남은 횟수 확인 중...</div>
   </div>
 
   <!-- 로딩 -->
@@ -438,6 +439,12 @@ ${toneGuide[selectedTone]}
       });
 
       const data = await res.json();
+
+      if (res.status === 429) {
+        alert(data.error);
+        return;
+      }
+
       if (data.error) throw new Error(data.error.message || 'API 오류');
 
       const raw = (data.content?.[0]?.text || '').trim();
@@ -448,6 +455,11 @@ ${toneGuide[selectedTone]}
       document.getElementById('result').classList.add('show');
       activeTab = 0;
       switchTab(0);
+
+      // 남은 횟수 갱신
+      if (typeof data.remaining === 'number') {
+        updateRemainingUI(data.remaining);
+      }
 
     } catch (err) {
       alert('오류: ' + err.message);
@@ -467,6 +479,25 @@ ${toneGuide[selectedTone]}
       setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 2000);
     });
   }
+
+  // 페이지 로드 시 남은 횟수 조회
+  async function loadRemaining() {
+    try {
+      const res = await fetch('/api/generate');
+      const data = await res.json();
+      updateRemainingUI(data.remaining);
+    } catch {
+      document.getElementById('remainingCount').textContent = '';
+    }
+  }
+
+  function updateRemainingUI(remaining) {
+    const el = document.getElementById('remainingCount');
+    el.textContent = `오늘 남은 횟수: ${remaining}회`;
+    el.style.color = remaining <= 1 ? '#ff5f1f' : '#888';
+  }
+
+  loadRemaining();
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) generate();

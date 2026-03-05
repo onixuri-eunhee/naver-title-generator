@@ -30,11 +30,24 @@ function getTodayKey(ip) {
 export default async function handler(req, res) {
   // CORS 헤더
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  // GET: 남은 횟수 조회
+  if (req.method === 'GET') {
+    try {
+      const ip = getClientIp(req);
+      const key = getTodayKey(ip);
+      const count = (await getRedis().get(key)) || 0;
+      const remaining = Math.max(DAILY_LIMIT - count, 0);
+      return res.status(200).json({ remaining, limit: DAILY_LIMIT });
+    } catch {
+      return res.status(200).json({ remaining: DAILY_LIMIT, limit: DAILY_LIMIT });
+    }
   }
 
   if (req.method !== 'POST') {
