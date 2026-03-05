@@ -415,7 +415,7 @@
     document.getElementById('loading').classList.add('show');
     document.getElementById('result').classList.remove('show');
 
-    const system = `Threads SNS 카피라이터. 규칙: ①200자 내외 ②1문장 1줄+줄바꿈 리듬 ③첫 줄에서 2초 안에 멈추게 ④해시태그 없음 ⑤글만 출력`;
+    const system = `Threads SNS 카피라이터. 규칙: ①80~130자 ②1문장 1줄+줄바꿈 리듬 ③첫 줄에서 2초 안에 멈추게 ④해시태그 없음 ⑤글만 출력`;
 
     const user = `유형: ${selectedType} (${typeGuide[selectedType]})
 ${toneGuide[selectedTone]}
@@ -431,7 +431,7 @@ ${toneGuide[selectedTone]}
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 900,
+          max_tokens: 600,
           system,
           messages: [{ role: 'user', content: user }]
         })
