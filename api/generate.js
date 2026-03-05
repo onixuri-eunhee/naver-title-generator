@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // CORS 헤더
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -13,10 +12,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { prompt } = req.body;
+    const { prompt, model, max_tokens, system, messages } = req.body;
 
-    if (!prompt) {
-      return res.status(400).json({ error: 'prompt가 필요합니다.' });
+    // 방식 1: prompt 단순 전달 (기존 blog-writer 등)
+    // 방식 2: system + messages 구조 (threads-writer 등)
+    const requestBody = {
+      model: model || 'claude-sonnet-4-20250514',
+      max_tokens: max_tokens || 2000,
+      messages: messages || [{ role: 'user', content: prompt }],
+    };
+
+    if (!requestBody.messages || requestBody.messages.length === 0) {
+      return res.status(400).json({ error: 'prompt 또는 messages가 필요합니다.' });
+    }
+
+    if (system) {
+      requestBody.system = system;
     }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -26,11 +37,7 @@ export default async function handler(req, res) {
         'x-api-key': process.env.ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
-        messages: [{ role: 'user', content: prompt }],
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     const data = await response.json();
