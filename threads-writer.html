@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>스레드 글 생성기 | 뚝딱툴</title>
+  <meta name="description" content="터지는 스레드 글을 뚝딱 만들어보세요. 정보형·공감형·반전형·고백형 선택 가능." />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #101010;
+      --card: #1a1a1a;
+      --border: #2a2a2a;
+      --text: #f2f2f2;
+      --muted: #888;
+      --accent: #ff5f1f;
+      --accent-light: rgba(255,95,31,0.12);
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo { font-size: 16px; font-weight: 700; color: var(--text); text-decoration: none; }
+    .logo em { color: var(--accent); font-style: normal; }
+    .nav-links { display: flex; gap: 20px; }
+    .nav-links a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); }
+
+    main {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 48px 20px 100px;
+    }
+
+    .page-header { text-align: center; margin-bottom: 36px; }
+    .page-header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .page-header p { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 12px;
+    }
+    .card-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 14px;
+    }
+
+    .type-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .type-btn {
+      padding: 13px 14px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.18s;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      text-align: left;
+    }
+    .type-btn .type-name { font-weight: 600; color: var(--text); font-size: 14px; }
+    .type-btn .type-desc { font-size: 11px; color: var(--muted); }
+    .type-btn:hover { border-color: var(--accent); background: var(--accent-light); }
+    .type-btn.active { border-color: var(--accent); background: var(--accent-light); }
+    .type-btn.active .type-name { color: var(--accent); }
+
+    .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    input[type="text"], textarea {
+      width: 100%;
+      background: #111;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      padding: 12px 14px;
+      outline: none;
+      transition: border-color 0.18s;
+      resize: none;
+    }
+    input[type="text"]::placeholder, textarea::placeholder { color: #444; }
+    input[type="text"]:focus, textarea:focus { border-color: var(--accent); }
+    textarea { min-height: 76px; line-height: 1.6; }
+
+    .btn-row { display: grid; grid-template-columns: 1fr 80px; gap: 8px; margin-top: 14px; }
+    .btn-generate {
+      padding: 14px;
+      background: var(--accent);
+      color: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-generate:hover { opacity: 0.88; }
+    .btn-generate:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-random {
+      padding: 14px;
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 13px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .btn-random:hover { border-color: var(--text); color: var(--text); }
+
+    .result-box {
+      display: none;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-top: 12px;
+    }
+    .result-box.show { display: block; animation: fadeUp 0.3s ease; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+    .result-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+    .result-tab {
+      flex: 1;
+      padding: 9px 0;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .result-tab:hover { border-color: var(--accent); color: var(--text); }
+    .result-tab.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+
+    .result-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .result-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--accent-light);
+      color: var(--accent);
+      letter-spacing: 0.3px;
+    }
+    .copy-btn {
+      font-size: 13px;
+      color: var(--muted);
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 14px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.18s;
+    }
+    .copy-btn:hover { color: var(--text); border-color: var(--text); }
+    .copy-btn.copied { color: #4ade80; border-color: #4ade80; }
+
+    .result-text {
+      font-size: 15px;
+      line-height: 1.9;
+      white-space: pre-wrap;
+      word-break: keep-all;
+      color: var(--text);
+    }
+    .char-count {
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .loading-wrap { text-align: center; padding: 32px 0; display: none; }
+    .loading-wrap.show { display: block; }
+    .spinner {
+      width: 26px; height: 26px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-wrap p { font-size: 13px; color: var(--muted); }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 20px 24px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="logo">뚝딱<em>툴</em></a>
+  <nav class="nav-links">
+    <a href="/index.html">블로그 제목</a>
+    <a href="/hook-generator.html">후킹문구</a>
+  </nav>
+</header>
+
+<main>
+  <div class="page-header">
+    <h1>스레드 글 생성기 🧵</h1>
+    <p>소재를 입력하면 터지는 스레드 글을 뚝딱 만들어드려요.<br />유형을 먼저 고르고 생성해보세요.</p>
+  </div>
+
+  <!-- 글 유형 -->
+  <div class="card">
+    <div class="card-label">글 유형</div>
+    <div class="type-grid">
+      <button class="type-btn active" data-type="정보형" onclick="selectType(this)">
+        <span class="type-name">📊 정보형</span>
+        <span class="type-desc">유용한 팁·노하우 전달</span>
+      </button>
+      <button class="type-btn" data-type="공감형" onclick="selectType(this)">
+        <span class="type-name">💬 공감형</span>
+        <span class="type-desc">공통 감정·경험 공유</span>
+      </button>
+      <button class="type-btn" data-type="반전형" onclick="selectType(this)">
+        <span class="type-name">⚡ 반전형</span>
+        <span class="type-desc">예상 뒤집는 의외의 진실</span>
+      </button>
+      <button class="type-btn" data-type="고백형" onclick="selectType(this)">
+        <span class="type-name">🤍 고백형</span>
+        <span class="type-desc">솔직한 경험담·내면 이야기</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 말투 -->
+  <div class="card">
+    <div class="card-label">말투</div>
+    <div class="type-grid">
+      <button class="type-btn active" data-tone="친구체" onclick="selectTone(this)">
+        <span class="type-name">😊 친구체</span>
+        <span class="type-desc">~했어, ~이야 (편한 반말)</span>
+      </button>
+      <button class="type-btn" data-tone="해요체" onclick="selectTone(this)">
+        <span class="type-name">🌿 해요체</span>
+        <span class="type-desc">~해요, 따뜻하고 부드럽게</span>
+      </button>
+      <button class="type-btn" data-tone="단문체" onclick="selectTone(this)">
+        <span class="type-name">⚡ 단문체</span>
+        <span class="type-desc">짧고 건조. SNS 특유 리듬</span>
+      </button>
+      <button class="type-btn" data-tone="격식체" onclick="selectTone(this)">
+        <span class="type-name">💼 격식체</span>
+        <span class="type-desc">~합니다, 전문가 느낌</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 입력 -->
+  <div class="card">
+    <div class="card-label">내용 입력</div>
+    <div class="input-row">
+      <input type="text" id="industry" placeholder="업종/직종 (예: 카페, 강사)" />
+      <input type="text" id="target" placeholder="타겟 독자 (예: 30대 직장인)" />
+    </div>
+    <input type="text" id="topic" placeholder="주제/소재 (예: 번아웃 극복, 단골 만들기)" style="margin-bottom:10px;" />
+    <textarea id="memo" placeholder="내 경험이나 메모 (선택 — 짧게 적어도 됩니다)"></textarea>
+    <div class="btn-row">
+      <button class="btn-generate" id="generateBtn" onclick="generate()">✦ 생성하기</button>
+      <button class="btn-random" onclick="fillRandom()">랜덤</button>
+    </div>
+  </div>
+
+  <!-- 로딩 -->
+  <div class="loading-wrap" id="loading">
+    <div class="spinner"></div>
+    <p>스레드 글 쓰는 중...</p>
+  </div>
+
+  <!-- 결과 -->
+  <div class="result-box" id="result">
+    <div class="result-tabs">
+      <button class="result-tab active" onclick="switchTab(0)">안 1</button>
+      <button class="result-tab" onclick="switchTab(1)">안 2</button>
+      <button class="result-tab" onclick="switchTab(2)">안 3</button>
+    </div>
+    <div class="result-meta">
+      <span class="result-tag" id="resultTag">정보형 · 친구체</span>
+      <button class="copy-btn" id="copyBtn" onclick="copyResult()">복사</button>
+    </div>
+    <div class="result-text" id="resultText"></div>
+    <div class="char-count" id="charCount"></div>
+  </div>
+</main>
+
+<footer>
+  <a href="/">뚝딱툴</a> &nbsp;·&nbsp;
+  <a href="/about.html">소개</a> &nbsp;·&nbsp;
+  <a href="/privacy.html">개인정보처리방침</a>
+</footer>
+
+<script>
+  let selectedType = '정보형';
+  let selectedTone = '친구체';
+  let results = ['', '', ''];
+  let activeTab = 0;
+
+  function selectType(btn) {
+    document.querySelectorAll('.type-btn[data-type]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedType = btn.dataset.type;
+  }
+
+  function selectTone(btn) {
+    document.querySelectorAll('.type-btn[data-tone]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedTone = btn.dataset.tone;
+  }
+
+  function switchTab(idx) {
+    activeTab = idx;
+    document.querySelectorAll('.result-tab').forEach((t, i) => {
+      t.classList.toggle('active', i === idx);
+    });
+    const text = results[idx] || '';
+    document.getElementById('resultText').textContent = text;
+    document.getElementById('charCount').textContent = text ? `${text.length}자` : '';
+    const cb = document.getElementById('copyBtn');
+    cb.textContent = '복사';
+    cb.classList.remove('copied');
+  }
+
+  const randomData = [
+    { industry: '카페', target: '동네 단골', topic: '단골 만드는 법', memo: '커피보다 사람이 오는 가게' },
+    { industry: '프리랜서', target: '직장인 부업족', topic: '퇴근 후 부업 첫 달', memo: '처음엔 월 10만원도 기뻤음' },
+    { industry: '온라인 쇼핑몰', target: '30대 여성', topic: '첫 매출 낸 날', memo: '아무도 안 살 것 같았는데' },
+    { industry: '1인 강사', target: '초보 창업자', topic: '수강생 0명에서 50명', memo: '광고 한 번 안 씀' },
+    { industry: '마케터', target: '소상공인', topic: '인스타 팔로워보다 중요한 것', memo: '팔로워 100명인데 매출 남' },
+  ];
+
+  function fillRandom() {
+    const d = randomData[Math.floor(Math.random() * randomData.length)];
+    document.getElementById('industry').value = d.industry;
+    document.getElementById('target').value = d.target;
+    document.getElementById('topic').value = d.topic;
+    document.getElementById('memo').value = d.memo;
+  }
+
+  const toneGuide = {
+    '친구체': '말투: ~했어, ~이야, ~거든 반말.',
+    '해요체': '말투: ~해요, ~예요. 따뜻하고 부드럽게.',
+    '단문체': '말투: 짧은 단문. 마침표 끊기. 감탄사 최소.',
+    '격식체': '말투: ~합니다, ~입니다. 전문가 느낌.',
+  };
+
+  const typeGuide = {
+    '정보형': '유용한 팁 전달. 첫 줄에 핵심 예고.',
+    '공감형': '"나도 그래" 유도. 공통 감정 → 위로 마무리.',
+    '반전형': '일반적 생각 → 예상 뒤집기 → 인사이트 1줄.',
+    '고백형': '1인칭 솔직 경험담. 날 것의 문체.',
+  };
+
+  async function generate() {
+    const topic = document.getElementById('topic').value.trim();
+    if (!topic) { alert('주제/소재를 입력해주세요.'); return; }
+
+    const industry = document.getElementById('industry').value.trim();
+    const target   = document.getElementById('target').value.trim();
+    const memo     = document.getElementById('memo').value.trim();
+
+    const btn = document.getElementById('generateBtn');
+    btn.disabled = true;
+    document.getElementById('loading').classList.add('show');
+    document.getElementById('result').classList.remove('show');
+
+    const system = `Threads SNS 카피라이터. 규칙: ①200자 내외 ②1문장 1줄+줄바꿈 리듬 ③첫 줄에서 2초 안에 멈추게 ④해시태그 없음 ⑤글만 출력`;
+
+    const user = `유형: ${selectedType} (${typeGuide[selectedType]})
+${toneGuide[selectedTone]}
+업종: ${industry || '무관'} / 타겟: ${target || '일반'}
+소재: ${topic}
+메모: ${memo || '없음'}
+
+서로 다른 첫 줄과 구성으로 스레드 글 3개 작성. 각 글은 "---" 로만 구분.`;
+
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 900,
+          system,
+          messages: [{ role: 'user', content: user }]
+        })
+      });
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || 'API 오류');
+
+      const raw = (data.content?.[0]?.text || '').trim();
+      results = raw.split(/\n?---\n?/).map(s => s.trim()).filter(Boolean);
+      while (results.length < 3) results.push('');
+
+      document.getElementById('resultTag').textContent = `${selectedType} · ${selectedTone}`;
+      document.getElementById('result').classList.add('show');
+      activeTab = 0;
+      switchTab(0);
+
+    } catch (err) {
+      alert('오류: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      document.getElementById('loading').classList.remove('show');
+    }
+  }
+
+  function copyResult() {
+    const text = results[activeTab];
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = '✓ 복사됨';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) generate();
+  });
+</script>
+
+</body>
+</html>

@@ -2,887 +2,2577 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="google-site-verification" content="i27bH-rAZ9Nuxl-xJlXUCF-DVfcSyOZdfpDKuz8F0VU" />
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-C61VWMGQ8R"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-C61VWMGQ8R');
-</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>네이버 블로그 제목 생성기 | 클릭을 부르는 제목 냉장고</title>
-<meta name="description" content="네이버 블로그 상위 노출을 위한 클릭율 높은 제목을 무료로 자동 생성해드립니다. 긍정형·위협형·호기심형 12가지 패턴으로 맞춤 제목을 만들어보세요." />
-<meta name="keywords" content="네이버 블로그 제목, 블로그 제목 생성기, 네이버 SEO, 블로그 상위노출, 클릭율 높은 제목, 블로그 제목 추천" />
-<meta name="author" content="뚝딱툴" />
-<meta name="robots" content="index, follow" />
-<link rel="canonical" href="https://ddukddaktool.co.kr/" />
-
-<!-- Open Graph (카카오, 페이스북 공유 시 미리보기) -->
-<meta property="og:type" content="website" />
-<meta property="og:title" content="네이버 블로그 제목 생성기 | 클릭을 부르는 제목 냉장고" />
-<meta property="og:description" content="네이버 블로그 상위 노출을 위한 클릭율 높은 제목을 무료로 자동 생성해드립니다." />
-<meta property="og:url" content="https://ddukddaktool.co.kr/" />
-<meta property="og:site_name" content="뚝딱툴" />
-<meta property="og:locale" content="ko_KR" />
-
-<!-- 트위터 카드 -->
-<meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="네이버 블로그 제목 생성기 | 클릭을 부르는 제목 냉장고" />
-<meta name="twitter:description" content="네이버 블로그 상위 노출을 위한 클릭율 높은 제목을 무료로 자동 생성해드립니다." />
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Black+Han+Sans&display=swap" rel="stylesheet">
+<title>사주 워크북 — 타고난 나를 읽다</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Noto+Serif+KR:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --positive: #00C73C;
-    --positive-light: #E8FFF0;
-    --threat: #FF4757;
-    --threat-light: #FFF0F1;
-    --curiosity: #2E86FF;
-    --curiosity-light: #EEF5FF;
-    --dark: #1A1A2E;
-    --gray: #6B7280;
-    --light-gray: #F3F4F6;
-    --border: #E5E7EB;
-    --white: #FFFFFF;
+    --black: #080808;
+    --white: #f0ede8;
+    --dim: #6b6760;
+    --gold: #c9a96e;
+    --line: rgba(240,237,232,0.1);
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
 
   body {
-    font-family: 'Noto Sans KR', sans-serif;
-    background: #F8F9FD;
-    color: var(--dark);
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Noto Serif KR', 'EB Garamond', serif;
+    font-weight: 300;
+    line-height: 1.8;
     min-height: 100vh;
+    overflow-x: hidden;
   }
 
-  /* 네비게이션 */
-  .navbar {
-    background: #fff;
-    border-bottom: 1px solid var(--border);
-    padding: 0 20px;
+  /* Starfield background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      radial-gradient(1px 1px at 20% 15%, rgba(240,237,232,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 25%, rgba(240,237,232,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 45% 60%, rgba(240,237,232,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 80%, rgba(240,237,232,0.35) 0%, transparent 100%),
+      radial-gradient(1px 1px at 10% 70%, rgba(240,237,232,0.25) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 55%, rgba(240,237,232,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 55% 35%, rgba(240,237,232,0.15) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 90%, rgba(240,237,232,0.2) 0%, transparent 100%),
+      radial-gradient(2px 2px at 65% 10%, rgba(201,169,110,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 15% 45%, rgba(240,237,232,0.3) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Noise texture overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  main { position: relative; z-index: 1; }
+
+  /* ─── NAV ─── */
+  nav {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    height: 52px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  .navbar-logo {
-    font-size: 18px;
-    font-weight: 900;
-    color: #1A1A2E;
-    text-decoration: none;
-  }
-  .navbar-logo span { color: #00C73C; }
-  .navbar-links {
-    display: flex;
-    gap: 4px;
-  }
-  .navbar-links a {
-    padding: 7px 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    color: #6B7280;
-    text-decoration: none;
-    transition: background 0.15s, color 0.15s;
-  }
-  .navbar-links a:hover {
-    background: #F3F4F6;
-    color: #1A1A2E;
+    align-items: center;
+    padding: 2rem 3rem;
+    border-bottom: 1px solid var(--line);
   }
 
-  /* 상단 광고 */
-  .ad-top {
-    background: #fff;
-    border-bottom: 1px solid var(--border);
-    padding: 12px 20px;
-    text-align: center;
+  .nav-logo {
+    font-family: 'EB Garamond', serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--white);
+    opacity: 0.7;
   }
-  .ad-box {
-    background: var(--light-gray);
-    border: 2px dashed #CBD5E1;
-    border-radius: 8px;
+
+  .nav-tagline {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    text-transform: uppercase;
+  }
+
+  /* ─── HERO ─── */
+  .hero {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #94A3B8;
-    font-size: 12px;
-    letter-spacing: 1px;
-  }
-  .ad-top .ad-box { height: 90px; max-width: 728px; margin: 0 auto; }
-
-  /* 광고 영역 활성화 */
-  /* .ad-top, .ad-mid, .ad-bottom { display: none; } */
-
-  /* 헤더 */
-  header {
-    background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
-    padding: 48px 20px 40px;
+    min-height: 80vh;
+    padding: 6rem 2rem 4rem;
     text-align: center;
     position: relative;
-    overflow: hidden;
   }
-  header::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle at 30% 50%, rgba(0,199,60,0.08) 0%, transparent 50%),
-                radial-gradient(circle at 70% 30%, rgba(46,134,255,0.08) 0%, transparent 50%);
-    pointer-events: none;
+
+  .hero-symbol {
+    font-size: 2rem;
+    color: var(--gold);
+    opacity: 0.6;
+    letter-spacing: 1rem;
+    margin-bottom: 3rem;
+    animation: pulse 4s ease-in-out infinite;
   }
-  header h1 {
-    font-family: 'Noto Sans KR', sans-serif;
-    font-size: clamp(22px, 4.5vw, 38px);
-    font-weight: 700;
-    color: #fff;
-    letter-spacing: -0.5px;
-    margin-bottom: 12px;
-    line-height: 1.3;
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
   }
-  header h1 span { color: var(--positive); }
-  header p {
-    color: rgba(255,255,255,0.6);
-    font-size: 15px;
-    line-height: 1.6;
+
+  .hero-eyebrow {
+    font-size: 0.65rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 2rem;
   }
-  .badge-row {
+
+  h1 {
+    font-family: 'EB Garamond', serif;
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: var(--white);
+    margin-bottom: 1.5rem;
+    max-width: 800px;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  .hero-sub {
+    font-size: 0.9rem;
+    color: var(--dim);
+    max-width: 420px;
+    line-height: 2;
+    margin-bottom: 4rem;
+    letter-spacing: 0.02em;
+  }
+
+  .hero-line {
+    width: 1px;
+    height: 60px;
+    background: linear-gradient(to bottom, var(--gold), transparent);
+    margin: 0 auto 2rem;
+    opacity: 0.5;
+  }
+
+  /* ─── FORM CARD ─── */
+  .form-container {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 0 1.5rem 8rem;
+  }
+
+  .form-section-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 2.5rem;
     display: flex;
-    gap: 8px;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-top: 20px;
-  }
-  .badge {
-    padding: 5px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 700;
-  }
-  .badge-g { background: rgba(0,199,60,0.15); color: var(--positive); border: 1px solid rgba(0,199,60,0.3); }
-  .badge-r { background: rgba(255,71,87,0.15); color: var(--threat); border: 1px solid rgba(255,71,87,0.3); }
-  .badge-b { background: rgba(46,134,255,0.15); color: var(--curiosity); border: 1px solid rgba(46,134,255,0.3); }
-
-  /* 메인 */
-  .container { max-width: 860px; margin: 0 auto; padding: 32px 20px; }
-
-  /* 입력 섹션 */
-  .input-section {
-    background: var(--white);
-    border-radius: 16px;
-    padding: 28px;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.06);
-    margin-bottom: 24px;
-  }
-  .input-section h2 {
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 16px;
-    color: var(--dark);
+    align-items: center;
+    gap: 1rem;
   }
 
-  .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 12px;
+  .form-section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
   }
-  @media(max-width: 580px) { .form-row { grid-template-columns: 1fr; } }
+
+  .field-group {
+    margin-bottom: 2rem;
+  }
 
   label {
     display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 6px;
-  }
-
-  select, input[type="text"] {
-    width: 100%;
-    padding: 11px 14px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    font-size: 14px;
-    font-family: 'Noto Sans KR', sans-serif;
-    color: var(--dark);
-    background: #fff;
-    transition: border-color 0.2s;
-    outline: none;
-  }
-  select:focus, input[type="text"]:focus {
-    border-color: var(--curiosity);
-    box-shadow: 0 0 0 3px rgba(46,134,255,0.1);
-  }
-
-  .keyword-hint {
-    background: var(--light-gray);
-    border-radius: 8px;
-    padding: 10px 14px;
-    margin-bottom: 16px;
-    font-size: 12px;
-    color: var(--gray);
-    display: none;
-  }
-  .keyword-hint.show { display: block; }
-  .keyword-hint strong { color: var(--dark); }
-  .hint-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-  .hint-tag {
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 3px 10px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.15s;
-    color: var(--dark);
-  }
-  .hint-tag:hover { background: var(--curiosity); color: #fff; border-color: var(--curiosity); }
-
-  .generate-btn {
-    width: 100%;
-    padding: 15px;
-    background: linear-gradient(135deg, #00C73C, #00A830);
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    font-family: 'Noto Sans KR', sans-serif;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-    letter-spacing: -0.3px;
-  }
-  .generate-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,199,60,0.35); }
-  .generate-btn:active { transform: translateY(0); }
-
-  /* 결과 섹션 */
-  .results { display: none; }
-  .results.show { display: block; }
-
-  /* 광고 중간 */
-  .ad-mid { margin: 24px 0; }
-  .ad-mid .ad-box { height: 250px; }
-
-  /* 챕터 */
-  .chapter {
-    background: var(--white);
-    border-radius: 16px;
-    margin-bottom: 20px;
-    overflow: hidden;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.06);
-  }
-  .chapter-header {
-    padding: 18px 24px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .chapter-header.positive { background: linear-gradient(135deg, #00C73C, #00A830); }
-  .chapter-header.threat { background: linear-gradient(135deg, #FF4757, #E83245); }
-  .chapter-header.curiosity { background: linear-gradient(135deg, #2E86FF, #1A6FE0); }
-
-  .chapter-icon { font-size: 24px; }
-  .chapter-info { flex: 1; }
-  .chapter-title { font-size: 16px; font-weight: 700; color: #fff; }
-  .chapter-desc { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 2px; }
-
-  .chapter-body { padding: 20px 24px; }
-
-  .pattern-group { margin-bottom: 20px; }
-  .pattern-group:last-child { margin-bottom: 0; }
-  .pattern-label {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .pattern-label.positive { color: var(--positive); }
-  .pattern-label.threat { color: var(--threat); }
-  .pattern-label.curiosity { color: var(--curiosity); }
-  .pattern-label::before {
-    content: '';
-    display: inline-block;
-    width: 3px;
-    height: 14px;
-    border-radius: 2px;
-    background: currentColor;
+    color: var(--dim);
+    margin-bottom: 0.75rem;
   }
 
-  .title-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 11px 14px;
-    background: #F8F9FD;
-    border-radius: 8px;
-    margin-bottom: 7px;
-    transition: background 0.15s;
-  }
-  .title-item:hover { background: #EFF2FA; }
-  .title-text { flex: 1; font-size: 14px; line-height: 1.5; color: var(--dark); }
-
-  .copy-btn {
-    flex-shrink: 0;
-    padding: 5px 12px;
-    background: #fff;
-    border: 1.5px solid var(--border);
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    font-family: 'Noto Sans KR', sans-serif;
-    cursor: pointer;
-    color: var(--gray);
-    transition: all 0.15s;
-    white-space: nowrap;
-  }
-  .copy-btn:hover { border-color: var(--curiosity); color: var(--curiosity); background: var(--curiosity-light); }
-  .copy-btn.copied { background: var(--positive); border-color: var(--positive); color: #fff; }
-
-  /* 전체 복사 */
-  .copy-all-row {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 16px;
-  }
-  .copy-all-btn {
-    padding: 8px 18px;
-    background: var(--dark);
-    color: #fff;
+  input, select {
+    width: 100%;
+    background: transparent;
     border: none;
-    border-radius: 8px;
-    font-family: 'Noto Sans KR', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
+    border-bottom: 1px solid var(--line);
+    color: var(--white);
+    font-family: 'Noto Serif KR', serif;
+    font-size: 1rem;
+    font-weight: 300;
+    padding: 0.75rem 0;
+    outline: none;
+    transition: border-color 0.3s ease;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  input::placeholder {
+    color: var(--dim);
+    font-size: 0.85rem;
+  }
+
+  select {
     cursor: pointer;
-    transition: all 0.15s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b6760' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0 center;
+    padding-right: 1.5rem;
   }
-  .copy-all-btn:hover { background: #374151; }
 
-  /* 하단 광고 */
-  .ad-bottom { margin: 24px 0; }
-  .ad-bottom .ad-box { height: 90px; }
+  select option {
+    background: #0f0f0f;
+    color: var(--white);
+  }
 
-  /* 팁 섹션 */
-  .tips {
-    background: var(--white);
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.06);
-    margin-bottom: 24px;
+  input:focus, select:focus {
+    border-color: var(--gold);
   }
-  .tips h3 { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
-  .tip-item {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-    font-size: 13px;
-    color: #4B5563;
-    line-height: 1.6;
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
   }
-  .tip-num {
-    flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-    background: var(--curiosity);
-    color: #fff;
-    border-radius: 50%;
+
+  /* MBTI */
+  .mbti-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .mbti-group {
     display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .mbti-group-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    color: var(--dim);
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+  }
+
+  .mbti-btn {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--dim);
+    font-family: 'EB Garamond', serif;
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+    padding: 0.6rem 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+  }
+
+  .mbti-btn:hover {
+    border-color: rgba(201,169,110,0.4);
+    color: var(--white);
+  }
+
+  .mbti-btn.active {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(201,169,110,0.05);
+  }
+
+  #mbti-display {
+    text-align: center;
+    font-family: 'EB Garamond', serif;
+    font-size: 1.8rem;
+    letter-spacing: 0.15em;
+    color: var(--gold);
+    margin-top: 1rem;
+    min-height: 2.5rem;
+    opacity: 0.8;
+  }
+
+  /* Concerns */
+  .concern-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .concern-btn {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--dim);
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.75rem;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    text-align: left;
+    line-height: 1.5;
+  }
+
+  .concern-btn:hover {
+    border-color: rgba(201,169,110,0.3);
+    color: var(--white);
+  }
+
+  .concern-btn.active {
+    border-color: var(--gold);
+    color: var(--white);
+    background: rgba(201,169,110,0.06);
+  }
+
+  .concern-limit {
+    font-size: 0.6rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+    margin-top: 0.5rem;
+  }
+
+  /* Submit */
+  .submit-area {
+    margin-top: 3.5rem;
+    text-align: center;
+  }
+
+  .submit-btn {
+    background: transparent;
+    border: 1px solid rgba(201,169,110,0.5);
+    color: var(--gold);
+    font-family: 'EB Garamond', serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    padding: 1.1rem 3.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .submit-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gold);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+    z-index: -1;
+  }
+
+  .submit-btn:hover {
+    color: var(--black);
+    border-color: var(--gold);
+  }
+
+  .submit-btn:hover::before {
+    transform: scaleX(1);
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .submit-note {
+    font-size: 0.65rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+    margin-top: 1.5rem;
+  }
+
+  /* ─── LOADING ─── */
+  .loading-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--black);
+    z-index: 100;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
-    font-weight: 700;
-    margin-top: 1px;
   }
 
-  footer {
+  .loading-screen.active { display: flex; }
+
+  .loading-orbit {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 3rem;
+  }
+
+  .loading-orbit-ring {
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(201,169,110,0.15);
+    border-radius: 50%;
+    border-top-color: var(--gold);
+    animation: orbit 2.4s linear infinite;
+  }
+
+  .loading-orbit-ring:nth-child(2) {
+    inset: 16px;
+    border-top-color: transparent;
+    border-right-color: rgba(201,169,110,0.35);
+    animation-duration: 1.8s;
+    animation-direction: reverse;
+  }
+
+  .loading-orbit-dot {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 5px; height: 5px;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: pulse-dot 2.4s ease-in-out infinite;
+  }
+
+  @keyframes orbit { to { transform: rotate(360deg); } }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 0.4; transform: translate(-50%,-50%) scale(0.8); }
+    50%       { opacity: 1;   transform: translate(-50%,-50%) scale(1.3); }
+  }
+
+  .loading-phase {
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    margin-bottom: 0.6rem;
+    height: 1.4em;
+    line-height: 1.4em;
+    overflow: hidden;
     text-align: center;
-    padding: 24px 20px;
-    color: #9CA3AF;
-    font-size: 12px;
-    border-top: 1px solid var(--border);
+    opacity: 1;
+    transition: opacity 0.3s ease;
+  }
+  .loading-phase.fading { opacity: 0; }
+
+  .loading-progress {
+    width: 160px;
+    height: 1px;
+    background: rgba(240,237,232,0.06);
+    margin-top: 2.5rem;
+    overflow: hidden;
+  }
+
+  .loading-progress-bar {
+    height: 100%;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+    width: 40%;
+    animation: progress-slide 1.8s ease-in-out infinite;
+  }
+
+  @keyframes progress-slide {
+    0%   { transform: translateX(-150%); }
+    100% { transform: translateX(400%); }
+  }
+
+  .loading-estimate {
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    color: rgba(107,103,96,0.45);
+    margin-top: 1.2rem;
+    text-transform: uppercase;
+  }
+
+  /* ─── ERROR SCREEN ─── */
+  .error-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--black);
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .error-screen.active { display: flex; }
+
+  .error-symbol {
+    font-size: 1.4rem;
+    color: rgba(201,169,110,0.35);
+    letter-spacing: 0.6rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .error-title {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.7rem;
+    font-weight: 400;
+    color: var(--white);
+    margin-bottom: 1rem;
+  }
+
+  .error-body {
+    font-size: 0.8rem;
+    color: var(--dim);
+    max-width: 340px;
+    line-height: 2;
+    margin-bottom: 1.5rem;
+  }
+
+  .error-detail {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: rgba(107,103,96,0.45);
+    font-family: 'Courier New', monospace;
+    padding: 0.5rem 1.2rem;
+    border: 1px solid var(--line);
+    margin-bottom: 3rem;
+    max-width: 360px;
+    word-break: break-all;
+  }
+
+  .error-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* ─── CALENDAR TOGGLE ─── */
+  .cal-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 2rem;
+    border: 1px solid var(--line);
+    width: fit-content;
+  }
+
+  .cal-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--dim);
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.68rem;
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    padding: 0.55rem 1.4rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .cal-toggle-btn.active {
+    background: rgba(201,169,110,0.1);
+    color: var(--gold);
+  }
+
+  .cal-toggle-divider {
+    width: 1px;
+    background: var(--line);
+    align-self: stretch;
+  }
+
+  .lunar-note {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: rgba(107,103,96,0.6);
+    margin-top: 0.5rem;
+    display: none;
+  }
+
+  .lunar-note.visible { display: block; }
+
+
+  .field-error-msg {
+    font-size: 0.58rem;
+    color: rgba(210,110,70,0.75);
+    letter-spacing: 0.1em;
+    margin-top: 0.35rem;
+    display: block;
+    opacity: 0;
+    transform: translateY(-3px);
+    transition: all 0.2s ease;
+  }
+
+  .field-error-msg.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  input.invalid, select.invalid {
+    border-bottom-color: rgba(210,110,70,0.5) !important;
+    animation: shake 0.3s ease;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25%       { transform: translateX(-4px); }
+    75%       { transform: translateX(4px); }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 0.4; }
+    50%       { opacity: 1; }
+  }
+
+  /* ─── PAYWALL ─── */
+  .locked-section {
+    position: relative;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .locked-section .result-block {
+    filter: blur(5px);
+    opacity: 0.35;
+    transition: filter 0.3s ease;
+  }
+
+  .paywall-gate {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    background: linear-gradient(to bottom,
+      transparent 0%,
+      rgba(8,8,8,0.7) 30%,
+      rgba(8,8,8,0.95) 60%,
+      var(--black) 100%
+    );
+    pointer-events: all;
+    text-align: center;
+    gap: 0;
+  }
+
+  .paywall-symbol {
+    font-size: 1.2rem;
+    color: var(--gold);
+    opacity: 0.5;
+    letter-spacing: 0.6rem;
+    margin-bottom: 2rem;
+  }
+
+  .paywall-title {
+    font-family: 'EB Garamond', serif;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 400;
+    color: var(--white);
+    line-height: 1.4;
+    margin-bottom: 1rem;
+  }
+
+  .paywall-desc {
+    font-size: 0.78rem;
+    color: var(--dim);
+    line-height: 2;
+    max-width: 380px;
+    margin-bottom: 0.75rem;
+  }
+
+  .paywall-includes {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: rgba(201,169,110,0.55);
+    line-height: 2.2;
+    margin-bottom: 2.5rem;
+  }
+
+  .paywall-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .cta-price-badge {
+    font-family: 'EB Garamond', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+
+  .cta-price {
+    font-family: 'EB Garamond', serif;
+    font-size: 2.2rem;
+    font-weight: 400;
+    color: var(--white);
+    letter-spacing: -0.01em;
+    line-height: 1;
+    margin-bottom: 1.5rem;
+  }
+
+  .cta-price span {
+    font-size: 1rem;
+    color: var(--dim);
+    margin-left: 0.2rem;
+  }
+
+  .btn-paywall {
+    background: var(--gold);
+    border: none;
+    color: var(--black);
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.78rem;
+    font-weight: 400;
+    letter-spacing: 0.15em;
+    padding: 1.1rem 3rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .btn-paywall:hover {
+    background: #d4b47a;
+    transform: translateY(-1px);
+  }
+
+  .paywall-note {
+    font-size: 0.6rem;
+    color: rgba(107,103,96,0.5);
+    letter-spacing: 0.1em;
+    margin-top: 0.5rem;
+  }
+
+  /* Free section badge */
+  .free-badge {
+    display: inline-block;
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    border: 1px solid rgba(201,169,110,0.3);
+    padding: 0.2rem 0.6rem;
+    margin-bottom: 2rem;
+  }
+
+  /* ─── 팔자 카드 ─── */
+  .palza-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    margin: 1.5rem 0 2.5rem;
+  }
+
+  .palza-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .palza-col-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .palza-card {
+    width: 100%;
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(240,237,232,0.08);
+    margin-bottom: 3px;
+  }
+
+  /* 오행 색상 — 다크 버전 */
+
+  .palza-card-hanja {
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.4rem;
+  }
+
+  .palza-card-kor {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    opacity: 0.85;
+  }
+
+  /* 일주 마커 — 日柱 카드 아래쪽 중앙 */
+  .palza-ilju-marker {
+    display: block;
+    text-align: center;
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    color: var(--gold);
+    opacity: 0.7;
+    margin-top: 0.4rem;
+  }
+  .ohaeng-mok  { background: rgba(74,120,60,0.25);  border-color: rgba(74,120,60,0.4);  color: #7ec87a; }
+  .ohaeng-hwa  { background: rgba(180,60,60,0.2);   border-color: rgba(180,60,60,0.35); color: #e88080; }
+  .ohaeng-to   { background: rgba(160,130,40,0.2);  border-color: rgba(160,130,40,0.35);color: #d4b04a; }
+  .ohaeng-geum { background: rgba(160,160,170,0.1); border-color: rgba(160,160,170,0.25);color: #b8b8c8; }
+  .ohaeng-su   { background: rgba(40,70,160,0.25);  border-color: rgba(40,70,160,0.4);  color: #7898e8; }
+
+  .palza-ilju-marker {
+    position: absolute;
+    bottom: 3px;
+    right: 4px;
+    font-size: 0.45rem;
+    letter-spacing: 0.05em;
+    color: var(--gold);
+    opacity: 0.6;
+  }
+
+  @media (max-width: 480px) {
+    .palza-grid { gap: 0.4rem; }
+    .palza-card-hanja { font-size: 1.3rem; }
+  }
+
+  /* ─── SUB BLOCKS ─── */
+  .sub-block {
+    margin-bottom: 2.5rem;
+  }
+  .sub-block:last-child { margin-bottom: 0; }
+
+  .sub-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: rgba(201,169,110,0.45);
+    margin-bottom: 0.6rem;
+  }
+
+  /* ─── MONTH ROWS ─── */
+  .month-row {
+    padding: 1.4rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .month-row:last-child { border-bottom: none; }
+
+  .month-row-top {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .month-name {
+    font-family: 'EB Garamond', serif;
+    font-size: 0.95rem;
+    color: var(--white);
+    opacity: 0.6;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    min-width: 80px;
+  }
+
+  .month-keyword {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: var(--gold);
+    opacity: 0.8;
+    white-space: nowrap;
+  }
+
+  .month-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .month-badge {
+    font-size: 0.52rem;
+    letter-spacing: 0.05em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+
+  .badge-money1  { background: rgba(201,169,110,0.2); color: #d4b04a; border: 1px solid rgba(201,169,110,0.4); }
+  .badge-money2  { background: rgba(180,150,60,0.12); color: #c4a030; border: 1px solid rgba(180,150,60,0.3); }
+  .badge-move    { background: rgba(60,100,200,0.2);  color: #7898e0; border: 1px solid rgba(60,100,200,0.35); }
+  .badge-marriage{ background: rgba(200,80,120,0.15); color: #e080a0; border: 1px solid rgba(200,80,120,0.3); }
+  .badge-health  { background: rgba(200,60,60,0.15);  color: #e07070; border: 1px solid rgba(200,60,60,0.3); }
+  .badge-realestate { background: rgba(60,150,80,0.15); color: #70c088; border: 1px solid rgba(60,150,80,0.3); }
+
+  .month-desc {
+    font-size: 0.82rem;
+    color: rgba(240,237,232,0.7);
+    line-height: 1.9;
+  }
+
+  /* ─── MBTI TEST LINK ─── */
+  .mbti-test-link {
+    display: block;
+    margin-top: 0.8rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    color: rgba(201,169,110,0.55);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+    text-align: left;
+  }
+  .mbti-test-link:hover { color: var(--gold); }
+
+  /* ─── MBTI MODAL ─── */
+  .mbti-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  .mbti-modal-overlay.active { display: flex; }
+
+  .mbti-modal {
+    background: #0e0e0e;
+    border: 1px solid rgba(201,169,110,0.15);
+    max-width: 480px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 2.5rem 2rem;
+    position: relative;
+  }
+
+  .mbti-modal-close {
+    position: absolute;
+    top: 1rem; right: 1rem;
+    background: none;
+    border: none;
+    color: var(--dim);
+    font-size: 0.8rem;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.4rem;
+  }
+  .mbti-modal-close:hover { color: var(--white); }
+
+  .mbti-modal-eyebrow {
+    font-size: 0.55rem;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    opacity: 0.6;
+    margin-bottom: 0.4rem;
+  }
+
+  .mbti-modal-title {
+    font-family: 'EB Garamond', serif;
+    font-size: 1rem;
+    color: var(--white);
+    opacity: 0.5;
+    margin-bottom: 1rem;
+    font-weight: 400;
+  }
+
+  .mbti-progress-bar {
+    width: 100%;
+    height: 1px;
+    background: rgba(240,237,232,0.08);
+    margin-bottom: 2rem;
+  }
+  .mbti-progress-fill {
+    height: 100%;
+    background: var(--gold);
+    transition: width 0.3s ease;
+    width: 5%;
+  }
+
+  .mbti-q-text {
+    font-size: 1rem;
+    color: var(--white);
+    line-height: 1.7;
+    margin-bottom: 2rem;
+    min-height: 3.5em;
+  }
+
+  .mbti-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+
+  .mbti-opt-btn {
+    background: transparent;
+    border: 1px solid rgba(240,237,232,0.12);
+    color: rgba(240,237,232,0.75);
+    padding: 0.9rem 1.2rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .mbti-opt-btn:hover {
+    border-color: rgba(201,169,110,0.4);
+    color: var(--white);
+    background: rgba(201,169,110,0.05);
+  }
+
+  .mbti-result-box {
+    text-align: center;
+    padding-top: 0.5rem;
+  }
+  .mbti-result-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.3em;
+    color: var(--dim);
+    margin-bottom: 0.8rem;
+  }
+  .mbti-result-type {
+    font-family: 'EB Garamond', serif;
+    font-size: 3.5rem;
+    color: var(--gold);
+    letter-spacing: 0.15em;
+    margin-bottom: 1rem;
+    line-height: 1;
+  }
+  .mbti-result-desc {
+    font-size: 0.8rem;
+    color: rgba(240,237,232,0.6);
+    line-height: 1.7;
+    margin-bottom: 1.8rem;
+  }
+  .mbti-result-apply {
+    background: var(--gold);
+    color: #0a0a0a;
+    border: none;
+    padding: 0.8rem 2rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.2s;
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
+  }
+  .mbti-result-apply:hover { opacity: 0.85; }
+
+  /* ─── RESULT ─── */
+  .result-screen {
+    display: none;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 4rem 2rem 8rem;
+  }
+
+  .result-screen.active { display: block; }
+
+  .result-header {
+    text-align: center;
+    margin-bottom: 5rem;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .result-name {
+    font-family: 'EB Garamond', serif;
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: 400;
+    color: var(--white);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+  }
+
+  .result-meta {
+    font-size: 0.65rem;
+    color: var(--dim);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    line-height: 2.2;
+  }
+
+  .result-block {
+    margin-bottom: 4rem;
+    padding-bottom: 4rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .result-block:last-child {
+    border-bottom: none;
+  }
+
+  .block-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.7;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .block-label::before {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 1px;
+    background: var(--gold);
+    opacity: 0.5;
+  }
+
+  .block-content {
+    font-size: 0.95rem;
+    color: rgba(240,237,232,0.85);
+    line-height: 2.2;
+    white-space: pre-wrap;
+    word-break: keep-all;
+  }
+
+  .result-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 5rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--dim);
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    padding: 0.9rem 2rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+
+  .btn-outline:hover {
+    border-color: rgba(240,237,232,0.3);
+    color: var(--white);
+  }
+
+  .btn-primary {
+    background: transparent;
+    border: 1px solid rgba(201,169,110,0.5);
+    color: var(--gold);
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    padding: 0.9rem 2.5rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+
+  .btn-primary:hover {
+    background: rgba(201,169,110,0.1);
+  }
+
+  /* ─── FADE ANIMATIONS ─── */
+  .fade-in {
+    opacity: 0;
+    transform: translateY(16px);
+    animation: fadeUp 0.8s ease forwards;
+  }
+
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-in:nth-child(1) { animation-delay: 0.1s; }
+  .fade-in:nth-child(2) { animation-delay: 0.25s; }
+  .fade-in:nth-child(3) { animation-delay: 0.4s; }
+  .fade-in:nth-child(4) { animation-delay: 0.55s; }
+  .fade-in:nth-child(5) { animation-delay: 0.7s; }
+
+  /* ─── DIVIDER ─── */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin: 3rem 0;
+    color: var(--dim);
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+  }
+
+  .section-divider::before,
+  .section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+
+  /* ─── FOOTER ─── */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 2.5rem 3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  footer p {
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--dim);
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 600px) {
+    nav { padding: 1.5rem; }
+    .field-row { grid-template-columns: 1fr; }
+    .concern-grid { grid-template-columns: 1fr; }
+    footer { flex-direction: column; gap: 1rem; text-align: center; }
+    .mbti-grid { gap: 0.3rem; }
+    .result-actions { flex-direction: column; align-items: center; }
+  }
+
+  /* ─── EXTENDED WORKBOOK SECTIONS ─── */
+
+  /* 패턴 카드 */
+  .pattern-card {
+    border: 1px solid var(--line);
+    padding: 1.8rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .pattern-card:last-child { margin-bottom: 0; }
+
+  .pattern-name {
+    font-family: 'EB Garamond', serif;
+    font-size: 1rem;
+    color: var(--gold);
+    opacity: 0.85;
+    letter-spacing: 0.08em;
+    margin-bottom: 1rem;
+  }
+
+  .pattern-desc {
+    font-size: 0.88rem;
+    color: rgba(240,237,232,0.8);
+    line-height: 2;
+    margin-bottom: 1.2rem;
+  }
+
+  /* 예시 박스 */
+  .example-box {
+    background: rgba(201,169,110,0.04);
+    border-left: 2px solid rgba(201,169,110,0.25);
+    padding: 1.2rem 1.4rem;
+    margin-top: 0.8rem;
+  }
+
+  .example-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.6;
+    margin-bottom: 0.8rem;
+  }
+
+  .example-row {
+    font-size: 0.82rem;
+    color: rgba(240,237,232,0.7);
+    line-height: 1.9;
+    margin-bottom: 0.5rem;
+  }
+  .example-row:last-child { margin-bottom: 0; }
+
+  .example-row strong {
+    color: rgba(240,237,232,0.5);
+    font-weight: 400;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    margin-right: 0.3rem;
+  }
+
+  .tip-row {
+    font-size: 0.82rem;
+    color: rgba(201,169,110,0.75);
+    line-height: 1.9;
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--line);
+  }
+
+  /* 분기 로드맵 */
+  .quarter-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  @media (max-width: 600px) {
+    .quarter-grid { grid-template-columns: 1fr; }
+  }
+
+  .quarter-card {
+    border: 1px solid var(--line);
+    padding: 1.5rem 1.3rem;
+  }
+
+  .quarter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .quarter-label {
+    font-family: 'EB Garamond', serif;
+    font-size: 0.85rem;
+    color: var(--white);
+    opacity: 0.6;
+    letter-spacing: 0.05em;
+  }
+
+  .quarter-theme {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: var(--gold);
+    opacity: 0.8;
+  }
+
+  .energy-badge {
+    font-size: 0.52rem;
+    letter-spacing: 0.08em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .energy-high   { background: rgba(201,169,110,0.2); color: #d4b04a; border: 1px solid rgba(201,169,110,0.4); }
+  .energy-mid    { background: rgba(160,160,170,0.12); color: #b8b8c8; border: 1px solid rgba(160,160,170,0.25); }
+  .energy-low    { background: rgba(60,100,200,0.15); color: #7898e0; border: 1px solid rgba(60,100,200,0.3); }
+
+  .quarter-desc {
+    font-size: 0.8rem;
+    color: rgba(240,237,232,0.65);
+    line-height: 1.9;
+    margin-bottom: 1rem;
+  }
+
+  .quarter-action {
+    font-size: 0.78rem;
+    color: rgba(240,237,232,0.75);
+    line-height: 1.9;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid rgba(240,237,232,0.04);
+  }
+  .quarter-action:last-of-type { border-bottom: none; }
+
+  .quarter-action::before {
+    content: '→ ';
+    color: var(--gold);
+    opacity: 0.5;
+  }
+
+  .quarter-caution {
+    font-size: 0.72rem;
+    color: rgba(210,110,70,0.65);
+    margin-top: 0.8rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--line);
+  }
+  .quarter-caution::before {
+    content: '⚠ ';
+    opacity: 0.6;
+  }
+
+  /* 체크리스트 */
+  .checklist-item {
+    font-size: 0.85rem;
+    color: rgba(240,237,232,0.8);
+    line-height: 2.2;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgba(240,237,232,0.04);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+  }
+  .checklist-item:last-child { border-bottom: none; }
+
+  .checklist-num {
+    font-family: 'EB Garamond', serif;
+    font-size: 0.9rem;
+    color: var(--gold);
+    opacity: 0.5;
+    min-width: 1.5rem;
+    flex-shrink: 0;
+  }
+
+  /* 시나리오 카드 */
+  .scenario-card {
+    border: 1px solid var(--line);
+    padding: 1.8rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .scenario-card:last-child { margin-bottom: 0; }
+
+  .scenario-title {
+    font-family: 'EB Garamond', serif;
+    font-size: 1rem;
+    color: var(--white);
+    opacity: 0.7;
+    margin-bottom: 1.2rem;
+  }
+
+  .scenario-section {
+    margin-bottom: 1rem;
+  }
+  .scenario-section:last-child { margin-bottom: 0; }
+
+  .scenario-section-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 0.4rem;
+  }
+
+  .scenario-section-text {
+    font-size: 0.85rem;
+    color: rgba(240,237,232,0.75);
+    line-height: 2;
+  }
+
+  /* 에너지 바 */
+  .energy-month-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(240,237,232,0.03);
+  }
+
+  .energy-month-name {
+    font-size: 0.72rem;
+    color: rgba(240,237,232,0.5);
+    min-width: 72px;
+    letter-spacing: 0.02em;
+  }
+
+  .energy-bar-track {
+    flex: 1;
+    height: 4px;
+    background: rgba(240,237,232,0.04);
+    position: relative;
+  }
+
+  .energy-bar-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+  .energy-bar-fill.level-high { width: 100%; background: rgba(201,169,110,0.6); }
+  .energy-bar-fill.level-mid  { width: 60%;  background: rgba(160,160,170,0.4); }
+  .energy-bar-fill.level-low  { width: 30%;  background: rgba(60,100,200,0.4); }
+
+  .energy-month-tip {
+    font-size: 0.68rem;
+    color: rgba(240,237,232,0.45);
+    min-width: 0;
+    flex: 1.5;
+  }
+
+  /* 회복법 카드 */
+  .recovery-card {
+    border: 1px solid var(--line);
+    padding: 1.2rem 1.3rem;
+    margin-bottom: 0.8rem;
+  }
+  .recovery-card:last-child { margin-bottom: 0; }
+
+  .recovery-name {
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: var(--gold);
+    opacity: 0.7;
+    margin-bottom: 0.6rem;
+  }
+
+  .recovery-desc {
+    font-size: 0.82rem;
+    color: rgba(240,237,232,0.7);
+    line-height: 1.9;
+  }
+
+  @media (max-width: 480px) {
+    .energy-month-row { flex-wrap: wrap; gap: 0.4rem; }
+    .energy-month-tip { flex-basis: 100%; padding-left: 0; }
   }
 </style>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4973804132466200" crossorigin="anonymous"></script>
 </head>
 <body>
+<main>
 
-<!-- 상단 광고 -->
-<!-- 네비게이션 -->
-<nav class="navbar">
-  <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
-  <div class="navbar-links">
-    <a href="hook-generator.html" style="color:#00C73C; font-weight:700;">🔥 후킹문구</a>
-    <a href="about.html">소개</a>
-    <a href="contact.html">연락처</a>
-    <a href="privacy.html">개인정보</a>
-  </div>
-</nav>
+  <!-- NAV -->
+  <nav>
+    <span class="nav-logo">四柱 Workbook</span>
+    <span class="nav-tagline">타고난 나를 읽다</span>
+  </nav>
 
-<div class="ad-top">
-  <div class="ad-box">📢 광고 영역 (728 × 90) — Google AdSense</div>
-</div>
+  <!-- HERO + FORM -->
+  <div id="form-view">
+    <section class="hero">
+      <div class="hero-symbol">✦ ✦ ✦</div>
+      <p class="hero-eyebrow fade-in">사주명리 × 기질 × 나만의 방향</p>
+      <h1 class="fade-in">
+        타고난 <em>나의 결</em>대로<br>방향을 잡아보세요
+      </h1>
+      <p class="hero-sub fade-in">
+        사주명리와 MBTI 기반의 개인 맞춤 워크북<br>
+        기질과 흐름으로 읽는 현실적인 나만의 전략
+      </p>
+      <div class="hero-line"></div>
+    </section>
 
-<!-- 헤더 -->
-<header>
-  <h1>네이버 블로그 <span>제목 생성기</span></h1>
-  <p>업종과 키워드만 입력하면 클릭을 부르는 제목을 자동으로 만들어드립니다</p>
-  <div class="badge-row">
-    <span class="badge badge-g">✅ 긍정 메시지</span>
-    <span class="badge badge-r">⚠️ 위협 메시지</span>
-    <span class="badge badge-b">🔥 호기심 메시지</span>
-  </div>
-</header>
+    <div class="form-container">
+      <p class="form-section-label">기본 정보</p>
 
-<div class="container">
+      <div class="field-group fade-in">
+        <label for="name">이름</label>
+        <input type="text" id="name" placeholder="성함을 입력하세요" autocomplete="off">
+      </div>
 
-  <!-- 입력 섹션 -->
-  <div class="input-section">
-    <h2>🎯 업종과 키워드를 입력하세요</h2>
-    <div class="form-row">
-      <div>
-        <label>업종 선택</label>
-        <select id="category" onchange="showHints()">
-          <option value="">— 업종을 선택하세요 —</option>
-          <option value="wedding">💍 웨딩/결혼</option>
-          <option value="food">🍽️ 요식업/카페</option>
-          <option value="edu">📚 온라인 강의/교육</option>
-          <option value="beauty">💄 뷰티/피부/헤어</option>
-          <option value="realty">🏠 부동산/인테리어</option>
-          <option value="fitness">💪 헬스/운동</option>
-          <option value="marketing">📣 마케팅/블로그</option>
-          <option value="other">🔧 기타</option>
+      <p class="form-section-label" style="margin-top:2rem;">생년월일</p>
+
+      <div class="cal-toggle">
+        <button type="button" class="cal-toggle-btn active" id="solar-btn" onclick="setCalendar('solar')">양력</button>
+        <div class="cal-toggle-divider"></div>
+        <button type="button" class="cal-toggle-btn" id="lunar-btn" onclick="setCalendar('lunar')">음력</button>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group fade-in">
+          <label for="birth-year">출생연도</label>
+          <select id="birth-year">
+            <option value="">연도 선택</option>
+            <option value="2005">2005년</option><option value="2004">2004년</option><option value="2003">2003년</option><option value="2002">2002년</option><option value="2001">2001년</option><option value="2000">2000년</option><option value="1999">1999년</option><option value="1998">1998년</option><option value="1997">1997년</option><option value="1996">1996년</option><option value="1995">1995년</option><option value="1994">1994년</option><option value="1993">1993년</option><option value="1992">1992년</option><option value="1991">1991년</option><option value="1990">1990년</option><option value="1989">1989년</option><option value="1988">1988년</option><option value="1987">1987년</option><option value="1986">1986년</option><option value="1985">1985년</option><option value="1984">1984년</option><option value="1983">1983년</option><option value="1982">1982년</option><option value="1981">1981년</option><option value="1980">1980년</option><option value="1979">1979년</option><option value="1978">1978년</option><option value="1977">1977년</option><option value="1976">1976년</option><option value="1975">1975년</option><option value="1974">1974년</option><option value="1973">1973년</option><option value="1972">1972년</option><option value="1971">1971년</option><option value="1970">1970년</option><option value="1969">1969년</option><option value="1968">1968년</option><option value="1967">1967년</option><option value="1966">1966년</option><option value="1965">1965년</option><option value="1964">1964년</option><option value="1963">1963년</option><option value="1962">1962년</option><option value="1961">1961년</option><option value="1960">1960년</option><option value="1959">1959년</option><option value="1958">1958년</option><option value="1957">1957년</option><option value="1956">1956년</option><option value="1955">1955년</option><option value="1954">1954년</option><option value="1953">1953년</option><option value="1952">1952년</option><option value="1951">1951년</option><option value="1950">1950년</option><option value="1949">1949년</option><option value="1948">1948년</option><option value="1947">1947년</option><option value="1946">1946년</option><option value="1945">1945년</option><option value="1944">1944년</option><option value="1943">1943년</option><option value="1942">1942년</option><option value="1941">1941년</option><option value="1940">1940년</option>
+          </select>
+        </div>
+        <div class="field-group fade-in">
+          <label for="birth-month">월</label>
+          <select id="birth-month">
+            <option value="">월 선택</option>
+            <option value="1">1월</option>
+            <option value="2">2월</option>
+            <option value="3">3월</option>
+            <option value="4">4월</option>
+            <option value="5">5월</option>
+            <option value="6">6월</option>
+            <option value="7">7월</option>
+            <option value="8">8월</option>
+            <option value="9">9월</option>
+            <option value="10">10월</option>
+            <option value="11">11월</option>
+            <option value="12">12월</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group fade-in">
+          <label for="birth-day">일</label>
+          <select id="birth-day">
+            <option value="">일 선택</option>
+            <option value="1">1일</option><option value="2">2일</option><option value="3">3일</option><option value="4">4일</option><option value="5">5일</option><option value="6">6일</option><option value="7">7일</option><option value="8">8일</option><option value="9">9일</option><option value="10">10일</option><option value="11">11일</option><option value="12">12일</option><option value="13">13일</option><option value="14">14일</option><option value="15">15일</option><option value="16">16일</option><option value="17">17일</option><option value="18">18일</option><option value="19">19일</option><option value="20">20일</option><option value="21">21일</option><option value="22">22일</option><option value="23">23일</option><option value="24">24일</option><option value="25">25일</option><option value="26">26일</option><option value="27">27일</option><option value="28">28일</option><option value="29">29일</option><option value="30">30일</option><option value="31">31일</option>
+          </select>
+        </div>
+        <div class="field-group fade-in" id="lunar-month-type-group" style="display:none;">
+          <label for="lunar-month-type">윤달 여부</label>
+          <select id="lunar-month-type">
+            <option value="normal">평달</option>
+            <option value="leap">윤달</option>
+          </select>
+        </div>
+        <div class="field-group fade-in" id="birth-hour-group">
+          <label for="birth-hour">태어난 시간대</label>
+          <select id="birth-hour">
+            <option value="">선택 (선택사항)</option>
+            <option value="자시">자시 (23–01시)</option>
+            <option value="축시">축시 (01–03시)</option>
+            <option value="인시">인시 (03–05시)</option>
+            <option value="묘시">묘시 (05–07시)</option>
+            <option value="진시">진시 (07–09시)</option>
+            <option value="사시">사시 (09–11시)</option>
+            <option value="오시">오시 (11–13시)</option>
+            <option value="미시">미시 (13–15시)</option>
+            <option value="신시">신시 (15–17시)</option>
+            <option value="유시">유시 (17–19시)</option>
+            <option value="술시">술시 (19–21시)</option>
+            <option value="해시">해시 (21–23시)</option>
+          </select>
+        </div>
+      </div>
+
+      <p class="lunar-note" id="lunar-note">
+        ✦ 음력 날짜를 입력해주세요 — 서버에서 양력으로 자동 변환됩니다
+      </p>
+
+      <div class="field-group fade-in">
+        <label>성별</label>
+        <select id="gender">
+          <option value="">선택</option>
+          <option value="여성">여성</option>
+          <option value="남성">남성</option>
         </select>
       </div>
-      <div>
-        <label>핵심 키워드</label>
-        <input type="text" id="keyword" placeholder="예: 웨딩홀 비용, 식당 창업" maxlength="30">
+
+      <div class="section-divider">MBTI</div>
+
+      <div class="field-group fade-in">
+        <label>나의 MBTI 유형</label>
+        <div class="mbti-grid">
+          <div class="mbti-group">
+            <p class="mbti-group-label">에너지</p>
+            <button type="button" class="mbti-btn" data-group="0" data-val="E" onclick="selectMBTI(this)">E</button>
+            <button type="button" class="mbti-btn" data-group="0" data-val="I" onclick="selectMBTI(this)">I</button>
+          </div>
+          <div class="mbti-group">
+            <p class="mbti-group-label">인식</p>
+            <button type="button" class="mbti-btn" data-group="1" data-val="N" onclick="selectMBTI(this)">N</button>
+            <button type="button" class="mbti-btn" data-group="1" data-val="S" onclick="selectMBTI(this)">S</button>
+          </div>
+          <div class="mbti-group">
+            <p class="mbti-group-label">판단</p>
+            <button type="button" class="mbti-btn" data-group="2" data-val="T" onclick="selectMBTI(this)">T</button>
+            <button type="button" class="mbti-btn" data-group="2" data-val="F" onclick="selectMBTI(this)">F</button>
+          </div>
+          <div class="mbti-group">
+            <p class="mbti-group-label">생활양식</p>
+            <button type="button" class="mbti-btn" data-group="3" data-val="J" onclick="selectMBTI(this)">J</button>
+            <button type="button" class="mbti-btn" data-group="3" data-val="P" onclick="selectMBTI(this)">P</button>
+          </div>
+        </div>
+        <div id="mbti-display">—</div>
+        <button type="button" class="mbti-test-link" onclick="openMbtiTest()">✦ MBTI를 모른다면 — 간단 테스트 (20문항)</button>
+      </div>
+
+      <div class="section-divider">지금의 고민</div>
+
+      <div class="field-group fade-in">
+        <label>현재 가장 중요한 사업 고민 (최대 2개)</label>
+        <div class="concern-grid">
+          <button type="button" class="concern-btn" onclick="toggleConcern(this)">고객이 잘 안 모임</button>
+          <button type="button" class="concern-btn" onclick="toggleConcern(this)">문의는 오는데 계약이 안 됨</button>
+          <button type="button" class="concern-btn" onclick="toggleConcern(this)">단가를 올리고 싶음</button>
+          <button type="button" class="concern-btn" onclick="toggleConcern(this)">혼자 하기 벅참</button>
+          <button type="button" class="concern-btn" onclick="toggleConcern(this)">무엇부터 해야 할지 모름</button>
+          <button type="button" class="concern-btn" onclick="toggleConcern(this)">지금 사업을 바꿔야 할 것 같음</button>
+          <button type="button" class="concern-btn" onclick="toggleConcern(this)">콘텐츠/마케팅 지속이 안 됨</button>
+          <button type="button" class="concern-btn" onclick="toggleConcern(this)">수익이 불안정함</button>
+        </div>
+        <p class="concern-limit" id="concern-count">0 / 2 선택</p>
+      </div>
+
+      <div class="submit-area fade-in">
+        <button type="button" class="submit-btn" id="submit-btn" onclick="generateWorkbook()">
+          워크북 열기
+        </button>
+        <p class="submit-note">약 2~3분 소요됩니다 · AI가 20페이지 분량의 워크북을 생성합니다</p>
       </div>
     </div>
-
-    <div class="keyword-hint" id="hintBox">
-      <strong>💡 추천 키워드</strong>
-      <div class="hint-tags" id="hintTags"></div>
-    </div>
-
-    <button class="generate-btn" onclick="generateTitles()">✨ 클릭을 부르는 제목 12가지 패턴 생성하기</button>
   </div>
 
-  <!-- 결과 -->
-  <div class="results" id="results">
-
-    <div class="copy-all-row">
-      <button class="copy-all-btn" onclick="copyAll()">📋 전체 제목 복사</button>
-    </div>
-
-    <!-- Chapter 1: 긍정 -->
-    <div class="chapter">
-      <div class="chapter-header positive">
-        <div class="chapter-icon">💚</div>
-        <div class="chapter-info">
-          <div class="chapter-title">Chapter 1. 긍정 메시지</div>
-          <div class="chapter-desc">고객이 얻을 수 있는 이득을 보여주는 제목 — 사실 고객은 무엇이 필요한지 모른다</div>
-        </div>
+  <!-- MBTI TEST MODAL -->
+  <div class="mbti-modal-overlay" id="mbti-modal" onclick="closeMbtiTestOutside(event)">
+    <div class="mbti-modal" onclick="event.stopPropagation()">
+      <button type="button" class="mbti-modal-close" onclick="closeMbtiTest()">✕</button>
+      <p class="mbti-modal-eyebrow">간단 유형 테스트</p>
+      <h3 class="mbti-modal-title" id="mbti-q-title">질문 1 / 20</h3>
+      <div class="mbti-progress-bar"><div class="mbti-progress-fill" id="mbti-progress-fill"></div></div>
+      <p class="mbti-q-text" id="mbti-q-text">—</p>
+      <div class="mbti-options" id="mbti-options">
+        <button type="button" class="mbti-opt-btn" id="mbti-opt-a" onclick="answerMbti(0)">—</button>
+        <button type="button" class="mbti-opt-btn" id="mbti-opt-b" onclick="answerMbti(1)">—</button>
       </div>
-      <div class="chapter-body">
-        <div class="pattern-group">
-          <div class="pattern-label positive">패턴 1 — 이득 + 숫자형</div>
-          <div id="p1"></div>
-        </div>
-        <div class="pattern-group">
-          <div class="pattern-label positive">패턴 2 — 성공 사례형</div>
-          <div id="p2"></div>
-        </div>
-        <div class="pattern-group">
-          <div class="pattern-label positive">패턴 3 — 전문가 가이드형</div>
-          <div id="p3"></div>
-        </div>
-        <div class="pattern-group">
-          <div class="pattern-label positive">패턴 4 — 방법 + 체크리스트형</div>
-          <div id="p4"></div>
-        </div>
+      <div class="mbti-result-box" id="mbti-result-box" style="display:none;">
+        <p class="mbti-result-label">당신의 유형</p>
+        <p class="mbti-result-type" id="mbti-result-type">—</p>
+        <p class="mbti-result-desc" id="mbti-result-desc">—</p>
+        <button type="button" class="mbti-result-apply" id="mbti-result-apply" onclick="event.stopPropagation(); applyMbtiResult();">이 유형으로 적용하기</button>
       </div>
     </div>
-
-    <!-- 중간 광고 -->
-    <div class="ad-mid">
-      <div class="ad-box">📢 광고 영역 (336 × 250) — Google AdSense</div>
-    </div>
-
-    <!-- Chapter 2: 위협 -->
-    <div class="chapter">
-      <div class="chapter-header threat">
-        <div class="chapter-icon">🚨</div>
-        <div class="chapter-info">
-          <div class="chapter-title">Chapter 2. 위협 메시지</div>
-          <div class="chapter-desc">내 고객은 언제 지갑을 열까? — 무언가를 잃을 위기에 처했을 때</div>
-        </div>
-      </div>
-      <div class="chapter-body">
-        <div class="pattern-group">
-          <div class="pattern-label threat">패턴 5 — 모르면 손해형</div>
-          <div id="p5"></div>
-        </div>
-        <div class="pattern-group">
-          <div class="pattern-label threat">패턴 6 — 공통점 경고형</div>
-          <div id="p6"></div>
-        </div>
-        <div class="pattern-group">
-          <div class="pattern-label threat">패턴 7 — 의심하라형</div>
-          <div id="p7"></div>
-        </div>
-        <div class="pattern-group">
-          <div class="pattern-label threat">패턴 8 — 공동의 적형</div>
-          <div id="p8"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Chapter 3: 호기심 -->
-    <div class="chapter">
-      <div class="chapter-header curiosity">
-        <div class="chapter-icon">🔵</div>
-        <div class="chapter-info">
-          <div class="chapter-title">Chapter 3. 호기심 메시지</div>
-          <div class="chapter-desc">고객이 뻔한 광고를 거르는 법 — 예측 불가능이 클릭을 만든다</div>
-        </div>
-      </div>
-      <div class="chapter-body">
-        <div class="pattern-group">
-          <div class="pattern-label curiosity">패턴 9 — 가치 입증형</div>
-          <div id="p9"></div>
-        </div>
-        <div class="pattern-group">
-          <div class="pattern-label curiosity">패턴 10 — 상식 파괴형</div>
-          <div id="p10"></div>
-        </div>
-        <div class="pattern-group">
-          <div class="pattern-label curiosity">패턴 11 — 질문 & 비교형</div>
-          <div id="p11"></div>
-        </div>
-        <div class="pattern-group">
-          <div class="pattern-label curiosity">패턴 12 — 타깃 호출형</div>
-          <div id="p12"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 팁 -->
-    <div class="tips">
-      <h3>📌 제목 쓸 때 꼭 기억하세요</h3>
-      <div class="tip-item"><span class="tip-num">1</span><span>핵심 키워드는 제목 <strong>맨 왼쪽</strong>에 배치하세요. 네이버는 앞쪽 단어에 더 높은 가중치를 줍니다.</span></div>
-      <div class="tip-item"><span class="tip-num">2</span><span><strong>롱테일 키워드</strong>가 오히려 강합니다. "웨딩홀"보다 "강남 웨딩홀 비용 실제 후기"처럼 2~3단어 조합이 경쟁이 낮고 상위 노출이 쉽습니다.</span></div>
-      <div class="tip-item"><span class="tip-num">3</span><span>숫자는 <strong>구체적일수록</strong> 좋습니다. '몇 가지'보다 '3가지', '2주'보다 '14일'이 클릭율이 높습니다.</span></div>
-      <div class="tip-item"><span class="tip-num">4</span><span><strong>모바일 제목은 28~32자</strong>에서 잘립니다. 핵심 내용을 반드시 앞쪽에 배치하세요.</span></div>
-      <div class="tip-item"><span class="tip-num">5</span><span><strong>"2026년 기준"</strong>처럼 연도를 넣으면 최신 정보라는 신뢰감과 검색 정확도가 동시에 올라갑니다.</span></div>
-      <div class="tip-item"><span class="tip-num">6</span><span><strong>AI 검색(큐:) 대응</strong> — "~하는 방법"보다 "왜 ~할까요?" 같은 질문형 제목이 네이버 AI 답변 소스로 채택될 확률이 높습니다.</span></div>
-      <div class="tip-item"><span class="tip-num">7</span><span><strong>"업계 사람만 아는", "아직 모르는 분이 많은"</strong> 같은 표현은 나만의 정보라는 느낌을 줘서 클릭 욕구를 자극합니다.</span></div>
-      <div class="tip-item"><span class="tip-num">8</span><span>과도한 키워드 도배는 <strong>저품질 위험</strong>이 있습니다. 제목과 관련 없는 키워드는 오히려 이탈율을 높입니다.</span></div>
-      <div class="tip-item"><span class="tip-num">9</span><span>2025년부터 네이버 홈피드는 <strong>블로그 지수보다 반응</strong>을 봅니다. 체류시간과 재방문율이 높은 글이 알고리즘의 선택을 받습니다.</span></div>
-      <div class="tip-item"><span class="tip-num">10</span><span>작성 전 1분 만에 <strong>상위 노출 글을 검색</strong>해보세요. 그들과 차별화할 포인트를 찾는 것이 핵심입니다.</span></div>
-    </div>
-
-    <!-- 하단 광고 -->
-    <div class="ad-bottom">
-      <div class="ad-box">📢 광고 영역 (728 × 90) — Google AdSense</div>
-    </div>
-
   </div>
-</div>
 
-<!-- 콘텐츠 섹션 -->
-<div style="background:#fff; border-top:1px solid #E5E7EB; padding:48px 20px; max-width:860px; margin:0 auto;">
-
-  <!-- 블로그 제목이 중요한 이유 -->
-  <section style="margin-bottom:48px;">
-    <h2 style="font-size:22px; font-weight:700; color:#1A1A2E; margin-bottom:16px;">📌 네이버 블로그 제목, 왜 중요할까요?</h2>
-    <p style="font-size:15px; line-height:1.9; color:#374151;">
-      네이버 블로그는 글의 내용이 아무리 좋아도 <strong>제목에서 클릭을 받지 못하면 아무도 읽지 않습니다.</strong>
-      검색 결과에서 독자가 가장 먼저 보는 것이 제목이고, 클릭 여부는 평균 0.3초 안에 결정됩니다.
-      특히 네이버 홈피드(모바일 메인)는 2024년부터 <strong>체류시간과 클릭률(CTR)을 핵심 지표</strong>로 삼고 있어,
-      첫 클릭을 유도하는 제목이 곧 알고리즘 상위 노출의 시작점이 됩니다.
-    </p>
-    <p style="font-size:15px; line-height:1.9; color:#374151; margin-top:12px;">
-      19년간 3,500쌍 이상의 웨딩 상담을 진행하며 <strong>"같은 내용도 표현 방식에 따라 문의율이 3배 이상 차이 난다"</strong>는 것을 직접 경험했습니다.
-      이 생성기는 그 경험을 바탕으로 만든 12가지 제목 패턴을 자동으로 적용해 드립니다.
-    </p>
-  </section>
-
-  <!-- 클릭 문법 7가지 -->
-  <section style="margin-bottom:48px;">
-    <h2 style="font-size:22px; font-weight:700; color:#1A1A2E; margin-bottom:20px;">✍️ 클릭을 부르는 제목 문법 7가지</h2>
-
-    <div style="display:flex; flex-direction:column; gap:16px;">
-      <div style="background:#F8F9FD; border-radius:12px; padding:20px 24px; border-left:4px solid #00C73C;">
-        <strong style="font-size:15px; color:#1A1A2E;">1. 숫자형</strong>
-        <p style="font-size:14px; color:#6B7280; margin-top:6px; line-height:1.7;">구체적인 숫자는 뇌가 본능적으로 신뢰합니다. "몇 가지"보다 "3가지", "몇 주"보다 "14일"이 클릭율이 높습니다.<br><span style="color:#00C73C;">예: 블로그 상위 노출 <strong>3가지</strong> 핵심 원칙</span></p>
-      </div>
-      <div style="background:#F8F9FD; border-radius:12px; padding:20px 24px; border-left:4px solid #00C73C;">
-        <strong style="font-size:15px; color:#1A1A2E;">2. 실화/후기형</strong>
-        <p style="font-size:14px; color:#6B7280; margin-top:6px; line-height:1.7;">제3자의 경험담은 가장 강력한 신뢰 장치입니다. "실제 후기", "직접 써봤더니", "○○ 사장님의 경우" 같은 표현을 활용하세요.<br><span style="color:#00C73C;">예: 광고 없이 <strong>매출 2배</strong> 올린 사장님의 비밀</span></p>
-      </div>
-      <div style="background:#F8F9FD; border-radius:12px; padding:20px 24px; border-left:4px solid #FF4757;">
-        <strong style="font-size:15px; color:#1A1A2E;">3. 손실 회피형</strong>
-        <p style="font-size:14px; color:#6B7280; margin-top:6px; line-height:1.7;">심리학에서 손실에 대한 공포는 이득에 대한 기대보다 2.5배 강합니다. "모르면 손해", "이렇게 하면 망한다" 같은 표현이 클릭을 유도합니다.<br><span style="color:#FF4757;">예: <strong>아직도 이렇게 하고 계세요?</strong> 블로그 망하는 지름길</span></p>
-      </div>
-      <div style="background:#F8F9FD; border-radius:12px; padding:20px 24px; border-left:4px solid #FF4757;">
-        <strong style="font-size:15px; color:#1A1A2E;">4. 전문가 권위형</strong>
-        <p style="font-size:14px; color:#6B7280; margin-top:6px; line-height:1.7;">"19년 경력", "전문가가 말하는", "업계 사람만 아는" 같은 표현은 정보의 신뢰도를 높여 클릭을 유도합니다.<br><span style="color:#FF4757;">예: <strong>10년차 블로거</strong>가 절대 안 알려주는 제목 짜는 법</span></p>
-      </div>
-      <div style="background:#F8F9FD; border-radius:12px; padding:20px 24px; border-left:4px solid #2E86FF;">
-        <strong style="font-size:15px; color:#1A1A2E;">5. 상식 파괴형</strong>
-        <p style="font-size:14px; color:#6B7280; margin-top:6px; line-height:1.7;">사람들이 알고 있던 것을 뒤집는 정보는 강한 호기심을 유발합니다. "사실은 반대입니다", "오해하고 있습니다" 패턴이 효과적입니다.<br><span style="color:#2E86FF;">예: 블로그 매일 올려야 한다고요? <strong>사실은 정반대입니다</strong></span></p>
-      </div>
-      <div style="background:#F8F9FD; border-radius:12px; padding:20px 24px; border-left:4px solid #2E86FF;">
-        <strong style="font-size:15px; color:#1A1A2E;">6. 타깃 호출형</strong>
-        <p style="font-size:14px; color:#6B7280; margin-top:6px; line-height:1.7;">"자영업자만", "초보 블로거라면", "30대 사장님" 같이 특정 독자를 직접 부르는 제목은 해당 독자의 클릭 확률을 크게 높입니다.<br><span style="color:#2E86FF;">예: <strong>자영업자 블로거</strong>라면 이것만 알면 됩니다</span></p>
-      </div>
-      <div style="background:#F8F9FD; border-radius:12px; padding:20px 24px; border-left:4px solid #8B5CF6;">
-        <strong style="font-size:15px; color:#1A1A2E;">7. 연도/최신 정보형</strong>
-        <p style="font-size:14px; color:#6B7280; margin-top:6px; line-height:1.7;">"2026년 기준", "최신 알고리즘 변경 반영" 같은 표현은 최신 정보라는 신뢰감과 함께 검색 정확도도 함께 올라갑니다.<br><span style="color:#8B5CF6;">예: <strong>2026년 기준</strong> 네이버 홈피드 노출 공략법</span></p>
-      </div>
+  <!-- LOADING -->
+  <div class="loading-screen" id="loading-screen">
+    <div class="loading-orbit">
+      <div class="loading-orbit-ring"></div>
+      <div class="loading-orbit-ring"></div>
+      <div class="loading-orbit-dot"></div>
     </div>
-  </section>
-
-  <!-- FAQ -->
-  <section style="margin-bottom:48px;">
-    <h2 style="font-size:22px; font-weight:700; color:#1A1A2E; margin-bottom:20px;">❓ 자주 묻는 질문 (FAQ)</h2>
-
-    <div style="display:flex; flex-direction:column; gap:12px;">
-      <details style="background:#F8F9FD; border-radius:12px; padding:20px 24px; cursor:pointer;">
-        <summary style="font-size:15px; font-weight:600; color:#1A1A2E; list-style:none; display:flex; justify-content:space-between;">
-          Q. 생성된 제목을 그대로 써도 되나요?
-        </summary>
-        <p style="font-size:14px; color:#6B7280; margin-top:12px; line-height:1.8;">
-          생성된 제목은 <strong>참고용 뼈대</strong>로 활용하시는 것을 권장드립니다. 내용과 실제 연관성 있게 약간 수정해서 사용하시면 더 좋습니다.
-          예를 들어 "2개월 만에 매출 2배"라는 표현은 실제 내용에서 뒷받침이 되어야 독자의 신뢰를 얻을 수 있습니다.
-        </p>
-      </details>
-      <details style="background:#F8F9FD; border-radius:12px; padding:20px 24px; cursor:pointer;">
-        <summary style="font-size:15px; font-weight:600; color:#1A1A2E; list-style:none; display:flex; justify-content:space-between;">
-          Q. 어떤 키워드를 입력해야 가장 좋은 결과가 나오나요?
-        </summary>
-        <p style="font-size:14px; color:#6B7280; margin-top:12px; line-height:1.8;">
-          <strong>2~4 단어 조합의 롱테일 키워드</strong>가 가장 효과적입니다. "블로그"보다는 "자영업자 블로그 마케팅", "다이어트"보다는 "직장인 점심 다이어트" 처럼 구체적으로 입력할수록
-          경쟁이 낮고 실제 검색 의도에 맞는 제목이 생성됩니다.
-        </p>
-      </details>
-      <details style="background:#F8F9FD; border-radius:12px; padding:20px 24px; cursor:pointer;">
-        <summary style="font-size:15px; font-weight:600; color:#1A1A2E; list-style:none; display:flex; justify-content:space-between;">
-          Q. 네이버 블로그 제목 글자 수 제한이 있나요?
-        </summary>
-        <p style="font-size:14px; color:#6B7280; margin-top:12px; line-height:1.8;">
-          네이버는 최대 <strong>64바이트(한글 약 32자)</strong>까지 제목으로 설정할 수 있습니다.
-          모바일 검색 결과에서는 약 <strong>28~32자에서 제목이 잘려 보이기</strong> 때문에, 핵심 키워드와 임팩트 있는 표현을 반드시 앞쪽에 배치하세요.
-        </p>
-      </details>
-      <details style="background:#F8F9FD; border-radius:12px; padding:20px 24px; cursor:pointer;">
-        <summary style="font-size:15px; font-weight:600; color:#1A1A2E; list-style:none; display:flex; justify-content:space-between;">
-          Q. 제목에 키워드를 여러 개 넣어도 되나요?
-        </summary>
-        <p style="font-size:14px; color:#6B7280; margin-top:12px; line-height:1.8;">
-          키워드를 <strong>억지로 여러 개 넣는 것은 오히려 역효과</strong>입니다. 네이버 알고리즘은 2023년 이후 키워드 도배를 저품질로 판단합니다.
-          핵심 키워드 1~2개만 자연스럽게 제목에 녹이고, 나머지는 본문에서 자연스럽게 활용하세요.
-        </p>
-      </details>
-      <details style="background:#F8F9FD; border-radius:12px; padding:20px 24px; cursor:pointer;">
-        <summary style="font-size:15px; font-weight:600; color:#1A1A2E; list-style:none; display:flex; justify-content:space-between;">
-          Q. 이 도구는 무료인가요?
-        </summary>
-        <p style="font-size:14px; color:#6B7280; margin-top:12px; line-height:1.8;">
-          네, <strong>완전 무료</strong>로 사용하실 수 있습니다. 회원가입이나 로그인 없이 키워드만 입력하면 즉시 사용 가능합니다.
-          사이트 운영은 광고 수익으로 유지되고 있으며, 콘텐츠 자체는 무제한 무료로 제공됩니다.
-        </p>
-      </details>
+    <p class="loading-phase" id="loading-phase">생년월일 분석 중</p>
+    <div class="loading-progress">
+      <div class="loading-progress-bar"></div>
     </div>
-  </section>
-
-  <!-- 이 도구에 대해 -->
-  <section>
-    <h2 style="font-size:22px; font-weight:700; color:#1A1A2E; margin-bottom:16px;">🛠 이 도구에 대해</h2>
-    <p style="font-size:15px; line-height:1.9; color:#374151;">
-      뚝딱툴의 네이버 블로그 제목 생성기는 <strong>광고비 없이 연 매출 13억을 만든 웨딩 컨설턴트</strong>가 실제 비즈니스 현장에서 검증한 클릭 문법을 바탕으로 만들었습니다.
-      광고비를 한 푼도 쓰지 않고 연 매출 13억 원까지 성장시킨 유기적 마케팅 노하우를 누구나 쉽게 활용할 수 있도록 도구로 구현했습니다.
-    </p>
-    <p style="font-size:15px; line-height:1.9; color:#374151; margin-top:12px;">
-      AI를 쓸 줄 몰라도, 마케팅을 잘 몰라도, <strong>키워드 하나만 입력하면 12가지 검증된 패턴</strong>의 제목을 즉시 받아보실 수 있습니다.
-      자영업자, 소상공인, 블로그를 막 시작한 분들 모두를 위해 만들었습니다.
-    </p>
-  </section>
-
-</div>
-
-<!-- 뚝딱툴 도구 모음 -->
-<div style="max-width:860px; margin:0 auto; padding:0 20px 48px;">
-  <div style="font-size:13px; font-weight:700; color:#9CA3AF; letter-spacing:0.05em; margin-bottom:14px;">🛠 뚝딱툴 도구 모음</div>
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-    <div style="background:#F0FDF4; border:2px solid #00C73C; border-radius:14px; padding:20px;">
-      <div style="font-size:11px; font-weight:700; color:#00C73C; margin-bottom:6px; letter-spacing:0.05em;">현재 페이지</div>
-      <div style="font-size:16px; font-weight:700; color:#1A1A2E; margin-bottom:4px;">📝 블로그 제목 생성기</div>
-      <div style="font-size:12px; color:#6B7280;">키워드 입력 → 클릭을 부르는 제목 12패턴</div>
-    </div>
-    <a href="hook-generator.html" style="background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:20px; text-decoration:none; display:block; transition:all 0.2s;" onmouseover="this.style.borderColor='#00C73C';this.style.boxShadow='0 4px 16px rgba(0,199,60,0.12)'" onmouseout="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
-      <div style="font-size:11px; font-weight:700; color:#9CA3AF; margin-bottom:6px; letter-spacing:0.05em;">바로가기 →</div>
-      <div style="font-size:16px; font-weight:700; color:#1A1A2E; margin-bottom:4px;">🔥 후킹문구 생성기</div>
-      <div style="font-size:12px; color:#6B7280;">업종 + 키워드 → 스크롤 멈추는 문구 15개</div>
-    </a>
+    <p class="loading-estimate">약 2~3분 소요됩니다</p>
   </div>
-</div>
+
+  <!-- ERROR -->
+  <div class="error-screen" id="error-screen">
+    <div class="error-symbol">✦ ✦ ✦</div>
+    <h2 class="error-title">사주를 읽지 못했습니다</h2>
+    <p class="error-body" id="error-body">잠시 서버가 응답하지 않았습니다.<br>잠시 후 다시 시도해 주세요.</p>
+    <p class="error-detail" id="error-detail"></p>
+    <div class="error-actions">
+      <button type="button" class="btn-outline" onclick="closeError()">돌아가기</button>
+      <button type="button" class="submit-btn" onclick="retryGenerate()">다시 시도</button>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="result-screen" id="result-screen">
+    <div class="result-header">
+      <h2 class="result-name" id="result-name">—</h2>
+      <p class="result-meta" id="result-meta">—</p>
+    </div>
+
+    <!-- 무료 공개 섹션 -->
+    <div id="free-blocks">
+      <div class="free-badge">미리보기 · 무료</div>
+    </div>
+
+    <!-- 잠금 섹션 -->
+    <div class="locked-section" id="locked-blocks">
+      <!-- 잠금된 섹션들이 여기에 렌더링됨 (blur 처리) -->
+
+      <!-- Paywall gate overlay -->
+      <div class="paywall-gate">
+        <p class="paywall-symbol">✦ ✦ ✦</p>
+        <h3 class="paywall-title">나머지 10개 섹션이<br>기다리고 있습니다</h3>
+        <p class="paywall-desc">
+          영역별 흐름 · 월별 흐름 12개월 · 기질 기반 전략<br>
+          재물운 실전 가이드 · 관계 운영 매뉴얼<br>
+          분기별 로드맵 · 의사결정 가이드 · 에너지 플랜<br>
+          전부 담긴 20페이지 PDF를 이메일로 받아보세요
+        </p>
+        <p class="paywall-includes">
+          ✦ 사주 원국 풀이 전체&nbsp;&nbsp;
+          ✦ 영역별 흐름&nbsp;&nbsp;
+          ✦ 월별 흐름 12개월&nbsp;&nbsp;<br>
+          ✦ 기질 심층 분석&nbsp;&nbsp;
+          ✦ 재물운 실전 가이드&nbsp;&nbsp;
+          ✦ 관계 운영 매뉴얼&nbsp;&nbsp;<br>
+          ✦ 분기별 실행 로드맵&nbsp;&nbsp;
+          ✦ 의사결정 가이드&nbsp;&nbsp;
+          ✦ 에너지 & 번아웃 방지 플랜
+        </p>
+        <div class="paywall-cta">
+          <p class="cta-price-badge">전체 워크북 PDF</p>
+          <p class="cta-price">39,000<span>원</span></p>
+          <button type="button" class="btn-paywall" onclick="handlePayment()">
+            전체 워크북 받기
+          </button>
+          <p class="paywall-note">결제 후 이메일로 PDF 즉시 발송 · 약 20페이지</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-actions">
+      <button type="button" class="btn-outline" onclick="resetForm()">다시 시작</button>
+    </div>
+  </div>
+
+</main>
 
 <footer>
-  © 2026 뚝딱툴<br>
-  <a href="about.html" style="color:#9CA3AF; font-size:12px;">소개</a> &nbsp;|&nbsp;
-  <a href="contact.html" style="color:#9CA3AF; font-size:12px;">연락처</a> &nbsp;|&nbsp;
-  <a href="privacy.html" style="color:#9CA3AF; font-size:12px;">개인정보처리방침</a> &nbsp;|&nbsp;
-  <a href="terms.html" style="color:#9CA3AF; font-size:12px;">이용약관</a>
+  <p>四柱 Workbook · 사주명리 기반 개인 맞춤 워크북</p>
+
 </footer>
 
 <script>
-const hints = {
-  wedding: {
-    label: '웨딩/결혼',
-    tags: ['웨딩홀 비용', '스드메 가격', '웨딩드레스', '결혼 준비 순서', '웨딩 촬영', '신혼여행 추천']
-  },
-  food: {
-    label: '요식업/카페',
-    tags: ['카페 창업 비용', '식당 개업', '메뉴 개발', '카페 인테리어', '식당 마케팅', '배달 매출']
-  },
-  edu: {
-    label: '온라인 강의/교육',
-    tags: ['온라인 강의 만들기', '클래스 판매', '지식창업', '전자책 출판', '코칭 프로그램', '수강생 모집']
-  },
-  beauty: {
-    label: '뷰티/피부/헤어',
-    tags: ['피부 관리', '헤어 스타일', '네일아트', '다이어트 방법', '피부 트러블', '미용실 추천']
-  },
-  realty: {
-    label: '부동산/인테리어',
-    tags: ['아파트 청약', '전세 계약', '인테리어 비용', '셀프 인테리어', '부동산 투자', '이사 준비']
-  },
-  fitness: {
-    label: '헬스/운동',
-    tags: ['다이어트 식단', '홈트 방법', '헬스장 추천', '살 빠지는 운동', '체중 감량', '단백질 식품']
-  },
-  marketing: {
-    label: '마케팅/블로그',
-    tags: ['블로그 상위 노출', '네이버 SEO', 'SNS 마케팅', '인스타 팔로워', '광고비 없는 마케팅', '블로그 수익화']
-  },
-  other: {
-    label: '기타',
-    tags: ['키워드를 직접 입력해보세요']
-  }
-};
+  // ─── TEST MODE (URL에 ?test=1 이면 페이월 우회) ───
+  const IS_TEST = new URLSearchParams(window.location.search).get('test') === '1';
 
-const templates = {
-  p1: [
-    (kw) => `${kw} 시작 전 꼭 알아야 할 3가지, 이것만 알면 됩니다`,
-    (kw) => `따라만 해도 달라지는 ${kw} 핵심 정리`
-  ],
-  p2: [
-    (kw) => `${kw} 2개월 만에 매출 2배 올린 사장님의 공통점`,
-    (kw) => `${kw} 해봤더니 생각보다 쉬웠습니다 — 실제 후기`
-  ],
-  p3: [
-    (kw) => `19년 경력 전문가가 말하는 ${kw} 준비 방법`,
-    (kw) => `전문가들이 ${kw}에서 가장 먼저 확인하는 것`
-  ],
-  p4: [
-    (kw) => `${kw} 전 꼭 확인해야 할 주의사항 3가지 체크리스트`,
-    (kw) => `${kw}, 3분 안에 핵심만 이해시켜드리겠습니다`
-  ],
-  p5: [
-    (kw) => `설마 아직도 ${kw} 모르고 계세요? 이것 놓치면 손해입니다`,
-    (kw) => `${kw} 모르면 결국 이렇게 됩니다 — 충격 실제 사례`
-  ],
-  p6: [
-    (kw) => `${kw}에서 돈 날리는 사람들의 3가지 공통점`,
-    (kw) => `${kw} 실패하는 분들이 반드시 놓치는 것`
-  ],
-  p7: [
-    (kw) => `${kw}에 이것이 있다면 당장 의심해봐야 합니다`,
-    (kw) => `${kw}를 시작하기 전에 반드시 읽어보세요`
-  ],
-  p8: [
-    (kw) => `${kw}로 내 돈이 새고 있다는 사실 알고 계셨나요?`,
-    (kw) => `아직도 ${kw}에서 이렇게 하고 있다면 큰일 납니다`
-  ],
-  p9: [
-    (kw) => `누적 3,500명이 선택한 ${kw}의 비밀은 무엇일까요?`,
-    (kw) => `왜 멀리서까지 ${kw}를 찾아오는 걸까요?`
-  ],
-  p10: [
-    (kw) => `${kw}는 하면 안 된다고요? 사실은 정반대입니다`,
-    (kw) => `당연하다고 생각했던 ${kw}의 불편한 진실`
-  ],
-  p11: [
-    (kw) => `${kw} vs 기존 방법, 뭐가 다를까요? 비교해봤습니다`,
-    (kw) => `왜 어떤 분들은 ${kw}로 바로 성과를 내는 걸까요?`
-  ],
-  p12: [
-    (kw) => `${kw}로 고민하고 계신 분만 보세요`,
-    (kw) => `${kw} 때문에 답답하셨던 분들에게만 알려드립니다`
-  ]
-};
+  // ─── MBTI TEST ───
+  const MBTI_QUESTIONS = [
+    // E/I (0=E, 1=I)
+    { dim:0, q:"사람들과 어울린 후 나는...", a:"에너지가 충전된다", b:"피곤해서 혼자만의 시간이 필요하다" },
+    { dim:0, q:"처음 만난 사람과 대화할 때 나는...", a:"먼저 말을 걸고 자연스럽게 친해진다", b:"상대가 먼저 말을 걸어오길 기다린다" },
+    { dim:0, q:"주말에 가장 회복이 되는 것은...", a:"친구들과 밖에서 시간 보내기", b:"집에서 혼자 조용히 쉬기" },
+    { dim:0, q:"아이디어를 발전시킬 때 나는...", a:"다른 사람과 이야기하면서 정리된다", b:"혼자 조용히 생각하다 보면 정리된다" },
+    { dim:0, q:"모임에서 나는 보통...", a:"여러 사람과 폭넓게 대화한다", b:"한두 명과 깊은 대화를 나눈다" },
 
-function showHints() {
-  const cat = document.getElementById('category').value;
-  const hintBox = document.getElementById('hintBox');
-  const hintTags = document.getElementById('hintTags');
-  if (!cat || !hints[cat]) { hintBox.classList.remove('show'); return; }
-  hintBox.classList.add('show');
-  hintTags.innerHTML = hints[cat].tags.map(tag =>
-    `<span class="hint-tag" onclick="useTag('${tag}')">${tag}</span>`
-  ).join('');
-}
+    // S/N (0=S, 1=N)
+    { dim:1, q:"무언가를 배울 때 나는...", a:"실제 사례와 구체적인 방법이 먼저 보고 싶다", b:"전체 개념과 원리를 먼저 이해하고 싶다" },
+    { dim:1, q:"여행 계획을 세울 때 나는...", a:"세부 일정과 숙소를 꼼꼼하게 정한다", b:"큰 방향만 정하고 현장에서 즉흥적으로 움직인다" },
+    { dim:1, q:"일할 때 나는...", a:"검증된 방식을 신뢰하고 따른다", b:"새로운 방식을 시도해보는 게 더 재미있다" },
+    { dim:1, q:"나는 주로...", a:"눈앞의 현실과 지금 상황에 집중한다", b:"미래의 가능성과 아직 없는 것을 상상한다" },
+    { dim:1, q:"대화할 때 나는...", a:"사실과 구체적인 정보를 중심으로 말한다", b:"비유나 은유, 상징적인 표현을 자주 쓴다" },
 
-function useTag(tag) {
-  document.getElementById('keyword').value = tag;
-}
+    // T/F (0=T, 1=F)
+    { dim:2, q:"누군가와 의견이 충돌할 때 나는...", a:"논리적으로 옳고 그름을 따진다", b:"상대방 감정을 먼저 살피고 관계를 생각한다" },
+    { dim:2, q:"중요한 결정을 내릴 때 나는...", a:"장단점을 분석하고 객관적 기준으로 판단한다", b:"내가 어떻게 느끼는지, 주변에 어떤 영향인지를 본다" },
+    { dim:2, q:"친구가 고민을 털어놓을 때 나는...", a:"해결책이나 조언을 먼저 제시한다", b:"먼저 충분히 들어주고 공감해준다" },
+    { dim:2, q:"나는 칭찬보다...", a:"솔직하고 정확한 피드백이 더 도움이 된다", b:"따뜻한 격려가 더 힘이 된다" },
+    { dim:2, q:"팀에서 나는...", a:"효율과 결과에 집중하는 편이다", b:"팀원 간의 분위기와 관계를 챙기는 편이다" },
 
-function makeItem(text) {
-  return `<div class="title-item"><span class="title-text">${text}</span><button class="copy-btn" onclick="copyOne(this, '${text.replace(/'/g, "\\'")}')">복사</button></div>`;
-}
+    // J/P (0=J, 1=P)
+    { dim:3, q:"할 일이 생기면 나는...", a:"바로 계획을 세우고 순서대로 처리한다", b:"마감이 가까워져야 집중이 잘 된다" },
+    { dim:3, q:"나의 일상은...", a:"어느 정도 정해진 루틴이 있고 편안하다", b:"그때그때 다르게 흘러가는 편이 더 잘 맞는다" },
+    { dim:3, q:"약속이나 계획이 갑자기 바뀌면...", a:"당황스럽고 불편하다", b:"오히려 괜찮다, 유연하게 적응한다" },
+    { dim:3, q:"어떤 일을 마무리할 때 나는...", a:"완전히 끝내야 마음이 편하다", b:"끝내지 않아도 다음 일을 시작할 수 있다" },
+    { dim:3, q:"물건을 살 때 나는...", a:"미리 비교하고 결정해서 바로 산다", b:"여러 곳을 보고 즉흥적으로 결정하는 편이다" },
+  ];
 
-function generateTitles() {
-  const kw = document.getElementById('keyword').value.trim();
-  if (!kw) { alert('키워드를 입력해주세요!'); return; }
+  const MBTI_DESC = {
+    'INTJ':'전략가 — 독립적이고 장기적 시각으로 목표를 향해 움직입니다',
+    'INTP':'논리학자 — 아이디어를 파고드는 분석적 사고의 소유자입니다',
+    'ENTJ':'지휘관 — 리더십과 추진력으로 일을 이끌어가는 유형입니다',
+    'ENTP':'변론가 — 창의적 도전을 즐기며 가능성을 탐구합니다',
+    'INFJ':'옹호자 — 깊은 통찰과 이상으로 세상에 의미를 만듭니다',
+    'INFP':'중재자 — 따뜻한 가치관으로 진정성 있는 삶을 추구합니다',
+    'ENFJ':'선도자 — 사람을 이끌고 성장시키는 천부적 소통가입니다',
+    'ENFP':'활동가 — 열정과 상상력으로 새로운 가능성을 만듭니다',
+    'ISTJ':'현실주의자 — 신뢰할 수 있고 성실하게 책임을 다합니다',
+    'ISFJ':'수호자 — 헌신적으로 주변을 돌보는 따뜻한 실행가입니다',
+    'ESTJ':'경영자 — 체계와 질서로 목표를 달성하는 관리형입니다',
+    'ESFJ':'집정관 — 조화와 협력을 중시하는 사교적 돌봄형입니다',
+    'ISTP':'장인 — 침착하게 문제를 분석하고 손으로 해결합니다',
+    'ISFP':'모험가 — 자유롭고 감성적으로 현재를 즐기는 예술가입니다',
+    'ESTP':'사업가 — 대담하고 현실감각이 뛰어난 행동파입니다',
+    'ESFP':'연예인 — 활기차고 즉흥적으로 삶을 즐기는 표현형입니다',
+  };
 
-  for (let i = 1; i <= 12; i++) {
-    const pid = 'p' + i;
-    const tpls = templates[pid];
-    document.getElementById(pid).innerHTML = tpls.map(fn => makeItem(fn(kw))).join('');
+  let mbtiAnswers = [0,0,0,0]; // E/I, S/N, T/F, J/P 각 누적
+  let mbtiCounts  = [0,0,0,0];
+  let mbtiQIndex  = 0;
+
+  function openMbtiTest() {
+    mbtiAnswers = [0,0,0,0];
+    mbtiCounts  = [0,0,0,0];
+    mbtiQIndex  = 0;
+    document.getElementById('mbti-result-box').style.display = 'none';
+    document.getElementById('mbti-options').style.display    = 'flex';
+    document.getElementById('mbti-modal').classList.add('active');
+    renderMbtiQuestion();
   }
 
-  const results = document.getElementById('results');
-  results.classList.add('show');
-  setTimeout(() => results.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-}
+  function closeMbtiTest() {
+    document.getElementById('mbti-modal').classList.remove('active');
+  }
 
-function copyOne(btn, text) {
-  navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = '✅ 복사됨';
-    btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 1500);
-  });
-}
+  function closeMbtiTestOutside(e) {
+    if (e.target === document.getElementById('mbti-modal')) closeMbtiTest();
+  }
 
-function copyAll() {
-  const items = document.querySelectorAll('.title-text');
-  const all = Array.from(items).map(el => el.textContent).join('\n');
-  navigator.clipboard.writeText(all).then(() => {
-    const btn = document.querySelector('.copy-all-btn');
-    btn.textContent = '✅ 전체 복사 완료!';
-    setTimeout(() => { btn.textContent = '📋 전체 제목 복사'; }, 2000);
-  });
-}
+  function renderMbtiQuestion() {
+    const q = MBTI_QUESTIONS[mbtiQIndex];
+    document.getElementById('mbti-q-title').textContent   = `질문 ${mbtiQIndex+1} / ${MBTI_QUESTIONS.length}`;
+    document.getElementById('mbti-q-text').textContent    = q.q;
+    document.getElementById('mbti-opt-a').textContent     = q.a;
+    document.getElementById('mbti-opt-b').textContent     = q.b;
+    document.getElementById('mbti-progress-fill').style.width = `${((mbtiQIndex+1)/MBTI_QUESTIONS.length)*100}%`;
+  }
+
+  function answerMbti(choice) {
+    const q = MBTI_QUESTIONS[mbtiQIndex];
+    mbtiCounts[q.dim]++;
+    if (choice === 1) mbtiAnswers[q.dim]++; // 1 = 두번째 선택지
+    mbtiQIndex++;
+    if (mbtiQIndex >= MBTI_QUESTIONS.length) {
+      showMbtiResult();
+    } else {
+      renderMbtiQuestion();
+    }
+  }
+
+  let mbtiTestResult = ''; // 전역 변수로 결과 저장
+
+  function showMbtiResult() {
+    const dims = [
+      mbtiAnswers[0] > mbtiCounts[0]/2 ? 'I' : 'E',
+      mbtiAnswers[1] > mbtiCounts[1]/2 ? 'N' : 'S',
+      mbtiAnswers[2] > mbtiCounts[2]/2 ? 'F' : 'T',
+      mbtiAnswers[3] > mbtiCounts[3]/2 ? 'P' : 'J',
+    ];
+    mbtiTestResult = dims.join('');
+    document.getElementById('mbti-result-type').textContent = mbtiTestResult;
+    document.getElementById('mbti-result-desc').textContent = MBTI_DESC[mbtiTestResult] || '';
+    document.getElementById('mbti-progress-fill').style.width = '100%';
+    document.getElementById('mbti-options').style.display    = 'none';
+    document.getElementById('mbti-q-text').textContent = '결과가 나왔습니다';
+    document.getElementById('mbti-q-title').textContent = '테스트 완료';
+    document.getElementById('mbti-result-box').style.display = 'block';
+  }
+
+  function applyMbtiResult() {
+    const type = mbtiTestResult;
+    if (!type || type.length < 4) { closeMbtiTest(); return; }
+    // MBTI 버튼 자동 선택 + mbtiState 동기화
+    for (let g = 0; g < 4; g++) {
+      mbtiState[g] = type[g];
+    }
+    document.querySelectorAll('.mbti-btn').forEach(function(btn) {
+      var g = parseInt(btn.dataset.group);
+      if (btn.dataset.val === type[g]) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+    document.getElementById('mbti-display').textContent = type;
+    closeMbtiTest();
+  }
+
+  // ─── CALENDAR TOGGLE ───
+  let calendarType = 'solar'; // 'solar' | 'lunar'
+
+  function setCalendar(type) {
+    calendarType = type;
+    document.getElementById('solar-btn').classList.toggle('active', type === 'solar');
+    document.getElementById('lunar-btn').classList.toggle('active', type === 'lunar');
+    document.getElementById('lunar-month-type-group').style.display = type === 'lunar' ? '' : 'none';
+    document.getElementById('lunar-note').classList.toggle('visible', type === 'lunar');
+  }
+
+  // ─── MBTI STATE ───
+  const mbtiState = ['', '', '', ''];
+
+  function selectMBTI(btn) {
+    const group = parseInt(btn.dataset.group);
+    const val = btn.dataset.val;
+    mbtiState[group] = val;
+    document.querySelectorAll(`.mbti-btn[data-group="${group}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const result = mbtiState.join('');
+    document.getElementById('mbti-display').textContent = result || '—';
+  }
+
+  // ─── CONCERNS ───
+  let selectedConcerns = [];
+
+  function toggleConcern(btn) {
+    const text = btn.textContent.trim();
+    if (btn.classList.contains('active')) {
+      btn.classList.remove('active');
+      selectedConcerns = selectedConcerns.filter(c => c !== text);
+    } else {
+      if (selectedConcerns.length >= 2) return;
+      btn.classList.add('active');
+      selectedConcerns.push(text);
+    }
+    document.getElementById('concern-count').textContent = `${selectedConcerns.length} / 2 선택`;
+  }
+
+  // ─── INLINE VALIDATION ───
+  function showFieldError(fieldId, msg) {
+    const field = document.getElementById(fieldId);
+    field.classList.add('invalid');
+    let errEl = field.parentElement.querySelector('.field-error-msg');
+    if (!errEl) {
+      errEl = document.createElement('span');
+      errEl.className = 'field-error-msg';
+      field.parentElement.appendChild(errEl);
+    }
+    errEl.textContent = msg;
+    requestAnimationFrame(() => errEl.classList.add('visible'));
+    field.addEventListener('input', () => clearFieldError(fieldId), { once: true });
+    field.addEventListener('change', () => clearFieldError(fieldId), { once: true });
+  }
+
+  function clearFieldError(fieldId) {
+    const field = document.getElementById(fieldId);
+    field.classList.remove('invalid');
+    const errEl = field.parentElement.querySelector('.field-error-msg');
+    if (errEl) { errEl.classList.remove('visible'); }
+  }
+
+  function validateForm() {
+    let valid = true;
+    const checks = [
+      { id: 'name',        msg: '이름을 입력해주세요' },
+      { id: 'birth-year',  msg: '출생연도를 입력해주세요' },
+      { id: 'birth-month', msg: '월을 선택해주세요' },
+      { id: 'birth-day',   msg: '일을 입력해주세요' },
+      { id: 'gender',      msg: '성별을 선택해주세요' },
+    ];
+    checks.forEach(({ id, msg }) => {
+      const val = document.getElementById(id).value.trim();
+      if (!val) { showFieldError(id, msg); valid = false; }
+    });
+    return valid;
+  }
+
+  // ─── LOADING PHASES ───
+  const loadingPhases = [
+    '생년월일 분석 중',
+    '사주 원국 계산 중',
+    '기질과 흐름 해석 중',
+    '나만의 전략 도출 중',
+    '심층 기질 분석 중',
+    '재물운 · 관계운 분석 중',
+    '분기별 로드맵 생성 중',
+    '의사결정 가이드 작성 중',
+    '에너지 플랜 구성 중',
+    '워크북 완성 중',
+  ];
+  let phaseTimer = null;
+  let phaseIndex = 0;
+
+  function startLoadingPhases() {
+    phaseIndex = 0;
+    const el = document.getElementById('loading-phase');
+    el.textContent = loadingPhases[0];
+    el.classList.remove('fading');
+
+    phaseTimer = setInterval(() => {
+      el.classList.add('fading');
+      setTimeout(() => {
+        el.textContent = '';
+        phaseIndex = (phaseIndex + 1) % loadingPhases.length;
+        el.textContent = loadingPhases[phaseIndex];
+        el.classList.remove('fading');
+      }, 300);
+    }, 12000);
+  }
+
+  function stopLoadingPhases() {
+    if (phaseTimer) { clearInterval(phaseTimer); phaseTimer = null; }
+  }
+
+  // ─── RETRY STATE ───
+  let _lastPayload = null;
+
+  // ─── GENERATE ───
+  async function generateWorkbook() {
+    if (!validateForm()) return;
+
+    const name   = document.getElementById('name').value.trim();
+    const year   = document.getElementById('birth-year').value;
+    const month  = document.getElementById('birth-month').value;
+    const day    = document.getElementById('birth-day').value;
+    const hour   = document.getElementById('birth-hour').value;
+    const gender = document.getElementById('gender').value;
+    const mbti   = mbtiState.join('');
+
+    _lastPayload = {
+      name,
+      birth_year:       parseInt(year),
+      birth_month:      parseInt(month),
+      birth_day:        parseInt(day),
+      birth_hour:       hour || null,
+      gender,
+      mbti:             mbti || null,
+      concerns:         selectedConcerns,
+      calendar_type:    calendarType,
+      lunar_month_type: calendarType === 'lunar'
+                          ? (document.getElementById('lunar-month-type').value || 'normal')
+                          : null
+    };
+
+    document.getElementById('form-view').style.display = 'none';
+    document.getElementById('loading-screen').classList.add('active');
+    startLoadingPhases();
+
+    await callBackend(_lastPayload, { name, year, month, day, gender, mbti });
+  }
+
+  async function retryGenerate() {
+    if (!_lastPayload) { closeError(); return; }
+    const { name, birth_year: year, birth_month: month, birth_day: day, gender, mbti } = _lastPayload;
+
+    document.getElementById('error-screen').classList.remove('active');
+    document.getElementById('loading-screen').classList.add('active');
+    startLoadingPhases();
+
+    await callBackend(_lastPayload, { name, year, month, day, gender, mbti: mbti || '' });
+  }
+
+  async function callBackend(payload, info) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 300000); // 300s timeout
+
+      const response = await fetch('/generate-workbook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+
+      stopLoadingPhases();
+      document.getElementById('loading-screen').classList.remove('active');
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        showError(errData.error || `서버 응답 오류 (${response.status})`, `HTTP ${response.status}`);
+        return;
+      }
+
+      const data = await response.json();
+      showResult(info, data);
+
+    } catch (err) {
+      stopLoadingPhases();
+      document.getElementById('loading-screen').classList.remove('active');
+
+      if (err.name === 'AbortError') {
+        showError('요청 시간이 초과되었습니다.\n서버가 바쁜 상태이니 잠시 후 다시 시도해 주세요.', 'TIMEOUT');
+      } else {
+        showError('네트워크 연결을 확인해 주세요.', err.message);
+      }
+    }
+  }
+
+  // ─── ERROR SCREEN ───
+  function showError(message, detail) {
+    document.getElementById('error-body').textContent = message;
+    const detailEl = document.getElementById('error-detail');
+    if (detail) { detailEl.textContent = detail; detailEl.style.display = 'block'; }
+    else { detailEl.style.display = 'none'; }
+    document.getElementById('error-screen').classList.add('active');
+  }
+
+  function closeError() {
+    document.getElementById('error-screen').classList.remove('active');
+    document.getElementById('form-view').style.display = 'block';
+  }
+
+  // ─── SHOW RESULT (freemium) ───
+  function showResult(info, data) {
+    document.getElementById('result-name').textContent = `${info.name}님의 워크북`;
+    document.getElementById('result-meta').innerHTML =
+      `${info.year}년 ${info.month || ''}월 ${info.day || ''}일생 · ${info.gender}${info.mbti ? ` · ${info.mbti}` : ''}`;
+
+    const freeContainer   = document.getElementById('free-blocks');
+    const lockedContainer = document.getElementById('locked-blocks');
+
+    // 기존 내용 초기화 (paywall-gate는 보존)
+    const gate = lockedContainer.querySelector('.paywall-gate');
+    lockedContainer.innerHTML = '';
+    lockedContainer.appendChild(gate);
+
+    if (data.raw) {
+      freeContainer.innerHTML = `<div class="free-badge">미리보기 · 무료</div><div class="result-block"><div class="block-label">분석 결과</div><div class="block-content">${data.raw}</div></div>`;
+      document.getElementById('result-screen').classList.add('active');
+      window._workbookData = { info, data };
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // ── 무료 섹션: 사주 원국 풀이 (1섹션만) ──
+    if (data.saju_reading) {
+      freeContainer.innerHTML = `<div class="free-badge">미리보기 · 무료</div>`;
+
+      // 팔자 카드 렌더링
+      if (data.palza) {
+        const ohaengClass = {
+          '목': 'ohaeng-mok', '화': 'ohaeng-hwa', '토': 'ohaeng-to',
+          '금': 'ohaeng-geum', '수': 'ohaeng-su'
+        };
+        const cols = [
+          { label: '年柱', key: 'year' },
+          { label: '月柱', key: 'month' },
+          { label: '日柱', key: 'day',  ilju: true },
+          { label: '時柱', key: 'hour' },
+        ];
+        const palzaDiv = document.createElement('div');
+        palzaDiv.className = 'result-block';
+        palzaDiv.innerHTML = `<p class="block-label">사주 팔자</p>`;
+
+        const grid = document.createElement('div');
+        grid.className = 'palza-grid';
+
+        cols.forEach(({ label, key, ilju }) => {
+          const p = data.palza[key];
+          if (!p) return;
+          const cgClass = ohaengClass[p.cheongan_ohaeng] || 'ohaeng-geum';
+          const jjClass = ohaengClass[p.jiji_ohaeng]    || 'ohaeng-geum';
+          grid.innerHTML += `
+            <div class="palza-col">
+              <span class="palza-col-label">${label}</span>
+              <div class="palza-card ${cgClass}">
+                <span class="palza-card-hanja">${p.cheongan}</span>
+                <span class="palza-card-kor">${p.cheongan_kor}</span>
+              </div>
+              <div class="palza-card ${jjClass}">
+                <span class="palza-card-hanja">${p.jiji}</span>
+                <span class="palza-card-kor">${p.jiji_kor}</span>
+              </div>
+              ${ilju ? '<span class="palza-ilju-marker">✦ 일주</span>' : ''}
+            </div>`;
+        });
+        palzaDiv.appendChild(grid);
+        freeContainer.appendChild(palzaDiv);
+      }
+
+      freeContainer.appendChild(makeSection('사주 원국 풀이', [
+        { sub: '일주 — 나의 본질',   text: data.saju_reading.ilju },
+        { sub: '사주 전체 기운',      text: data.saju_reading.overall },
+        { sub: 'MBTI와의 연결',       text: data.saju_reading.mbti_link },
+      ]));
+    }
+
+    // ── 잠금 섹션: 나머지 4섹션 (blur 처리) ──
+    const lockedSections = [];
+
+    if (data.areas) {
+      lockedSections.push(makeSection('영역별 흐름', [
+        { sub: '일 · 커리어',    text: data.areas.career },
+        { sub: '관계 · 사람',    text: data.areas.relationship },
+        { sub: '돈 · 재물',      text: data.areas.money },
+        { sub: '건강 · 에너지',  text: data.areas.health },
+      ]));
+    }
+
+    // 월별 흐름 (뱃지 포함, 12개월)
+    if (data.monthly && Array.isArray(data.monthly)) {
+      const BADGE_MAP = {
+        money1:     { label: '💰 금전운 1위',    cls: 'badge-money1' },
+        money2:     { label: '💰 금전운 2위',    cls: 'badge-money2' },
+        move:       { label: '🔵 이사·이직 적기', cls: 'badge-move' },
+        marriage:   { label: '🩷 결혼운',        cls: 'badge-marriage' },
+        health:     { label: '🔴 건강 주의',     cls: 'badge-health' },
+        realestate: { label: '🟢 부동산 적기',   cls: 'badge-realestate' },
+      };
+      const monthDiv = document.createElement('div');
+      monthDiv.className = 'result-block';
+      let monthHtml = `<p class="block-label">월별 흐름 — 1년</p>`;
+      data.monthly.forEach(m => {
+        const badgeHtml = (m.badges || [])
+          .map(b => BADGE_MAP[b] ? `<span class="month-badge ${BADGE_MAP[b].cls}">${BADGE_MAP[b].label}</span>` : '')
+          .join('');
+        monthHtml += `
+          <div class="month-row">
+            <div class="month-row-top">
+              <span class="month-name">${m.month}</span>
+              <span class="month-keyword">${m.keyword}</span>
+              ${badgeHtml ? `<span class="month-badges">${badgeHtml}</span>` : ''}
+            </div>
+            <p class="month-desc">${m.desc}</p>
+          </div>`;
+      });
+      monthDiv.innerHTML = monthHtml;
+      lockedSections.push(monthDiv);
+    }
+
+    // 금전운 베스트 + 인생 주요 이벤트
+    if (data.money_best || data.life_events) {
+      const evDiv = document.createElement('div');
+      evDiv.className = 'result-block';
+      let evHtml = `<p class="block-label">주요 시기 한눈에 보기</p>`;
+      if (data.money_best) {
+        if (data.money_best.rank1) evHtml += `<div class="sub-block"><p class="sub-label">💰 금전운 1위</p><p class="block-content">${data.money_best.rank1}</p></div>`;
+        if (data.money_best.rank2) evHtml += `<div class="sub-block"><p class="sub-label">💰 금전운 2위</p><p class="block-content">${data.money_best.rank2}</p></div>`;
+      }
+      if (data.life_events) {
+        const ev = data.life_events;
+        if (ev.move_job)     evHtml += `<div class="sub-block"><p class="sub-label">🔵 이사·이직 적기</p><p class="block-content">${ev.move_job}</p></div>`;
+        if (ev.marriage)     evHtml += `<div class="sub-block"><p class="sub-label">🩷 결혼운</p><p class="block-content">${ev.marriage}</p></div>`;
+        if (ev.health_warn)  evHtml += `<div class="sub-block"><p class="sub-label">🔴 건강 주의</p><p class="block-content">${ev.health_warn}</p></div>`;
+        if (ev.real_estate)  evHtml += `<div class="sub-block"><p class="sub-label">🟢 부동산 적기</p><p class="block-content">${ev.real_estate}</p></div>`;
+      }
+      evDiv.innerHTML = evHtml;
+      lockedSections.push(evDiv);
+    }
+
+    if (data.strategy) {
+      lockedSections.push(makeSection('기질 기반 나만의 전략', [
+        { sub: '강점 활용법',       text: data.strategy.strength },
+        { sub: '나에게 맞는 방식',  text: data.strategy.method },
+        { sub: '피해야 할 패턴',    text: data.strategy.avoid },
+      ]));
+    }
+
+    if (data.big_decision) {
+      const halfLabel = new Date().getMonth() < 6 ? '상반기' : '하반기';
+      lockedSections.push(makeSection('지금 큰 결정 앞에서', [
+        { sub: '지금 이 시기의 의미',   text: data.big_decision.timing },
+        { sub: '고민에 대한 답',         text: data.big_decision.concern_answer },
+        { sub: '이번 달 단 한 가지',     text: data.big_decision.monthly_action },
+        { sub: `${halfLabel} 단 한 가지 할 일`, text: data.big_decision.halfyear_action },
+      ]));
+    }
+
+    // ── 확장 워크북 섹션 (2차 API) ──
+    const ext = data.extended;
+    if (ext) {
+
+      // 6. 나의 기질 심층 분석
+      if (ext.deep_personality) {
+        const dp = ext.deep_personality;
+        const dpDiv = document.createElement('div');
+        dpDiv.className = 'result-block';
+        let dpHtml = `<p class="block-label">나의 기질 심층 분석</p>`;
+        if (dp.intro) {
+          dpHtml += `<div class="sub-block"><p class="block-content">${dp.intro}</p></div>`;
+        }
+        if (dp.patterns && Array.isArray(dp.patterns)) {
+          dp.patterns.forEach(p => {
+            dpHtml += `
+              <div class="pattern-card">
+                <p class="pattern-name">✦ ${p.name}</p>
+                <p class="pattern-desc">${p.desc}</p>
+                <div class="example-box">
+                  <p class="example-label">실제 상황 예시</p>
+                  <p class="example-row"><strong>상황</strong>${p.situation}</p>
+                  <p class="example-row"><strong>반응</strong>${p.reaction}</p>
+                  <p class="tip-row">💡 ${p.tip}</p>
+                </div>
+              </div>`;
+          });
+        }
+        if (dp.mbti_deep) {
+          dpHtml += `
+            <div class="sub-block" style="margin-top:2rem;">
+              <p class="sub-label">MBTI × 사주 교차 분석</p>
+              <p class="block-content">${dp.mbti_deep}</p>
+            </div>`;
+        }
+        dpDiv.innerHTML = dpHtml;
+        lockedSections.push(dpDiv);
+      }
+
+      // 7. 재물운 실전 가이드
+      if (ext.money_guide) {
+        const mg = ext.money_guide;
+        const mgDiv = document.createElement('div');
+        mgDiv.className = 'result-block';
+        let mgHtml = `<p class="block-label">재물운 실전 가이드</p>`;
+        const mgItems = [
+          { sub: '💰 돈 버는 패턴', text: mg.earning },
+          { sub: '💸 돈 쓰는 패턴', text: mg.spending },
+          { sub: '🏦 돈 모으는 방식', text: mg.saving },
+          { sub: '📊 나에게 맞는 수익 구조', text: mg.best_structure },
+          { sub: '📅 올해 재물 타이밍', text: mg.yearly_timing },
+          { sub: '⚠ 올해 특히 조심할 점', text: mg.caution },
+        ];
+        mgItems.forEach(({ sub, text }) => {
+          if (!text) return;
+          mgHtml += `<div class="sub-block"><p class="sub-label">${sub}</p><p class="block-content">${text}</p></div>`;
+        });
+        mgDiv.innerHTML = mgHtml;
+        lockedSections.push(mgDiv);
+      }
+
+      // 8. 관계 운영 매뉴얼
+      if (ext.relationship_guide) {
+        const rg = ext.relationship_guide;
+        const rgDiv = document.createElement('div');
+        rgDiv.className = 'result-block';
+        let rgHtml = `<p class="block-label">관계 운영 매뉴얼</p>`;
+        const rgItems = [
+          { sub: '🤝 나와 잘 맞는 사람', text: rg.compatible },
+          { sub: '⚡ 조심할 관계 패턴', text: rg.caution_pattern },
+          { sub: '💼 사업 파트너십 조언', text: rg.business_partner },
+          { sub: '🔄 갈등 시 대처법', text: rg.conflict_style },
+        ];
+        rgItems.forEach(({ sub, text }) => {
+          if (!text) return;
+          rgHtml += `<div class="sub-block"><p class="sub-label">${sub}</p><p class="block-content">${text}</p></div>`;
+        });
+        if (rg.scenario) {
+          rgHtml += `
+            <div class="example-box" style="margin-top:1.5rem;">
+              <p class="example-label">실전 시나리오</p>
+              <p class="block-content">${rg.scenario}</p>
+            </div>`;
+        }
+        rgDiv.innerHTML = rgHtml;
+        lockedSections.push(rgDiv);
+      }
+
+      // 9. 분기별 실행 로드맵
+      if (ext.quarterly_roadmap) {
+        const qr = ext.quarterly_roadmap;
+        const qrDiv = document.createElement('div');
+        qrDiv.className = 'result-block';
+        let qrHtml = `<p class="block-label">분기별 실행 로드맵</p>`;
+        if (qr.overview) {
+          qrHtml += `<div class="sub-block"><p class="block-content">${qr.overview}</p></div>`;
+        }
+        qrHtml += `<div class="quarter-grid">`;
+        ['q1','q2','q3','q4'].forEach((qKey, idx) => {
+          const q = qr[qKey];
+          if (!q) return;
+          const eClass = (q.energy||'').includes('상') ? 'energy-high' : (q.energy||'').includes('하') ? 'energy-low' : 'energy-mid';
+          const qLabel = ['1분기 (1~3월)','2분기 (4~6월)','3분기 (7~9월)','4분기 (10~12월)'][idx];
+          qrHtml += `
+            <div class="quarter-card">
+              <div class="quarter-header">
+                <span class="quarter-label">${qLabel}</span>
+                <span class="energy-badge ${eClass}">에너지 ${q.energy || '중'}</span>
+              </div>
+              <p class="quarter-theme">${q.theme}</p>
+              <p class="quarter-desc">${q.desc}</p>
+              <p class="quarter-action">${q.action1}</p>
+              <p class="quarter-action">${q.action2}</p>
+              <p class="quarter-action">${q.action3}</p>
+              ${q.caution ? `<p class="quarter-caution">${q.caution}</p>` : ''}
+            </div>`;
+        });
+        qrHtml += `</div>`;
+        qrDiv.innerHTML = qrHtml;
+        lockedSections.push(qrDiv);
+      }
+
+      // 10. 기질 맞춤 의사결정 가이드
+      if (ext.decision_guide) {
+        const dg = ext.decision_guide;
+        const dgDiv = document.createElement('div');
+        dgDiv.className = 'result-block';
+        let dgHtml = `<p class="block-label">기질 맞춤 의사결정 가이드</p>`;
+        if (dg.style) dgHtml += `<div class="sub-block"><p class="sub-label">나의 판단 스타일</p><p class="block-content">${dg.style}</p></div>`;
+        if (dg.strengths) dgHtml += `<div class="sub-block"><p class="sub-label">의사결정 강점</p><p class="block-content">${dg.strengths}</p></div>`;
+        if (dg.blindspots) dgHtml += `<div class="sub-block"><p class="sub-label">놓치기 쉬운 점</p><p class="block-content">${dg.blindspots}</p></div>`;
+
+        if (dg.checklist && Array.isArray(dg.checklist)) {
+          dgHtml += `<div class="sub-block"><p class="sub-label">큰 결정 전 체크리스트</p>`;
+          dg.checklist.forEach((item, i) => {
+            dgHtml += `<div class="checklist-item"><span class="checklist-num">${i+1}.</span><span>${item}</span></div>`;
+          });
+          dgHtml += `</div>`;
+        }
+
+        if (dg.this_month) dgHtml += `<div class="sub-block"><p class="sub-label">✦ 이번 달, 결정의 기준</p><p class="block-content">${dg.this_month}</p></div>`;
+        if (dg.next_3months) dgHtml += `<div class="sub-block"><p class="sub-label">✦ 향후 3개월 흐름</p><p class="block-content">${dg.next_3months}</p></div>`;
+        if (dg.year_message) dgHtml += `
+          <div class="example-box" style="margin-top:1.5rem;">
+            <p class="example-label">올해, 나에게 보내는 메시지</p>
+            <p class="block-content" style="color:rgba(201,169,110,0.85);">${dg.year_message}</p>
+          </div>`;
+        dgDiv.innerHTML = dgHtml;
+        lockedSections.push(dgDiv);
+      }
+
+      // 11. 에너지 & 번아웃 방지 플랜
+      if (ext.energy_plan) {
+        const ep = ext.energy_plan;
+        const epDiv = document.createElement('div');
+        epDiv.className = 'result-block';
+        let epHtml = `<p class="block-label">에너지 & 번아웃 방지 플랜</p>`;
+
+        if (ep.burnout_signal) {
+          epHtml += `<div class="sub-block"><p class="sub-label">🔴 나의 번아웃 전조 신호</p><p class="block-content">${ep.burnout_signal}</p></div>`;
+        }
+
+        if (ep.recovery_methods && Array.isArray(ep.recovery_methods)) {
+          epHtml += `<div class="sub-block"><p class="sub-label">🟢 나에게 맞는 회복법</p>`;
+          ep.recovery_methods.forEach(r => {
+            epHtml += `<div class="recovery-card"><p class="recovery-name">✦ ${r.method}</p><p class="recovery-desc">${r.desc}</p></div>`;
+          });
+          epHtml += `</div>`;
+        }
+
+        if (ep.monthly_energy && Array.isArray(ep.monthly_energy)) {
+          epHtml += `<div class="sub-block"><p class="sub-label">📊 월별 에너지 흐름</p>`;
+          ep.monthly_energy.forEach(me => {
+            const lvl = (me.level||'').includes('상') ? 'level-high' : (me.level||'').includes('하') ? 'level-low' : 'level-mid';
+            epHtml += `
+              <div class="energy-month-row">
+                <span class="energy-month-name">${me.month}</span>
+                <div class="energy-bar-track"><div class="energy-bar-fill ${lvl}"></div></div>
+                <span class="energy-month-tip">${me.tip}</span>
+              </div>`;
+          });
+          epHtml += `</div>`;
+        }
+
+        if (ep.best_rest) {
+          epHtml += `<div class="sub-block"><p class="sub-label">✦ 진짜 회복이 되는 휴식</p><p class="block-content">${ep.best_rest}</p></div>`;
+        }
+        epDiv.innerHTML = epHtml;
+        lockedSections.push(epDiv);
+      }
+    } // end ext
+
+    // paywall gate 앞에 잠금 섹션들 삽입
+    lockedSections.forEach(el => lockedContainer.insertBefore(el, gate));
+
+    // 테스트 모드면 페이월 없이 전체 공개
+    if (IS_TEST) {
+      gate.style.display = 'none';
+      lockedContainer.style.filter = 'none';
+      lockedContainer.style.opacity = '1';
+      lockedContainer.style.pointerEvents = 'auto';
+      lockedContainer.style.userSelect = 'auto';
+      lockedContainer.querySelectorAll('.result-block').forEach(el => {
+        el.style.filter = 'none';
+        el.style.opacity = '1';
+      });
+    }
+
+    document.getElementById('result-screen').classList.add('active');
+    window._workbookData = { info, data };
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ─── PAYMENT ───
+  function handlePayment() {
+    // 토스페이먼츠 연동 전 임시: 이메일 입력 모달 또는 라우트 호출
+    // TODO: 결제 연동 후 교체
+    const email = prompt('결제 후 PDF를 받으실 이메일 주소를 입력해주세요:');
+    if (!email || !email.includes('@')) {
+      alert('올바른 이메일을 입력해주세요.');
+      return;
+    }
+    alert(`준비 중입니다.\n곧 ${email}으로 결제 링크를 보내드릴게요.`);
+  }
+
+  function makeSection(title, items) {
+    const div = document.createElement('div');
+    div.className = 'result-block';
+    let html = `<p class="block-label">${title}</p>`;
+    items.forEach(({ sub, text }) => {
+      if (!text) return;
+      html += `
+        <div class="sub-block">
+          <p class="sub-label">${sub}</p>
+          <p class="block-content">${text}</p>
+        </div>`;
+    });
+    div.innerHTML = html;
+    return div;
+  }
+
+  // ─── RESET ───
+  function resetForm() {
+    document.getElementById('result-screen').classList.remove('active');
+    document.getElementById('error-screen').classList.remove('active');
+    document.getElementById('loading-screen').classList.remove('active');
+    document.getElementById('form-view').style.display = 'block';
+    document.getElementById('result-blocks').innerHTML = '';
+
+    document.getElementById('name').value = '';
+    document.getElementById('birth-year').value = '';
+    document.getElementById('birth-month').value = '';
+    document.getElementById('birth-day').value = '';
+    document.getElementById('birth-hour').value = '';
+    document.getElementById('gender').value = '';
+    mbtiState.fill('');
+    document.querySelectorAll('.mbti-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('mbti-display').textContent = '—';
+    selectedConcerns = [];
+    document.querySelectorAll('.concern-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('concern-count').textContent = '0 / 2 선택';
+    document.querySelectorAll('.field-error-msg').forEach(el => el.remove());
+    document.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid'));
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ─── DOWNLOAD (결제 후 활성화 예정) ───
+  function downloadPDF() {
+    // 토스페이먼츠 결제 완료 후 서버에서 PDF 이메일 발송 방식으로 교체 예정
+    handlePayment();
+  }
 </script>
 </body>
 </html>
