@@ -1,11 +1,17 @@
 import { Redis } from '@upstash/redis';
 
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL,
-  token: process.env.KV_REST_API_TOKEN,
-});
-
 const DAILY_LIMIT = 5;
+
+let redis;
+function getRedis() {
+  if (!redis) {
+    redis = new Redis({
+      url: process.env.KV_REST_API_URL,
+      token: process.env.KV_REST_API_TOKEN,
+    });
+  }
+  return redis;
+}
 
 function getClientIp(req) {
   return (
@@ -39,7 +45,7 @@ export default async function handler(req, res) {
     // IP 기반 rate limit 체크
     const ip = getClientIp(req);
     const key = getTodayKey(ip);
-    const count = (await redis.get(key)) || 0;
+    const count = (await getRedis().get(key)) || 0;
 
     if (count >= DAILY_LIMIT) {
       return res.status(429).json({
@@ -82,8 +88,8 @@ export default async function handler(req, res) {
     }
 
     // 성공 시 카운트 증가 (TTL 24시간)
-    await redis.incr(key);
-    await redis.expire(key, 86400);
+    await getRedis().incr(key);
+    await getRedis().expire(key, 86400);
 
     const remaining = DAILY_LIMIT - count - 1;
 
