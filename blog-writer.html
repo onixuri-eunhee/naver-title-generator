@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-C61VWMGQ8R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-C61VWMGQ8R');
+</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4973804132466200" crossorigin="anonymous"></script>
+<title>일상 블로그 글 생성기 | 뚝딱툴</title>
+<meta name="description" content="오늘 있었던 일 한 줄만 입력하면 SEO에 최적화된 블로그 글을 즉시 생성합니다. 자영업자를 위한 AI 블로그 작가." />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://ddukddaktool.co.kr/blog-writer.html" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green: #00C73C;
+  --green-dark: #00A832;
+  --navy: #1A1A2E;
+  --navy2: #16213E;
+  --navy3: #0F3460;
+  --gray: #F8F9FD;
+  --border: #E5E7EB;
+  --text: #374151;
+  --muted: #9CA3AF;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: var(--gray); color: var(--navy); min-height: 100vh; }
+
+/* NAVBAR */
+.navbar {
+  background: #fff; border-bottom: 1px solid var(--border);
+  padding: 0 20px; display: flex; align-items: center;
+  justify-content: space-between; height: 52px;
+  position: sticky; top: 0; z-index: 100;
+}
+.navbar-logo { font-size: 18px; font-weight: 900; color: var(--navy); text-decoration: none; }
+.navbar-logo span { color: var(--green); }
+.navbar-links { display: flex; gap: 4px; }
+.navbar-links a {
+  padding: 7px 14px; border-radius: 8px; font-size: 13px;
+  font-weight: 500; color: var(--muted); text-decoration: none; transition: all 0.15s;
+}
+.navbar-links a:hover { background: var(--gray); color: var(--navy); }
+
+/* HERO */
+.hero {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 50%, var(--navy3) 100%);
+  padding: 48px 20px 40px; text-align: center; position: relative; overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(0,199,60,0.1) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 20%, rgba(46,134,255,0.07) 0%, transparent 55%);
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(0,199,60,0.15); color: var(--green);
+  border: 1px solid rgba(0,199,60,0.3);
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; margin-bottom: 18px; letter-spacing: 0.05em;
+}
+.hero h1 {
+  font-size: clamp(22px, 4.5vw, 36px); font-weight: 700;
+  color: #fff; line-height: 1.35; margin-bottom: 12px; letter-spacing: -0.5px;
+  position: relative;
+}
+.hero h1 em { color: var(--green); font-style: normal; }
+.hero p { color: rgba(255,255,255,0.55); font-size: 14px; line-height: 1.8; position: relative; }
+
+/* MAIN */
+.main { max-width: 800px; margin: 0 auto; padding: 32px 20px 80px; }
+
+/* CARD */
+.card {
+  background: #fff; border-radius: 16px; padding: 28px;
+  border: 1px solid var(--border); margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+.card-title {
+  font-size: 14px; font-weight: 700; color: var(--muted);
+  letter-spacing: 0.05em; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title span { 
+  background: var(--navy); color: #fff; 
+  width: 20px; height: 20px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 900; flex-shrink: 0;
+}
+
+/* FORM */
+label { display: block; font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+label .req { color: var(--green); margin-left: 2px; }
+input[type=text], textarea, select {
+  width: 100%; padding: 13px 16px;
+  border: 1.5px solid var(--border); border-radius: 12px;
+  font-family: 'Noto Sans KR', sans-serif; font-size: 14px;
+  color: var(--navy); background: #fff; outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input[type=text]:focus, textarea:focus, select:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(0,199,60,0.1);
+}
+textarea { resize: vertical; min-height: 90px; line-height: 1.7; }
+select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239CA3AF' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+
+/* 소재 태그 */
+.topic-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.topic-tag {
+  padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;
+  cursor: pointer; border: 1.5px solid var(--border); background: #fff;
+  color: var(--muted); transition: all 0.15s; user-select: none;
+}
+.topic-tag:hover { border-color: var(--green); color: var(--green); }
+.topic-tag.active { background: var(--green); color: #fff; border-color: var(--green); }
+
+/* 생성 버튼 */
+.btn-generate {
+  width: 100%; padding: 16px; background: var(--green);
+  color: #fff; border: none; border-radius: 14px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 16px; font-weight: 700; cursor: pointer;
+  transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-generate:hover { background: var(--green-dark); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,199,60,0.3); }
+.btn-generate:disabled { background: var(--muted); cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* 로딩 */
+.loading {
+  display: none; text-align: center; padding: 48px 20px;
+}
+.loading.show { display: block; }
+.loading-spinner {
+  width: 40px; height: 40px; border: 3px solid var(--border);
+  border-top-color: var(--green); border-radius: 50%;
+  animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; color: var(--muted); }
+.loading-steps { margin-top: 12px; font-size: 13px; color: var(--green); font-weight: 600; }
+
+/* 결과 */
+.result { display: none; }
+.result.show { display: block; }
+
+.result-card {
+  background: #fff; border-radius: 16px;
+  border: 1px solid var(--border); margin-bottom: 16px;
+  overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+.result-card-header {
+  padding: 16px 24px; background: var(--gray);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.result-card-header h3 { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 0.05em; }
+.copy-btn {
+  padding: 6px 14px; border-radius: 8px; border: 1.5px solid var(--border);
+  background: #fff; font-size: 12px; font-weight: 700; color: var(--muted);
+  cursor: pointer; transition: all 0.15s; font-family: 'Noto Sans KR', sans-serif;
+}
+.copy-btn:hover { border-color: var(--green); color: var(--green); }
+.copy-btn.copied { background: var(--green); color: #fff; border-color: var(--green); }
+.result-card-body { padding: 24px; }
+.result-title { font-size: 20px; font-weight: 900; color: var(--navy); line-height: 1.4; }
+.result-text { font-size: 14px; color: var(--text); line-height: 1.9; white-space: pre-wrap; }
+.result-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.result-tag {
+  background: var(--gray); border: 1px solid var(--border);
+  border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 600; color: var(--text);
+}
+
+/* 전체 복사 버튼 */
+.btn-copy-all {
+  width: 100%; padding: 14px; background: var(--navy);
+  color: #fff; border: none; border-radius: 14px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+  margin-bottom: 16px;
+}
+.btn-copy-all:hover { background: var(--navy2); transform: translateY(-1px); }
+
+/* 다시 생성 */
+.btn-reset {
+  width: 100%; padding: 14px; background: transparent;
+  color: var(--muted); border: 1.5px solid var(--border); border-radius: 14px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+}
+.btn-reset:hover { border-color: var(--navy); color: var(--navy); }
+
+/* 에러 */
+.error-box {
+  display: none; background: #FEF2F2; border: 1.5px solid #FCA5A5;
+  border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; font-size: 14px; color: #991B1B;
+}
+.error-box.show { display: block; }
+
+/* 도구 모음 */
+.tools-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 32px; }
+@media (max-width: 480px) { .tools-grid { grid-template-columns: 1fr; } }
+.tool-link {
+  background: #fff; border: 1.5px solid var(--border); border-radius: 14px;
+  padding: 18px; text-decoration: none; display: block; transition: all 0.2s;
+}
+.tool-link:hover { border-color: var(--green); box-shadow: 0 4px 16px rgba(0,199,60,0.12); }
+.tool-link-label { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+.tool-link-name { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 3px; }
+.tool-link-desc { font-size: 12px; color: var(--muted); }
+
+/* footer */
+footer {
+  text-align: center; padding: 28px 20px;
+  font-size: 13px; color: var(--muted);
+  border-top: 1px solid var(--border); background: #fff;
+}
+footer a { color: var(--muted); text-decoration: none; margin: 0 8px; }
+
+@media (max-width: 600px) {
+  .card { padding: 20px; }
+  .hero { padding: 36px 20px 32px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
+  <div class="navbar-links">
+    <a href="/">📝 제목</a>
+    <a href="hook-generator.html">🔥 후킹</a>
+    <a href="about.html">소개</a>
+    <a href="privacy.html">개인정보</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">✍️ AI 블로그 작가</div>
+  <h1>오늘 있었던 일 한 줄만 쓰세요<br><em>SEO 블로그 글이 완성됩니다</em></h1>
+  <p>신메뉴, 오늘의 고객, 재료 준비… 어떤 일상이든<br>검색에 노출되는 블로그 글로 바꿔드립니다</p>
+</div>
+
+<div class="main">
+
+  <!-- 입력 폼 -->
+  <div id="form-section">
+
+    <div class="card">
+      <div class="card-title"><span>1</span> 업종 입력</div>
+      <label>내 업종 <span class="req">*</span></label>
+      <input type="text" id="industry" placeholder="예) 미용실, 카페, 헬스장, 공부방, 한식당..." maxlength="20">
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>2</span> 오늘의 소재 선택</div>
+      <label>소재 유형 <span class="req">*</span></label>
+      <div class="topic-tags">
+        <div class="topic-tag" onclick="selectTopic(this,'신메뉴 출시')">🍽 신메뉴 출시</div>
+        <div class="topic-tag" onclick="selectTopic(this,'오늘의 메뉴')">📋 오늘의 메뉴</div>
+        <div class="topic-tag" onclick="selectTopic(this,'오늘 만난 고객')">🤝 오늘 만난 고객</div>
+        <div class="topic-tag" onclick="selectTopic(this,'재료 준비')">🥬 재료 준비</div>
+        <div class="topic-tag" onclick="selectTopic(this,'우리 가게 자랑')">🏆 우리 가게 자랑</div>
+        <div class="topic-tag" onclick="selectTopic(this,'이벤트·할인')">🎁 이벤트·할인</div>
+        <div class="topic-tag" onclick="selectTopic(this,'비하인드 스토리')">📸 비하인드 스토리</div>
+        <div class="topic-tag" onclick="selectTopic(this,'계절·날씨')">🌤 계절·날씨</div>
+      </div>
+      <input type="text" id="topic-input" placeholder="또는 직접 입력하세요..." maxlength="30" style="margin-top:4px;">
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>3</span> 한 줄 메모</div>
+      <label>오늘 있었던 일이나 강조하고 싶은 것 <span class="req">*</span></label>
+      <textarea id="memo" placeholder="예) 국산 딸기만 써서 색이 정말 진하게 나왔음&#10;예) 10년 단골 어머니가 오늘도 오심&#10;예) 새벽 5시에 시장 가서 직접 고른 재료&#10;예) 이 동네에서 유일하게 직화로 굽는 곳" maxlength="200"></textarea>
+      <div style="text-align:right; font-size:12px; color:var(--muted); margin-top:6px;"><span id="memo-count">0</span>/200</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>4</span> 글 스타일 (선택)</div>
+      <label>톤앤매너</label>
+      <select id="tone">
+        <option value="따뜻하고 진솔한">따뜻하고 진솔한 (기본)</option>
+        <option value="전문적이고 신뢰감 있는">전문적이고 신뢰감 있는</option>
+        <option value="친근하고 유머러스한">친근하고 유머러스한</option>
+        <option value="감성적이고 스토리텔링형">감성적이고 스토리텔링형</option>
+      </select>
+    </div>
+
+    <div class="error-box" id="error-box"></div>
+
+    <button class="btn-generate" id="btn-generate" onclick="generateBlog()">
+      ✍️ 블로그 글 생성하기
+    </button>
+
+  </div>
+
+  <!-- 로딩 -->
+  <div class="loading" id="loading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">AI가 블로그 글을 작성하고 있습니다...</div>
+    <div class="loading-steps" id="loading-step">📝 SEO 키워드 분석 중...</div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="result" id="result">
+
+    <div class="result-card">
+      <div class="result-card-header">
+        <h3>📌 블로그 제목</h3>
+        <button class="copy-btn" onclick="copySection('title-result', this)">복사</button>
+      </div>
+      <div class="result-card-body">
+        <div class="result-title" id="title-result"></div>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-card-header">
+        <h3>🔥 도입부 후킹문구</h3>
+        <button class="copy-btn" onclick="copySection('hook-result', this)">복사</button>
+      </div>
+      <div class="result-card-body">
+        <div class="result-text" id="hook-result"></div>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-card-header">
+        <h3>📄 본문</h3>
+        <button class="copy-btn" onclick="copySection('body-result', this)">복사</button>
+      </div>
+      <div class="result-card-body">
+        <div class="result-text" id="body-result"></div>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-card-header">
+        <h3>💬 마무리 CTA</h3>
+        <button class="copy-btn" onclick="copySection('cta-result', this)">복사</button>
+      </div>
+      <div class="result-card-body">
+        <div class="result-text" id="cta-result"></div>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-card-header">
+        <h3>#️⃣ 해시태그</h3>
+        <button class="copy-btn" onclick="copySection('tags-result', this)">복사</button>
+      </div>
+      <div class="result-card-body">
+        <div class="result-tags" id="tags-result"></div>
+      </div>
+    </div>
+
+    <button class="btn-copy-all" onclick="copyAll()">📋 전체 글 한 번에 복사</button>
+    <button class="btn-reset" onclick="resetForm()">↩ 다른 소재로 다시 쓰기</button>
+
+    <!-- 도구 모음 -->
+    <div style="margin-top: 32px;">
+      <div style="font-size:13px; font-weight:700; color:var(--muted); letter-spacing:0.05em; margin-bottom:14px;">🛠 뚝딱툴 도구 모음</div>
+      <div class="tools-grid">
+        <a href="/" class="tool-link">
+          <div class="tool-link-label">바로가기 →</div>
+          <div class="tool-link-name">📝 블로그 제목 생성기</div>
+          <div class="tool-link-desc">키워드 → 클릭 부르는 제목 12패턴</div>
+        </a>
+        <a href="hook-generator.html" class="tool-link">
+          <div class="tool-link-label">바로가기 →</div>
+          <div class="tool-link-name">🔥 후킹문구 생성기</div>
+          <div class="tool-link-desc">업종 + 키워드 → 스크롤 멈추는 문구 15개</div>
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<footer>
+  © 2026 뚝딱툴 &nbsp;|&nbsp;
+  <a href="/">홈</a>
+  <a href="about.html">소개</a>
+  <a href="contact.html">연락처</a>
+  <a href="privacy.html">개인정보처리방침</a>
+  <a href="terms.html">이용약관</a>
+</footer>
+
+<script>
+let selectedTopic = '';
+let generatedData = {};
+
+// 소재 태그 선택
+function selectTopic(el, value) {
+  document.querySelectorAll('.topic-tag').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  selectedTopic = value;
+  document.getElementById('topic-input').value = '';
+}
+
+// 메모 글자수
+document.getElementById('memo').addEventListener('input', function() {
+  document.getElementById('memo-count').textContent = this.value.length;
+});
+
+// 직접 입력 시 태그 해제
+document.getElementById('topic-input').addEventListener('input', function() {
+  if (this.value) {
+    document.querySelectorAll('.topic-tag').forEach(t => t.classList.remove('active'));
+    selectedTopic = '';
+  }
+});
+
+// 로딩 스텝 메시지
+const loadingSteps = [
+  '📝 SEO 키워드 분석 중...',
+  '🔍 검색 의도 파악 중...',
+  '✍️ 후킹 도입부 작성 중...',
+  '📄 본문 구성 중...',
+  '🏷 해시태그 추출 중...',
+];
+let stepIndex = 0;
+let stepInterval;
+
+function startLoadingSteps() {
+  stepIndex = 0;
+  document.getElementById('loading-step').textContent = loadingSteps[0];
+  stepInterval = setInterval(() => {
+    stepIndex = (stepIndex + 1) % loadingSteps.length;
+    document.getElementById('loading-step').textContent = loadingSteps[stepIndex];
+  }, 1800);
+}
+
+function stopLoadingSteps() {
+  clearInterval(stepInterval);
+}
+
+// 메인 생성 함수
+async function generateBlog() {
+  const industry = document.getElementById('industry').value.trim();
+  const topicInput = document.getElementById('topic-input').value.trim();
+  const topic = selectedTopic || topicInput;
+  const memo = document.getElementById('memo').value.trim();
+  const tone = document.getElementById('tone').value;
+  const errorBox = document.getElementById('error-box');
+
+  // 유효성 검사
+  errorBox.classList.remove('show');
+  if (!industry) { showError('업종을 입력해주세요.'); return; }
+  if (!topic) { showError('소재를 선택하거나 직접 입력해주세요.'); return; }
+  if (!memo) { showError('오늘 있었던 일을 한 줄 입력해주세요.'); return; }
+
+  // UI 전환
+  document.getElementById('form-section').style.display = 'none';
+  document.getElementById('loading').classList.add('show');
+  document.getElementById('result').classList.remove('show');
+  startLoadingSteps();
+
+  const prompt = `당신은 네이버 블로그 전문 작가입니다.
+실제 자영업자가 직접 쓴 것처럼 자연스럽고, 독자 중심으로 글을 써야 합니다.
+
+아래는 참고할 네이버 블로그 우수 글의 핵심 패턴입니다.
+
+【글쓰기 스타일 규칙 - 반드시 지킬 것】
+1. 문단은 반드시 1~3줄로 짧게 끊을 것
+2. 줄바꿈을 의도적으로 자주 사용해 호흡을 만들 것
+3. 도입부는 반드시 독자의 상황이나 고민에서 시작할 것 (가게 소개 금지)
+4. "안녕하세요", "오늘은 ~에 대해 알아보겠습니다" 절대 금지
+5. 소제목은 【01.】 【02.】 형태로 쓸 것
+6. 강조할 문장은 단독 줄로 분리해서 띄어쓸 것
+7. 광고처럼 보이는 표현 금지 (최고, 최저, 1등, 강추 등)
+8. 가게 자랑은 고객 관점에서 간접적으로 쓸 것
+9. SEO 키워드는 제목·도입부·소제목에 자연스럽게 포함
+10. 말투: ${tone}
+
+업종: ${industry}
+오늘의 소재: ${topic}
+핵심 내용: ${memo}
+
+아래 JSON 형식으로만 응답하세요. 다른 텍스트는 절대 포함하지 마세요.
+
+{
+  "title": "제목 (20~30자. 손실회피형/역설형/궁금증형/숫자형 중 하나)",
+  "hook": "도입부 (독자 상황 공감에서 시작. \\n\\n으로 문단 구분. 5~7문장. 짧고 강하게)",
+  "body": "본문 (【01.】【02.】【03.】 소제목 3개로 구성. 각 파트 짧은 문단. \\n\\n으로 구분. 전체 500~700자)",
+  "cta": "마무리 (2~3문장. 광고 느낌 없이 자연스럽게 다음 행동 유도)",
+  "tags": ["태그1","태그2","태그3","태그4","태그5","태그6","태그7","태그8","태그9","태그10"]
+}`;
+
+  try {
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: prompt })
+    });
+
+    const data = await response.json();
+    const text = data.content?.find(b => b.type === 'text')?.text || '';
+
+    // JSON 파싱
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    generatedData = parsed;
+    renderResult(parsed);
+
+  } catch (err) {
+    console.error(err);
+    stopLoadingSteps();
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('form-section').style.display = 'block';
+    showError('생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+  }
+}
+
+function renderResult(data) {
+  stopLoadingSteps();
+
+  document.getElementById('title-result').textContent = data.title || '';
+  document.getElementById('hook-result').textContent = data.hook || '';
+  document.getElementById('body-result').textContent = data.body || '';
+  document.getElementById('cta-result').textContent = data.cta || '';
+
+  const tagsEl = document.getElementById('tags-result');
+  tagsEl.innerHTML = '';
+  (data.tags || []).forEach(tag => {
+    const span = document.createElement('span');
+    span.className = 'result-tag';
+    span.textContent = '#' + tag;
+    tagsEl.appendChild(span);
+  });
+
+  document.getElementById('loading').classList.remove('show');
+  document.getElementById('result').classList.add('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-box');
+  el.textContent = '⚠️ ' + msg;
+  el.classList.add('show');
+}
+
+// 개별 복사
+function copySection(id, btn) {
+  const el = document.getElementById(id);
+  let text = '';
+  if (id === 'tags-result') {
+    text = Array.from(el.querySelectorAll('.result-tag')).map(t => t.textContent).join(' ');
+  } else {
+    text = el.textContent;
+  }
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✅ 복사됨';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '복사';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// 전체 복사
+function copyAll() {
+  const d = generatedData;
+  const tags = (d.tags || []).map(t => '#' + t).join(' ');
+  const full = [
+    d.title,
+    '',
+    d.hook,
+    '',
+    d.body,
+    '',
+    d.cta,
+    '',
+    tags
+  ].join('\n');
+  navigator.clipboard.writeText(full).then(() => {
+    const btn = document.querySelector('.btn-copy-all');
+    btn.textContent = '✅ 전체 복사 완료!';
+    setTimeout(() => { btn.textContent = '📋 전체 글 한 번에 복사'; }, 2000);
+  });
+}
+
+// 초기화
+function resetForm() {
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('form-section').style.display = 'block';
+  document.getElementById('memo').value = '';
+  document.getElementById('memo-count').textContent = '0';
+  document.getElementById('topic-input').value = '';
+  document.querySelectorAll('.topic-tag').forEach(t => t.classList.remove('active'));
+  selectedTopic = '';
+  document.getElementById('error-box').classList.remove('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
