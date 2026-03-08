@@ -420,7 +420,33 @@
       </div>
     </div>
 
-    <!-- 카드 3: 내용 입력 -->
+    <!-- 카드 3: CTA 선택 -->
+    <div class="card">
+      <div class="card-label">마무리 CTA</div>
+      <div class="type-grid">
+        <button class="type-btn active" data-cta="상담/예약 유도" onclick="selectCta(this)">
+          <span class="type-name">📞 상담/예약 유도</span>
+          <span class="type-desc">카톡·전화 문의 전환</span>
+        </button>
+        <button class="type-btn" data-cta="방문 유도" onclick="selectCta(this)">
+          <span class="type-name">📍 방문 유도</span>
+          <span class="type-desc">오프라인 매장 방문 유도</span>
+        </button>
+        <button class="type-btn" data-cta="공감 마무리" onclick="selectCta(this)">
+          <span class="type-name">💬 공감 마무리</span>
+          <span class="type-desc">하드셀 없이 자연스럽게</span>
+        </button>
+        <button class="type-btn" data-cta="직접 입력" onclick="selectCta(this)">
+          <span class="type-name">✏️ 직접 입력</span>
+          <span class="type-desc">원하는 CTA 직접 작성</span>
+        </button>
+      </div>
+      <div class="input-group cta-custom-wrap" id="cta-custom-wrap" style="margin-top: 12px; display: none;">
+        <input type="text" id="cta-custom" placeholder="예: 네이버 예약으로 10% 할인 받으세요" maxlength="60" />
+      </div>
+    </div>
+
+    <!-- 카드 4: 내용 입력 -->
     <div class="card">
       <div class="card-label">내용 입력</div>
 
@@ -565,6 +591,7 @@
   // ─── 상태 변수 ───
   let selectedType = 'homefeed';
   let selectedTone = '친근한 구어체';
+  let selectedCta = '상담/예약 유도';
   let generatedData = null;
   let loadingInterval = null;
 
@@ -585,7 +612,7 @@
    - 나쁜 예: "00 맛집 추천 BEST 5", "안녕하세요 00입니다"
 2. 첫 100자 안에 글의 핵심 메시지/감정이 드러나야 합니다.
 3. 소제목: 이모지 + 짧은 한 줄 형태. 3~4개 구성.
-4. 글 길이: 1000~1500자. 홈피드는 가독성과 체류시간이 핵심이므로 과도하게 길지 않게.
+4. 글 길이: 1500~2000자. 홈피드 노출시간을 확보하려면 이 정도 분량이 필요합니다.
 5. 업종과 지역 키워드는 자연스럽게 1~2회만 포함 (키워드 나열 금지).
 6. 해시태그: 5~8개. 핵심 주제 태그 + 감성 태그 혼합.
 
@@ -600,8 +627,8 @@
 {
   "title": "제목 (20~32자, 감성 자극형 또는 경험 후기형)",
   "hook": "도입부 (독자 공감에서 시작. \\n\\n으로 문단 구분. 4~6문장. 짧고 감성적으로)",
-  "body": "본문 (이모지+소제목 3~4개로 구성. 각 파트 짧은 문단. \\n\\n으로 구분. 전체 600~900자)",
-  "cta": "마무리 (2~3문장. 자연스러운 공감 마무리. 방문 유도 느낌 없이)",
+  "body": "본문 (이모지+소제목 3~4개로 구성. 각 파트 짧은 문단. \\n\\n으로 구분. 전체 1000~1400자)",
+  "cta": "마무리 (2~3문장. 사용자가 지정한 CTA 방향에 맞춰 작성)",
   "tags": ["태그1","태그2","태그3","태그4","태그5","태그6","태그7","태그8"]
 }`;
 
@@ -624,7 +651,7 @@
    - 제목(1회) + 도입부 첫 문장(1회) + 소제목(2~3회) + 본문(1~2회) + 마무리(1회)
 3. 유사 키워드/연관 키워드를 2~3개 함께 사용.
 4. 소제목 3~5개, 각 소제목에 세부 키워드 포함.
-5. 글 길이: 1500~2000자. 네이버 상위노출 최적 길이.
+5. 글 길이: 1000~1500자. 네이버 VIEW 상위노출 최적 길이.
 6. 본문 중간에 "(사진: OO 이미지 추천)" 형태로 이미지 삽입 위치 가이드 2~3개 표기.
 7. 해시태그: 8~10개. 메인 키워드 + 세부 키워드 + 지역 키워드 + 일반 태그.
 
@@ -640,8 +667,8 @@
 {
   "title": "제목 (20~25자, [키워드+후킹] 구조. 키워드를 맨 앞에)",
   "hook": "도입부 (검색 의도에 직접 응답. \\n\\n으로 문단 구분. 3~5문장. 키워드 포함)",
-  "body": "본문 (【01.】【02.】【03.】 소제목 3~5개로 구성. 각 파트에 정보+팁+사례. \\n\\n으로 구분. 전체 1000~1400자. 중간에 이미지 가이드 포함)",
-  "cta": "마무리 (2~3문장. 자연스러운 행동 유도. 키워드 1회 포함)",
+  "body": "본문 (【01.】【02.】【03.】 소제목 3~5개로 구성. 각 파트에 정보+팁+사례. \\n\\n으로 구분. 전체 600~1000자. 중간에 이미지 가이드 포함)",
+  "cta": "마무리 (2~3문장. 사용자가 지정한 CTA 방향에 맞춰 작성. 키워드 1회 포함)",
   "tags": ["태그1","태그2","태그3","태그4","태그5","태그6","태그7","태그8","태그9","태그10"]
 }`;
 
@@ -664,7 +691,7 @@
 2. 키워드 밀도 0.8~1.2%. 자연스러운 문장 안에서만 사용.
    - 제목(1회) + 첫 문단(1회) + H2 소제목(2~3회) + 본문 분산(3~5회) + FAQ(1~2회) + 마무리(1회)
 3. 동의어와 관련 키워드를 풍부하게 사용 (구글 시맨틱 검색 대응).
-4. 글 길이: 2000~3000자. 구글은 깊이 있는 콘텐츠를 선호.
+4. 글 길이: 2000~2500자 이상. 구글은 깊이 있는 콘텐츠를 선호.
 5. FAQ 섹션 포함 (구글 리치 스니펫 획득 가능).
 6. 구체적 수치, 통계, 비교 데이터 포함 (E-E-A-T 신뢰도 상승).
 7. 메타 디스크립션: 120~155자, 타겟 키워드 포함, 클릭 유도 문장.
@@ -683,9 +710,9 @@
   "title": "제목 (25~30자, 키워드+구체적 정보 구조)",
   "meta_description": "메타 디스크립션 (120~155자, 검색 결과에서 클릭 유도)",
   "hook": "도입부 (첫 문장에서 핵심 답변 제공. \\n\\n으로 문단 구분. 3~5문장. 정의형 시작)",
-  "body": "본문 (## H2 소제목 3~5개 + 필요시 ### H3 세부항목. 각 파트에 수치/사례/비교 포함. \\n\\n으로 구분. 전체 1500~2200자)",
+  "body": "본문 (## H2 소제목 3~5개 + 필요시 ### H3 세부항목. 각 파트에 수치/사례/비교 포함. \\n\\n으로 구분. 전체 1500~2000자)",
   "faq": "FAQ (Q: 질문\\nA: 답변 형태로 2~3개. 실제 사용자가 궁금해할 질문)",
-  "cta": "마무리 (2~3문장. 자연스러운 다음 행동 유도. 키워드 1회 포함)",
+  "cta": "마무리 (2~3문장. 사용자가 지정한 CTA 방향에 맞춰 작성. 키워드 1회 포함)",
   "tags": ["태그1","태그2","태그3","태그4","태그5","태그6","태그7","태그8"]
 }`;
 
@@ -787,6 +814,22 @@
     });
     btn.classList.add('active');
     selectedTone = btn.dataset.tone;
+  }
+
+  // ─── CTA 선택 — UI 토글 ───
+  function selectCta(btn) {
+    document.querySelectorAll('.type-btn[data-cta]').forEach(function(b) {
+      b.classList.remove('active');
+    });
+    btn.classList.add('active');
+    selectedCta = btn.dataset.cta;
+    var customWrap = document.getElementById('cta-custom-wrap');
+    if (selectedCta === '직접 입력') {
+      customWrap.style.display = 'block';
+      document.getElementById('cta-custom').focus();
+    } else {
+      customWrap.style.display = 'none';
+    }
   }
 
   // ─── 에러 표시/숨기기 ───
@@ -892,6 +935,13 @@
     // system 프롬프트 선택
     var systemPrompt = systemPrompts[selectedType];
 
+    // CTA 텍스트 결정
+    var ctaText = selectedCta;
+    if (selectedCta === '직접 입력') {
+      var customCta = document.getElementById('cta-custom').value.trim();
+      ctaText = customCta || '자연스러운 마무리';
+    }
+
     // user 메시지 조립
     var userParts = [];
     userParts.push('업종: ' + industry);
@@ -899,6 +949,7 @@
       userParts.push('지역: ' + location);
     }
     userParts.push('오늘의 소재: ' + topic);
+    userParts.push('마무리 CTA: ' + ctaText);
     if (memo) {
       userParts.push('핵심 내용: ' + memo);
     }
@@ -914,7 +965,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 4096,
+          max_tokens: 8192,
           system: systemPrompt,
           messages: [{ role: 'user', content: userMessage }]
         })
@@ -1082,6 +1133,8 @@
     document.getElementById('topic').value = '';
     document.getElementById('location').value = '';
     document.getElementById('industry').value = '';
+    document.getElementById('cta-custom').value = '';
+    document.getElementById('cta-custom-wrap').style.display = 'none';
     hideError();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
