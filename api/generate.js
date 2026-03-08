@@ -1,6 +1,8 @@
 import { Redis } from '@upstash/redis';
 
-const DAILY_LIMIT = 30;
+// 무료 사용자: 하루 1회
+// 향후 유료 플랜: 월 30회 / 월 50회 / 월 100회 / 월 무제한
+const FREE_DAILY_LIMIT = 1;
 
 let redis;
 function getRedis() {
@@ -22,9 +24,25 @@ function getClientIp(req) {
   );
 }
 
+function getKSTDate() {
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10); // YYYY-MM-DD (KST 기준)
+}
+
 function getTodayKey(ip) {
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  return `ratelimit:${ip}:${today}`;
+  return `ratelimit:${ip}:${getKSTDate()}`;
+}
+
+function getTTLUntilMidnightKST() {
+  const now = new Date();
+  const kstOffset = 9 * 60 * 60 * 1000;
+  const kstNow = new Date(now.getTime() + kstOffset);
+  const nextMidnight = new Date(kstNow);
+  nextMidnight.setUTCHours(0, 0, 0, 0);
+  nextMidnight.setUTCDate(nextMidnight.getUTCDate() + 1);
+  const seconds = Math.ceil((nextMidnight.getTime() - kstNow.getTime()) / 1000);
+  return Math.max(seconds, 60); // 최소 60초
 }
 
 export default async function handler(req, res) {
@@ -43,10 +61,10 @@ export default async function handler(req, res) {
       const ip = getClientIp(req);
       const key = getTodayKey(ip);
       const count = (await getRedis().get(key)) || 0;
-      const remaining = Math.max(DAILY_LIMIT - count, 0);
-      return res.status(200).json({ remaining, limit: DAILY_LIMIT });
+      const remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
+      return res.status(200).json({ remaining, limit: FREE_DAILY_LIMIT });
     } catch {
-      return res.status(200).json({ remaining: DAILY_LIMIT, limit: DAILY_LIMIT });
+      return res.status(200).json({ remaining: FREE_DAILY_LIMIT, limit: FREE_DAILY_LIMIT });
     }
   }
 
@@ -60,9 +78,9 @@ export default async function handler(req, res) {
     const key = getTodayKey(ip);
     const count = (await getRedis().get(key)) || 0;
 
-    if (count >= DAILY_LIMIT) {
+    if (count >= FREE_DAILY_LIMIT) {
       return res.status(429).json({
-        error: `일일 사용 한도(${DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
+        error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
         remaining: 0,
       });
     }
@@ -100,11 +118,11 @@ export default async function handler(req, res) {
       return res.status(response.status).json({ error: data });
     }
 
-    // 성공 시 카운트 증가 (TTL 24시간)
+    // 성공 시 카운트 증가 (KST 자정에 만료)
     await getRedis().incr(key);
-    await getRedis().expire(key, 86400);
+    await getRedis().expire(key, getTTLUntilMidnightKST());
 
-    const remaining = DAILY_LIMIT - count - 1;
+    const remaining = FREE_DAILY_LIMIT - count - 1;
 
     return res.status(200).json({ ...data, remaining });
 
