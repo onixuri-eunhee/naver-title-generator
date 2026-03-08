@@ -50,7 +50,7 @@
   </url>
   <url>
     <loc>https://ddukddaktool.co.kr/column.html</loc>
-    <lastmod>2026-03-07</lastmod>
+    <lastmod>2026-03-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -213,6 +213,18 @@
   <url>
     <loc>https://ddukddaktool.co.kr/column-027.html</loc>
     <lastmod>2026-03-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ddukddaktool.co.kr/column-028.html</loc>
+    <lastmod>2026-03-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ddukddaktool.co.kr/column-029.html</loc>
+    <lastmod>2026-03-09</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
