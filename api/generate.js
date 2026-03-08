@@ -2,7 +2,7 @@ import { Redis } from '@upstash/redis';
 
 // 무료 사용자: 하루 1회
 // 향후 유료 플랜: 월 30회 / 월 50회 / 월 100회 / 월 무제한
-const FREE_DAILY_LIMIT = 1;
+const FREE_DAILY_LIMIT = 3;
 
 let redis;
 function getRedis() {
