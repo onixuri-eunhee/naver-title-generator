@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 
-const DAILY_LIMIT = 5;
+const DAILY_LIMIT = 1;
 
 let redis;
 function getRedis() {
