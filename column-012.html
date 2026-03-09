@@ -38,6 +38,18 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
 .navbar-links { display: flex; gap: 4px; }
 .navbar-links a { padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #9CA3AF; text-decoration: none; transition: background 0.15s, color 0.15s; }
 .navbar-links a:hover { background: #F3F4F6; color: #1A1A2E; }
+.navbar-links a.pro-badge { position: relative; }
+.navbar-links a.pro-badge::after {
+  content: 'PRO';
+  position: absolute;
+  top: 1px; right: 1px;
+  font-size: 8px; font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+  border-radius: 4px;
+  padding: 1px 3px;
+  line-height: 1.4;
+}
 .hero { background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%); padding: 52px 20px 44px; text-align: center; }
 .hero-badge { display: inline-block; background: rgba(0,199,60,0.15); color: #00C73C; border: 1px solid rgba(0,199,60,0.3); padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 18px; letter-spacing: 0.05em; }
 .hero h1 { font-size: clamp(20px, 4vw, 32px); font-weight: 700; color: #fff; line-height: 1.4; margin-bottom: 14px; letter-spacing: -0.5px; }
@@ -100,12 +112,12 @@ footer a:hover { text-decoration: underline; }
 <nav class="navbar">
   <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
   <div class="navbar-links">
-    <a href="/">📝 제목</a>
-    <a href="hook-generator.html">🔥 후킹</a>
-    <a href="threads.html">🧵 스레드</a>
-    <a href="blog-writer.html">✍️ 블로그 글</a>
+    <a href="/">제목</a>
+    <a href="hook-generator.html">후킹</a>
+    <a href="threads.html">스레드</a>
+    <a href="blog-writer.html" class="pro-badge">블로그 글</a>
+    <a href="blog-image.html" class="pro-badge">이미지</a>
     <a href="column.html" style="color:#00C73C; font-weight:700;">칼럼</a>
-    <a href="about.html">소개</a>
   </div>
 </nav>
 
@@ -247,7 +259,6 @@ footer a:hover { text-decoration: underline; }
 <footer>
   © 2026 뚝딱툴 &nbsp;|&nbsp;
   <a href="/">홈</a>
-  <a href="about.html">소개</a>
   <a href="contact.html">연락처</a>
   <a href="privacy.html">개인정보처리방침</a>
   <a href="terms.html">이용약관</a>
