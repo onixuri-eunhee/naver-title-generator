@@ -219,7 +219,7 @@ export default async function handler(req, res) {
         `${i + 1}. Image marker: "${mk.text}"\n   Before (200 chars): "${mk.before}"\n   After (200 chars): "${mk.after}"`
       ).join('\n\n');
 
-      const claudeSystem = 'You are a blog image prompt generator for Korean lifestyle blogs. Your #1 priority is generating images that match the exact context of the blog content. Use the surrounding text to understand what specific scene, object, or situation is being described. Generate highly specific, contextually accurate English prompts. No generic images. No people\'s faces. Output ONLY a valid JSON array of English prompt strings, one per marker. Example: ["prompt1", "prompt2"]';
+      const claudeSystem = 'You are a blog image prompt generator for Korean lifestyle blogs. Your #1 priority is generating images that match the exact context of the blog content. Use the surrounding text to understand what specific scene, object, or situation is being described. Generate highly specific, contextually accurate English prompts. No generic images. No people\'s faces. IMPORTANT: This is for a Korean blog. When depicting people, always specify "Korean" or "East Asian" ethnicity. Use Korean settings, Korean food, Korean interior styles, etc. Output ONLY a valid JSON array of English prompt strings, one per marker. Example: ["prompt1", "prompt2"]';
 
       const claudeUser = `Blog summary: "${blogSummary}"\n\nGenerate ${markers.length} image prompts:\n\n${markersList}`;
 
@@ -239,7 +239,7 @@ export default async function handler(req, res) {
       }
 
       // 프롬프트 후처리
-      prompts = prompts.map(p => `${p}, high quality, no text, no watermark`);
+      prompts = prompts.map(p => `${p}, Korean style, East Asian, high quality, no text, no watermark`);
 
       // FLUX: 마커별 1장씩 병렬 생성 (최대 4개씩 배치)
       const images = [];
@@ -283,13 +283,13 @@ export default async function handler(req, res) {
 
     // Claude: 주제 → 영어 프롬프트 변환
     const englishTopic = await callClaude(
-      'You are an image prompt translator. Convert the given Korean blog topic into a concise English image description (1-2 sentences). Focus on visual elements only. No people faces. No explanations, just the prompt.',
+      'You are an image prompt translator. Convert the given Korean blog topic into a concise English image description (1-2 sentences). Focus on visual elements only. No people faces. IMPORTANT: Always specify Korean or East Asian context — Korean settings, Korean food, Korean interior, Korean people when depicting humans. No explanations, just the prompt.',
       topic,
       150
     );
 
     const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
-    const fullPrompt = `${englishTopic}, ${moodStyle}, no text, no watermark`;
+    const fullPrompt = `${englishTopic}, ${moodStyle}, Korean style, East Asian, no text, no watermark`;
 
     // FLUX: 8장 생성
     const urls = await callFluxBatch(fullPrompt, 8);
