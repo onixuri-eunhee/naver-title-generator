@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-C61VWMGQ8R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-C61VWMGQ8R');
+</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4973804132466200" crossorigin="anonymous"></script>
+<title>스레드 글 생성기 | AI로 터지는 Threads 글 — 뚝딱툴</title>
+<meta name="description" content="소재만 입력하면 터지는 스레드 글을 AI가 뚝딱 만들어드립니다. 정보형·공감형·반전형·고백형 선택 가능." />
+<meta name="keywords" content="스레드 글 생성기, Threads 글쓰기, SNS 카피, AI 스레드, 스레드 마케팅" />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://ddukddaktool.co.kr/threads.html" />
+
+<meta property="og:type" content="website" />
+<meta property="og:title" content="스레드 글 생성기 | AI로 터지는 Threads 글 — 뚝딱툴" />
+<meta property="og:description" content="소재만 입력하면 터지는 스레드 글을 AI가 뚝딱 만들어드립니다." />
+<meta property="og:url" content="https://ddukddaktool.co.kr/threads.html" />
+<meta property="og:site_name" content="뚝딱툴" />
+<meta property="og:locale" content="ko_KR" />
+
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="스레드 글 생성기 | AI로 터지는 Threads 글 — 뚝딱툴" />
+<meta name="twitter:description" content="소재만 입력하면 터지는 스레드 글을 AI가 뚝딱 만들어드립니다." />
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1A2E; line-height: 1.7; }
+
+.navbar {
+  background: #fff; border-bottom: 1px solid #E5E7EB;
+  padding: 0 20px; display: flex; align-items: center;
+  justify-content: space-between; height: 52px;
+  position: sticky; top: 0; z-index: 100;
+}
+.navbar-logo { font-size: 18px; font-weight: 900; color: #1A1A2E; text-decoration: none; }
+.navbar-logo span { color: #00C73C; }
+.navbar-links { display: flex; gap: 4px; }
+.navbar-links a {
+  padding: 7px 14px; border-radius: 8px; font-size: 13px;
+  font-weight: 500; color: #9CA3AF; text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.navbar-links a:hover { background: #F3F4F6; color: #1A1A2E; }
+
+.hero {
+  background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+  padding: 52px 20px 44px; text-align: center;
+}
+.hero h1 {
+  font-size: clamp(22px, 4.5vw, 34px); font-weight: 700;
+  color: #fff; line-height: 1.4; margin-bottom: 14px; letter-spacing: -0.5px;
+}
+.hero h1 em { color: #ff5f1f; font-style: normal; }
+.hero p { color: rgba(255,255,255,0.6); font-size: 14px; max-width: 520px; margin: 0 auto; line-height: 1.8; }
+
+.container { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
+
+/* 입력 카드 */
+.input-card {
+  background: #fff; border-radius: 16px; padding: 28px 32px;
+  border: 1px solid #E5E7EB; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  margin-bottom: 24px;
+}
+.input-card h2 {
+  font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #1A1A2E;
+}
+.input-card label {
+  display: block; font-size: 13px; font-weight: 600;
+  color: #374151; margin-bottom: 6px;
+}
+.input-card input[type="text"] {
+  width: 100%; padding: 11px 14px;
+  border: 1.5px solid #E5E7EB; border-radius: 8px;
+  font-size: 14px; font-family: 'Noto Sans KR', sans-serif;
+  color: #1A1A2E; background: #fff;
+  transition: border-color 0.2s; outline: none;
+}
+.input-card input[type="text"]:focus {
+  border-color: #ff5f1f; box-shadow: 0 0 0 3px rgba(255,95,31,0.1);
+}
+.input-card textarea {
+  width: 100%; padding: 12px 14px;
+  border: 1.5px solid #E5E7EB; border-radius: 8px;
+  font-size: 14px; font-family: 'Noto Sans KR', sans-serif;
+  color: #1A1A2E; background: #fff; resize: vertical;
+  transition: border-color 0.2s; outline: none; line-height: 1.7;
+}
+.input-card textarea:focus {
+  border-color: #ff5f1f; box-shadow: 0 0 0 3px rgba(255,95,31,0.1);
+}
+.input-group { margin-bottom: 16px; }
+.input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+
+/* 선택 버튼 그리드 */
+.type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.type-btn {
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1.5px solid #E5E7EB;
+  background: #fff;
+  color: #6B7280;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.18s;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  text-align: left;
+}
+.type-btn .type-name { font-weight: 600; color: #1A1A2E; font-size: 14px; }
+.type-btn .type-desc { font-size: 11px; color: #9CA3AF; }
+.type-btn:hover { border-color: #ff5f1f; background: rgba(255,95,31,0.04); }
+.type-btn.active {
+  border-color: #ff5f1f; background: rgba(255,95,31,0.06);
+}
+.type-btn.active .type-name { color: #ff5f1f; }
+
+/* 버튼 행 */
+.btn-row { display: grid; grid-template-columns: 1fr 80px; gap: 8px; margin-top: 14px; }
+
+.generate-btn {
+  padding: 15px;
+  background: linear-gradient(135deg, #ff5f1f, #e84f10);
+  color: #fff; border: none; border-radius: 10px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 16px; font-weight: 700; cursor: pointer;
+  transition: all 0.2s; letter-spacing: -0.3px;
+}
+.generate-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,95,31,0.35); }
+.generate-btn:active { transform: translateY(0); }
+.generate-btn:disabled {
+  background: #9CA3AF; cursor: not-allowed;
+  transform: none; box-shadow: none;
+}
+
+.random-btn {
+  padding: 14px;
+  background: #fff;
+  color: #6B7280;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 13px;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.random-btn:hover { border-color: #1A1A2E; color: #1A1A2E; }
+
+.remaining-count {
+  text-align: right; font-size: 12px; color: #9CA3AF; margin-top: 10px;
+}
+
+/* 로딩 */
+.loading-area {
+  display: none; margin-top: 24px;
+}
+.loading-area.show { display: block; }
+.loading-card {
+  background: #fff; border-radius: 16px; padding: 32px;
+  border: 1px solid #E5E7EB; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  text-align: center;
+}
+.loading-card h3 {
+  font-size: 16px; font-weight: 700; margin-bottom: 20px; color: #1A1A2E;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid #E5E7EB;
+  border-top-color: #ff5f1f;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin: 0 auto 14px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-card p { font-size: 13px; color: #9CA3AF; }
+
+/* 결과 영역 */
+.result-area { display: none; margin-top: 24px; }
+.result-area.show { display: block; animation: fadeUp 0.3s ease; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+.result-card {
+  background: #fff; border-radius: 16px; padding: 24px 28px;
+  border: 1px solid #E5E7EB; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+.result-card h3 {
+  font-size: 16px; font-weight: 700; color: #1A1A2E; margin-bottom: 16px;
+}
+
+.result-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.result-tab {
+  flex: 1;
+  padding: 10px 0;
+  background: #fff;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 8px;
+  color: #9CA3AF;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.result-tab:hover { border-color: #ff5f1f; color: #1A1A2E; }
+.result-tab.active { border-color: #ff5f1f; background: rgba(255,95,31,0.06); color: #ff5f1f; }
+
+.result-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.result-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(255,95,31,0.08);
+  color: #ff5f1f;
+  letter-spacing: 0.3px;
+}
+.copy-btn {
+  font-size: 13px;
+  color: #6B7280;
+  background: #fff;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 6px 16px;
+  cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: all 0.18s;
+}
+.copy-btn:hover { color: #1A1A2E; border-color: #1A1A2E; }
+.copy-btn.copied { color: #00C73C; border-color: #00C73C; }
+
+.result-text {
+  font-size: 15px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  color: #1A1A2E;
+  padding: 16px;
+  background: #F8F9FD;
+  border-radius: 10px;
+}
+.char-count {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #9CA3AF;
+  text-align: right;
+}
+
+/* 에러 */
+.error-box {
+  display: none; background: #FFF0F1; border: 1px solid #FFD1D4;
+  border-radius: 10px; padding: 14px 18px; margin-top: 16px;
+  font-size: 13px; color: #FF4757;
+}
+.error-box.show { display: block; }
+
+/* 도구 모음 */
+.tools-section {
+  margin-top: 48px;
+}
+.tools-label {
+  font-size: 13px; font-weight: 700; color: #9CA3AF;
+  letter-spacing: 0.05em; margin-bottom: 14px;
+}
+.tools-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+}
+.tool-card-current {
+  background: #FFF7F3; border: 2px solid #ff5f1f; border-radius: 14px; padding: 20px;
+}
+.tool-card-current .tool-tag {
+  font-size: 11px; font-weight: 700; color: #ff5f1f;
+  margin-bottom: 6px; letter-spacing: 0.05em;
+}
+.tool-card-current .tool-name {
+  font-size: 16px; font-weight: 700; color: #1A1A2E; margin-bottom: 4px;
+}
+.tool-card-current .tool-desc { font-size: 12px; color: #6B7280; }
+.tool-card-link {
+  background: #fff; border: 1.5px solid #E5E7EB; border-radius: 14px;
+  padding: 20px; text-decoration: none; display: block; transition: all 0.2s;
+}
+.tool-card-link:hover {
+  border-color: #ff5f1f; box-shadow: 0 4px 16px rgba(255,95,31,0.12);
+}
+.tool-card-link .tool-tag {
+  font-size: 11px; font-weight: 700; color: #9CA3AF;
+  margin-bottom: 6px; letter-spacing: 0.05em;
+}
+.tool-card-link .tool-name {
+  font-size: 16px; font-weight: 700; color: #1A1A2E; margin-bottom: 4px;
+}
+.tool-card-link .tool-desc { font-size: 12px; color: #6B7280; }
+
+footer {
+  text-align: center; padding: 28px 20px; font-size: 13px;
+  color: #9CA3AF; border-top: 1px solid #E5E7EB; background: #fff;
+}
+footer a { color: #9CA3AF; text-decoration: none; margin: 0 8px; }
+footer a:hover { text-decoration: underline; }
+
+@media (max-width: 600px) {
+  .input-card { padding: 20px; }
+  .result-card { padding: 16px; }
+  .tools-grid { grid-template-columns: 1fr; }
+  .navbar-links { gap: 2px; }
+  .navbar-links a { padding: 7px 8px; font-size: 12px; }
+  .input-row { grid-template-columns: 1fr; }
+  .type-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
+  <div class="navbar-links">
+    <a href="hook-generator.html" style="color:#00C73C; font-weight:700;">🔥 후킹문구</a>
+    <a href="blog-writer.html">✍️ 블로그 글</a>
+    <a href="blog-image.html">🖼️ 이미지</a>
+    <a href="threads.html" style="color:#ff5f1f; font-weight:700;">🧵 스레드</a>
+    <a href="column.html">칼럼</a>
+    <a href="about.html">소개</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1><em>스레드 글</em> 생성기</h1>
+  <p>소재를 입력하면 터지는 스레드 글을 AI가 뚝딱 만들어드립니다</p>
+</div>
+
+<div class="container">
+
+  <!-- 글 유형 선택 -->
+  <div class="input-card">
+    <h2>글 유형</h2>
+    <div class="type-grid">
+      <button class="type-btn active" data-type="정보형" onclick="selectType(this)">
+        <span class="type-name">📊 정보형</span>
+        <span class="type-desc">유용한 팁·노하우 전달</span>
+      </button>
+      <button class="type-btn" data-type="공감형" onclick="selectType(this)">
+        <span class="type-name">💬 공감형</span>
+        <span class="type-desc">공통 감정·경험 공유</span>
+      </button>
+      <button class="type-btn" data-type="반전형" onclick="selectType(this)">
+        <span class="type-name">⚡ 반전형</span>
+        <span class="type-desc">예상 뒤집는 의외의 진실</span>
+      </button>
+      <button class="type-btn" data-type="고백형" onclick="selectType(this)">
+        <span class="type-name">🤍 고백형</span>
+        <span class="type-desc">솔직한 경험담·내면 이야기</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 말투 선택 -->
+  <div class="input-card">
+    <h2>말투</h2>
+    <div class="type-grid">
+      <button class="type-btn active" data-tone="친구체" onclick="selectTone(this)">
+        <span class="type-name">😊 친구체</span>
+        <span class="type-desc">~했어, ~이야 (편한 반말)</span>
+      </button>
+      <button class="type-btn" data-tone="해요체" onclick="selectTone(this)">
+        <span class="type-name">🌿 해요체</span>
+        <span class="type-desc">~해요, 따뜻하고 부드럽게</span>
+      </button>
+      <button class="type-btn" data-tone="단문체" onclick="selectTone(this)">
+        <span class="type-name">⚡ 단문체</span>
+        <span class="type-desc">짧고 건조. SNS 특유 리듬</span>
+      </button>
+      <button class="type-btn" data-tone="격식체" onclick="selectTone(this)">
+        <span class="type-name">💼 격식체</span>
+        <span class="type-desc">~합니다, 전문가 느낌</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 내용 입력 -->
+  <div class="input-card">
+    <h2>내용 입력</h2>
+    <div class="input-row">
+      <div class="input-group" style="margin-bottom:0;">
+        <label for="industry">업종/직종</label>
+        <input type="text" id="industry" placeholder="예: 카페, 강사, 마케터" />
+      </div>
+      <div class="input-group" style="margin-bottom:0;">
+        <label for="target">타겟 독자</label>
+        <input type="text" id="target" placeholder="예: 30대 직장인, 초보 창업자" />
+      </div>
+    </div>
+    <div class="input-group">
+      <label for="topic">주제/소재</label>
+      <input type="text" id="topic" placeholder="예: 번아웃 극복, 단골 만들기, 첫 매출" />
+    </div>
+    <div class="input-group">
+      <label for="memo">내 경험이나 메모 <span style="font-weight:400; color:#9CA3AF;">(선택)</span></label>
+      <textarea id="memo" rows="3" placeholder="짧게 적어도 됩니다. 글의 방향이 더 정확해져요."></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="generate-btn" id="generateBtn" onclick="generate()">✦ 생성하기</button>
+      <button class="random-btn" onclick="fillRandom()">랜덤</button>
+    </div>
+    <div class="remaining-count" id="remainingCount">남은 횟수 확인 중...</div>
+
+    <div class="error-box" id="errorBox"></div>
+  </div>
+
+  <!-- 로딩 -->
+  <div class="loading-area" id="loadingArea">
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <p>스레드 글 쓰는 중...</p>
+    </div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="result-area" id="resultArea">
+    <div class="result-card">
+      <h3>생성 결과</h3>
+      <div class="result-tabs">
+        <button class="result-tab active" onclick="switchTab(0)">안 1</button>
+        <button class="result-tab" onclick="switchTab(1)">안 2</button>
+        <button class="result-tab" onclick="switchTab(2)">안 3</button>
+      </div>
+      <div class="result-meta">
+        <span class="result-tag" id="resultTag">정보형 · 친구체</span>
+        <button class="copy-btn" id="copyBtn" onclick="copyResult()">복사</button>
+      </div>
+      <div class="result-text" id="resultText"></div>
+      <div class="char-count" id="charCount"></div>
+    </div>
+  </div>
+
+  <!-- 도구 모음 -->
+  <div class="tools-section">
+    <div class="tools-label">뚝딱툴 도구 모음</div>
+    <div class="tools-grid">
+      <div class="tool-card-current">
+        <div class="tool-tag">현재 페이지</div>
+        <div class="tool-name">🧵 스레드 글 생성기</div>
+        <div class="tool-desc">소재 입력 → 터지는 스레드 글 3개 생성</div>
+      </div>
+      <a href="/" class="tool-card-link">
+        <div class="tool-tag">바로가기 →</div>
+        <div class="tool-name">📝 블로그 제목 생성기</div>
+        <div class="tool-desc">키워드 입력 → 클릭을 부르는 제목 12패턴</div>
+      </a>
+      <a href="blog-writer.html" class="tool-card-link">
+        <div class="tool-tag">바로가기 →</div>
+        <div class="tool-name">✍️ 블로그 글 생성기</div>
+        <div class="tool-desc">업종·키워드 → 상위노출 블로그 글 작성</div>
+      </a>
+      <a href="blog-image.html" class="tool-card-link">
+        <div class="tool-tag">바로가기 →</div>
+        <div class="tool-name">🖼️ 블로그 이미지 생성기</div>
+        <div class="tool-desc">블로그 글 분석 → AI 이미지 3장 생성</div>
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  © 2026 뚝딱툴<br>
+  <a href="about.html">소개</a> | <a href="contact.html">연락처</a> | <a href="privacy.html">개인정보처리방침</a> | <a href="terms.html">이용약관</a>
+</footer>
+
+<script>
+var selectedType = '정보형';
+var selectedTone = '친구체';
+var results = ['', '', ''];
+var activeTab = 0;
+
+function selectType(btn) {
+  document.querySelectorAll('.type-btn[data-type]').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  selectedType = btn.dataset.type;
+}
+
+function selectTone(btn) {
+  document.querySelectorAll('.type-btn[data-tone]').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  selectedTone = btn.dataset.tone;
+}
+
+function switchTab(idx) {
+  activeTab = idx;
+  document.querySelectorAll('.result-tab').forEach(function(t, i) {
+    t.classList.toggle('active', i === idx);
+  });
+  var text = results[idx] || '';
+  document.getElementById('resultText').textContent = text;
+  document.getElementById('charCount').textContent = text ? text.length + '자' : '';
+  var cb = document.getElementById('copyBtn');
+  cb.textContent = '복사';
+  cb.classList.remove('copied');
+}
+
+var randomData = [
+  { industry: '카페', target: '동네 단골', topic: '단골 만드는 법', memo: '커피보다 사람이 오는 가게' },
+  { industry: '프리랜서', target: '직장인 부업족', topic: '퇴근 후 부업 첫 달', memo: '처음엔 월 10만원도 기뻤음' },
+  { industry: '온라인 쇼핑몰', target: '30대 여성', topic: '첫 매출 낸 날', memo: '아무도 안 살 것 같았는데' },
+  { industry: '1인 강사', target: '초보 창업자', topic: '수강생 0명에서 50명', memo: '광고 한 번 안 씀' },
+  { industry: '마케터', target: '소상공인', topic: '인스타 팔로워보다 중요한 것', memo: '팔로워 100명인데 매출 남' },
+];
+
+function fillRandom() {
+  var d = randomData[Math.floor(Math.random() * randomData.length)];
+  document.getElementById('industry').value = d.industry;
+  document.getElementById('target').value = d.target;
+  document.getElementById('topic').value = d.topic;
+  document.getElementById('memo').value = d.memo;
+}
+
+var typeGuide = {
+  '정보형': '유용한 팁 전달. 첫 줄에 핵심 예고.',
+  '공감형': '"나도 그래" 유도. 공통 감정 → 위로 마무리.',
+  '반전형': '일반적 생각 → 예상 뒤집기 → 인사이트 1줄.',
+  '고백형': '1인칭 솔직 경험담. 날 것의 문체.',
+};
+
+var toneGuide = {
+  '친구체': '말투: ~했어, ~이야, ~거든 반말.',
+  '해요체': '말투: ~해요, ~예요. 따뜻하고 부드럽게.',
+  '단문체': '말투: 짧은 단문. 마침표 끊기. 감탄사 최소.',
+  '격식체': '말투: ~합니다, ~입니다. 전문가 느낌.',
+};
+
+function showError(msg) {
+  var box = document.getElementById('errorBox');
+  box.textContent = msg;
+  box.classList.add('show');
+}
+function hideError() {
+  document.getElementById('errorBox').classList.remove('show');
+}
+
+async function generate() {
+  var topic = document.getElementById('topic').value.trim();
+  if (!topic) { showError('주제/소재를 입력해주세요.'); return; }
+
+  hideError();
+
+  var industry = document.getElementById('industry').value.trim();
+  var target = document.getElementById('target').value.trim();
+  var memo = document.getElementById('memo').value.trim();
+
+  var btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.textContent = '생성 중...';
+  document.getElementById('loadingArea').classList.add('show');
+  document.getElementById('resultArea').classList.remove('show');
+
+  try {
+    var res = await fetch('/api/threads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: selectedType,
+        tone: selectedTone,
+        industry: industry,
+        target: target,
+        topic: topic,
+        memo: memo
+      })
+    });
+
+    var data = await res.json();
+
+    if (res.status === 429) {
+      showError(data.error);
+      return;
+    }
+
+    if (data.error) throw new Error(typeof data.error === 'string' ? data.error : data.error.message || 'API 오류');
+
+    results = data.results || ['', '', ''];
+    while (results.length < 3) results.push('');
+
+    document.getElementById('resultTag').textContent = selectedType + ' · ' + selectedTone;
+    document.getElementById('resultArea').classList.add('show');
+    activeTab = 0;
+    switchTab(0);
+
+    if (typeof data.remaining === 'number') {
+      updateRemainingUI(data.remaining);
+    }
+
+    document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch (err) {
+    showError('오류: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✦ 생성하기';
+    document.getElementById('loadingArea').classList.remove('show');
+  }
+}
+
+function copyResult() {
+  var text = results[activeTab];
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(function() {
+    var btn = document.getElementById('copyBtn');
+    btn.textContent = '복사됨';
+    btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = '복사'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+async function loadRemaining() {
+  try {
+    var res = await fetch('/api/threads');
+    var data = await res.json();
+    updateRemainingUI(data.remaining);
+  } catch(e) {
+    document.getElementById('remainingCount').textContent = '';
+  }
+}
+
+function updateRemainingUI(remaining) {
+  var el = document.getElementById('remainingCount');
+  el.textContent = '오늘 남은 횟수: ' + remaining + '회';
+  el.style.color = remaining <= 1 ? '#FF4757' : '#9CA3AF';
+}
+
+loadRemaining();
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) generate();
+});
+</script>
+
+</body>
+</html>
