@@ -560,6 +560,44 @@ function renderResults(images, thumbnailText) {
   });
 }
 
+// ─── 텍스트 줄바꿈 ───
+function wrapText(ctx, text, maxWidth) {
+  var words = text.split(' ');
+  var lines = [];
+  var currentLine = words[0] || '';
+  for (var i = 1; i < words.length; i++) {
+    var testLine = currentLine + ' ' + words[i];
+    if (ctx.measureText(testLine).width > maxWidth) {
+      lines.push(currentLine);
+      currentLine = words[i];
+    } else {
+      currentLine = testLine;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  // 한 줄이 여전히 너무 길면 글자 단위로 자르기
+  var finalLines = [];
+  for (var j = 0; j < lines.length; j++) {
+    if (ctx.measureText(lines[j]).width <= maxWidth) {
+      finalLines.push(lines[j]);
+    } else {
+      var chars = lines[j].split('');
+      var cl = '';
+      for (var k = 0; k < chars.length; k++) {
+        var tl = cl + chars[k];
+        if (ctx.measureText(tl).width > maxWidth && cl) {
+          finalLines.push(cl);
+          cl = chars[k];
+        } else {
+          cl = tl;
+        }
+      }
+      if (cl) finalLines.push(cl);
+    }
+  }
+  return finalLines;
+}
+
 // ─── 썸네일 Canvas ───
 function renderThumbnailCanvas(canvas, imageUrl, text) {
   var ctx = canvas.getContext('2d');
@@ -569,27 +607,37 @@ function renderThumbnailCanvas(canvas, imageUrl, text) {
     ctx.drawImage(img, 0, 0, 1024, 1024);
     if (!text) return;
 
-    var grad = ctx.createLinearGradient(0, 1024 * 0.6, 0, 1024);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.65)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 1024 * 0.6, 1024, 1024 * 0.4);
+    // 중앙 배치를 위한 전체 오버레이
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(0, 0, 1024, 1024);
 
     document.fonts.ready.then(function() {
-      var fontSize = 52;
+      var fontSize = 78; // 기존 52 → 78 (50% 확대)
+      var maxWidth = 900;
       ctx.font = '900 ' + fontSize + 'px "Noto Sans KR"';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      while (ctx.measureText(text).width > 900 && fontSize > 24) {
-        fontSize -= 2;
+
+      var lines = wrapText(ctx, text, maxWidth);
+      // 줄이 너무 많으면 폰트 축소
+      while (lines.length > 3 && fontSize > 36) {
+        fontSize -= 4;
         ctx.font = '900 ' + fontSize + 'px "Noto Sans KR"';
+        lines = wrapText(ctx, text, maxWidth);
       }
-      ctx.shadowColor = 'rgba(0,0,0,0.5)';
-      ctx.shadowBlur = 8;
+
+      var lineHeight = fontSize * 1.35;
+      var totalHeight = lines.length * lineHeight;
+      var startY = (1024 - totalHeight) / 2 + lineHeight / 2;
+
+      ctx.shadowColor = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur = 10;
       ctx.shadowOffsetX = 2;
       ctx.shadowOffsetY = 2;
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(text, 512, 1024 * 0.85);
+      for (var j = 0; j < lines.length; j++) {
+        ctx.fillText(lines[j], 512, startY + j * lineHeight);
+      }
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
     });
