@@ -296,6 +296,47 @@
       letter-spacing: 0.3px;
     }
 
+    /* Internal Links */
+    .internal-links-guide {
+      font-size: 12.5px;
+      color: #888;
+      margin: 0 0 14px 0;
+    }
+    .internal-link-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .internal-link-icon {
+      flex-shrink: 0;
+      font-size: 14px;
+    }
+    .internal-link-title {
+      flex-shrink: 0;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #333;
+      max-width: 45%;
+    }
+    .internal-link-url {
+      flex: 1;
+      font-size: 12.5px;
+      padding: 7px 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fafafa;
+      color: #333;
+      outline: none;
+    }
+    .internal-link-url:focus {
+      border-color: var(--accent);
+      background: #fff;
+    }
+    .internal-link-url::placeholder {
+      color: #bbb;
+    }
+
     /* Meta description & FAQ (Google SEO only) */
     .google-seo-only { display: none; }
     .google-seo-only.show { display: block; }
@@ -652,6 +693,18 @@
       </div>
     </div>
 
+    <!-- 내부링크 추천 -->
+    <div class="result-card internal-links-card">
+      <div class="result-card-header">
+        <h3>📎 함께 보면 좋은 글</h3>
+        <button class="copy-btn" onclick="copySection('result-internal-links', this)">복사</button>
+      </div>
+      <div class="result-card-body">
+        <p class="internal-links-guide">AI가 추천한 제목입니다. 내 블로그 글 URL로 교체하면 체류시간이 올라갑니다.</p>
+        <div id="result-internal-links"></div>
+      </div>
+    </div>
+
     <!-- 전체 복사 + 다시 쓰기 -->
     <button class="btn-copy-all" id="btn-copy-all" onclick="copyAll()">전체 글 한 번에 복사</button>
     <button class="btn-reset" onclick="resetForm()">다른 주제로 다시 쓰기</button>
@@ -767,7 +820,8 @@
   "hook": "도입부 (★400자 이상★. 에피소드로 시작. 구체적 상황→감정→깨달음 흐름. 8~10문장. \\n\\n 문단 구분)",
   "body": "본문 (★1300자 이상★. 이모지+소제목 4개. 각 파트 320자+. \\n\\n 구분)",
   "cta": "마무리 (★150자 이상★. 4~5문장. CTA 방향에 맞춰)",
-  "tags": ["태그1","태그2","태그3","태그4","태그5","태그6","태그7","태그8","태그9","태그10","태그11","태그12","태그13","태그14","태그15","태그16","태그17","태그18","태그19","태그20"]
+  "tags": ["태그1","태그2","태그3","태그4","태그5","태그6","태그7","태그8","태그9","태그10","태그11","태그12","태그13","태그14","태그15","태그16","태그17","태그18","태그19","태그20"],
+  "internal_links": ["주제와 연관된 추천 글 제목1", "주제와 연관된 추천 글 제목2", "주제와 연관된 추천 글 제목3"]
 }`;
 
   const SYSTEM_PROMPT_B = `당신은 네이버 검색(VIEW 탭) 상위노출에 최적화된 블로그 글을 작성하는 SEO 전문 작가입니다.
@@ -850,7 +904,8 @@
   "hook": "도입부 (★200자 이상★. 검색 의도에 경험 기반 응답. 4~6문장. \\n\\n 문단 구분. 키워드 포함)",
   "body": "본문 (★700자 이상★. 【01.】【02.】【03.】 소제목 3~5개. 각 파트 150자+. \\n\\n 구분. 이미지 가이드 포함)",
   "cta": "마무리 (★100자 이상★. 3~4문장. CTA 방향에 맞춰. 키워드 1회 포함)",
-  "tags": ["태그1","태그2","태그3","태그4","태그5","태그6","태그7","태그8","태그9","태그10","태그11","태그12","태그13","태그14","태그15","태그16","태그17","태그18","태그19","태그20"]
+  "tags": ["태그1","태그2","태그3","태그4","태그5","태그6","태그7","태그8","태그9","태그10","태그11","태그12","태그13","태그14","태그15","태그16","태그17","태그18","태그19","태그20"],
+  "internal_links": ["주제와 연관된 추천 글 제목1", "주제와 연관된 추천 글 제목2", "주제와 연관된 추천 글 제목3"]
 }`;
 
   const SYSTEM_PROMPT_C = `당신은 구글 검색 상위노출에 최적화된 블로그 글을 작성하는 SEO 전문 작가입니다.
@@ -951,7 +1006,8 @@
   "body": "본문 (★1500자 이상★. ## H2 소제목 3~5개. 각 파트 300자+. 수치/사례/경험 포함. \\n\\n 구분)",
   "faq": "FAQ (★200자 이상★. Q: 질문\\nA: 답변 2~3개. 각 답변 50자+)",
   "cta": "마무리 (★100자 이상★. 3~4문장. CTA 방향에 맞춰. 키워드 1회)",
-  "tags": ["태그1","태그2","태그3","태그4","태그5","태그6","태그7","태그8","태그9","태그10"]
+  "tags": ["태그1","태그2","태그3","태그4","태그5","태그6","태그7","태그8","태그9","태그10"],
+  "internal_links": ["주제와 연관된 추천 글 제목1", "주제와 연관된 추천 글 제목2", "주제와 연관된 추천 글 제목3"]
 }`;
 
   // ─── System 프롬프트 매핑 ───
@@ -1174,6 +1230,20 @@
       });
     }
 
+    // 내부링크 추천 렌더링
+    var linksDiv = document.getElementById('result-internal-links');
+    linksDiv.innerHTML = '';
+    if (data.internal_links && Array.isArray(data.internal_links)) {
+      data.internal_links.forEach(function(linkTitle, i) {
+        var row = document.createElement('div');
+        row.className = 'internal-link-row';
+        row.innerHTML = '<span class="internal-link-icon">👉</span>' +
+          '<span class="internal-link-title">' + escapeHtml(linkTitle) + '</span>' +
+          '<input type="text" class="internal-link-url" placeholder="내 블로그 글 URL 붙여넣기" data-index="' + i + '" />';
+        linksDiv.appendChild(row);
+      });
+    }
+
     // 구글 SEO 전용 섹션 처리
     var googleSeoCards = document.querySelectorAll('.google-seo-only');
     if (selectedType === 'google-seo') {
@@ -1324,12 +1394,30 @@
     }
   }
 
+  // ─── 내부링크 텍스트 생성 ───
+  function buildInternalLinksText() {
+    if (!generatedData || !generatedData.internal_links) return '';
+    var lines = ['', '📎 함께 보면 좋은 글'];
+    var urlInputs = document.querySelectorAll('.internal-link-url');
+    generatedData.internal_links.forEach(function(title, i) {
+      var url = urlInputs[i] ? urlInputs[i].value.trim() : '';
+      if (url) {
+        lines.push('👉 ' + title + ' → ' + url);
+      } else {
+        lines.push('👉 ' + title);
+      }
+    });
+    return lines.join('\n');
+  }
+
   // ─── 개별 섹션 복사 ───
   function copySection(id, btn) {
     var el = document.getElementById(id);
     var text = '';
     if (id === 'result-tags') {
       text = Array.from(el.querySelectorAll('.result-tag-item')).map(function(t) { return t.textContent; }).join(' ');
+    } else if (id === 'result-internal-links') {
+      text = buildInternalLinksText();
     } else {
       text = el.textContent;
     }
@@ -1394,6 +1482,13 @@
         return tag.startsWith('#') ? tag : '#' + tag;
       }).join(' ');
       parts.push(tagsText);
+    }
+
+    // 내부링크
+    var linksText = buildInternalLinksText();
+    if (linksText) {
+      parts.push('');
+      parts.push(linksText);
     }
 
     var fullText = parts.join('\n');
