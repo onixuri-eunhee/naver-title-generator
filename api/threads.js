@@ -127,7 +127,7 @@ export default async function handler(req, res) {
       remaining = FREE_DAILY_LIMIT - newCount;
     }
 
-    const systemPrompt = 'Threads SNS 카피라이터. 규칙: ①80~130자 ②1문장 1줄+줄바꿈 리듬 ③첫 줄에서 2초 안에 멈추게 ④해시태그 없음 ⑤글만 출력 ⑥한국어 맞춤법 정확히 지킬 것. 한글 자모 조합 오류 절대 금지(예: "모발"→"모펜", "관리"→"관래" 같은 오타 불가). 출력 전 모든 단어 맞춤법 검수 필수.';
+    const systemPrompt = 'Threads SNS 카피라이터. 규칙: ①80~130자 ②1문장 1줄+줄바꿈 리듬 ③첫 줄에서 2초 안에 멈추게 ④해시태그 없음 ⑤한국어 맞춤법 정확히 지킬 것. 한글 자모 조합 오류 절대 금지(예: "모발"→"모펜", "관리"→"관래" 같은 오타 불가). ⑥글 3개 작성 후 반드시 "===검수===" 구분자를 넣고 맞춤법 자체 검수 결과를 작성. 오타 발견 시 "오타→수정" 형식으로 기록, 없으면 "오타없음". ⑦검수에서 발견한 오타는 위 글에도 반드시 수정 반영하여 출력.';
 
     const userMessage = `유형: ${type || '정보형'} (${typeGuide[type] || typeGuide['정보형']})
 ${toneGuide[tone] || toneGuide['친구체']}
@@ -135,7 +135,8 @@ ${toneGuide[tone] || toneGuide['친구체']}
 소재: ${topic}
 메모: ${memo || '없음'}
 
-서로 다른 첫 줄과 구성으로 스레드 글 3개 작성. 각 글은 "---" 로만 구분.`;
+서로 다른 첫 줄과 구성으로 스레드 글 3개 작성. 각 글은 "---" 로만 구분.
+글 3개 작성 후 "===검수===" 구분자를 넣고 맞춤법 자체 검수 결과 작성.`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -146,7 +147,7 @@ ${toneGuide[tone] || toneGuide['친구체']}
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 600,
+        max_tokens: 800,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }],
       }),
@@ -160,10 +161,28 @@ ${toneGuide[tone] || toneGuide['친구체']}
       return res.status(500).json({ error: '글 생성 중 오류가 발생했습니다.' });
     }
 
-    // 응답 파싱: "---"로 split하여 3개 결과 추출
+    // 응답 파싱: 검수 섹션 분리 후 "---"로 split
     const raw = (data.content?.[0]?.text || '').trim();
-    const results = raw.split(/\n?---\n?/).map(s => s.trim()).filter(Boolean);
+
+    // ===검수=== 구분자로 글과 검수 결과 분리
+    const [contentPart, reviewPart] = raw.split(/===검수===/);
+    const results = (contentPart || '').trim().split(/\n?---\n?/).map(s => s.trim()).filter(Boolean);
     while (results.length < 3) results.push('');
+
+    // 검수 결과에서 오타→수정 패턴 추출 및 적용
+    if (reviewPart) {
+      const corrections = [...reviewPart.matchAll(/["""]?([^"""\s→]+)["""]?\s*→\s*["""]?([^"""\s,.\n]+)["""]?/g)];
+      corrections.forEach(([, wrong, correct]) => {
+        if (wrong && correct && wrong !== correct && wrong !== '오타' && wrong !== '오타단어') {
+          for (let i = 0; i < results.length; i++) {
+            if (results[i].includes(wrong)) {
+              results[i] = results[i].split(wrong).join(correct);
+              console.log(`[맞춤법 수정] 글${i+1}: "${wrong}" → "${correct}"`);
+            }
+          }
+        }
+      });
+    }
 
     return res.status(200).json({ results, remaining, limit: FREE_DAILY_LIMIT });
 
