@@ -152,13 +152,82 @@ export default async function handler(req, res) {
   try {
     const { mode } = req.body;
 
-    // 개별 재생성 — rate limit 차감 안 함
+    // 전체 재생성 — 프롬프트 구체화 후 전체 이미지 재생성, rate limit 차감 안 함
     if (mode === 'regenerate') {
-      const { prompt } = req.body;
-      if (!prompt) return res.status(400).json({ error: '프롬프트가 필요합니다.' });
-      const url = await callFlux(prompt);
-      if (!url) return res.status(500).json({ error: '이미지 재생성에 실패했습니다.' });
-      return res.status(200).json({ url });
+      const { prompts: origPrompts, markers: origMarkers } = req.body;
+      if (!origPrompts || !origPrompts.length) return res.status(400).json({ error: '프롬프트가 필요합니다.' });
+
+      // Claude로 프롬프트 구체화
+      let refinedPrompts;
+      try {
+        const promptsList = origPrompts.map((p, i) => `${i + 1}. ${p}`).join('\n');
+        const refineSystem = 'You are an expert image prompt enhancer. Given existing image prompts that produced unsatisfying results, refine each prompt to be MORE specific, detailed, and visually compelling. Add specific details: lighting direction, camera angle, composition, texture, color palette, atmosphere. Keep the core subject the same but make the description much richer. IMPORTANT: Maintain Korean/East Asian context. Output ONLY a valid JSON array of refined English prompt strings. Example: ["refined1", "refined2"]';
+        const refineUser = `These image prompts produced unsatisfying results. Refine each one to be more specific and produce higher quality images:\n\n${promptsList}`;
+        const claudeRaw = await callClaude(refineSystem, refineUser, 2000);
+        const jsonMatch = claudeRaw.match(/\[[\s\S]*\]/);
+        refinedPrompts = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+      } catch (err) {
+        console.error('Claude refine error:', err);
+        refinedPrompts = null;
+      }
+
+      // 실패 시 원본 프롬프트에 디테일 추가
+      if (!refinedPrompts || refinedPrompts.length !== origPrompts.length) {
+        refinedPrompts = origPrompts.map(p => `${p}, detailed, sharp focus, professional photography, 8k resolution`);
+      }
+      refinedPrompts = refinedPrompts.map(p => `${p}, Korean style, East Asian, high quality, no text, no watermark`);
+
+      // FLUX: 프롬프트별 2장씩 병렬 생성
+      const images = [];
+      // 고유 프롬프트만 추출 (마커당 2장이므로 중복 제거)
+      const uniquePrompts = [];
+      const uniqueMarkers = [];
+      const seen = new Set();
+      for (let i = 0; i < refinedPrompts.length; i++) {
+        const orig = origPrompts[i];
+        if (!seen.has(orig)) {
+          seen.add(orig);
+          uniquePrompts.push(refinedPrompts[i]);
+          uniqueMarkers.push(origMarkers ? origMarkers[i] : null);
+        }
+      }
+
+      for (let i = 0; i < uniquePrompts.length; i += 4) {
+        const batch = uniquePrompts.slice(i, i + 4);
+        const batchMarkers = uniqueMarkers.slice(i, i + 4);
+        const batchResults = await Promise.all(
+          batch.map(async (prompt, j) => {
+            try {
+              const response = await fetch('https://fal.run/fal-ai/flux/schnell', {
+                method: 'POST',
+                headers: {
+                  Authorization: `Key ${process.env.FAL_KEY}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  prompt,
+                  image_size: 'square_hd',
+                  num_images: 2,
+                  num_inference_steps: 4,
+                }),
+              });
+              const data = await response.json();
+              if (!response.ok || data.detail) throw new Error(JSON.stringify(data));
+              return (data.images || []).map(img => ({
+                url: img.url, marker: batchMarkers[j], prompt,
+              }));
+            } catch (err) {
+              console.error(`FLUX regen error ${i + j}:`, err);
+              return [{ url: null, marker: batchMarkers[j], prompt }];
+            }
+          })
+        );
+        for (const result of batchResults) images.push(...result);
+      }
+
+      const validImages = images.filter(img => img.url);
+      if (validImages.length === 0) return res.status(500).json({ error: '이미지 재생성에 실패했습니다.' });
+      return res.status(200).json({ images: validImages });
     }
 
     // Rate limit (화이트리스트 IP 스킵)

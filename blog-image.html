@@ -157,16 +157,13 @@ select:focus, input:focus, textarea:focus {
 }
 .image-label { font-size: 12px; color: #6B7280; }
 .action-btns { display: flex; gap: 6px; }
-.download-btn, .regen-btn {
+.download-btn {
   padding: 6px 12px; border: none; border-radius: 6px;
   font-size: 12px; font-weight: 600; cursor: pointer;
   font-family: 'Noto Sans KR', sans-serif; transition: all 0.15s;
+  background: #8B5CF6; color: #fff;
 }
-.download-btn { background: #8B5CF6; color: #fff; }
 .download-btn:hover { background: #7C3AED; }
-.regen-btn { background: #F3F4F6; color: #374151; }
-.regen-btn:hover { background: #E5E7EB; }
-.regen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 footer {
   text-align: center; padding: 28px 20px; font-size: 13px;
@@ -271,6 +268,8 @@ footer a:hover { text-decoration: underline; }
     <div class="card">
       <h2 style="font-size:16px; font-weight:700; margin-bottom:16px;">생성된 이미지</h2>
       <div class="image-grid" id="imageGrid"></div>
+      <button class="generate-btn" id="regenAllBtn" onclick="regenerateAll()" style="margin-top:20px; background:linear-gradient(135deg,#6366F1,#4F46E5);">전체 재생성 (프롬프트 구체화)</button>
+      <p style="text-align:center; font-size:12px; color:#9CA3AF; margin-top:8px;">마음에 들지 않으면 눌러주세요. AI가 프롬프트를 더 구체적으로 보강하여 새 이미지를 생성합니다.</p>
     </div>
   </div>
 
@@ -537,12 +536,6 @@ function renderResults(images, thumbnailText) {
     var btns = document.createElement('div');
     btns.className = 'action-btns';
 
-    var regenBtn = document.createElement('button');
-    regenBtn.className = 'regen-btn';
-    regenBtn.textContent = '\ud83d\udd04 재생성';
-    regenBtn.setAttribute('data-index', i);
-    regenBtn.onclick = function() { regenerateImage(this); };
-
     var dlBtn = document.createElement('button');
     dlBtn.className = 'download-btn';
     dlBtn.textContent = '다운로드';
@@ -551,7 +544,6 @@ function renderResults(images, thumbnailText) {
     dlBtn.setAttribute('data-thumbnail', isThumbnail ? '1' : '0');
     dlBtn.onclick = function() { downloadImage(this); };
 
-    btns.appendChild(regenBtn);
     btns.appendChild(dlBtn);
     actions.appendChild(labelEl);
     actions.appendChild(btns);
@@ -645,45 +637,42 @@ function renderThumbnailCanvas(canvas, imageUrl, text) {
   img.src = imageUrl;
 }
 
-// ─── 개별 재생성 ───
-async function regenerateImage(btn) {
-  var idx = parseInt(btn.getAttribute('data-index'));
-  var item = generatedImages[idx];
-  if (!item || !item.prompt) return;
+// ─── 전체 재생성 (프롬프트 구체화) ───
+async function regenerateAll() {
+  if (!generatedImages || generatedImages.length === 0) return;
 
+  var btn = document.getElementById('regenAllBtn');
   btn.disabled = true;
-  btn.textContent = '생성 중...';
+  btn.textContent = '프롬프트 구체화 + 이미지 재생성 중...';
+
+  document.getElementById('loadingArea').classList.add('show');
+  document.getElementById('loadingText').textContent = 'AI가 프롬프트를 보강하고 새 이미지를 생성합니다...';
+  document.getElementById('loadingProgress').textContent = '프롬프트 구체화 → 이미지 재생성 (약 30초~1분)';
 
   try {
+    var prompts = generatedImages.map(function(img) { return img.prompt; });
+    var markers = generatedImages.map(function(img) { return img.marker; });
+
     var res = await fetch('/api/blog-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'regenerate', prompt: item.prompt }),
+      body: JSON.stringify({ mode: 'regenerate', prompts: prompts, markers: markers }),
     });
     var data = await res.json();
 
-    if (res.ok && data.url) {
-      generatedImages[idx].url = data.url;
+    if (res.ok && data.images && data.images.length > 0) {
+      generatedImages = data.images.map(function(img, i) {
+        return { url: img.url, marker: img.marker, prompt: img.prompt, index: i };
+      });
 
-      var card = document.getElementById('image-card-' + idx);
-      var imgEl = card.querySelector('img');
-      var canvasEl = card.querySelector('canvas');
-
-      if (canvasEl) {
-        var thumbText = document.getElementById('thumbText1').value.trim() || document.getElementById('thumbText2').value.trim();
-        renderThumbnailCanvas(canvasEl, data.url, thumbText);
-      } else if (imgEl) {
-        imgEl.src = data.url;
-      }
-
-      // 다운로드 URL 업데이트
-      var dlBtn = card.querySelector('.download-btn');
-      if (dlBtn) dlBtn.setAttribute('data-url', data.url);
+      var thumbnailText = document.getElementById('thumbText1').value.trim() || document.getElementById('thumbText2').value.trim();
+      renderResults(generatedImages, thumbnailText);
     }
   } catch(e) {}
 
+  document.getElementById('loadingArea').classList.remove('show');
   btn.disabled = false;
-  btn.textContent = '\ud83d\udd04 재생성';
+  btn.textContent = '전체 재생성 (프롬프트 구체화)';
 }
 
 // ─── 다운로드 ───
