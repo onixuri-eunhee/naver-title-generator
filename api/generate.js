@@ -1,8 +1,6 @@
 import { Redis } from '@upstash/redis';
 
-// 무료 사용자: 하루 1회
-// 향후 유료 플랜: 월 30회 / 월 50회 / 월 100회 / 월 무제한
-const FREE_DAILY_LIMIT = 3;
+const FREE_DAILY_LIMIT = 0; // 0 = 무제한 (테스트 기간)
 
 let redis;
 function getRedis() {
@@ -57,6 +55,9 @@ export default async function handler(req, res) {
 
   // GET: 남은 횟수 조회
   if (req.method === 'GET') {
+    if (FREE_DAILY_LIMIT <= 0) {
+      return res.status(200).json({ remaining: 999, limit: 0 });
+    }
     try {
       const ip = getClientIp(req);
       const key = getTodayKey(ip);
@@ -73,19 +74,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // IP 기반 rate limit 체크
-    const ip = getClientIp(req);
-    const key = getTodayKey(ip);
-    const count = (await getRedis().get(key)) || 0;
-
-    if (count >= FREE_DAILY_LIMIT) {
-      return res.status(429).json({
-        error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
-        remaining: 0,
-      });
-    }
-
-    // 요청 body에서 파라미터 추출
     const { prompt, system, messages, model, max_tokens } = req.body;
 
     // prompt 방식 (기존 호환) 또는 messages 방식 (threads-writer 등)
@@ -115,14 +103,20 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!response.ok) {
-      return res.status(response.status).json({ error: data });
+      console.error('Claude API Error:', data);
+      return res.status(500).json({ error: '글 생성 중 오류가 발생했습니다.' });
     }
 
-    // 성공 시 카운트 증가 (KST 자정에 만료)
-    await getRedis().incr(key);
-    await getRedis().expire(key, getTTLUntilMidnightKST());
-
-    const remaining = FREE_DAILY_LIMIT - count - 1;
+    // Rate limit count (0 = 무제한 테스트 모드)
+    let remaining = 999;
+    if (FREE_DAILY_LIMIT > 0) {
+      const ip = getClientIp(req);
+      const key = getTodayKey(ip);
+      await getRedis().incr(key);
+      await getRedis().expire(key, getTTLUntilMidnightKST());
+      const count = (await getRedis().get(key)) || 0;
+      remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
+    }
 
     return res.status(200).json({ ...data, remaining });
 

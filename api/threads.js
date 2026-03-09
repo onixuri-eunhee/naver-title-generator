@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 
-const FREE_DAILY_LIMIT = 3;
+const FREE_DAILY_LIMIT = 0; // 0 = 무제한 (테스트 기간)
 
 let redis;
 function getRedis() {
@@ -69,6 +69,9 @@ export default async function handler(req, res) {
 
   // GET: 남은 횟수 조회
   if (req.method === 'GET') {
+    if (FREE_DAILY_LIMIT <= 0) {
+      return res.status(200).json({ remaining: 999, limit: 0 });
+    }
     try {
       const ip = getClientIp(req);
       const key = getTodayKey(ip);
@@ -85,25 +88,30 @@ export default async function handler(req, res) {
   }
 
   try {
-    // IP 기반 rate limit 체크 (INCR-first: 동시 요청 race condition 방지)
-    const ip = getClientIp(req);
-    const key = getTodayKey(ip);
-    const newCount = await getRedis().incr(key);
-    await getRedis().expire(key, getTTLUntilMidnightKST());
-
-    if (newCount > FREE_DAILY_LIMIT) {
-      await getRedis().decr(key);
-      return res.status(429).json({
-        error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
-        remaining: 0,
-      });
-    }
-
-    // 요청 body에서 파라미터 추출
     const { type, tone, industry, target, topic, memo } = req.body;
 
     if (!topic) {
       return res.status(400).json({ error: '주제/소재를 입력해주세요.' });
+    }
+
+    // Rate limit (INCR-first, 0 = 무제한 테스트 모드)
+    let remaining = 999;
+    let rateLimitKey = null;
+
+    if (FREE_DAILY_LIMIT > 0) {
+      const ip = getClientIp(req);
+      rateLimitKey = getTodayKey(ip);
+      const newCount = await getRedis().incr(rateLimitKey);
+      await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
+
+      if (newCount > FREE_DAILY_LIMIT) {
+        await getRedis().decr(rateLimitKey);
+        return res.status(429).json({
+          error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
+          remaining: 0,
+        });
+      }
+      remaining = FREE_DAILY_LIMIT - newCount;
     }
 
     const systemPrompt = 'Threads SNS 카피라이터. 규칙: ①80~130자 ②1문장 1줄+줄바꿈 리듬 ③첫 줄에서 2초 안에 멈추게 ④해시태그 없음 ⑤글만 출력';
@@ -135,11 +143,9 @@ ${toneGuide[tone] || toneGuide['친구체']}
 
     if (!response.ok) {
       console.error('Claude API Error:', data);
-      await getRedis().decr(key);
+      if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch(_) {}
       return res.status(500).json({ error: '글 생성 중 오류가 발생했습니다.' });
     }
-
-    const remaining = FREE_DAILY_LIMIT - newCount;
 
     // 응답 파싱: "---"로 split하여 3개 결과 추출
     const raw = (data.content?.[0]?.text || '').trim();

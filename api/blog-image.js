@@ -1,7 +1,6 @@
 import { Redis } from '@upstash/redis';
 
-// 무료 사용자: 하루 3회
-const FREE_DAILY_LIMIT = 3;
+const FREE_DAILY_LIMIT = 0; // 0 = 무제한 (테스트 기간)
 
 let redis;
 function getRedis() {
@@ -26,7 +25,7 @@ function getClientIp(req) {
 function getKSTDate() {
   const now = new Date();
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  return kst.toISOString().slice(0, 10); // YYYY-MM-DD (KST 기준)
+  return kst.toISOString().slice(0, 10);
 }
 
 function getTodayKey(ip) {
@@ -41,21 +40,21 @@ function getTTLUntilMidnightKST() {
   nextMidnight.setUTCHours(0, 0, 0, 0);
   nextMidnight.setUTCDate(nextMidnight.getUTCDate() + 1);
   const seconds = Math.ceil((nextMidnight.getTime() - kstNow.getTime()) / 1000);
-  return Math.max(seconds, 60); // 최소 60초
+  return Math.max(seconds, 60);
 }
 
 export default async function handler(req, res) {
-  // CORS 헤더
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   // GET: 남은 횟수 조회
   if (req.method === 'GET') {
+    if (FREE_DAILY_LIMIT <= 0) {
+      return res.status(200).json({ remaining: 999, limit: 0 });
+    }
     try {
       const ip = getClientIp(req);
       const key = getTodayKey(ip);
@@ -72,43 +71,54 @@ export default async function handler(req, res) {
   }
 
   try {
-    // IP 기반 rate limit 체크 (INCR-first: 동시 요청 race condition 방지)
-    const ip = getClientIp(req);
-    const key = getTodayKey(ip);
-    const newCount = await getRedis().incr(key);
-    await getRedis().expire(key, getTTLUntilMidnightKST());
-
-    if (newCount > FREE_DAILY_LIMIT) {
-      await getRedis().decr(key);
-      return res.status(429).json({
-        error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
-        remaining: 0,
-      });
-    }
-
-    // 요청 body에서 파라미터 추출
     const { blogText, titleText } = req.body;
 
     if (!blogText || !titleText) {
       return res.status(400).json({ error: '블로그 글 텍스트와 이미지 제목이 필요합니다.' });
     }
 
-    // Step 1: Claude API 호출 → 블로그 텍스트 분석 → 영문 DALL-E 프롬프트 3개 생성
-    const claudeSystemPrompt = `You are an expert image prompt generator for Korean blog posts. Analyze the given Korean blog post and generate exactly 3 DALL-E image prompts in English.
+    // Rate limit (INCR-first, 0 = 무제한 테스트 모드)
+    let remaining = 999;
+    let rateLimitKey = null;
 
-Rules:
-- All prompts must be in English
-- Style: realistic photography style, high quality, bright and clean aesthetic, suitable for Korean blog
+    if (FREE_DAILY_LIMIT > 0) {
+      const ip = getClientIp(req);
+      rateLimitKey = getTodayKey(ip);
+      const newCount = await getRedis().incr(rateLimitKey);
+      await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
+
+      if (newCount > FREE_DAILY_LIMIT) {
+        await getRedis().decr(rateLimitKey);
+        return res.status(429).json({
+          error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
+          remaining: 0,
+        });
+      }
+      remaining = FREE_DAILY_LIMIT - newCount;
+    }
+
+    // Step 1: Claude → 블로그 분석 → DALL-E 프롬프트 1개 + Unsplash 키워드 3개
+    const claudeSystemPrompt = `You are an expert image analyst for Korean blog posts. Analyze the given Korean blog post and generate:
+1. One DALL-E image prompt in English for a blog thumbnail background
+2. Three Unsplash search keywords in English for finding body images
+
+Rules for DALL-E prompt:
+- English only
+- Style: realistic photography, high quality, bright and clean aesthetic, suitable for Korean blog
 - NEVER include any text, letters, words, or typography in the image
-- prompt_1: Background image for the blog thumbnail. Must have a clean center area suitable for text overlay. Slightly blurred or simple composition in the center. Related to the blog topic.
-- prompt_2: Image for the top section of the blog body. Visually represents the core topic/theme of the blog post.
-- prompt_3: Image for the bottom section of the blog body. Represents the conclusion, emotion, or takeaway of the blog post.
+- Must have a clean center area suitable for text overlay
+- Slightly blurred or simple composition in the center
+- Related to the blog topic
 
-Respond ONLY with valid JSON in this exact format:
+Rules for Unsplash keywords:
+- English only, 1-3 words each
+- Keywords should represent different visual aspects of the blog content
+- Suitable for finding high-quality stock photos
+
+Respond ONLY with valid JSON:
 {
-  "prompt_1": "...",
-  "prompt_2": "...",
-  "prompt_3": "..."
+  "dalle_prompt": "...",
+  "unsplash_keywords": ["keyword1", "keyword2", "keyword3"]
 }`;
 
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
@@ -119,15 +129,10 @@ Respond ONLY with valid JSON in this exact format:
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
         system: claudeSystemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: `다음 한국어 블로그 글을 분석하고 DALL-E 이미지 프롬프트 3개를 생성해주세요.\n\n블로그 글:\n${blogText.slice(0, 3000)}`,
-          },
-        ],
+        messages: [{ role: 'user', content: `다음 한국어 블로그 글을 분석해주세요.\n\n${blogText.slice(0, 3000)}` }],
       }),
     });
 
@@ -135,68 +140,81 @@ Respond ONLY with valid JSON in this exact format:
 
     if (!claudeResponse.ok) {
       console.error('Claude API Error:', claudeData);
-      await getRedis().decr(key);
+      if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch(_) {}
       return res.status(500).json({ error: '글 분석 중 오류가 발생했습니다.' });
     }
 
-    // Claude 응답에서 JSON 파싱
-    let prompts;
+    let analysisResult;
     try {
       const claudeText = claudeData.content?.[0]?.text || '';
-      // JSON 블록 추출 (```json ... ``` 또는 순수 JSON)
       const jsonMatch = claudeText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('No JSON found');
-      prompts = JSON.parse(jsonMatch[0]);
+      analysisResult = JSON.parse(jsonMatch[0]);
     } catch (parseErr) {
-      console.error('Prompt parse error:', parseErr);
-      await getRedis().decr(key);
-      return res.status(500).json({ error: '프롬프트 생성 결과를 파싱할 수 없습니다.' });
+      console.error('Parse error:', parseErr);
+      if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch(_) {}
+      return res.status(500).json({ error: '분석 결과를 처리할 수 없습니다.' });
     }
 
-    // Step 2: OpenAI DALL-E 3 API로 이미지 3장 생성 (병렬)
-    const dalleRequests = [prompts.prompt_1, prompts.prompt_2, prompts.prompt_3].map(
-      (prompt) =>
-        fetch('https://api.openai.com/v1/images/generations', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: 'dall-e-3',
-            prompt: prompt,
-            n: 1,
-            size: '1792x1024',
-            quality: 'standard',
-          }),
-        }).then((r) => r.json())
+    // Step 2: DALL-E 3 → 썸네일 배경 1장 (1024×1024)
+    const dalleResponse = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'dall-e-3',
+        prompt: analysisResult.dalle_prompt,
+        n: 1,
+        size: '1024x1024',
+        quality: 'standard',
+      }),
+    });
+
+    const dalleData = await dalleResponse.json();
+
+    if (dalleData.error) {
+      console.error('DALL-E Error:', dalleData.error);
+      if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch(_) {}
+      return res.status(500).json({ error: '썸네일 이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+    }
+
+    const thumbnailUrl = dalleData.data?.[0]?.url;
+
+    // Step 3: Unsplash → 본문 이미지 7장 (키워드 3개: 3+2+2)
+    const keywords = analysisResult.unsplash_keywords || [];
+    const perPageCounts = [3, 2, 2];
+
+    const unsplashRequests = keywords.slice(0, 3).map((kw, i) =>
+      fetch(
+        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(kw)}&per_page=${perPageCounts[i] || 2}&orientation=landscape`,
+        { headers: { Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}` } }
+      ).then(r => r.json())
     );
 
-    const dalleResults = await Promise.allSettled(dalleRequests);
+    const unsplashResults = await Promise.allSettled(unsplashRequests);
 
-    // 에러 체크
-    for (let i = 0; i < dalleResults.length; i++) {
-      if (dalleResults[i].status === 'rejected' || dalleResults[i].value?.error) {
-        console.error(`DALL-E Error (image ${i + 1}):`, dalleResults[i].reason || dalleResults[i].value?.error);
-        await getRedis().decr(key);
-        return res.status(500).json({
-          error: `이미지 ${i + 1} 생성에 실패했습니다. 잠시 후 다시 시도해주세요.`,
-        });
+    const bodyImages = [];
+    for (const result of unsplashResults) {
+      if (result.status === 'fulfilled' && result.value?.results) {
+        for (const photo of result.value.results) {
+          bodyImages.push({
+            url: photo.urls?.regular,
+            thumb: photo.urls?.small,
+            downloadUrl: photo.links?.download_location,
+            photographer: photo.user?.name,
+            photographerUrl: photo.user?.links?.html,
+          });
+        }
       }
     }
 
-    const images = dalleResults.map((r) => r.value?.data?.[0]?.url);
-
-    const remaining = FREE_DAILY_LIMIT - newCount;
-
-    // Step 3: 결과 반환
     return res.status(200).json({
-      prompts: {
-        prompt_1: prompts.prompt_1,
-        prompt_2: prompts.prompt_2,
-        prompt_3: prompts.prompt_3,
-      },
-      images,
+      dallePrompt: analysisResult.dalle_prompt,
+      thumbnailUrl,
+      unsplashKeywords: keywords,
+      bodyImages: bodyImages.slice(0, 7),
       remaining,
       limit: FREE_DAILY_LIMIT,
     });
