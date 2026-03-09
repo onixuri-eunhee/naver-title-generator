@@ -107,6 +107,19 @@
     padding: 1px 3px;
     line-height: 1.4;
   }
+  .navbar-links a.pro-badge::after {
+    content: 'PRO';
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    font-size: 8px;
+    font-weight: 800;
+    color: #fff;
+    background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+    border-radius: 4px;
+    padding: 1px 3px;
+    line-height: 1.4;
+  }
 
   /* 상단 광고 */
   .ad-top {
@@ -435,9 +448,9 @@
   <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
   <div class="navbar-links">
     <a href="hook-generator.html" style="color:#00C73C; font-weight:700;">🔥 후킹문구</a>
-    <a href="blog-writer.html">✍️ 블로그 글</a>
-    <a href="threads.html" class="new-badge">🧵 스레드 글</a>
-    <a href="blog-image.html" style="color:#2E86FF; font-weight:700;">🖼️ 이미지</a>
+    <a href="blog-writer.html" class="pro-badge">✍️ 블로그 글</a>
+    <a href="threads.html" class="pro-badge">🧵 스레드</a>
+    <a href="blog-image.html" class="pro-badge">🖼️ 이미지</a>
     <a href="column.html">칼럼</a>
     <a href="about.html">소개</a>
     <a href="contact.html">연락처</a>
@@ -740,8 +753,10 @@
 
 <!-- 뚝딱툴 도구 모음 -->
 <div style="max-width:860px; margin:0 auto; padding:0 20px 48px;">
-  <div style="font-size:13px; font-weight:700; color:#9CA3AF; letter-spacing:0.05em; margin-bottom:14px;">🛠 뚝딱툴 도구 모음</div>
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+
+  <!-- 무료 도구 -->
+  <div style="font-size:13px; font-weight:700; color:#00C73C; letter-spacing:0.05em; margin-bottom:14px;">🆓 무료 도구</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:32px;">
     <div style="background:#F0FDF4; border:2px solid #00C73C; border-radius:14px; padding:20px;">
       <div style="font-size:11px; font-weight:700; color:#00C73C; margin-bottom:6px; letter-spacing:0.05em;">현재 페이지</div>
       <div style="font-size:16px; font-weight:700; color:#1A1A2E; margin-bottom:4px;">📝 블로그 제목 생성기</div>
@@ -752,15 +767,28 @@
       <div style="font-size:16px; font-weight:700; color:#1A1A2E; margin-bottom:4px;">🔥 후킹문구 생성기</div>
       <div style="font-size:12px; color:#6B7280;">업종 + 키워드 → 스크롤 멈추는 문구 15개</div>
     </a>
-    <a href="threads.html" style="background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:20px; text-decoration:none; display:block; transition:all 0.2s; position:relative;" onmouseover="this.style.borderColor='#ff5f1f';this.style.boxShadow='0 4px 16px rgba(255,95,31,0.12)'" onmouseout="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
-      <div style="font-size:11px; font-weight:700; color:#ff5f1f; margin-bottom:6px; letter-spacing:0.05em;">NEW ✦</div>
-      <div style="font-size:16px; font-weight:700; color:#1A1A2E; margin-bottom:4px;">🧵 스레드 글 생성기</div>
-      <div style="font-size:12px; color:#6B7280;">유형·말투 선택 → 터지는 스레드 글 3개</div>
+  </div>
+
+  <!-- PRO 도구 -->
+  <div style="font-size:13px; font-weight:700; color:#8B5CF6; letter-spacing:0.05em; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+    <span>✦ PRO 도구</span>
+    <span style="font-size:10px; font-weight:500; color:#9CA3AF; letter-spacing:0;">(현재 무료 체험 중)</span>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+    <a href="blog-writer.html" style="background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:20px; text-decoration:none; display:block; transition:all 0.2s; position:relative;" onmouseover="this.style.borderColor='#8B5CF6';this.style.boxShadow='0 4px 16px rgba(139,92,246,0.12)'" onmouseout="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
+      <div style="font-size:11px; font-weight:700; color:#8B5CF6; margin-bottom:6px; letter-spacing:0.05em;">PRO ✦</div>
+      <div style="font-size:16px; font-weight:700; color:#1A1A2E; margin-bottom:4px;">✍️ 블로그 글 생성기</div>
+      <div style="font-size:12px; color:#6B7280;">업종·키워드 → 상위노출 블로그 글 작성</div>
     </a>
-    <a href="blog-image.html" style="background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:20px; text-decoration:none; display:block; transition:all 0.2s;" onmouseover="this.style.borderColor='#2E86FF';this.style.boxShadow='0 4px 16px rgba(46,134,255,0.12)'" onmouseout="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
-      <div style="font-size:11px; font-weight:700; color:#2E86FF; margin-bottom:6px; letter-spacing:0.05em;">NEW ✦</div>
+    <a href="blog-image.html" style="background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:20px; text-decoration:none; display:block; transition:all 0.2s; position:relative;" onmouseover="this.style.borderColor='#8B5CF6';this.style.boxShadow='0 4px 16px rgba(139,92,246,0.12)'" onmouseout="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
+      <div style="font-size:11px; font-weight:700; color:#8B5CF6; margin-bottom:6px; letter-spacing:0.05em;">PRO ✦</div>
       <div style="font-size:16px; font-weight:700; color:#1A1A2E; margin-bottom:4px;">🖼️ 블로그 이미지 생성기</div>
       <div style="font-size:12px; color:#6B7280;">블로그 글 분석 → AI 이미지 3장 생성</div>
+    </a>
+    <a href="threads.html" style="background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:20px; text-decoration:none; display:block; transition:all 0.2s; position:relative;" onmouseover="this.style.borderColor='#8B5CF6';this.style.boxShadow='0 4px 16px rgba(139,92,246,0.12)'" onmouseout="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
+      <div style="font-size:11px; font-weight:700; color:#8B5CF6; margin-bottom:6px; letter-spacing:0.05em;">PRO ✦</div>
+      <div style="font-size:16px; font-weight:700; color:#1A1A2E; margin-bottom:4px;">🧵 스레드 글 생성기</div>
+      <div style="font-size:12px; color:#6B7280;">유형·말투 선택 → 터지는 스레드 글 3개</div>
     </a>
   </div>
 </div>
