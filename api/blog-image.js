@@ -14,13 +14,14 @@ import { Redis } from '@upstash/redis';
  * 100크레딧 = 29,900원 (크레딧당 299원, 9% 할인)
  * 200크레딧 = 49,900원 (크레딧당 250원, 24% 할인)
  *
- * 1크레딧 = 이미지 8장 생성
- * 재생성: 1크레딧 (강화된 프롬프트로 8장 전체 재생성)
+ * 1크레딧 = 마커당 1장 이미지 생성 (parse 모드: 마커 수만큼, direct 모드: 8장 고정)
+ * 재생성: 1크레딧 (강화된 프롬프트로 전체 재생성)
  * 개별 재생성: 없음
  */
 
 const FREE_DAILY_LIMIT = 3;
-const TOTAL_IMAGES = 8;         // 1크레딧당 생성 이미지 수 (고정)
+const MAX_MARKERS = 10;         // 마커 최대 수
+const DIRECT_IMAGES = 8;        // 직접 입력 모드 이미지 수
 const IMAGE_SIZE = 'square_hd'; // 1024×1024 (고정)
 
 let redis;
@@ -202,55 +203,84 @@ export default async function handler(req, res) {
     // ===== PARSE 모드: 블로그 글에서 마커 파싱 =====
     if (mode === 'parse') {
       const { blogText, thumbnailText } = req.body;
+      const frontMarkers = req.body.markers; // 프론트에서 편집된 마커
       if (!blogText) {
         if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
         return res.status(400).json({ error: '블로그 글을 입력해주세요.' });
       }
 
-      // 마커 추출 (사진/이미지 형식 모두 지원)
-      const markerRegex = /\((사진|이미지):\s*([^)]+)\)/g;
-      const markers = [];
-      let m;
       const totalLen = blogText.length;
 
       // 소제목 추출
       const headings = blogText.match(/【\d+\.?】[^\n]*/g) || [];
       const blogStructure = headings.map(h => h.trim()).join(' | ');
 
-      while ((m = markerRegex.exec(blogText)) !== null) {
-        const rawText = m[2].trim();
+      const cleanContext = (str) => str
+        .replace(/\((사진|이미지):\s*[^)]+\)/g, '')
+        .replace(/#\S+/g, '')
+        .replace(/【\d+\.?】/g, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
 
-        let text = rawText;
-        let altText = '';
-        const altMatch = rawText.match(/^(.+?),\s*alt:\s*(.+)$/);
-        if (altMatch) {
-          text = altMatch[1].trim();
-          altText = altMatch[2].trim();
+      let markers = [];
+
+      if (Array.isArray(frontMarkers) && frontMarkers.length > 0) {
+        // 프론트에서 편집된 마커 사용
+        const validMarkers = frontMarkers.filter(m => m && m.trim()).slice(0, MAX_MARKERS);
+        markers = validMarkers.map((markerText) => {
+          const text = markerText.trim();
+          // blogText에서 해당 마커 위치 찾기
+          const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const findRegex = new RegExp(`\\((사진|이미지):\\s*${escapedText}[^)]*\\)`);
+          const found = blogText.match(findRegex);
+          let before = '', after = '', position = 'middle', section = '';
+
+          if (found) {
+            const pos = blogText.indexOf(found[0]);
+            const rawBefore = blogText.substring(Math.max(0, pos - 400), pos);
+            const rawAfter = blogText.substring(pos + found[0].length, Math.min(totalLen, pos + found[0].length + 400));
+            before = cleanContext(rawBefore);
+            after = cleanContext(rawAfter);
+            const positionRatio = pos / totalLen;
+            position = positionRatio < 0.25 ? 'early' : positionRatio < 0.75 ? 'middle' : 'ending';
+            const textBeforeMarker = blogText.substring(0, pos);
+            const sectionMatches = [...textBeforeMarker.matchAll(/【\d+\.?】[^\n]*/g)];
+            section = sectionMatches.length > 0 ? sectionMatches[sectionMatches.length - 1][0].trim() : '';
+          } else {
+            // 수동 추가된 마커: blogText 앞부분을 문맥으로 사용
+            before = cleanContext(blogText.substring(0, Math.min(400, totalLen)));
+            after = '';
+            position = 'middle';
+          }
+
+          return { text, altText: '', before, after, position, section };
+        });
+      } else {
+        // 기존 로직: blogText에서 regex 추출 (하위 호환)
+        const markerRegex = /\((사진|이미지):\s*([^)]+)\)/g;
+        let m;
+
+        while ((m = markerRegex.exec(blogText)) !== null) {
+          const rawText = m[2].trim();
+          let text = rawText;
+          let altText = '';
+          const altMatch = rawText.match(/^(.+?),\s*alt:\s*(.+)$/);
+          if (altMatch) {
+            text = altMatch[1].trim();
+            altText = altMatch[2].trim();
+          }
+          const pos = m.index;
+          const rawBefore = blogText.substring(Math.max(0, pos - 400), pos);
+          const rawAfter = blogText.substring(pos + m[0].length, Math.min(totalLen, pos + m[0].length + 400));
+          const before = cleanContext(rawBefore);
+          const after = cleanContext(rawAfter);
+          const positionRatio = pos / totalLen;
+          const position = positionRatio < 0.25 ? 'early' : positionRatio < 0.75 ? 'middle' : 'ending';
+          const textBeforeMarker = blogText.substring(0, pos);
+          const sectionMatches = [...textBeforeMarker.matchAll(/【\d+\.?】[^\n]*/g)];
+          const section = sectionMatches.length > 0 ? sectionMatches[sectionMatches.length - 1][0].trim() : '';
+          markers.push({ text, altText, before, after, position, section });
         }
-
-        const pos = m.index;
-
-        const rawBefore = blogText.substring(Math.max(0, pos - 400), pos);
-        const rawAfter = blogText.substring(pos + m[0].length, Math.min(totalLen, pos + m[0].length + 400));
-        const cleanContext = (str) => str
-          .replace(/\((사진|이미지):\s*[^)]+\)/g, '')
-          .replace(/#\S+/g, '')
-          .replace(/【\d+\.?】/g, '')
-          .replace(/\s{2,}/g, ' ')
-          .trim();
-        const before = cleanContext(rawBefore);
-        const after = cleanContext(rawAfter);
-
-        const positionRatio = pos / totalLen;
-        const position = positionRatio < 0.25 ? 'early' : positionRatio < 0.75 ? 'middle' : 'ending';
-
-        const textBeforeMarker = blogText.substring(0, pos);
-        const sectionMatches = [...textBeforeMarker.matchAll(/【\d+\.?】[^\n]*/g)];
-        const section = sectionMatches.length > 0
-          ? sectionMatches[sectionMatches.length - 1][0].trim()
-          : '';
-
-        markers.push({ text, altText, before, after, position, section });
       }
 
       if (markers.length === 0) {
@@ -371,50 +401,23 @@ ${markersList}`;
 
       prompts = prompts.map(p => `${p}, Korean lifestyle photography, no text, no watermark`);
 
-      // FLUX: 마커별 이미지 수 분배 (총 TOTAL_IMAGES장 고정)
-      const perMarker = Math.floor(TOTAL_IMAGES / prompts.length);
-      const extraImages = TOTAL_IMAGES % prompts.length;
-
+      // FLUX: 마커당 1장 (1:1 매핑)
       const images = [];
       for (let i = 0; i < prompts.length; i += 4) {
         const batch = prompts.slice(i, i + 4);
         const batchResults = await Promise.all(
           batch.map(async (prompt, j) => {
             const markerIndex = i + j;
-            const numForMarker = perMarker + (markerIndex < extraImages ? 1 : 0);
-            const subBatches = numForMarker <= 4 ? [numForMarker] : [4, numForMarker - 4];
-            const markerImages = [];
-            for (const subCount of subBatches) {
-              try {
-                const response = await fetch('https://fal.run/fal-ai/flux/schnell', {
-                  method: 'POST',
-                  headers: {
-                    Authorization: `Key ${process.env.FAL_KEY}`,
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    prompt,
-                    image_size: IMAGE_SIZE,
-                    num_images: subCount,
-                    num_inference_steps: 4,
-                  }),
-                });
-                const data = await response.json();
-                if (!response.ok || data.detail) throw new Error(JSON.stringify(data));
-                for (const img of (data.images || [])) {
-                  markerImages.push({ url: img.url, marker: markers[markerIndex].text, prompt });
-                }
-              } catch (err) {
-                console.error(`FLUX error for marker ${markerIndex}:`, err);
-                if (markerImages.length === 0) {
-                  markerImages.push({ url: null, marker: markers[markerIndex].text, prompt });
-                }
-              }
+            try {
+              const url = await callFlux(prompt);
+              return { url, marker: markers[markerIndex].text, prompt };
+            } catch (err) {
+              console.error(`FLUX error for marker ${markerIndex}:`, err);
+              return { url: null, marker: markers[markerIndex].text, prompt };
             }
-            return markerImages;
           })
         );
-        for (const result of batchResults) images.push(...result);
+        images.push(...batchResults);
       }
 
       const validImages = images.filter(img => img.url);
@@ -432,7 +435,7 @@ ${markersList}`;
       });
     }
 
-    // ===== DIRECT 모드: 주제+분위기 → TOTAL_IMAGES장 고정 =====
+    // ===== DIRECT 모드: 주제+분위기 → DIRECT_IMAGES장 고정 =====
     const { topic, mood, thumbnailText } = req.body;
     if (!topic) {
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
@@ -452,8 +455,8 @@ ${markersList}`;
     const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
     const fullPrompt = `${englishTopic}, ${moodStyle}, Korean lifestyle photography, no text, no watermark`;
 
-    // FLUX: TOTAL_IMAGES장 생성
-    const urls = await callFluxBatch(fullPrompt, TOTAL_IMAGES);
+    // FLUX: DIRECT_IMAGES장 생성
+    const urls = await callFluxBatch(fullPrompt, DIRECT_IMAGES);
     if (urls.length === 0) {
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
       return res.status(500).json({ error: '이미지 생성에 실패했습니다.' });

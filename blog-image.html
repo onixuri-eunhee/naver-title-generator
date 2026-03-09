@@ -173,6 +173,39 @@ select:focus, input:focus, textarea:focus {
   border-radius: 6px; font-size: 12px; color: #374151;
 }
 
+/* 마커 편집 UI */
+.marker-editor-list { display: flex; flex-direction: column; gap: 8px; }
+.marker-editor-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.marker-editor-num {
+  flex-shrink: 0; width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: #8B5CF6; color: #fff; border-radius: 50%;
+  font-size: 11px; font-weight: 700;
+}
+.marker-editor-input {
+  flex: 1; padding: 8px 12px; border: 1.5px solid #D0DBFF; border-radius: 8px;
+  font-size: 13px; font-family: 'Noto Sans KR', sans-serif; color: #1A1A2E;
+  background: #fff; outline: none; transition: border-color 0.2s;
+}
+.marker-editor-input:focus { border-color: #8B5CF6; box-shadow: 0 0 0 3px rgba(139,92,246,0.1); }
+.marker-delete-btn {
+  flex-shrink: 0; width: 28px; height: 28px; border: none; border-radius: 6px;
+  background: #FEE2E2; color: #DC2626; font-size: 14px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.marker-delete-btn:hover { background: #FECACA; }
+.marker-add-btn {
+  margin-top: 8px; padding: 8px 14px; border: 1.5px dashed #D0DBFF;
+  border-radius: 8px; background: transparent; color: #4F46E5;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif; transition: all 0.15s;
+}
+.marker-add-btn:hover { background: #F0F4FF; border-color: #8B5CF6; }
+.marker-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .generate-btn {
   width: 100%; padding: 15px; margin-top: 16px;
   background: linear-gradient(135deg, #8B5CF6, #6D28D9); color: #fff;
@@ -286,7 +319,8 @@ footer a:hover { text-decoration: underline; }
 
       <div class="marker-preview" id="markerPreview">
         <div class="marker-preview-title" id="markerPreviewTitle"></div>
-        <div class="marker-list" id="markerList"></div>
+        <div class="marker-editor-list" id="markerEditorList"></div>
+        <button class="marker-add-btn" id="markerAddBtn" onclick="addMarker()">+ 마커 추가</button>
       </div>
 
       <div style="margin-top:12px;">
@@ -368,38 +402,108 @@ function switchTab(tab) {
   document.getElementById('tab-direct').classList.toggle('active', tab === 'direct');
 }
 
-// ─── 마커 감지 미리보기 ───
-// B-1: (사진: ...) 형식 (홈피드/네이버SEO)과 (이미지: ...) 형식 (구글SEO) 모두 지원
+// ─── 마커 감지 + 편집 ───
+var editableMarkers = [];
+
 function detectMarkers() {
   var text = document.getElementById('blogTextInput').value;
   var regex = /\((사진|이미지):\s*([^)]+)\)/g;
   var markers = [];
   var m;
   while ((m = regex.exec(text)) !== null) {
-    // alt 텍스트 제거 후 마커 텍스트만 표시
     var rawText = m[2].trim();
     var altMatch = rawText.match(/^(.+?),\s*alt:\s*(.+)$/);
     markers.push(altMatch ? altMatch[1].trim() : rawText);
   }
 
+  if (markers.length === 0) {
+    editableMarkers = [];
+    document.getElementById('markerPreview').classList.remove('show');
+    updateGenBtnText();
+    return;
+  }
+
+  editableMarkers = markers.slice();
+  renderMarkerEditor();
+}
+
+function renderMarkerEditor() {
   var preview = document.getElementById('markerPreview');
   var title = document.getElementById('markerPreviewTitle');
-  var list = document.getElementById('markerList');
+  var list = document.getElementById('markerEditorList');
 
-  if (markers.length === 0) {
+  if (editableMarkers.length === 0) {
     preview.classList.remove('show');
+    updateGenBtnText();
     return;
   }
 
   preview.classList.add('show');
-  title.textContent = '감지된 이미지 ' + markers.length + '개';
+  title.textContent = '이미지 마커 ' + editableMarkers.length + '개 (수정/삭제 가능)';
   list.innerHTML = '';
-  markers.forEach(function(mk) {
-    var chip = document.createElement('span');
-    chip.className = 'marker-chip';
-    chip.textContent = mk;
-    list.appendChild(chip);
+
+  editableMarkers.forEach(function(mk, i) {
+    var row = document.createElement('div');
+    row.className = 'marker-editor-row';
+
+    var num = document.createElement('span');
+    num.className = 'marker-editor-num';
+    num.textContent = (i + 1);
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'marker-editor-input';
+    input.value = mk;
+    input.setAttribute('data-index', i);
+    input.oninput = function() {
+      editableMarkers[parseInt(this.getAttribute('data-index'))] = this.value;
+    };
+
+    var delBtn = document.createElement('button');
+    delBtn.className = 'marker-delete-btn';
+    delBtn.innerHTML = '&times;';
+    delBtn.setAttribute('data-index', i);
+    delBtn.onclick = function() { deleteMarker(parseInt(this.getAttribute('data-index'))); };
+
+    row.appendChild(num);
+    row.appendChild(input);
+    row.appendChild(delBtn);
+    list.appendChild(row);
   });
+
+  var addBtn = document.getElementById('markerAddBtn');
+  addBtn.disabled = editableMarkers.length >= 10;
+
+  updateGenBtnText();
+}
+
+function addMarker() {
+  if (editableMarkers.length >= 10) return;
+  editableMarkers.push('');
+  renderMarkerEditor();
+  // 새 마커 input에 포커스
+  var inputs = document.querySelectorAll('.marker-editor-input');
+  if (inputs.length > 0) inputs[inputs.length - 1].focus();
+}
+
+function deleteMarker(i) {
+  if (editableMarkers.length <= 1) return;
+  editableMarkers.splice(i, 1);
+  renderMarkerEditor();
+}
+
+function updateGenBtnText() {
+  var btn = document.getElementById('genBtn1');
+  if (btn.disabled && btn.textContent === '사용 한도 초과') return;
+  if (btn.textContent === '이미지 생성 중...') return;
+  var count = editableMarkers.length;
+  if (count === 0) {
+    btn.textContent = '이미지 생성하기';
+    btn.disabled = true;
+  } else {
+    btn.textContent = '이미지 ' + count + '장 생성하기';
+    btn.disabled = false;
+  }
 }
 
 // ─── 남은 횟수 ───
@@ -466,13 +570,10 @@ async function generateParse() {
   var blogText = document.getElementById('blogTextInput').value.trim();
   if (!blogText) { showError('errorBox1', '블로그 글을 붙여넣어주세요.'); return; }
 
-  // B-1: (사진: ...) 형식과 (이미지: ...) 형식 모두 지원
-  var regex = /\((사진|이미지):\s*([^)]+)\)/g;
-  var testMarkers = [];
-  var m;
-  while ((m = regex.exec(blogText)) !== null) testMarkers.push(m[2].trim());
-  if (testMarkers.length === 0) {
-    showError('errorBox1', '(사진: ...) 또는 (이미지: ...) 마커를 찾을 수 없습니다. 블로그 글 생성기에서 작성한 글을 붙여넣어주세요.');
+  // 편집된 마커 사용 (빈 문자열 제거)
+  var markersToSend = editableMarkers.filter(function(m) { return m.trim() !== ''; });
+  if (markersToSend.length === 0) {
+    showError('errorBox1', '이미지 마커가 없습니다. 마커를 추가하거나 (사진: ...) 마커가 포함된 글을 붙여넣어주세요.');
     return;
   }
 
@@ -482,7 +583,7 @@ async function generateParse() {
   btn.textContent = '이미지 생성 중...';
 
   document.getElementById('loadingArea').classList.add('show');
-  document.getElementById('loadingText').textContent = 'AI가 ' + testMarkers.length + '개 이미지를 생성하고 있습니다...';
+  document.getElementById('loadingText').textContent = 'AI가 ' + markersToSend.length + '개 이미지를 생성하고 있습니다...';
   document.getElementById('loadingProgress').textContent = '마커 분석 → 프롬프트 변환 → 이미지 생성 (약 30초~1분)';
   document.getElementById('resultArea').classList.remove('show');
 
@@ -491,7 +592,7 @@ async function generateParse() {
     var res = await fetch('/api/blog-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'parse', blogText: blogText, thumbnailText: thumbnailText }),
+      body: JSON.stringify({ mode: 'parse', blogText: blogText, thumbnailText: thumbnailText, markers: markersToSend }),
     });
     var data = await res.json();
 
@@ -564,7 +665,11 @@ async function generateDirect() {
 
 function resetBtn(btn, mode) {
   btn.disabled = false;
-  btn.textContent = mode === 'parse' ? '이미지 생성하기' : '이미지 8장 생성하기';
+  if (mode === 'parse') {
+    updateGenBtnText();
+  } else {
+    btn.textContent = '이미지 8장 생성하기';
+  }
   document.getElementById('loadingArea').classList.remove('show');
 }
 
@@ -731,7 +836,8 @@ async function regenerateAll() {
     if (currentMode === 'parse') {
       var blogText = document.getElementById('blogTextInput').value.trim();
       thumbText = document.getElementById('thumbText1').value.trim();
-      body = { mode: 'parse', blogText: blogText, thumbnailText: thumbText, is_regenerate: true };
+      var markersForRegen = editableMarkers.filter(function(m) { return m.trim() !== ''; });
+      body = { mode: 'parse', blogText: blogText, thumbnailText: thumbText, is_regenerate: true, markers: markersForRegen };
     } else {
       var topic = document.getElementById('topicInput').value.trim();
       var mood = document.getElementById('moodSelect').value;
