@@ -85,12 +85,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    // IP 기반 rate limit 체크
+    // IP 기반 rate limit 체크 (INCR-first: 동시 요청 race condition 방지)
     const ip = getClientIp(req);
     const key = getTodayKey(ip);
-    const count = (await getRedis().get(key)) || 0;
+    const newCount = await getRedis().incr(key);
+    await getRedis().expire(key, getTTLUntilMidnightKST());
 
-    if (count >= FREE_DAILY_LIMIT) {
+    if (newCount > FREE_DAILY_LIMIT) {
+      await getRedis().decr(key);
       return res.status(429).json({
         error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
         remaining: 0,
@@ -132,21 +134,19 @@ ${toneGuide[tone] || toneGuide['친구체']}
     const data = await response.json();
 
     if (!response.ok) {
-      return res.status(response.status).json({ error: data });
+      console.error('Claude API Error:', data);
+      await getRedis().decr(key);
+      return res.status(500).json({ error: '글 생성 중 오류가 발생했습니다.' });
     }
 
-    // 성공 시 카운트 증가
-    await getRedis().incr(key);
-    await getRedis().expire(key, getTTLUntilMidnightKST());
-
-    const remaining = FREE_DAILY_LIMIT - count - 1;
+    const remaining = FREE_DAILY_LIMIT - newCount;
 
     // 응답 파싱: "---"로 split하여 3개 결과 추출
     const raw = (data.content?.[0]?.text || '').trim();
     const results = raw.split(/\n?---\n?/).map(s => s.trim()).filter(Boolean);
     while (results.length < 3) results.push('');
 
-    return res.status(200).json({ results, remaining });
+    return res.status(200).json({ results, remaining, limit: FREE_DAILY_LIMIT });
 
   } catch (error) {
     console.error('Threads API Error:', error);

@@ -596,7 +596,10 @@ async function generate() {
       return;
     }
 
-    if (data.error) throw new Error(typeof data.error === 'string' ? data.error : data.error.message || 'API 오류');
+    if (data.error) {
+      var errMsg = typeof data.error === 'string' ? data.error : (data.error && data.error.message) ? data.error.message : '글 생성에 실패했습니다.';
+      throw new Error(errMsg);
+    }
 
     results = data.results || ['', '', ''];
     while (results.length < 3) results.push('');
@@ -607,7 +610,7 @@ async function generate() {
     switchTab(0);
 
     if (typeof data.remaining === 'number') {
-      updateRemainingUI(data.remaining);
+      updateRemainingUI(data.remaining, data.limit);
     }
 
     document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -629,6 +632,8 @@ function copyResult() {
     btn.textContent = '복사됨';
     btn.classList.add('copied');
     setTimeout(function() { btn.textContent = '복사'; btn.classList.remove('copied'); }, 2000);
+  }).catch(function() {
+    showError('복사에 실패했습니다. 텍스트를 직접 선택해 복사해주세요.');
   });
 }
 
@@ -636,15 +641,17 @@ async function loadRemaining() {
   try {
     var res = await fetch('/api/threads');
     var data = await res.json();
-    updateRemainingUI(data.remaining);
+    updateRemainingUI(data.remaining, data.limit);
   } catch(e) {
     document.getElementById('remainingCount').textContent = '';
   }
 }
 
-function updateRemainingUI(remaining) {
+var FREE_DAILY_LIMIT = 3;
+function updateRemainingUI(remaining, limit) {
   var el = document.getElementById('remainingCount');
-  el.textContent = '오늘 남은 횟수: ' + remaining + '회';
+  var displayLimit = limit || FREE_DAILY_LIMIT;
+  el.textContent = '오늘 남은 횟수: ' + remaining + '/' + displayLimit + '회';
   el.style.color = remaining <= 1 ? '#FF4757' : '#9CA3AF';
 }
 

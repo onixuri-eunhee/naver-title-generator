@@ -221,7 +221,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
   letter-spacing: 0.05em; margin-bottom: 14px;
 }
 .tools-grid {
-  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
 }
 .tool-card-current {
   background: #F0FDF4; border: 2px solid #00C73C; border-radius: 14px; padding: 20px;
@@ -273,7 +273,7 @@ footer a:hover { text-decoration: underline; }
   <div class="navbar-links">
     <a href="hook-generator.html" style="color:#00C73C; font-weight:700;">🔥 후킹문구</a>
     <a href="blog-writer.html">✍️ 블로그 글</a>
-    <a href="threads.html" class="new-badge">🧵 스레드 글</a>
+    <a href="threads.html">🧵 스레드 글</a>
     <a href="blog-image.html" style="color:#2E86FF; font-weight:700;">🖼️ 이미지</a>
     <a href="column.html">칼럼</a>
     <a href="about.html">소개</a>
@@ -392,6 +392,11 @@ footer a:hover { text-decoration: underline; }
         <div class="tool-name">✍️ 블로그 글 생성기</div>
         <div class="tool-desc">업종·키워드 → 상위노출 블로그 글 작성</div>
       </a>
+      <a href="threads.html" class="tool-card-link">
+        <div class="tool-tag">바로가기 →</div>
+        <div class="tool-name">🧵 스레드 글 생성기</div>
+        <div class="tool-desc">소재 입력 → 터지는 스레드 글 3개 생성</div>
+      </a>
     </div>
   </div>
 
@@ -404,6 +409,7 @@ footer a:hover { text-decoration: underline; }
 
 <script>
 // ─── 상태 변수 ───
+var FREE_DAILY_LIMIT = 3;
 var generatedImages = [];
 var generatedPrompts = {};
 
@@ -479,6 +485,12 @@ async function generateImages() {
 
     var data = await response.json();
 
+    if (response.status === 429) {
+      showError(data.error || '일일 사용 한도를 초과했습니다.');
+      loadRemaining();
+      return;
+    }
+
     if (!response.ok) {
       throw new Error(data.error || '이미지 생성에 실패했습니다.');
     }
@@ -504,7 +516,8 @@ async function generateImages() {
 
     // 남은 횟수 업데이트
     var remainEl = document.getElementById('remainingCount');
-    remainEl.textContent = '오늘 남은 횟수: ' + Math.max(data.remaining, 0) + '/' + FREE_DAILY_LIMIT + '회';
+    var displayLimit = data.limit || FREE_DAILY_LIMIT;
+    remainEl.textContent = '오늘 남은 횟수: ' + Math.max(data.remaining, 0) + '/' + displayLimit + '회';
     if (data.remaining <= 1) remainEl.style.color = '#FF4757';
 
     // 로딩 숨기고 결과 표시
@@ -521,11 +534,10 @@ async function generateImages() {
   }
 }
 
-var FREE_DAILY_LIMIT = 3;
-
 // ─── Canvas 텍스트 오버레이 ───
 function renderThumbnail(imageUrl, titleText) {
-  return new Promise(function(resolve, reject) {
+  return document.fonts.ready.then(function() {
+    return new Promise(function(resolve, reject) {
     var img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = function() {
@@ -583,6 +595,7 @@ function renderThumbnail(imageUrl, titleText) {
       reject(new Error('이미지를 로드할 수 없습니다.'));
     };
     img.src = imageUrl;
+  });
   });
 }
 

@@ -72,12 +72,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    // IP 기반 rate limit 체크
+    // IP 기반 rate limit 체크 (INCR-first: 동시 요청 race condition 방지)
     const ip = getClientIp(req);
     const key = getTodayKey(ip);
-    const count = (await getRedis().get(key)) || 0;
+    const newCount = await getRedis().incr(key);
+    await getRedis().expire(key, getTTLUntilMidnightKST());
 
-    if (count >= FREE_DAILY_LIMIT) {
+    if (newCount > FREE_DAILY_LIMIT) {
+      await getRedis().decr(key);
       return res.status(429).json({
         error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
         remaining: 0,
@@ -133,19 +135,21 @@ Respond ONLY with valid JSON in this exact format:
 
     if (!claudeResponse.ok) {
       console.error('Claude API Error:', claudeData);
+      await getRedis().decr(key);
       return res.status(500).json({ error: '글 분석 중 오류가 발생했습니다.' });
     }
 
     // Claude 응답에서 JSON 파싱
     let prompts;
     try {
-      const claudeText = claudeData.content[0].text;
+      const claudeText = claudeData.content?.[0]?.text || '';
       // JSON 블록 추출 (```json ... ``` 또는 순수 JSON)
       const jsonMatch = claudeText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('No JSON found');
       prompts = JSON.parse(jsonMatch[0]);
     } catch (parseErr) {
       console.error('Prompt parse error:', parseErr);
+      await getRedis().decr(key);
       return res.status(500).json({ error: '프롬프트 생성 결과를 파싱할 수 없습니다.' });
     }
 
@@ -168,25 +172,22 @@ Respond ONLY with valid JSON in this exact format:
         }).then((r) => r.json())
     );
 
-    const dalleResults = await Promise.all(dalleRequests);
+    const dalleResults = await Promise.allSettled(dalleRequests);
 
     // 에러 체크
     for (let i = 0; i < dalleResults.length; i++) {
-      if (dalleResults[i].error) {
-        console.error(`DALL-E Error (image ${i + 1}):`, dalleResults[i].error);
+      if (dalleResults[i].status === 'rejected' || dalleResults[i].value?.error) {
+        console.error(`DALL-E Error (image ${i + 1}):`, dalleResults[i].reason || dalleResults[i].value?.error);
+        await getRedis().decr(key);
         return res.status(500).json({
-          error: `이미지 ${i + 1} 생성 중 오류가 발생했습니다: ${dalleResults[i].error.message || '알 수 없는 오류'}`,
+          error: `이미지 ${i + 1} 생성에 실패했습니다. 잠시 후 다시 시도해주세요.`,
         });
       }
     }
 
-    const images = dalleResults.map((r) => r.data[0].url);
+    const images = dalleResults.map((r) => r.value?.data?.[0]?.url);
 
-    // 성공 시 카운트 증가 (KST 자정에 만료)
-    await getRedis().incr(key);
-    await getRedis().expire(key, getTTLUntilMidnightKST());
-
-    const remaining = FREE_DAILY_LIMIT - count - 1;
+    const remaining = FREE_DAILY_LIMIT - newCount;
 
     // Step 3: 결과 반환
     return res.status(200).json({
@@ -197,6 +198,7 @@ Respond ONLY with valid JSON in this exact format:
       },
       images,
       remaining,
+      limit: FREE_DAILY_LIMIT,
     });
   } catch (error) {
     console.error('API Error:', error);
