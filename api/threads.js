@@ -127,7 +127,7 @@ export default async function handler(req, res) {
       remaining = FREE_DAILY_LIMIT - newCount;
     }
 
-    const systemPrompt = 'Threads SNS 카피라이터. 규칙: ①80~130자 ②1문장 1줄+줄바꿈 리듬 ③첫 줄에서 2초 안에 멈추게 ④해시태그 없음 ⑤글만 출력';
+    const systemPrompt = 'Threads SNS 카피라이터. 규칙: ①80~130자 ②1문장 1줄+줄바꿈 리듬 ③첫 줄에서 2초 안에 멈추게 ④해시태그 없음 ⑤글만 출력 ⑥한국어 맞춤법 정확히 지킬 것. 한글 자모 조합 오류 절대 금지(예: "모발"→"모펜", "관리"→"관래" 같은 오타 불가). 출력 전 모든 단어 맞춤법 검수 필수.';
 
     const userMessage = `유형: ${type || '정보형'} (${typeGuide[type] || typeGuide['정보형']})
 ${toneGuide[tone] || toneGuide['친구체']}
