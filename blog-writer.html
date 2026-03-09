@@ -445,6 +445,145 @@
     .error-box.show { display: block; }
 
     /* ===== RESPONSIVE ===== */
+    /* ===== EXAMPLE CAROUSEL ===== */
+    .example-section { margin-bottom: 8px; }
+    .example-section .card-label { margin-bottom: 10px; }
+    .example-carousel {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 8px;
+      scrollbar-width: none;
+    }
+    .example-carousel::-webkit-scrollbar { display: none; }
+    .example-card {
+      flex: 0 0 270px;
+      scroll-snap-align: start;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .example-card:hover { border-color: var(--accent); }
+    .example-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+    .example-chip {
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+    .example-chip.type-homefeed { background: rgba(255,95,31,0.12); color: #ff8c4c; }
+    .example-chip.type-naver { background: rgba(88,166,255,0.12); color: #58a6ff; }
+    .example-chip.type-google { background: rgba(63,185,80,0.12); color: #3fb950; }
+    .example-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .example-preview {
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .example-more {
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 11.5px;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* Example Modal */
+    .example-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 200;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 16px;
+      overflow-y: auto;
+    }
+    .example-modal-overlay.show { display: flex; }
+    .example-modal {
+      width: 100%;
+      max-width: 640px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      position: relative;
+    }
+    .example-modal-close {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 22px;
+      cursor: pointer;
+    }
+    .example-modal-close:hover { color: var(--text); }
+    .example-modal-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .example-modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .example-modal-section { margin-bottom: 20px; }
+    .example-modal-section h4 {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .example-modal-section p {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.8;
+      white-space: pre-line;
+    }
+    .example-modal-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .example-modal-tags span {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+
     @media (max-width: 600px) {
       .type-grid.three-col {
         grid-template-columns: 1fr;
@@ -490,6 +629,22 @@
       <li><strong>업종/입장</strong>을 정확히 써주세요. 같은 "미용실"이라도 <em>원장이 쓰는 글</em>과 <em>방문 고객 후기</em>는 완전히 다릅니다.<br><span class="guide-example">예) 미용실 원장 · 카페 사장 · 필라테스 강사 · 뷰티 블로거 · 맛집 탐방 블로거</span></li>
       <li><strong>추가 요청사항</strong>에 나만의 경험과 느낌을 담아주세요. 당시 느낌, 후기, 에피소드를 단어든 문장이든 적을수록 <em>나만의 글</em>이 됩니다.<br><span class="guide-example">예) 처음엔 반신반의했는데 한 달 뒤 머릿결이 확 달라짐, 손님이 "여기 물 맛있다"고 한 마디 해줬을 때 뿌듯했음</span></li>
     </ul>
+  </div>
+
+  <!-- 예시 미리보기 캐러셀 -->
+  <div class="example-section">
+    <div class="card-label">💡 이런 글이 만들어져요</div>
+    <div class="example-carousel" id="example-carousel"></div>
+  </div>
+
+  <!-- 예시 모달 -->
+  <div class="example-modal-overlay" id="example-modal-overlay" onclick="if(event.target===this)closeExampleModal()">
+    <div class="example-modal">
+      <button class="example-modal-close" onclick="closeExampleModal()">&times;</button>
+      <div class="example-modal-chips" id="example-modal-chips"></div>
+      <div class="example-modal-title" id="example-modal-title"></div>
+      <div id="example-modal-body"></div>
+    </div>
   </div>
 
   <!-- 입력 폼 섹션 -->
@@ -725,6 +880,118 @@
   let selectedCta = '상담/예약 유도';
   let generatedData = null;
   let loadingInterval = null;
+
+  // ─── 예시 데이터 + 캐러셀 ───
+  const EXAMPLES = [
+    {
+      type: '홈피드', typeClass: 'type-homefeed', tone: '친근한 구어체', who: '미용실 원장',
+      title: '손상모 펌, 진짜 해도 되는 걸까? 12년차 원장이 솔직하게 말해볼게요',
+      hook: '작년 겨울이었거든요. 단골 손님 한 분이 오셔서 대뜸 이러시는 거예요. "원장님, 저 머리 끊어지는데 펌 해도 돼요?" 솔직히 말리고 싶었어요. 근데 상태를 보니까... 생각보다 가능성이 있더라고요.',
+      body: '🔍 손상모 체크, 이렇게 해보세요\n\n일단 머리카락 한 올 뽑아서 물에 넣어보세요. 30초 안에 가라앉으면 손상이 꽤 진행된 거예요. 제 경우엔 이 테스트 결과를 보고 시술 방향을 정합니다.\n\n💇 손상모한테 가능한 펌 종류\n\n전부 다 되는 건 아니에요. 셋팅펌은 솔직히 비추입니다. 열이 많이 가거든요. 대신 볼륨매직이나 저온 디지털펌은 해볼 만해요. 우리 가게에서는 산성 약제를 쓰는데, 한 달 뒤에 오시면 "이게 그 머리예요?" 하시더라고요.\n\n⏰ 시술 전에 꼭 해야 할 것\n\n최소 2주 전부터 트리트먼트 해주세요. 저는 손님한테 홈케어 샘플을 미리 드려요. 그게 결과 차이가 확실히 나거든요. 비용은 좀 들지만 아까워하시면 안 돼요.',
+      cta: '혹시 손상모인데 펌 고민이시라면, 일단 상태 확인부터 해보세요. 카톡으로 머리 사진 보내주시면 무료로 상담 가능합니다.',
+      tags: ['#손상모펌', '#손상모케어', '#미용실추천', '#펌추천']
+    },
+    {
+      type: '홈피드', typeClass: 'type-homefeed', tone: '스토리텔링', who: '카페 사장',
+      title: '망할 뻔한 시그니처 메뉴, 단골이 살려줬다',
+      hook: '오픈 3개월 차, 통장 잔고가 200만 원까지 떨어졌을 때였어요. "이 메뉴 없어지면 안 돼요" 하고 한 손님이 말한 그 한마디가 없었으면 저 아마 폐업했을 겁니다.',
+      body: '☕ 처음엔 완전 실패작이었어요\n\n바닐라라떼에 수제 카라멜을 올렸는데, 첫 주에 하루 2잔 나갔어요. 원가는 3,800원인데 판매가 5,500원. 남는 게 없었죠. 아내가 "그거 내려" 했을 때 진지하게 고민했어요.\n\n💡 단골 한마디에 바꾼 레시피\n\n근데 그 손님이 그러시는 거예요. "카라멜이 너무 달아서 라떼 맛이 안 나요." 그날 밤에 당도를 30% 낮추고 에스프레소 샷을 하나 더 넣었어요. 다음 날 그 손님 표정이... 아직도 잊을 수가 없네요.\n\n📈 입소문 타기 시작한 순간\n\n그분이 인스타에 올려주셨거든요. "여기 카라멜라떼 찐이다"라고. 그 주에 30잔 넘게 나갔어요. 지금은 하루 평균 45잔. 매출의 40%가 이 메뉴예요.',
+      cta: '메뉴 하나가 가게를 살리기도 해요. 혹시 근처 오시면 그 카라멜라떼 한번 드셔보세요. 직접 맛보면 알 거예요.',
+      tags: ['#카페시그니처', '#카페창업', '#카라멜라떼', '#카페운영']
+    },
+    {
+      type: '네이버 SEO', typeClass: 'type-naver', tone: '전문가 톤', who: '필라테스 강사',
+      title: '체형 교정 필라테스, 3개월 변화 과정 기록',
+      hook: '8년간 체형 교정 수업을 진행하면서 가장 많이 받는 질문이 있습니다. "필라테스로 체형이 진짜 바뀌나요?" 결론부터 말씀드리면 바뀝니다. 다만 조건이 있습니다.',
+      body: '【01.】 체형 교정, 왜 필라테스인가\n\n거북목, 라운드숄더, 골반 틀어짐. 이 세 가지는 근본 원인이 같습니다. 코어 근력 약화와 좌우 근육 불균형입니다. 필라테스는 기구를 활용해 약한 근육만 선택적으로 강화할 수 있어서 교정 효과가 빠릅니다.\n\n【02.】 3개월 교정 프로그램 실제 과정\n\n1개월 차에는 몸의 불균형을 인지하는 단계입니다. 대부분의 회원분들이 "왼쪽 골반이 이렇게 높았어요?" 하고 놀라십니다. 2개월 차부터 자세가 변하기 시작합니다. 지난달 회원 A님은 어깨 높이 차이가 2.3cm에서 0.8cm로 줄었습니다.\n\n【03.】 효과가 안 나는 경우도 있습니다\n\n주 1회만으로는 솔직히 어렵습니다. 최소 주 2회, 그리고 일상에서 자세 습관 교정이 병행되어야 합니다. 수업 때만 잘하고 평소에 다리 꼬고 앉으시면 효과가 반감됩니다.',
+      cta: '체형이 신경 쓰이신다면 먼저 현재 상태를 파악하는 것이 중요합니다. 1회 체험 수업에서 체형 분석 리포트를 함께 제공해드립니다.',
+      tags: ['#체형교정', '#필라테스', '#거북목교정', '#라운드숄더']
+    },
+    {
+      type: '네이버 SEO', typeClass: 'type-naver', tone: '친근한 구어체', who: '맛집 블로거',
+      title: '강남 파스타 맛집, 직접 가본 4곳 솔직 비교',
+      hook: '강남에서 파스타 먹으려고 검색하면 죄다 "분위기 좋아요~"만 나오잖아요. 맛은요? 저 지난달에 4군데 돌았거든요. 돈 10만 원 넘게 썼는데, 솔직히 2곳은 다신 안 가요.',
+      body: '【01.】 가로수길 L 파스타 — 비주얼만 좋았어요\n\n인스타에서 엄청 핫하길래 갔는데요, 트러플 크림 파스타 시켰더니... 크림이 너무 되직하더라고요. 면도 좀 퍼져 있었고. 가격이 19,800원인데 양도 적어요. 사진은 이쁜데 맛은 그냥 그랬습니다.\n\n【02.】 논현동 M 키친 — 여기가 찐이었어요\n\n봉골레를 시켰는데 마늘 향이 확 올라오는 순간 "아 여기다" 싶었어요. 바지락이 통통하고 면 삶기가 딱 알덴테. 14,500원인데 양도 넉넉해요. 점심시간엔 웨이팅 20분 정도 있어요.\n\n【03.】 나머지 2곳은 솔직히...\n\n역삼 쪽 한 곳은 소스가 짜서 물 3잔 마셨고요, 신사동 한 곳은 20분 기다렸는데 면이 불어서 나왔어요. 가격은 둘 다 2만 원대. 가성비로 따지면 논현동 M키친이 압도적입니다.',
+      cta: '강남에서 파스타 땡기시면 논현동 M키친 한번 가보세요. 개인적으로 봉골레 강추인데, 로제도 괜찮다고 하더라고요.',
+      tags: ['#강남파스타', '#강남맛집', '#논현동맛집', '#파스타맛집']
+    },
+    {
+      type: '구글 SEO', typeClass: 'type-google', tone: '전문가 톤', who: '인테리어 업체',
+      title: '소형 아파트 리모델링 비용과 시공 사례 총정리 (2026)',
+      hook: '20평대 소형 아파트 리모델링 평균 비용은 평당 150~250만 원입니다. 다만 이 수치는 철거 범위와 자재 등급에 따라 2배 이상 차이가 납니다. 11년간 370건 이상 소형 아파트를 시공하면서 축적한 데이터를 기반으로 실제 비용 구조를 분석해드리겠습니다.',
+      body: '## 소형 아파트 리모델링 비용 구조\n\n전체 비용에서 인건비가 약 35%, 자재비가 약 45%, 설계 및 기타 비용이 20%를 차지합니다. 2025년 기준 인건비가 전년 대비 8% 상승했으며, 이는 숙련공 부족이 주요 원인입니다.\n\n## 평수별 실제 시공 비용 사례\n\n18평 아파트 전체 리모델링 사례입니다. 부엌과 욕실 전면 교체, 거실 바닥 강화마루 시공, 전체 도배에 총 3,200만 원이 소요되었습니다. 공사 기간은 4주였습니다. 반면 부분 리모델링(욕실+주방만)은 동일 평수에서 1,800만 원 수준이었습니다.\n\n## 비용을 줄이는 3가지 방법\n\n첫째, 철거 범위를 최소화하는 것입니다. 기존 배관을 살릴 수 있다면 200~300만 원을 절약할 수 있습니다. 둘째, 자재를 직접 구매하면 마진을 줄일 수 있지만, 하자 발생 시 책임 소재가 불분명해질 수 있어 주의가 필요합니다.',
+      cta: '소형 아파트 리모델링을 계획 중이시라면 현장 실측이 가장 정확합니다. 무료 방문 견적을 통해 정확한 비용을 확인해보시기 바랍니다.',
+      tags: ['#아파트리모델링', '#인테리어비용', '#소형아파트인테리어']
+    },
+    {
+      type: '홈피드', typeClass: 'type-homefeed', tone: '간결 실용체', who: '네일샵 원장',
+      title: '여름 네일 트렌드 5가지, 현직 원장이 추리면',
+      hook: '올여름 네일 트렌드, SNS에 너무 많아서 뭘 골라야 할지 모르겠다는 분들. 10년째 네일샵 운영하면서 매년 보는 패턴이 있거든요. 유행 탄다고 다 예쁜 게 아닙니다.',
+      body: '💅 1. 글레이징 네일\n\n올해 1등. 투명 베이스에 펄 한 겹이면 끝. 시술 시간 40분, 가격 4만 원대. 오피스 룩에도 잘 어울려서 직장인 손님 80%가 이걸 선택해요.\n\n🌊 2. 씨스루 프렌치\n\n기존 프렌치보다 라인이 얇아요. 투명 + 화이트 조합. 깔끔한데 심심하지 않아요. 다만 손톱이 짧으면 라인이 뭉개질 수 있어서 길이가 최소 3mm는 돼야 해요.\n\n🍒 3. 체리 레드\n\n작년부터 꾸준한데 올여름도 건재합니다. 갈색 피부에 특히 잘 받아요. 주의할 점은 저가 젤 쓰면 2주 만에 색이 빠져요.\n\n🤍 4~5. 밀키 컬러 / 오로라 글리터\n\n밀키 화이트, 밀키 핑크는 무난한 선택. 오로라 글리터는 포인트로 2개 손가락만 하는 게 예뻐요.',
+      cta: '여름 네일 고민이시면 글레이징부터 시작하세요. 실패 확률이 가장 낮습니다.',
+      tags: ['#여름네일', '#네일트렌드', '#글레이징네일', '#네일추천']
+    },
+    {
+      type: '네이버 SEO', typeClass: 'type-naver', tone: '스토리텔링', who: '뷰티 블로거',
+      title: '피부 관리 루틴, 3개월 셀프로 바꾼 진짜 후기',
+      hook: '거울 보기 싫었어요. 올해 초까지만 해도. 볼에 올라온 좁쌀 여드름이 안 없어져서 파운데이션을 두 번 덧바르고 나가던 날들. 그러다 3개월 전에 루틴을 완전히 뒤집었는데, 지금 제 피부를 보면 아무도 안 믿어요.',
+      body: '【01.】 피부가 망가진 이유부터 찾았어요\n\n피부과를 3군데 다녔는데 다 다른 말을 하더라고요. 결국 제가 기록을 시작했어요. 매일 먹은 것, 바른 것, 수면 시간. 2주 기록해보니까 패턴이 보이기 시작했어요. 유제품 먹은 다음 날 꼭 올라오더라고요.\n\n【02.】 루틴을 단순하게 바꿨어요\n\n기존: 클렌징 오일 → 폼 → 토너 → 세럼 2종 → 크림 → 수면팩. 7단계.\n변경: 저자극 클렌저 → 세라마이드 토너 → 크림. 3단계.\n처음엔 불안했어요. "이렇게 적게 발라도 되나?" 근데 2주 뒤부터 좁쌀이 줄기 시작했어요. 피부가 숨을 쉬는 느낌이랄까.\n\n【03.】 3개월 후, 파운데이션을 내려놨어요\n\n지금은 선크림만 바르고 나가요. 회사 동료가 "피부과 시술 받았어?" 하길래 아니라고 했더니 안 믿더라고요. 비용은 월 3만 원도 안 들었어요. 이전엔 화장품에만 15만 원 쓰고 있었는데.',
+      cta: '피부 고민이 있다면 일단 루틴을 줄여보세요. 빼는 게 답일 수도 있습니다. 제가 쓴 제품 리스트는 다음 글에서 자세히 알려드릴게요.',
+      tags: ['#피부관리루틴', '#스킨케어', '#피부관리', '#여드름케어']
+    }
+  ];
+
+  // 예시 캐러셀 렌더링
+  (function renderExamples() {
+    var carousel = document.getElementById('example-carousel');
+    EXAMPLES.forEach(function(ex, i) {
+      var card = document.createElement('div');
+      card.className = 'example-card';
+      card.onclick = function() { openExampleModal(i); };
+      card.innerHTML =
+        '<div class="example-chips">' +
+          '<span class="example-chip ' + ex.typeClass + '">' + ex.type + '</span>' +
+          '<span class="example-chip">' + ex.tone + '</span>' +
+          '<span class="example-chip">' + ex.who + '</span>' +
+        '</div>' +
+        '<div class="example-title">' + ex.title + '</div>' +
+        '<div class="example-preview">' + ex.hook + '</div>' +
+        '<span class="example-more">전체 보기 →</span>';
+      carousel.appendChild(card);
+    });
+  })();
+
+  function openExampleModal(index) {
+    var ex = EXAMPLES[index];
+    document.getElementById('example-modal-chips').innerHTML =
+      '<span class="example-chip ' + ex.typeClass + '">' + ex.type + '</span>' +
+      '<span class="example-chip">' + ex.tone + '</span>' +
+      '<span class="example-chip">' + ex.who + '</span>';
+    document.getElementById('example-modal-title').textContent = ex.title;
+
+    var sections = [
+      { label: '도입부', content: ex.hook },
+      { label: '본문', content: ex.body },
+      { label: '마무리', content: ex.cta }
+    ];
+    var bodyHtml = '';
+    sections.forEach(function(s) {
+      bodyHtml += '<div class="example-modal-section"><h4>' + s.label + '</h4><p>' +
+        s.content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>') +
+        '</p></div>';
+    });
+    bodyHtml += '<div class="example-modal-section"><h4>해시태그</h4><div class="example-modal-tags">' +
+      ex.tags.map(function(t) { return '<span>' + t + '</span>'; }).join('') +
+      '</div></div>';
+    document.getElementById('example-modal-body').innerHTML = bodyHtml;
+    document.getElementById('example-modal-overlay').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeExampleModal() {
+    document.getElementById('example-modal-overlay').classList.remove('show');
+    document.body.style.overflow = '';
+  }
 
   // ─── System 프롬프트 3종 (TEAM_FINDINGS.md 그대로) ───
   const SYSTEM_PROMPT_A = `당신은 네이버 홈피드(홈판) 노출에 최적화된 블로그 글을 작성하는 전문 작가입니다.
