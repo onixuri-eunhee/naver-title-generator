@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/api/blog-image", "destination": "/api/blog-image" },
+    { "source": "/api/threads", "destination": "/api/threads" },
+    { "source": "/api/generate", "destination": "/api/generate" },
+    { "source": "/api/admin", "destination": "/api/admin" }
+  ]
+}

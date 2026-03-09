@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 
-const FREE_DAILY_LIMIT = 0; // 0 = 사용 차단 (테스트 기간)
+const FREE_DAILY_LIMIT = 0; // 0 = 사용 차단
 
 let redis;
 function getRedis() {
@@ -43,6 +43,13 @@ function getTTLUntilMidnightKST() {
   return Math.max(seconds, 60);
 }
 
+const moodPrompts = {
+  'bright': 'bright, clean, minimal Korean lifestyle blog image, white background, natural daylight',
+  'warm': 'warm, cozy, soft tones Korean lifestyle blog image, golden hour lighting',
+  'professional': 'professional, corporate, clean Korean business blog image, modern office',
+  'emotional': 'emotional, moody, aesthetic Korean blog image, soft bokeh, film tone',
+};
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -75,19 +82,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { blogText, titleText } = req.body;
+    const { topic, mood, numImages, thumbnailText } = req.body;
 
-    if (!blogText || !titleText) {
-      return res.status(400).json({ error: '블로그 글 텍스트와 이미지 제목이 필요합니다.' });
+    if (!topic) {
+      return res.status(400).json({ error: '블로그 주제를 입력해주세요.' });
     }
 
-    // Rate limit (INCR-first, 화이트리스트 IP 스킵)
+    // Rate limit (화이트리스트 IP 스킵)
     const ip = getClientIp(req);
     const whitelisted = await getRedis().get(`admin:whitelist:${ip}`);
 
     if (!whitelisted && FREE_DAILY_LIMIT <= 0) {
       return res.status(429).json({
-        error: '현재 테스트 기간으로 무료 사용이 제한되어 있습니다.',
+        error: '현재 무료 사용이 제한되어 있습니다.',
         remaining: 0,
       });
     }
@@ -95,7 +102,7 @@ export default async function handler(req, res) {
     let remaining = whitelisted ? 999 : FREE_DAILY_LIMIT;
     let rateLimitKey = null;
 
-    if (!whitelisted) {
+    if (!whitelisted && FREE_DAILY_LIMIT > 0) {
       rateLimitKey = getTodayKey(ip);
       const newCount = await getRedis().incr(rateLimitKey);
       await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
@@ -110,30 +117,7 @@ export default async function handler(req, res) {
       remaining = FREE_DAILY_LIMIT - newCount;
     }
 
-    // Step 1: Claude → 블로그 분석 → DALL-E 프롬프트 1개 + Unsplash 키워드 3개
-    const claudeSystemPrompt = `You are an expert image analyst for Korean blog posts. Analyze the given Korean blog post and generate:
-1. One DALL-E image prompt in English for a blog thumbnail background
-2. Three Unsplash search keywords in English for finding body images
-
-Rules for DALL-E prompt:
-- English only
-- Style: realistic photography, high quality, bright and clean aesthetic, suitable for Korean blog
-- NEVER include any text, letters, words, or typography in the image
-- Must have a clean center area suitable for text overlay
-- Slightly blurred or simple composition in the center
-- Related to the blog topic
-
-Rules for Unsplash keywords:
-- English only, 1-3 words each
-- Keywords should represent different visual aspects of the blog content
-- Suitable for finding high-quality stock photos
-
-Respond ONLY with valid JSON:
-{
-  "dalle_prompt": "...",
-  "unsplash_keywords": ["keyword1", "keyword2", "keyword3"]
-}`;
-
+    // Step 1: Claude Haiku → 한국어 주제를 영어 이미지 프롬프트로 변환
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -143,9 +127,9 @@ Respond ONLY with valid JSON:
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 500,
-        system: claudeSystemPrompt,
-        messages: [{ role: 'user', content: `다음 한국어 블로그 글을 분석해주세요.\n\n${blogText.slice(0, 3000)}` }],
+        max_tokens: 150,
+        system: 'You are an image prompt translator. Convert the given Korean blog topic into a concise English image description (1-2 sentences). Focus on visual elements only. No explanations, just the prompt.',
+        messages: [{ role: 'user', content: topic }],
       }),
     });
 
@@ -153,86 +137,63 @@ Respond ONLY with valid JSON:
 
     if (!claudeResponse.ok) {
       console.error('Claude API Error:', claudeData);
-      if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch(_) {}
-      return res.status(500).json({ error: '글 분석 중 오류가 발생했습니다.' });
+      if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+      return res.status(500).json({ error: '주제 분석 중 오류가 발생했습니다.' });
     }
 
-    let analysisResult;
-    try {
-      const claudeText = claudeData.content?.[0]?.text || '';
-      const jsonMatch = claudeText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('No JSON found');
-      analysisResult = JSON.parse(jsonMatch[0]);
-    } catch (parseErr) {
-      console.error('Parse error:', parseErr);
-      if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch(_) {}
-      return res.status(500).json({ error: '분석 결과를 처리할 수 없습니다.' });
-    }
+    const englishTopic = (claudeData.content?.[0]?.text || '').trim();
+    const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
+    const fullPrompt = `${englishTopic}, ${moodStyle}, high quality, no text, no watermark`;
 
-    // Step 2: DALL-E 3 → 썸네일 배경 1장 (1024×1024)
-    const dalleResponse = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'dall-e-3',
-        prompt: analysisResult.dalle_prompt,
-        n: 1,
-        size: '1024x1024',
-        quality: 'standard',
-      }),
-    });
+    // Step 2: fal.ai FLUX Schnell → 이미지 생성
+    const count = numImages === 8 ? 8 : 4;
+    const images = [];
 
-    const dalleData = await dalleResponse.json();
+    // FLUX Schnell은 요청당 최대 4장 → 8장이면 2번 호출
+    const batches = count <= 4 ? [count] : [4, count - 4];
 
-    if (dalleData.error) {
-      console.error('DALL-E Error:', dalleData.error);
-      if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch(_) {}
-      return res.status(500).json({ error: '썸네일 이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
-    }
+    for (const batchSize of batches) {
+      const falResponse = await fetch('https://fal.run/fal-ai/flux/schnell', {
+        method: 'POST',
+        headers: {
+          Authorization: `Key ${process.env.FAL_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: fullPrompt,
+          image_size: 'square_hd',
+          num_images: batchSize,
+        }),
+      });
 
-    const thumbnailUrl = dalleData.data?.[0]?.url;
+      const falData = await falResponse.json();
 
-    // Step 3: Unsplash → 본문 이미지 7장 (키워드 3개: 3+2+2)
-    const keywords = analysisResult.unsplash_keywords || [];
-    const perPageCounts = [3, 2, 2];
+      if (!falResponse.ok || falData.detail) {
+        console.error('fal.ai Error:', falData);
+        if (images.length === 0) {
+          if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+          return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+        }
+        break; // 첫 배치 성공 시 두 번째 실패해도 부분 결과 반환
+      }
 
-    const unsplashRequests = keywords.slice(0, 3).map((kw, i) =>
-      fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(kw)}&per_page=${perPageCounts[i] || 2}&orientation=landscape`,
-        { headers: { Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}` } }
-      ).then(r => r.json())
-    );
-
-    const unsplashResults = await Promise.allSettled(unsplashRequests);
-
-    const bodyImages = [];
-    for (const result of unsplashResults) {
-      if (result.status === 'fulfilled' && result.value?.results) {
-        for (const photo of result.value.results) {
-          bodyImages.push({
-            url: photo.urls?.regular,
-            thumb: photo.urls?.small,
-            downloadUrl: photo.links?.download_location,
-            photographer: photo.user?.name,
-            photographerUrl: photo.user?.links?.html,
-          });
+      if (falData.images) {
+        for (const img of falData.images) {
+          images.push({ url: img.url });
         }
       }
     }
 
     return res.status(200).json({
-      dallePrompt: analysisResult.dalle_prompt,
-      thumbnailUrl,
-      unsplashKeywords: keywords,
-      bodyImages: bodyImages.slice(0, 7),
+      prompt: fullPrompt,
+      images,
+      thumbnailText: thumbnailText || '',
       remaining,
       limit: FREE_DAILY_LIMIT,
     });
+
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('Blog Image API Error:', error);
     return res.status(500).json({ error: '서버 오류가 발생했습니다.' });
   }
 }
