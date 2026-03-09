@@ -264,16 +264,19 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: '블로그 글을 입력해주세요.' });
       }
 
-      // 마커 추출
+      // 마커 추출 (컨텍스트 400자)
       const markerRegex = /\(사진:\s*([^)]+)\)/g;
       const markers = [];
       let m;
+      const totalLen = blogText.length;
       while ((m = markerRegex.exec(blogText)) !== null) {
         const text = m[1].trim();
         const pos = m.index;
-        const before = blogText.substring(Math.max(0, pos - 200), pos).trim();
-        const after = blogText.substring(pos + m[0].length, Math.min(blogText.length, pos + m[0].length + 200)).trim();
-        markers.push({ text, before, after });
+        const before = blogText.substring(Math.max(0, pos - 400), pos).trim();
+        const after = blogText.substring(pos + m[0].length, Math.min(totalLen, pos + m[0].length + 400)).trim();
+        const positionRatio = pos / totalLen;
+        const position = positionRatio < 0.25 ? 'early' : positionRatio < 0.75 ? 'middle' : 'ending';
+        markers.push({ text, before, after, position });
       }
 
       if (markers.length === 0) {
@@ -281,20 +284,55 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: '블로그 글에서 (사진: ...) 마커를 찾을 수 없습니다. 블로그 글 생성기에서 작성한 글을 붙여넣어주세요.' });
       }
 
-      const blogSummary = blogText.substring(0, 100).trim();
+      // 블로그 제목 추출 (첫 줄) + 요약 300자
+      const firstLine = blogText.split('\n').find(l => l.trim()) || '';
+      const blogTitle = firstLine.trim().substring(0, 80);
+      const blogSummary = blogText.substring(0, 300).trim();
+      const allMarkerNames = markers.map(mk => mk.text);
 
-      // Claude Haiku: 모든 마커를 한 번에 처리
+      // Claude Haiku: 구조화된 프롬프트로 모든 마커 한 번에 처리
       const markersList = markers.map((mk, i) =>
-        `${i + 1}. Image marker: "${mk.text}"\n   Before (200 chars): "${mk.before}"\n   After (200 chars): "${mk.after}"`
+        `Image ${i + 1} of ${markers.length}:\n  Marker: "${mk.text}"\n  Position in article: ${mk.position}\n  Before (400 chars): "${mk.before}"\n  After (400 chars): "${mk.after}"`
       ).join('\n\n');
 
-      const claudeSystem = 'You are a blog image prompt generator for Korean lifestyle blogs. Your #1 priority is generating images that match the exact context of the blog content. Use the surrounding text to understand what specific scene, object, or situation is being described. Generate highly specific, contextually accurate English prompts. No generic images. No people\'s faces. IMPORTANT: This is for a Korean blog. When depicting people, always specify "Korean" or "East Asian" ethnicity. Use Korean settings, Korean food, Korean interior styles, etc. CRITICAL: Never include any text, typography, letters, signs, labels, captions, or written words in the image description. The image must be purely visual with zero text elements. Output ONLY a valid JSON array of English prompt strings, one per marker. Example: ["prompt1", "prompt2"]';
+      const claudeSystem = `You are a blog image prompt engineer for Korean lifestyle blogs.
 
-      const claudeUser = `Blog summary: "${blogSummary}"\n\nGenerate ${markers.length} image prompts:\n\n${markersList}`;
+## Your Task
+Generate English image prompts for FLUX Schnell model based on blog context.
+
+## Context Understanding Rules
+1. Read the blog title and summary to understand the overall topic and tone.
+2. Read before/after text carefully to identify the SPECIFIC scene, object, or situation being described at that exact point.
+3. Consider the image's position in the article flow:
+   - early: set the scene broadly, show the overall environment
+   - middle: show specific details, close-ups, or key moments
+   - ending: convey mood, results, or conclusion atmosphere
+4. Each image must be visually distinct from others in the same article.
+
+## Prompt Structure (follow this template for each prompt)
+"[Subject/Scene from context], [specific details from surrounding text], [setting/environment], [lighting/mood], [camera angle], clean Korean lifestyle blog photography style"
+
+## Mandatory Rules
+- Korean/East Asian context: Korean interiors, Korean food, Korean street scenes, Korean products.
+- When people appear: specify "Korean person" with only back view, hands, or silhouette — NEVER faces.
+- NEVER include any text, typography, letters, signs, labels, captions, or written words.
+- Be hyper-specific: NOT "a cafe interior" but "a small Korean cafe with warm wood tables, brass pendant lights, and dried flower arrangements on a sunny afternoon, shot from the entrance looking in"
+- Style consistency: warm natural lighting, shallow depth of field, editorial lifestyle photography feel.
+
+## Output
+Return ONLY a valid JSON array of prompt strings. No explanation.`;
+
+      const claudeUser = `Blog title: "${blogTitle}"
+Blog summary (300 chars): "${blogSummary}"
+
+All image markers in order: ${JSON.stringify(allMarkerNames)}
+
+---
+${markersList}`;
 
       let prompts;
       try {
-        const claudeRaw = await callClaude(claudeSystem, claudeUser, 1500);
+        const claudeRaw = await callClaude(claudeSystem, claudeUser, 2000);
         const jsonMatch = claudeRaw.match(/\[[\s\S]*\]/);
         prompts = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
       } catch (err) {
