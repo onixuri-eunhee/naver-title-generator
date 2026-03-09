@@ -1,6 +1,27 @@
 import { Redis } from '@upstash/redis';
 
+/*
+ * 원가 구조 (1크레딧 기준)
+ * Haiku API 8회 호출: 56원
+ * fal.ai FLUX Schnell 8장: 36원
+ * 총 원가: 92원
+ *
+ * 판매가: 330원 (9,900원 ÷ 30크레딧)
+ * 마진: 238원 (72%)
+ *
+ * 충전 플랜
+ * 30크레딧  = 9,900원  (크레딧당 330원)
+ * 100크레딧 = 29,900원 (크레딧당 299원, 9% 할인)
+ * 200크레딧 = 49,900원 (크레딧당 250원, 24% 할인)
+ *
+ * 1크레딧 = 이미지 8장 생성
+ * 재생성: 1크레딧 (강화된 프롬프트로 8장 전체 재생성)
+ * 개별 재생성: 없음
+ */
+
 const FREE_DAILY_LIMIT = 3;
+const TOTAL_IMAGES = 8;         // 1크레딧당 생성 이미지 수 (고정)
+const IMAGE_SIZE = 'square_hd'; // 1024×1024 (고정)
 
 let redis;
 function getRedis() {
@@ -79,7 +100,7 @@ async function callFlux(prompt) {
     },
     body: JSON.stringify({
       prompt,
-      image_size: 'square_hd',
+      image_size: IMAGE_SIZE,
       num_images: 1,
       num_inference_steps: 4,
     }),
@@ -101,7 +122,7 @@ async function callFluxBatch(prompt, count) {
       },
       body: JSON.stringify({
         prompt,
-        image_size: 'square_hd',
+        image_size: IMAGE_SIZE,
         num_images: batchSize,
         num_inference_steps: 4,
       }),
@@ -125,7 +146,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // GET: 남은 횟수 조회
+  // GET: 남은 크레딧 조회
   if (req.method === 'GET') {
     try {
       const ip = getClientIp(req);
@@ -150,85 +171,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { mode } = req.body;
-
-    // 전체 재생성 — 프롬프트 구체화 후 전체 이미지 재생성, rate limit 차감 안 함
-    if (mode === 'regenerate') {
-      const { prompts: origPrompts, markers: origMarkers } = req.body;
-      if (!origPrompts || !origPrompts.length) return res.status(400).json({ error: '프롬프트가 필요합니다.' });
-
-      // Claude로 프롬프트 구체화
-      let refinedPrompts;
-      try {
-        const promptsList = origPrompts.map((p, i) => `${i + 1}. ${p}`).join('\n');
-        const refineSystem = 'You are an expert image prompt enhancer. Given existing image prompts that produced unsatisfying results, refine each prompt to be MORE specific, detailed, and visually compelling. Add specific details: lighting direction, camera angle, composition, texture, color palette, atmosphere. Keep the core subject the same but make the description much richer. IMPORTANT: Maintain Korean/East Asian context. Output ONLY a valid JSON array of refined English prompt strings. Example: ["refined1", "refined2"]';
-        const refineUser = `These image prompts produced unsatisfying results. Refine each one to be more specific and produce higher quality images:\n\n${promptsList}`;
-        const claudeRaw = await callClaude(refineSystem, refineUser, 2000);
-        const jsonMatch = claudeRaw.match(/\[[\s\S]*\]/);
-        refinedPrompts = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-      } catch (err) {
-        console.error('Claude refine error:', err);
-        refinedPrompts = null;
-      }
-
-      // 실패 시 원본 프롬프트에 디테일 추가
-      if (!refinedPrompts || refinedPrompts.length !== origPrompts.length) {
-        refinedPrompts = origPrompts.map(p => `${p}, detailed, sharp focus, professional photography, 8k resolution`);
-      }
-      refinedPrompts = refinedPrompts.map(p => `${p}, Korean lifestyle photography, no text, no watermark`);
-
-      // FLUX: 프롬프트별 2장씩 병렬 생성
-      const images = [];
-      // 고유 프롬프트만 추출 (마커당 2장이므로 중복 제거)
-      const uniquePrompts = [];
-      const uniqueMarkers = [];
-      const seen = new Set();
-      for (let i = 0; i < refinedPrompts.length; i++) {
-        const orig = origPrompts[i];
-        if (!seen.has(orig)) {
-          seen.add(orig);
-          uniquePrompts.push(refinedPrompts[i]);
-          uniqueMarkers.push(origMarkers ? origMarkers[i] : null);
-        }
-      }
-
-      for (let i = 0; i < uniquePrompts.length; i += 4) {
-        const batch = uniquePrompts.slice(i, i + 4);
-        const batchMarkers = uniqueMarkers.slice(i, i + 4);
-        const batchResults = await Promise.all(
-          batch.map(async (prompt, j) => {
-            try {
-              const response = await fetch('https://fal.run/fal-ai/flux/schnell', {
-                method: 'POST',
-                headers: {
-                  Authorization: `Key ${process.env.FAL_KEY}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  prompt,
-                  image_size: 'square_hd',
-                  num_images: 2,
-                  num_inference_steps: 4,
-                }),
-              });
-              const data = await response.json();
-              if (!response.ok || data.detail) throw new Error(JSON.stringify(data));
-              return (data.images || []).map(img => ({
-                url: img.url, marker: batchMarkers[j], prompt,
-              }));
-            } catch (err) {
-              console.error(`FLUX regen error ${i + j}:`, err);
-              return [{ url: null, marker: batchMarkers[j], prompt }];
-            }
-          })
-        );
-        for (const result of batchResults) images.push(...result);
-      }
-
-      const validImages = images.filter(img => img.url);
-      if (validImages.length === 0) return res.status(500).json({ error: '이미지 재생성에 실패했습니다.' });
-      return res.status(200).json({ images: validImages });
-    }
+    const { mode, is_regenerate } = req.body;
 
     // Rate limit (화이트리스트 IP 스킵)
     const ip = getClientIp(req);
@@ -249,14 +192,14 @@ export default async function handler(req, res) {
       if (newCount > FREE_DAILY_LIMIT) {
         await getRedis().decr(rateLimitKey);
         return res.status(429).json({
-          error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
+          error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}크레딧)를 초과했습니다. 내일 다시 이용해주세요.`,
           remaining: 0,
         });
       }
       remaining = FREE_DAILY_LIMIT - newCount;
     }
 
-    // ===== PARSE 모드: 블로그 글에서 (사진: ...) 마커 파싱 =====
+    // ===== PARSE 모드: 블로그 글에서 마커 파싱 =====
     if (mode === 'parse') {
       const { blogText, thumbnailText } = req.body;
       if (!blogText) {
@@ -264,22 +207,19 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: '블로그 글을 입력해주세요.' });
       }
 
-      // B-1: 마커 추출 (컨텍스트 400자)
-      // (사진: ...) 형식 (홈피드/네이버SEO)과 (이미지: ...) 형식 (구글SEO) 모두 지원
+      // 마커 추출 (사진/이미지 형식 모두 지원)
       const markerRegex = /\((사진|이미지):\s*([^)]+)\)/g;
       const markers = [];
       let m;
       const totalLen = blogText.length;
 
-      // B-2: 소제목 추출 (【01.】 형식) — 추가 Claude 호출 없이 전체 글 흐름 파악
+      // 소제목 추출
       const headings = blogText.match(/【\d+\.?】[^\n]*/g) || [];
       const blogStructure = headings.map(h => h.trim()).join(' | ');
 
       while ((m = markerRegex.exec(blogText)) !== null) {
-        // m[1] = '사진' or '이미지', m[2] = 마커 내용
         const rawText = m[2].trim();
 
-        // B-1: alt 텍스트 분리 (구글SEO 형식: "OO 사진, alt: 설명문")
         let text = rawText;
         let altText = '';
         const altMatch = rawText.match(/^(.+?),\s*alt:\s*(.+)$/);
@@ -290,7 +230,6 @@ export default async function handler(req, res) {
 
         const pos = m.index;
 
-        // B-3: 컨텍스트 노이즈 제거 — 다른 마커, 해시태그, 소제목 기호 제거
         const rawBefore = blogText.substring(Math.max(0, pos - 400), pos);
         const rawAfter = blogText.substring(pos + m[0].length, Math.min(totalLen, pos + m[0].length + 400));
         const cleanContext = (str) => str
@@ -305,7 +244,6 @@ export default async function handler(req, res) {
         const positionRatio = pos / totalLen;
         const position = positionRatio < 0.25 ? 'early' : positionRatio < 0.75 ? 'middle' : 'ending';
 
-        // B-4: 마커 소속 섹션 탐지 — 마커 이전의 가장 가까운 소제목 찾기
         const textBeforeMarker = blogText.substring(0, pos);
         const sectionMatches = [...textBeforeMarker.matchAll(/【\d+\.?】[^\n]*/g)];
         const section = sectionMatches.length > 0
@@ -320,14 +258,11 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: '블로그 글에서 (사진: ...) 또는 (이미지: ...) 마커를 찾을 수 없습니다. 블로그 글 생성기에서 작성한 글을 붙여넣어주세요.' });
       }
 
-      // 블로그 제목 추출 (첫 줄) + 요약 300자
       const firstLine = blogText.split('\n').find(l => l.trim()) || '';
       const blogTitle = firstLine.trim().substring(0, 80);
       const blogSummary = blogText.substring(0, 300).trim();
       const allMarkerNames = markers.map(mk => mk.text);
 
-      // Claude Haiku: 구조화된 프롬프트로 모든 마커 한 번에 처리
-      // B-2, B-4: section 및 alt 텍스트 포함, blogStructure 전달
       const markersList = markers.map((mk, i) => {
         let entry = `Image ${i + 1} of ${markers.length}:\n  Marker: "${mk.text}"`;
         if (mk.altText) entry += `\n  Alt text: "${mk.altText}"`;
@@ -338,7 +273,19 @@ export default async function handler(req, res) {
         return entry;
       }).join('\n\n');
 
-      const claudeSystem = `You are a blog image prompt engineer for Korean lifestyle blogs.
+      // 시스템 프롬프트: 일반 vs 재생성(강화)
+      const claudeSystem = `${is_regenerate
+        ? `You are a blog image prompt engineer for Korean lifestyle blogs.
+This is a REGENERATION request — the user was not satisfied with the previous images.
+You must generate MORE SPECIFIC and MORE CONTEXTUALLY ACCURATE prompts than before.
+- Describe exact location, lighting, colors, composition, props
+- Be extremely specific about the scene (not just 'cafe' but 'modern minimalist Seoul cafe interior with marble countertop, pour-over coffee equipment, soft morning light through large windows')
+- Reference the surrounding blog text as much as possible
+- No generic stock photo style. No people's faces.`
+        : `You are a blog image prompt engineer for Korean lifestyle blogs.
+Your #1 priority is generating images that match the exact context of the blog content.
+Use the surrounding text to understand what specific scene, object, or situation is being described.
+No generic images. No people's faces.`}
 
 ## Your Task
 Generate English image prompts for FLUX Schnell model based on blog context.
@@ -400,7 +347,6 @@ Output:
 ## Output
 Return ONLY a valid JSON array of prompt strings. No explanation.`;
 
-      // B-2: blogStructure를 claudeUser에 포함 (소제목이 있을 때만)
       const claudeUser = `Blog title: "${blogTitle}"
 Blog summary (300 chars): "${blogSummary}"${blogStructure ? `\nArticle structure: "${blogStructure}"` : ''}
 
@@ -420,45 +366,52 @@ ${markersList}`;
       }
 
       if (!prompts || prompts.length !== markers.length) {
-        // Fallback: 마커 텍스트 직접 사용
         prompts = markers.map(mk => `${mk.text}, Korean blog photo, high quality, no text, no watermark, no people faces`);
       }
 
-      // 프롬프트 후처리
       prompts = prompts.map(p => `${p}, Korean lifestyle photography, no text, no watermark`);
 
-      // FLUX: 마커별 2장씩 병렬 생성 (최대 4개씩 배치)
-      // 첫 번째 이미지(썸네일)는 square_hd, 나머지 본문 이미지는 landscape_4_3
+      // FLUX: 마커별 이미지 수 분배 (총 TOTAL_IMAGES장 고정)
+      const perMarker = Math.floor(TOTAL_IMAGES / prompts.length);
+      const extraImages = TOTAL_IMAGES % prompts.length;
+
       const images = [];
       for (let i = 0; i < prompts.length; i += 4) {
         const batch = prompts.slice(i, i + 4);
         const batchResults = await Promise.all(
           batch.map(async (prompt, j) => {
             const markerIndex = i + j;
-            const imageSize = markerIndex === 0 ? 'square_hd' : 'landscape_4_3';
-            try {
-              const response = await fetch('https://fal.run/fal-ai/flux/schnell', {
-                method: 'POST',
-                headers: {
-                  Authorization: `Key ${process.env.FAL_KEY}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  prompt,
-                  image_size: imageSize,
-                  num_images: 2,
-                  num_inference_steps: 4,
-                }),
-              });
-              const data = await response.json();
-              if (!response.ok || data.detail) throw new Error(JSON.stringify(data));
-              return (data.images || []).map(img => ({
-                url: img.url, marker: markers[markerIndex].text, prompt,
-              }));
-            } catch (err) {
-              console.error(`FLUX error for marker ${markerIndex}:`, err);
-              return [{ url: null, marker: markers[markerIndex].text, prompt }];
+            const numForMarker = perMarker + (markerIndex < extraImages ? 1 : 0);
+            const subBatches = numForMarker <= 4 ? [numForMarker] : [4, numForMarker - 4];
+            const markerImages = [];
+            for (const subCount of subBatches) {
+              try {
+                const response = await fetch('https://fal.run/fal-ai/flux/schnell', {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Key ${process.env.FAL_KEY}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    prompt,
+                    image_size: IMAGE_SIZE,
+                    num_images: subCount,
+                    num_inference_steps: 4,
+                  }),
+                });
+                const data = await response.json();
+                if (!response.ok || data.detail) throw new Error(JSON.stringify(data));
+                for (const img of (data.images || [])) {
+                  markerImages.push({ url: img.url, marker: markers[markerIndex].text, prompt });
+                }
+              } catch (err) {
+                console.error(`FLUX error for marker ${markerIndex}:`, err);
+                if (markerImages.length === 0) {
+                  markerImages.push({ url: null, marker: markers[markerIndex].text, prompt });
+                }
+              }
             }
+            return markerImages;
           })
         );
         for (const result of batchResults) images.push(...result);
@@ -479,25 +432,28 @@ ${markersList}`;
       });
     }
 
-    // ===== DIRECT 모드: 주제+분위기 → 8장 고정 =====
+    // ===== DIRECT 모드: 주제+분위기 → TOTAL_IMAGES장 고정 =====
     const { topic, mood, thumbnailText } = req.body;
     if (!topic) {
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
       return res.status(400).json({ error: '블로그 주제를 입력해주세요.' });
     }
 
-    // Claude: 주제 → 영어 프롬프트 변환
+    // Claude: 주제 → 영어 프롬프트 변환 (일반 vs 재생성)
+    const directSystem = is_regenerate
+      ? 'You are an image prompt translator. This is a REGENERATION request — generate MORE SPECIFIC and DETAILED prompts. Convert the Korean blog topic into a rich, detailed English image description (2-3 sentences). Describe exact location, lighting, colors, composition, and props. Focus on visual elements only. No people faces. Always specify Korean context. No text/typography. No explanations, just the prompt.'
+      : 'You are an image prompt translator. Convert the given Korean blog topic into a concise English image description (1-2 sentences). Focus on visual elements only. No people faces. IMPORTANT: Always specify Korean or East Asian context — Korean settings, Korean food, Korean interior, Korean people when depicting humans. CRITICAL: Never include any text, typography, letters, signs, or written words in the description. Purely visual elements only. No explanations, just the prompt.';
     const englishTopic = await callClaude(
-      'You are an image prompt translator. Convert the given Korean blog topic into a concise English image description (1-2 sentences). Focus on visual elements only. No people faces. IMPORTANT: Always specify Korean or East Asian context — Korean settings, Korean food, Korean interior, Korean people when depicting humans. CRITICAL: Never include any text, typography, letters, signs, or written words in the description. Purely visual elements only. No explanations, just the prompt.',
+      directSystem,
       topic,
-      150
+      is_regenerate ? 300 : 150
     );
 
     const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
     const fullPrompt = `${englishTopic}, ${moodStyle}, Korean lifestyle photography, no text, no watermark`;
 
-    // FLUX: 8장 생성
-    const urls = await callFluxBatch(fullPrompt, 8);
+    // FLUX: TOTAL_IMAGES장 생성
+    const urls = await callFluxBatch(fullPrompt, TOTAL_IMAGES);
     if (urls.length === 0) {
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
       return res.status(500).json({ error: '이미지 생성에 실패했습니다.' });

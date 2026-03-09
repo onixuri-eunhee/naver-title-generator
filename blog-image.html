@@ -269,7 +269,7 @@ footer a:hover { text-decoration: underline; }
       <h2 style="font-size:16px; font-weight:700; margin-bottom:16px;">생성된 이미지</h2>
       <div class="image-grid" id="imageGrid"></div>
       <button class="generate-btn" id="regenAllBtn" onclick="regenerateAll()" style="margin-top:20px; background:linear-gradient(135deg,#6366F1,#4F46E5);">전체 재생성</button>
-      <p style="text-align:center; font-size:12px; color:#9CA3AF; margin-top:8px;">마음에 들지 않으면 눌러주세요. 새로운 이미지를 생성합니다.</p>
+      <p style="text-align:center; font-size:12px; color:#9CA3AF; margin-top:8px;">마음에 들지 않으면 눌러주세요. 1크레딧으로 새 이미지를 생성합니다.</p>
     </div>
   </div>
 
@@ -346,11 +346,11 @@ async function loadRemaining() {
       el.className = 'remaining blocked';
       disableAllButtons();
     } else if (data.remaining <= 0) {
-      el.textContent = '오늘 ' + data.limit + '회 모두 사용했어요. 내일 다시 오세요!';
+      el.textContent = '오늘 ' + data.limit + '크레딧 모두 사용했어요. 내일 다시 오세요!';
       el.className = 'remaining blocked';
       disableAllButtons();
     } else {
-      el.textContent = '오늘 ' + (data.limit - data.remaining) + '/' + data.limit + '회 사용 | 남은 횟수 ' + data.remaining + '회';
+      el.textContent = '오늘 ' + (data.limit - data.remaining) + '/' + data.limit + '크레딧 사용 | 잔여 크레딧: ' + data.remaining;
       el.className = 'remaining';
     }
   } catch(e) {}
@@ -369,11 +369,11 @@ function updateRemaining(remaining, limit) {
     el.textContent = '관리자 모드 (무제한)';
     el.className = 'remaining admin';
   } else if (remaining <= 0) {
-    el.textContent = '오늘 ' + limit + '회 모두 사용했어요. 내일 다시 오세요!';
+    el.textContent = '오늘 ' + limit + '크레딧 모두 사용했어요. 내일 다시 오세요!';
     el.className = 'remaining blocked';
     disableAllButtons();
   } else {
-    el.textContent = '오늘 ' + (limit - remaining) + '/' + limit + '회 사용 | 남은 횟수 ' + remaining + '회';
+    el.textContent = '오늘 ' + (limit - remaining) + '/' + limit + '크레딧 사용 | 잔여 크레딧: ' + remaining;
     el.className = 'remaining';
   }
 }
@@ -644,7 +644,7 @@ function renderThumbnailCanvas(canvas, imageUrl, text) {
   img.src = imageUrl;
 }
 
-// ─── 전체 재생성 (프롬프트 구체화) ───
+// ─── 전체 재생성 (강화된 프롬프트) ───
 async function regenerateAll() {
   if (!generatedImages || generatedImages.length === 0) return;
 
@@ -654,26 +654,36 @@ async function regenerateAll() {
 
   document.getElementById('loadingArea').classList.add('show');
   document.getElementById('loadingText').textContent = 'AI가 새 이미지를 생성하고 있습니다...';
-  document.getElementById('loadingProgress').textContent = '이미지 재생성 중 (약 30초~1분)';
+  document.getElementById('loadingProgress').textContent = '강화된 프롬프트로 이미지 재생성 중 (약 30초~1분)';
 
   try {
-    var prompts = generatedImages.map(function(img) { return img.prompt; });
-    var markers = generatedImages.map(function(img) { return img.marker; });
+    var body, thumbText;
+    if (currentMode === 'parse') {
+      var blogText = document.getElementById('blogTextInput').value.trim();
+      thumbText = document.getElementById('thumbText1').value.trim();
+      body = { mode: 'parse', blogText: blogText, thumbnailText: thumbText, is_regenerate: true };
+    } else {
+      var topic = document.getElementById('topicInput').value.trim();
+      var mood = document.getElementById('moodSelect').value;
+      thumbText = document.getElementById('thumbText2').value.trim();
+      body = { mode: 'direct', topic: topic, mood: mood, thumbnailText: thumbText, is_regenerate: true };
+    }
 
     var res = await fetch('/api/blog-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'regenerate', prompts: prompts, markers: markers }),
+      body: JSON.stringify(body),
     });
     var data = await res.json();
 
-    if (res.ok && data.images && data.images.length > 0) {
+    if (res.status === 429) {
+      showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', data.error);
+    } else if (res.ok && data.images && data.images.length > 0) {
       generatedImages = data.images.map(function(img, i) {
         return { url: img.url, marker: img.marker, prompt: img.prompt, index: i };
       });
-
-      var thumbnailText = document.getElementById('thumbText1').value.trim() || document.getElementById('thumbText2').value.trim();
-      renderResults(generatedImages, thumbnailText);
+      renderResults(generatedImages, thumbText);
+      if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
     }
   } catch(e) {}
 
