@@ -93,6 +93,42 @@
       margin-bottom: 14px;
     }
 
+    /* ===== GUIDE CARD ===== */
+    .guide-card {
+      background: #f0f7ff;
+      border: 1px solid #d0e3f7;
+    }
+    .guide-card .card-label {
+      color: #2a6cb6;
+    }
+    .guide-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .guide-list li {
+      font-size: 13.5px;
+      line-height: 1.7;
+      color: #333;
+    }
+    .guide-list li strong {
+      color: #1a1a1a;
+    }
+    .guide-list li em {
+      color: #2a6cb6;
+      font-style: normal;
+      font-weight: 600;
+    }
+    .guide-example {
+      display: block;
+      margin-top: 4px;
+      font-size: 12.5px;
+      color: #777;
+    }
+
     /* ===== TYPE GRID (3-col for type, 2x2 for tone) ===== */
     .type-grid {
       display: grid;
@@ -406,6 +442,15 @@
     <p>업종과 주제만 입력하면 상위노출에 최적화된 블로그 글을 뚝딱 만들어드려요.</p>
   </div>
 
+  <!-- 사용 가이드 -->
+  <div class="card guide-card">
+    <div class="card-label">📌 이렇게 쓰면 더 좋아요</div>
+    <ul class="guide-list">
+      <li><strong>업종/입장</strong>을 정확히 써주세요. 같은 "미용실"이라도 <em>원장이 쓰는 글</em>과 <em>방문 고객 후기</em>는 완전히 다릅니다.<br><span class="guide-example">예) 미용실 원장 · 카페 사장 · 필라테스 강사 · 뷰티 블로거 · 맛집 탐방 블로거</span></li>
+      <li><strong>추가 요청사항</strong>에 나만의 경험과 느낌을 담아주세요. 당시 느낌, 후기, 에피소드를 단어든 문장이든 적을수록 <em>나만의 글</em>이 됩니다.<br><span class="guide-example">예) 처음엔 반신반의했는데 한 달 뒤 머릿결이 확 달라짐, 손님이 "여기 물 맛있다"고 한 마디 해줬을 때 뿌듯했음</span></li>
+    </ul>
+  </div>
+
   <!-- 입력 폼 섹션 -->
   <div id="form-section">
 
@@ -486,8 +531,8 @@
 
       <div class="input-row">
         <div class="input-group">
-          <label class="input-label">업종 <span class="req">*</span></label>
-          <input type="text" id="industry" placeholder="예: 미용실, 카페, 필라테스" maxlength="20" />
+          <label class="input-label">업종/입장 <span class="req">*</span></label>
+          <input type="text" id="industry" placeholder="예: 미용실 원장, 카페 사장, 뷰티 블로거" maxlength="30" />
         </div>
         <div class="input-group">
           <label class="input-label">주제/키워드 <span class="req">*</span></label>
@@ -501,8 +546,8 @@
       </div>
 
       <div class="input-group" style="margin-top: 12px;">
-        <label class="input-label">추가 요청사항 <span style="color:#555; font-weight:400;">(선택)</span></label>
-        <textarea id="memo" placeholder="예: 국산 재료만 사용한다는 점 강조, 직접 경험 위주로 작성"></textarea>
+        <label class="input-label">추가 요청사항 <span class="req">*</span></label>
+        <textarea id="memo" placeholder="나만의 경험·느낌·후기를 적어주세요. 많이 적을수록 나만의 글이 됩니다.&#10;예: 처음엔 반신반의했는데 한 달 뒤 머릿결이 확 달라짐, 단골 손님이 매번 칭찬해줌"></textarea>
       </div>
     </div>
 
@@ -1100,7 +1145,7 @@
     optionsHtml += '<span class="option-chip"><span class="chip-label">유형</span><span class="chip-value">' + escapeHtml(typeLabels[selectedType] || selectedType) + '</span></span>';
     optionsHtml += '<span class="option-chip"><span class="chip-label">톤</span><span class="chip-value">' + escapeHtml(selectedTone) + '</span></span>';
     optionsHtml += '<span class="option-chip"><span class="chip-label">CTA</span><span class="chip-value">' + escapeHtml(selectedCta === '직접 입력' ? (document.getElementById('cta-custom').value.trim() || '직접 입력') : selectedCta) + '</span></span>';
-    if (industry) optionsHtml += '<span class="option-chip"><span class="chip-label">업종</span><span class="chip-value">' + escapeHtml(industry) + '</span></span>';
+    if (industry) optionsHtml += '<span class="option-chip"><span class="chip-label">업종/입장</span><span class="chip-value">' + escapeHtml(industry) + '</span></span>';
     if (topic) optionsHtml += '<span class="option-chip"><span class="chip-label">키워드</span><span class="chip-value">' + escapeHtml(topic) + '</span></span>';
     if (location) optionsHtml += '<span class="option-chip"><span class="chip-label">지역</span><span class="chip-value">' + escapeHtml(location) + '</span></span>';
     document.getElementById('selected-options').innerHTML = optionsHtml;
@@ -1161,8 +1206,9 @@
     var memo = document.getElementById('memo').value.trim();
 
     // 유효성 검사
-    if (!industry) { showError('업종을 입력해주세요.'); return; }
+    if (!industry) { showError('업종/입장을 입력해주세요. (예: 미용실 원장, 뷰티 블로거)'); return; }
     if (!topic) { showError('주제/키워드를 입력해주세요.'); return; }
+    if (!memo) { showError('추가 요청사항을 입력해주세요. 나만의 경험·느낌을 적으면 더 좋은 글이 됩니다.'); return; }
 
     // UI 상태 전환: 로딩
     var btn = document.getElementById('btn-generate');
@@ -1183,15 +1229,13 @@
 
     // user 메시지 조립
     var userParts = [];
-    userParts.push('업종: ' + industry);
+    userParts.push('업종/글쓴이 입장: ' + industry);
     if (location) {
       userParts.push('지역: ' + location);
     }
     userParts.push('오늘의 소재: ' + topic);
     userParts.push('마무리 CTA: ' + ctaText);
-    if (memo) {
-      userParts.push('핵심 내용: ' + memo);
-    }
+    userParts.push('나의 경험/요청사항: ' + memo);
     userParts.push('톤: ' + selectedTone);
     userParts.push('');
     userParts.push(toneGuides[selectedTone]);
