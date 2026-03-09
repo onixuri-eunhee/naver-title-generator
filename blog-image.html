@@ -36,6 +36,76 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
 }
 .navbar-links a:hover { background: #F3F4F6; color: #1A1A2E; }
 .navbar-links a.active { color: #8B5CF6; font-weight: 700; }
+.navbar-links a.pro-badge { position: relative; }
+.navbar-links a.pro-badge::after {
+  content: 'PRO';
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  font-size: 8px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+  border-radius: 4px;
+  padding: 1px 3px;
+  line-height: 1.4;
+}
+.navbar-auth {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.navbar-login-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+.navbar-login-btn:hover {
+  background: #F3F4F6;
+  color: #1A1A2E;
+}
+.navbar-signup-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #00C73C;
+  color: #fff;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+.navbar-signup-btn:hover {
+  background: #00A830;
+}
+.navbar-user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #00C73C;
+  text-decoration: none;
+}
+.navbar-credit {
+  font-size: 12px;
+  color: #8B5CF6;
+  font-weight: 600;
+}
+.navbar-mypage-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  text-decoration: none;
+  border: 1px solid #E5E7EB;
+  transition: all 0.15s;
+}
+.navbar-mypage-btn:hover {
+  background: #F3F4F6;
+  color: #1A1A2E;
+}
 
 .hero {
   background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
@@ -180,12 +250,11 @@ footer a:hover { text-decoration: underline; }
   <div class="navbar-links">
     <a href="/">제목</a>
     <a href="hook-generator.html">후킹</a>
-    <a href="blog-writer.html">블로그 글</a>
+    <a href="blog-writer.html" class="pro-badge">블로그 글</a>
     <a href="threads.html">스레드</a>
-    <a href="blog-image.html" class="active">이미지</a>
-    <a href="column.html">칼럼</a>
-    <a href="about.html">소개</a>
+    <a href="blog-image.html" class="active pro-badge">이미지</a>
   </div>
+  <div class="navbar-auth" id="navbarAuth"></div>
 </nav>
 
 <div class="hero">
@@ -734,5 +803,6 @@ document.getElementById('topicInput').addEventListener('input', function() {
   }
 })();
 </script>
+<script src="auth-ui.js"></script>
 </body>
 </html>

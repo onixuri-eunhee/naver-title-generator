@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-C61VWMGQ8R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-C61VWMGQ8R');
+</script>
+<title>로그인 | 뚝딱툴</title>
+<meta name="description" content="뚝딱툴에 로그인하세요. AI 블로그 제목, 후킹 문구, 스레드 글 생성 도구." />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://ddukddaktool.co.kr/login.html" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1A2E; line-height: 1.7; }
+
+.navbar {
+  background: #fff; border-bottom: 1px solid #E5E7EB;
+  padding: 0 20px; display: flex; align-items: center;
+  justify-content: space-between; height: 52px;
+  position: sticky; top: 0; z-index: 100;
+}
+.navbar-logo { font-size: 18px; font-weight: 900; color: #1A1A2E; text-decoration: none; }
+.navbar-logo span { color: #00C73C; }
+.navbar-links { display: flex; gap: 4px; }
+.navbar-links a {
+  padding: 7px 14px; border-radius: 8px; font-size: 13px;
+  font-weight: 500; color: #9CA3AF; text-decoration: none;
+  transition: background 0.15s, color 0.15s; position: relative;
+}
+.navbar-links a:hover { background: #F3F4F6; color: #1A1A2E; }
+.navbar-links a.pro-badge::after {
+  content: 'PRO';
+  position: absolute;
+  top: 1px; right: 1px;
+  font-size: 8px; font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+  border-radius: 4px;
+  padding: 1px 3px;
+  line-height: 1.4;
+}
+
+/* Auth navbar */
+.navbar-auth { display: flex; align-items: center; gap: 8px; }
+.navbar-login-btn {
+  font-size: 13px; font-weight: 500; color: #374151;
+  text-decoration: none; padding: 6px 12px; border-radius: 6px;
+  transition: background 0.15s;
+}
+.navbar-login-btn:hover { background: #F3F4F6; }
+.navbar-signup-btn {
+  font-size: 13px; font-weight: 600; color: #fff;
+  background: #00C73C; text-decoration: none;
+  padding: 6px 14px; border-radius: 6px;
+  transition: background 0.15s;
+}
+.navbar-signup-btn:hover { background: #00A830; }
+.navbar-user-name {
+  font-size: 13px; font-weight: 600; color: #00C73C;
+  text-decoration: none;
+}
+.navbar-credit {
+  font-size: 11px; font-weight: 600; color: #8B5CF6;
+}
+.navbar-mypage-btn {
+  font-size: 12px; font-weight: 500; color: #374151;
+  text-decoration: none; padding: 5px 10px;
+  border: 1px solid #E5E7EB; border-radius: 6px;
+  transition: background 0.15s;
+}
+.navbar-mypage-btn:hover { background: #F3F4F6; }
+
+.hero {
+  background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+  padding: 48px 20px 40px; text-align: center;
+}
+.hero h1 {
+  font-size: clamp(22px, 4.5vw, 34px); font-weight: 700;
+  color: #fff; line-height: 1.4; margin-bottom: 14px; letter-spacing: -0.5px;
+}
+.hero h1 em { color: #00C73C; font-style: normal; }
+.hero p { color: rgba(255,255,255,0.6); font-size: 14px; max-width: 520px; margin: 0 auto; line-height: 1.8; }
+
+.container { max-width: 480px; margin: 0 auto; padding: 32px 20px 80px; }
+
+.card {
+  background: #fff; border-radius: 16px; padding: 28px;
+  border: 1px solid #E5E7EB; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  margin-bottom: 20px;
+}
+
+.form-group { margin-bottom: 16px; }
+.form-group label {
+  display: block; font-size: 13px; font-weight: 600;
+  color: #374151; margin-bottom: 6px;
+}
+.form-group input {
+  width: 100%; padding: 11px 14px;
+  border: 1.5px solid #E5E7EB; border-radius: 8px;
+  font-size: 14px; font-family: 'Noto Sans KR', sans-serif;
+  color: #1A1A2E; background: #fff; outline: none;
+  transition: border-color 0.2s;
+}
+.form-group input:focus {
+  border-color: #00C73C; box-shadow: 0 0 0 3px rgba(0,199,60,0.1);
+}
+.form-group input::placeholder { color: #9CA3AF; }
+
+.submit-btn {
+  width: 100%; padding: 15px; margin-top: 8px;
+  background: linear-gradient(135deg, #00C73C, #00A830); color: #fff;
+  border: none; border-radius: 10px; font-family: 'Noto Sans KR', sans-serif;
+  font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+}
+.submit-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,199,60,0.35); }
+.submit-btn:active { transform: translateY(0); }
+.submit-btn:disabled { background: #9CA3AF; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.error-box {
+  display: none; background: #FFF0F1; border: 1px solid #FECACA;
+  border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;
+  font-size: 13px; color: #DC2626;
+}
+.error-box.show { display: block; }
+
+.auth-link {
+  text-align: center; margin-top: 20px; font-size: 13px; color: #6B7280;
+}
+.auth-link a { color: #00C73C; text-decoration: none; font-weight: 600; }
+.auth-link a:hover { text-decoration: underline; }
+
+footer {
+  text-align: center; padding: 28px 20px; font-size: 13px;
+  color: #9CA3AF; border-top: 1px solid #E5E7EB; background: #fff;
+}
+footer a { color: #9CA3AF; text-decoration: none; margin: 0 8px; }
+footer a:hover { text-decoration: underline; }
+
+@media (max-width: 600px) {
+  .navbar-links { gap: 0; }
+  .navbar-links a { padding: 7px 8px; font-size: 12px; }
+  .card { padding: 20px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
+  <div class="navbar-links">
+    <a href="/">제목</a>
+    <a href="hook-generator.html">후킹</a>
+    <a href="blog-writer.html" class="pro-badge">블로그 글</a>
+    <a href="threads.html">스레드</a>
+    <a href="blog-image.html" class="pro-badge">이미지</a>
+  </div>
+  <div class="navbar-auth" id="navbarAuth"></div>
+</nav>
+
+<div class="hero">
+  <h1>뚝딱툴 <em>로그인</em></h1>
+  <p>다시 만나서 반가워요</p>
+</div>
+
+<div class="container">
+  <div class="card">
+    <div class="error-box" id="errorBox"></div>
+    <form id="loginForm" autocomplete="off">
+      <div class="form-group">
+        <label for="email">이메일</label>
+        <input type="email" id="email" name="email" required placeholder="example@email.com">
+      </div>
+      <div class="form-group">
+        <label for="password">비밀번호</label>
+        <input type="password" id="password" name="password" required placeholder="비밀번호를 입력해주세요">
+      </div>
+      <button type="submit" class="submit-btn" id="submitBtn">로그인</button>
+    </form>
+    <div class="auth-link">
+      아직 계정이 없으신가요? <a href="signup.html">회원가입</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  &copy; 2026 뚝딱툴 &nbsp;|&nbsp;
+  <a href="/">홈</a>
+  <a href="about.html">소개</a>
+  <a href="privacy.html">개인정보처리방침</a>
+  <a href="terms.html">이용약관</a>
+</footer>
+
+<script src="auth-ui.js"></script>
+<script>
+function showError(msg) {
+  var box = document.getElementById('errorBox');
+  box.textContent = msg;
+  box.classList.add('show');
+}
+function hideError() {
+  document.getElementById('errorBox').classList.remove('show');
+}
+
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  hideError();
+
+  var email = document.getElementById('email').value.trim();
+  var password = document.getElementById('password').value;
+
+  if (!email || !password) {
+    showError('이메일과 비밀번호를 모두 입력해주세요.');
+    return;
+  }
+
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '로그인 중...';
+
+  try {
+    var res = await fetch('/api/auth?action=login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password })
+    });
+    var data = await res.json();
+    if (res.ok) {
+      localStorage.setItem('ddukddak_token', data.token);
+      localStorage.setItem('ddukddak_user', JSON.stringify(data.user));
+      window.location.href = '/';
+    } else {
+      showError(data.error || '로그인에 실패했습니다.');
+    }
+  } catch (err) {
+    showError('서버 오류가 발생했습니다.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '로그인';
+  }
+});
+</script>
+</body>
+</html>

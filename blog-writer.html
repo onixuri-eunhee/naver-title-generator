@@ -49,20 +49,124 @@
       min-height: 100vh;
     }
 
-    /* ===== HEADER / NAV ===== */
-    header {
-      padding: 16px 24px;
-      border-bottom: 1px solid var(--border);
+    /* ===== NAVBAR ===== */
+    .navbar {
+      background: #fff;
+      border-bottom: 1px solid #E5E7EB;
+      padding: 0 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      height: 52px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
-    .logo { font-size: 16px; font-weight: 700; color: var(--text); text-decoration: none; }
-    .logo em { color: var(--accent); font-style: normal; }
-    .nav-links { display: flex; gap: 20px; }
-    .nav-links a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.2s; }
-    .nav-links a:hover { color: var(--text); }
-    .nav-links a.active { color: var(--accent); font-weight: 600; }
+    .navbar-logo {
+      font-size: 18px;
+      font-weight: 900;
+      color: #1A1A2E;
+      text-decoration: none;
+    }
+    .navbar-logo span { color: #00C73C; }
+    .navbar-links { display: flex; gap: 4px; }
+    .navbar-links a {
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6B7280;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+      position: relative;
+    }
+    .navbar-links a:hover {
+      background: #F3F4F6;
+      color: #1A1A2E;
+    }
+    .navbar-links a.pro-badge::after {
+      content: 'PRO';
+      position: absolute;
+      top: 1px;
+      right: 1px;
+      font-size: 8px;
+      font-weight: 800;
+      color: #fff;
+      background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+      border-radius: 4px;
+      padding: 1px 3px;
+      line-height: 1.4;
+    }
+    .navbar-auth {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .navbar-login-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6B7280;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .navbar-login-btn:hover {
+      background: #F3F4F6;
+      color: #1A1A2E;
+    }
+    .navbar-signup-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #00C73C;
+      color: #fff;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .navbar-signup-btn:hover {
+      background: #00A830;
+    }
+    .navbar-user-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #00C73C;
+      text-decoration: none;
+    }
+    .navbar-credit {
+      font-size: 12px;
+      color: #8B5CF6;
+      font-weight: 600;
+    }
+    .navbar-mypage-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6B7280;
+      text-decoration: none;
+      border: 1px solid #E5E7EB;
+      transition: all 0.15s;
+    }
+    .navbar-mypage-btn:hover {
+      background: #F3F4F6;
+      color: #1A1A2E;
+    }
+
+    /* ===== HERO BADGE ===== */
+    .hero-badge {
+      display: inline-block;
+      background: rgba(139,92,246,0.15);
+      color: #8B5CF6;
+      border: 1px solid rgba(139,92,246,0.3);
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: 0.05em;
+    }
 
     /* ===== MAIN ===== */
     main {
@@ -614,21 +718,22 @@
 </head>
 <body>
 
-<header>
-  <a href="/" class="logo">뚝딱<em>툴</em></a>
-  <nav class="nav-links">
-    <a href="/index.html">블로그 제목</a>
-    <a href="/hook-generator.html">후킹문구</a>
-    <a href="/blog-writer.html" class="active">블로그 글</a>
-    <a href="/threads.html">스레드 글</a>
-    <a href="/blog-image.html">이미지</a>
-    <a href="/column.html">칼럼</a>
-  </nav>
-</header>
+<nav class="navbar">
+  <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
+  <div class="navbar-links">
+    <a href="/">제목</a>
+    <a href="hook-generator.html">후킹</a>
+    <a href="blog-writer.html" class="pro-badge" style="color:#8B5CF6; font-weight:700;">블로그 글</a>
+    <a href="threads.html">스레드</a>
+    <a href="blog-image.html" class="pro-badge">이미지</a>
+  </div>
+  <div class="navbar-auth" id="navbarAuth"></div>
+</nav>
 
 <main>
   <!-- 페이지 헤더 -->
   <div class="page-header">
+    <div class="hero-badge">PRO · 블로그 글</div>
     <h1>블로그 글 작성기</h1>
     <p>업종과 주제만 입력하면 상위노출에 최적화된 블로그 글을 뚝딱 만들어드려요.</p>
   </div>
@@ -1937,6 +2042,7 @@
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) generate();
   });
 </script>
+<script src="auth-ui.js"></script>
 
 </body>
 </html>

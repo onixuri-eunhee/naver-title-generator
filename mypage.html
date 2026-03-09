@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-C61VWMGQ8R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-C61VWMGQ8R');
+</script>
+<title>마이페이지 | 뚝딱툴</title>
+<meta name="description" content="뚝딱툴 마이페이지 — 내 정보, 크레딧 잔액 확인 및 크레딧 구매." />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="canonical" href="https://ddukddaktool.co.kr/mypage.html" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1A2E; line-height: 1.7; }
+
+.navbar {
+  background: #fff; border-bottom: 1px solid #E5E7EB;
+  padding: 0 20px; display: flex; align-items: center;
+  justify-content: space-between; height: 52px;
+  position: sticky; top: 0; z-index: 100;
+}
+.navbar-logo { font-size: 18px; font-weight: 900; color: #1A1A2E; text-decoration: none; }
+.navbar-logo span { color: #00C73C; }
+.navbar-links { display: flex; gap: 4px; }
+.navbar-links a {
+  padding: 7px 14px; border-radius: 8px; font-size: 13px;
+  font-weight: 500; color: #9CA3AF; text-decoration: none;
+  transition: background 0.15s, color 0.15s; position: relative;
+}
+.navbar-links a:hover { background: #F3F4F6; color: #1A1A2E; }
+.navbar-links a.pro-badge::after {
+  content: 'PRO';
+  position: absolute;
+  top: 1px; right: 1px;
+  font-size: 8px; font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+  border-radius: 4px;
+  padding: 1px 3px;
+  line-height: 1.4;
+}
+
+/* Auth navbar */
+.navbar-auth { display: flex; align-items: center; gap: 8px; }
+.navbar-login-btn {
+  font-size: 13px; font-weight: 500; color: #374151;
+  text-decoration: none; padding: 6px 12px; border-radius: 6px;
+  transition: background 0.15s;
+}
+.navbar-login-btn:hover { background: #F3F4F6; }
+.navbar-signup-btn {
+  font-size: 13px; font-weight: 600; color: #fff;
+  background: #00C73C; text-decoration: none;
+  padding: 6px 14px; border-radius: 6px;
+  transition: background 0.15s;
+}
+.navbar-signup-btn:hover { background: #00A830; }
+.navbar-user-name {
+  font-size: 13px; font-weight: 600; color: #00C73C;
+  text-decoration: none;
+}
+.navbar-credit {
+  font-size: 11px; font-weight: 600; color: #8B5CF6;
+}
+.navbar-mypage-btn {
+  font-size: 12px; font-weight: 500; color: #374151;
+  text-decoration: none; padding: 5px 10px;
+  border: 1px solid #E5E7EB; border-radius: 6px;
+  transition: background 0.15s;
+}
+.navbar-mypage-btn:hover { background: #F3F4F6; }
+
+.hero {
+  background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+  padding: 48px 20px 40px; text-align: center;
+}
+.hero h1 {
+  font-size: clamp(22px, 4.5vw, 34px); font-weight: 700;
+  color: #fff; line-height: 1.4; margin-bottom: 14px; letter-spacing: -0.5px;
+}
+.hero h1 em { color: #8B5CF6; font-style: normal; }
+.hero p { color: rgba(255,255,255,0.6); font-size: 14px; max-width: 520px; margin: 0 auto; line-height: 1.8; }
+
+.container { max-width: 640px; margin: 0 auto; padding: 32px 20px 80px; }
+
+.card {
+  background: #fff; border-radius: 16px; padding: 28px;
+  border: 1px solid #E5E7EB; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  margin-bottom: 20px;
+}
+.card-title {
+  font-size: 15px; font-weight: 700; color: #1A1A2E;
+  margin-bottom: 16px; padding-bottom: 12px;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+/* 사용자 정보 */
+.info-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid #F9FAFB;
+}
+.info-row:last-child { border-bottom: none; }
+.info-label { font-size: 13px; color: #6B7280; font-weight: 500; }
+.info-value { font-size: 14px; color: #1A1A2E; font-weight: 600; }
+
+/* 크레딧 카드 */
+.credit-display {
+  text-align: center; padding: 20px 0;
+}
+.credit-icon {
+  font-size: 40px; margin-bottom: 8px;
+}
+.credit-number {
+  font-size: 48px; font-weight: 900; color: #8B5CF6;
+  line-height: 1.2;
+}
+.credit-label {
+  font-size: 14px; color: #6B7280; margin-top: 4px;
+}
+
+/* 가격표 */
+.pricing-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin-bottom: 16px;
+}
+.pricing-card {
+  background: #F9FAFB; border: 1.5px solid #E5E7EB; border-radius: 12px;
+  padding: 20px 12px; text-align: center; position: relative;
+  transition: border-color 0.2s;
+}
+.pricing-card:hover { border-color: #8B5CF6; }
+.pricing-card.popular { border-color: #8B5CF6; background: #FAF5FF; }
+.popular-badge {
+  position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+  background: linear-gradient(135deg, #8B5CF6, #6D28D9); color: #fff;
+  font-size: 10px; font-weight: 700; padding: 2px 10px;
+  border-radius: 10px; white-space: nowrap;
+}
+.pricing-credits {
+  font-size: 24px; font-weight: 900; color: #1A1A2E; margin-bottom: 2px;
+}
+.pricing-credits-label {
+  font-size: 12px; color: #6B7280; margin-bottom: 10px;
+}
+.pricing-price {
+  font-size: 18px; font-weight: 700; color: #8B5CF6;
+}
+.pricing-unit {
+  font-size: 11px; color: #9CA3AF;
+}
+
+.bonus-banner {
+  background: linear-gradient(135deg, #FFF7ED, #FFFBEB);
+  border: 1px solid #FED7AA; border-radius: 10px;
+  padding: 12px 16px; text-align: center;
+  font-size: 13px; font-weight: 600; color: #B45309;
+  margin-bottom: 16px;
+}
+
+.buy-btn {
+  width: 100%; padding: 12px;
+  background: #E5E7EB; color: #9CA3AF;
+  border: none; border-radius: 10px; font-family: 'Noto Sans KR', sans-serif;
+  font-size: 14px; font-weight: 700; cursor: not-allowed;
+}
+
+/* 로그아웃 */
+.logout-btn {
+  width: 100%; padding: 14px;
+  background: #fff; color: #DC2626;
+  border: 1.5px solid #FECACA; border-radius: 10px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s;
+}
+.logout-btn:hover { background: #FFF0F1; border-color: #DC2626; }
+
+/* 로딩 */
+.loading-state {
+  text-align: center; padding: 60px 20px;
+}
+.loading-spinner {
+  width: 40px; height: 40px; border: 3px solid #E5E7EB;
+  border-top: 3px solid #8B5CF6; border-radius: 50%;
+  animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; color: #6B7280; }
+
+footer {
+  text-align: center; padding: 28px 20px; font-size: 13px;
+  color: #9CA3AF; border-top: 1px solid #E5E7EB; background: #fff;
+}
+footer a { color: #9CA3AF; text-decoration: none; margin: 0 8px; }
+footer a:hover { text-decoration: underline; }
+
+@media (max-width: 600px) {
+  .navbar-links { gap: 0; }
+  .navbar-links a { padding: 7px 8px; font-size: 12px; }
+  .pricing-grid { grid-template-columns: 1fr; }
+  .card { padding: 20px; }
+  .credit-number { font-size: 36px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
+  <div class="navbar-links">
+    <a href="/">제목</a>
+    <a href="hook-generator.html">후킹</a>
+    <a href="blog-writer.html" class="pro-badge">블로그 글</a>
+    <a href="threads.html">스레드</a>
+    <a href="blog-image.html" class="pro-badge">이미지</a>
+  </div>
+  <div class="navbar-auth" id="navbarAuth"></div>
+</nav>
+
+<div class="hero">
+  <h1 id="heroTitle">마이페이지</h1>
+  <p>내 정보와 크레딧을 관리하세요</p>
+</div>
+
+<div class="container" id="mainContent">
+  <div class="loading-state" id="loadingState">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">정보를 불러오는 중...</div>
+  </div>
+</div>
+
+<footer>
+  &copy; 2026 뚝딱툴 &nbsp;|&nbsp;
+  <a href="/">홈</a>
+  <a href="about.html">소개</a>
+  <a href="privacy.html">개인정보처리방침</a>
+  <a href="terms.html">이용약관</a>
+</footer>
+
+<script src="auth-ui.js"></script>
+<script>
+(function() {
+  var TOKEN_KEY = 'ddukddak_token';
+  var USER_KEY = 'ddukddak_user';
+
+  function getToken() { return localStorage.getItem(TOKEN_KEY); }
+
+  var token = getToken();
+  if (!token) {
+    window.location.href = 'login.html';
+    return;
+  }
+
+  async function loadMyPage() {
+    try {
+      var res = await fetch('/api/auth?action=me', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+
+      if (!res.ok) {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+        window.location.href = 'login.html';
+        return;
+      }
+
+      var data = await res.json();
+      localStorage.setItem(USER_KEY, JSON.stringify(data));
+
+      // Update hero title
+      var heroTitle = document.getElementById('heroTitle');
+      heroTitle.innerHTML = (data.name || '') + '님의 <em>마이페이지</em>';
+
+      // Render content
+      var container = document.getElementById('mainContent');
+      container.innerHTML = ''
+        // Card 1: 사용자 정보
+        + '<div class="card">'
+        + '  <div class="card-title">사용자 정보</div>'
+        + '  <div class="info-row">'
+        + '    <span class="info-label">이름</span>'
+        + '    <span class="info-value">' + escapeHtml(data.name || '') + '</span>'
+        + '  </div>'
+        + '  <div class="info-row">'
+        + '    <span class="info-label">이메일</span>'
+        + '    <span class="info-value">' + escapeHtml(data.email || '') + '</span>'
+        + '  </div>'
+        + '  <div class="info-row">'
+        + '    <span class="info-label">전화번호</span>'
+        + '    <span class="info-value">' + escapeHtml(data.phone || '-') + '</span>'
+        + '  </div>'
+        + '</div>'
+
+        // Card 2: 크레딧 잔액
+        + '<div class="card">'
+        + '  <div class="card-title">크레딧 잔액</div>'
+        + '  <div class="credit-display">'
+        + '    <div class="credit-icon">&#x1F4B3;</div>'
+        + '    <div class="credit-number">' + (data.credits || 0) + '</div>'
+        + '    <div class="credit-label">잔여 크레딧</div>'
+        + '  </div>'
+        + '</div>'
+
+        // Card 3: 가격표
+        + '<div class="card">'
+        + '  <div class="card-title">크레딧 구매</div>'
+        + '  <div class="pricing-grid">'
+        + '    <div class="pricing-card">'
+        + '      <div class="pricing-credits">30</div>'
+        + '      <div class="pricing-credits-label">크레딧</div>'
+        + '      <div class="pricing-price">9,900원</div>'
+        + '      <div class="pricing-unit">330원/회</div>'
+        + '    </div>'
+        + '    <div class="pricing-card popular">'
+        + '      <div class="popular-badge">인기</div>'
+        + '      <div class="pricing-credits">100</div>'
+        + '      <div class="pricing-credits-label">크레딧</div>'
+        + '      <div class="pricing-price">29,700원</div>'
+        + '      <div class="pricing-unit">297원/회</div>'
+        + '    </div>'
+        + '    <div class="pricing-card">'
+        + '      <div class="pricing-credits">200</div>'
+        + '      <div class="pricing-credits-label">크레딧</div>'
+        + '      <div class="pricing-price">49,500원</div>'
+        + '      <div class="pricing-unit">248원/회</div>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div class="bonus-banner">첫 결제 시 +20% 보너스 크레딧 지급!</div>'
+        + '  <button class="buy-btn" disabled>준비 중</button>'
+        + '</div>'
+
+        // Card 4: 로그아웃
+        + '<div class="card">'
+        + '  <button class="logout-btn" id="logoutBtn">로그아웃</button>'
+        + '</div>';
+
+      // Attach logout handler
+      document.getElementById('logoutBtn').addEventListener('click', function() {
+        if (window.ddukddakAuth && window.ddukddakAuth.logout) {
+          window.ddukddakAuth.logout();
+        } else {
+          doLogout();
+        }
+      });
+
+    } catch (err) {
+      var container = document.getElementById('mainContent');
+      container.innerHTML = '<div class="card" style="text-align:center; color: #DC2626;">'
+        + '<p>정보를 불러올 수 없습니다.</p>'
+        + '<p style="font-size:13px; color:#6B7280; margin-top:8px;">다시 로그인해주세요.</p>'
+        + '<button class="logout-btn" style="margin-top:16px;" onclick="doLogout()">로그인 페이지로</button>'
+        + '</div>';
+    }
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+  }
+
+  window.doLogout = function() {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    window.location.href = '/';
+  };
+
+  loadMyPage();
+})();
+</script>
+</body>
+</html>
