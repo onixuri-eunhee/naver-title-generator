@@ -612,15 +612,14 @@ function renderThumbnailCanvas(canvas, imageUrl, text) {
     ctx.fillRect(0, 0, 1024, 1024);
 
     document.fonts.ready.then(function() {
-      var fontSize = 78; // 기존 52 → 78 (50% 확대)
-      var maxWidth = 900;
+      var fontSize = 104; // 기존 52 → 104 (100% 확대)
+      var maxWidth = 920;
       ctx.font = '900 ' + fontSize + 'px "Noto Sans KR"';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
       var lines = wrapText(ctx, text, maxWidth);
-      // 줄이 너무 많으면 폰트 축소
-      while (lines.length > 3 && fontSize > 36) {
+      while (lines.length > 3 && fontSize > 48) {
         fontSize -= 4;
         ctx.font = '900 ' + fontSize + 'px "Noto Sans KR"';
         lines = wrapText(ctx, text, maxWidth);
@@ -628,12 +627,13 @@ function renderThumbnailCanvas(canvas, imageUrl, text) {
 
       var lineHeight = fontSize * 1.35;
       var totalHeight = lines.length * lineHeight;
-      var startY = (1024 - totalHeight) / 2 + lineHeight / 2;
+      // 정중앙 배치: 캔버스 중심(512)에서 텍스트 블록 절반 높이를 빼고 첫 줄 중심 보정
+      var startY = 512 - (totalHeight / 2) + (lineHeight / 2);
 
-      ctx.shadowColor = 'rgba(0,0,0,0.6)';
-      ctx.shadowBlur = 10;
-      ctx.shadowOffsetX = 2;
-      ctx.shadowOffsetY = 2;
+      ctx.shadowColor = 'rgba(0,0,0,0.7)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetX = 3;
+      ctx.shadowOffsetY = 3;
       ctx.fillStyle = '#FFFFFF';
       for (var j = 0; j < lines.length; j++) {
         ctx.fillText(lines[j], 512, startY + j * lineHeight);
