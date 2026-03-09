@@ -69,11 +69,15 @@ export default async function handler(req, res) {
 
   // GET: 남은 횟수 조회
   if (req.method === 'GET') {
-    if (FREE_DAILY_LIMIT <= 0) {
-      return res.status(200).json({ remaining: 0, limit: 0 });
-    }
     try {
       const ip = getClientIp(req);
+      const whitelisted = await getRedis().get(`admin:whitelist:${ip}`);
+      if (whitelisted) {
+        return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
+      }
+      if (FREE_DAILY_LIMIT <= 0) {
+        return res.status(200).json({ remaining: 0, limit: 0 });
+      }
       const key = getTodayKey(ip);
       const count = (await getRedis().get(key)) || 0;
       const remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
@@ -94,19 +98,21 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '주제/소재를 입력해주세요.' });
     }
 
-    // Rate limit (INCR-first, 0 = 사용 차단)
-    if (FREE_DAILY_LIMIT <= 0) {
+    // Rate limit (INCR-first, 화이트리스트 IP 스킵)
+    const ip = getClientIp(req);
+    const whitelisted = await getRedis().get(`admin:whitelist:${ip}`);
+
+    if (!whitelisted && FREE_DAILY_LIMIT <= 0) {
       return res.status(429).json({
         error: '현재 테스트 기간으로 무료 사용이 제한되어 있습니다.',
         remaining: 0,
       });
     }
 
-    let remaining = FREE_DAILY_LIMIT;
+    let remaining = whitelisted ? 999 : FREE_DAILY_LIMIT;
     let rateLimitKey = null;
 
-    {
-      const ip = getClientIp(req);
+    if (!whitelisted) {
       rateLimitKey = getTodayKey(ip);
       const newCount = await getRedis().incr(rateLimitKey);
       await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());

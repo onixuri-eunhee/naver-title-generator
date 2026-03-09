@@ -55,11 +55,15 @@ export default async function handler(req, res) {
 
   // GET: 남은 횟수 조회
   if (req.method === 'GET') {
-    if (FREE_DAILY_LIMIT <= 0) {
-      return res.status(200).json({ remaining: 0, limit: 0 });
-    }
     try {
       const ip = getClientIp(req);
+      const whitelisted = await getRedis().get(`admin:whitelist:${ip}`);
+      if (whitelisted) {
+        return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
+      }
+      if (FREE_DAILY_LIMIT <= 0) {
+        return res.status(200).json({ remaining: 0, limit: 0 });
+      }
       const key = getTodayKey(ip);
       const count = (await getRedis().get(key)) || 0;
       const remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
@@ -107,8 +111,12 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: '글 생성 중 오류가 발생했습니다.' });
     }
 
-    // Rate limit count
+    // Rate limit count (화이트리스트 IP는 스킵)
     const ip = getClientIp(req);
+    const whitelisted = await getRedis().get(`admin:whitelist:${ip}`);
+    if (whitelisted) {
+      return res.status(200).json({ ...data, remaining: 999 });
+    }
     const key = getTodayKey(ip);
     await getRedis().incr(key);
     await getRedis().expire(key, getTTLUntilMidnightKST());
