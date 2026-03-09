@@ -107,7 +107,7 @@ async function handleSignup(req, res) {
 
   return res.status(201).json({
     success: true,
-    message: '회원가입이 완료되었습니다. 5크레딧이 지급되었습니다.',
+    message: '회원가입이 완료되었습니다.',
     token,
     user: { name, email, credits: 5 },
   });

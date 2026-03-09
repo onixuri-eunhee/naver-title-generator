@@ -42,7 +42,6 @@
     if (user && token) {
       container.innerHTML =
         '<a href="mypage.html" class="navbar-user-name">' + escapeHtml(user.name || '') + '님</a>' +
-        '<span class="navbar-credit">크레딧: ' + escapeHtml(String(user.credits || 0)) + '</span>' +
         '<a href="mypage.html" class="navbar-mypage-btn">마이페이지</a>';
       refreshUser(token);
     } else {
@@ -66,8 +65,6 @@
       if (res.ok) {
         var data = await res.json();
         localStorage.setItem(USER_KEY, JSON.stringify(data));
-        var creditEl = document.querySelector('.navbar-credit');
-        if (creditEl) creditEl.textContent = '크레딧: ' + (data.credits || 0);
         var nameEl = document.querySelector('.navbar-user-name');
         if (nameEl) nameEl.textContent = (data.name || '') + '님';
       } else {
