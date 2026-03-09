@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 
-const FREE_DAILY_LIMIT = 0; // 0 = 사용 차단 (테스트 기간)
+const FREE_DAILY_LIMIT = 3;
 
 let redis;
 function getRedis() {
@@ -81,14 +81,6 @@ export default async function handler(req, res) {
 
     if (!apiMessages) {
       return res.status(400).json({ error: 'prompt 또는 messages가 필요합니다.' });
-    }
-
-    // 0 = 사용 차단
-    if (FREE_DAILY_LIMIT <= 0) {
-      return res.status(429).json({
-        error: '현재 테스트 기간으로 무료 사용이 제한되어 있습니다.',
-        remaining: 0,
-      });
     }
 
     const apiBody = {

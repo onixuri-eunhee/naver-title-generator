@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 
-const FREE_DAILY_LIMIT = 0; // 0 = 사용 차단 (테스트 기간)
+const FREE_DAILY_LIMIT = 3;
 
 let redis;
 function getRedis() {
