@@ -423,8 +423,13 @@ async function loadRemaining() {
     var res = await fetch('/api/blog-image');
     var data = await res.json();
     var el = document.getElementById('remainingCount');
-    el.textContent = '오늘 남은 횟수: ' + data.remaining + '/' + data.limit + '회';
-    if (data.remaining <= 1) el.style.color = '#FF4757';
+    if (data.limit === 0) {
+      el.textContent = '테스트 기간: 무제한 이용 가능';
+      el.style.color = '#00C73C';
+    } else {
+      el.textContent = '오늘 남은 횟수: ' + data.remaining + '/' + data.limit + '회';
+      if (data.remaining <= 1) el.style.color = '#FF4757';
+    }
   } catch(e) {}
 }
 loadRemaining();
@@ -505,9 +510,14 @@ async function generateImages() {
 
     // 남은 횟수 업데이트
     var remainEl = document.getElementById('remainingCount');
-    var displayLimit = data.limit || FREE_DAILY_LIMIT;
-    remainEl.textContent = '오늘 남은 횟수: ' + Math.max(data.remaining, 0) + '/' + displayLimit + '회';
-    if (data.remaining <= 1) remainEl.style.color = '#FF4757';
+    if (data.limit === 0) {
+      remainEl.textContent = '테스트 기간: 무제한 이용 가능';
+      remainEl.style.color = '#00C73C';
+    } else {
+      var displayLimit = data.limit || FREE_DAILY_LIMIT;
+      remainEl.textContent = '오늘 남은 횟수: ' + Math.max(data.remaining, 0) + '/' + displayLimit + '회';
+      if (data.remaining <= 1) remainEl.style.color = '#FF4757';
+    }
 
     // 로딩 숨기고 결과 표시
     document.getElementById('loadingArea').classList.remove('show');

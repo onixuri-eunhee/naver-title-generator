@@ -621,6 +621,7 @@
     <a href="/hook-generator.html">후킹문구</a>
     <a href="/blog-writer.html" class="active">블로그 글</a>
     <a href="/threads.html">스레드 글</a>
+    <a href="/blog-image.html">이미지</a>
     <a href="/column.html">칼럼</a>
   </nav>
 </header>
@@ -1833,10 +1834,15 @@
   }
 
   // ─── 남은 횟수 UI 업데이트 ───
-  function updateRemainingUI(remaining) {
+  function updateRemainingUI(remaining, limit) {
     var el = document.getElementById('remainingCount');
-    el.textContent = '오늘 남은 횟수: ' + remaining + '회';
-    el.style.color = remaining <= 1 ? '#ff5f1f' : '#888';
+    if (limit === 0) {
+      el.textContent = '테스트 기간: 무제한 이용 가능';
+      el.style.color = '#00C73C';
+    } else {
+      el.textContent = '오늘 남은 횟수: ' + remaining + '/' + (limit || '?') + '회';
+      el.style.color = remaining <= 1 ? '#ff5f1f' : '#888';
+    }
   }
 
   // ─── 남은 횟수 로드 ───
@@ -1844,7 +1850,7 @@
     try {
       var res = await fetch('/api/generate');
       var data = await res.json();
-      updateRemainingUI(data.remaining);
+      updateRemainingUI(data.remaining, data.limit);
     } catch(e) {
       document.getElementById('remainingCount').textContent = '';
     }
