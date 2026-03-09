@@ -423,7 +423,10 @@ async function loadRemaining() {
     var res = await fetch('/api/blog-image');
     var data = await res.json();
     var el = document.getElementById('remainingCount');
-    if (data.limit === 0) {
+    if (data.admin) {
+      el.textContent = '👑 관리자 모드 (무제한)';
+      el.style.color = '#3b82f6';
+    } else if (data.limit === 0) {
       el.textContent = '현재 무료 사용이 제한되어 있습니다';
       el.style.color = '#FF4757';
       document.getElementById('generateBtn').disabled = true;
@@ -516,9 +519,9 @@ async function generateImages() {
 
     // 남은 횟수 업데이트
     var remainEl = document.getElementById('remainingCount');
-    if (data.limit === 0) {
-      remainEl.textContent = '현재 무료 사용이 제한되어 있습니다';
-      remainEl.style.color = '#FF4757';
+    if (data.remaining >= 999) {
+      remainEl.textContent = '👑 관리자 모드 (무제한)';
+      remainEl.style.color = '#3b82f6';
     } else {
       var displayLimit = data.limit || FREE_DAILY_LIMIT;
       remainEl.textContent = '오늘 남은 횟수: ' + Math.max(data.remaining, 0) + '/' + displayLimit + '회';

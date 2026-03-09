@@ -1836,7 +1836,10 @@
   // ─── 남은 횟수 UI 업데이트 ───
   function updateRemainingUI(remaining, limit) {
     var el = document.getElementById('remainingCount');
-    if (limit === 0) {
+    if (remaining >= 999) {
+      el.textContent = '👑 관리자 모드 (무제한)';
+      el.style.color = '#3b82f6';
+    } else if (limit === 0) {
       el.textContent = '현재 무료 사용이 제한되어 있습니다';
       el.style.color = '#FF4757';
       document.getElementById('btn-generate').disabled = true;
