@@ -87,6 +87,27 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'prompt 또는 messages가 필요합니다.' });
     }
 
+    // Rate limit (화이트리스트 IP 스킵, INCR-first)
+    const ip = getClientIp(req);
+    const whitelisted = await getRedis().get(`admin:whitelist:${ip}`);
+    let remaining = whitelisted ? 999 : FREE_DAILY_LIMIT;
+    let rateLimitKey = null;
+
+    if (!whitelisted) {
+      rateLimitKey = getTodayKey(ip);
+      const newCount = await getRedis().incr(rateLimitKey);
+      await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
+
+      if (newCount > FREE_DAILY_LIMIT) {
+        await getRedis().decr(rateLimitKey);
+        return res.status(429).json({
+          error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
+          remaining: 0,
+        });
+      }
+      remaining = FREE_DAILY_LIMIT - newCount;
+    }
+
     const apiBody = {
       model: model || 'claude-sonnet-4-20250514',
       max_tokens: max_tokens || 2000,
@@ -108,20 +129,9 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       console.error('Claude API Error:', data);
+      if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
       return res.status(500).json({ error: '글 생성 중 오류가 발생했습니다.' });
     }
-
-    // Rate limit count (화이트리스트 IP는 스킵)
-    const ip = getClientIp(req);
-    const whitelisted = await getRedis().get(`admin:whitelist:${ip}`);
-    if (whitelisted) {
-      return res.status(200).json({ ...data, remaining: 999 });
-    }
-    const key = getTodayKey(ip);
-    await getRedis().incr(key);
-    await getRedis().expire(key, getTTLUntilMidnightKST());
-    const count = (await getRedis().get(key)) || 0;
-    const remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
 
     return res.status(200).json({ ...data, remaining });
 
