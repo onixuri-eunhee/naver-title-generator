@@ -12,7 +12,7 @@
 </script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4973804132466200" crossorigin="anonymous"></script>
 <title>블로그 이미지 생성기 | AI 이미지 뚝딱 — 뚝딱툴</title>
-<meta name="description" content="블로그 주제만 입력하면 AI가 고품질 이미지를 자동 생성합니다. 썸네일 텍스트 합성까지 한 번에." />
+<meta name="description" content="블로그 글을 붙여넣으면 AI가 문맥에 맞는 이미지를 자동 생성합니다. 썸네일 텍스트 합성까지 한 번에." />
 <meta name="robots" content="index, follow" />
 <link rel="canonical" href="https://ddukddaktool.co.kr/blog-image.html" />
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -62,10 +62,17 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
   border: 1px solid #E5E7EB; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
   margin-bottom: 20px;
 }
-.card h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
 
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-@media(max-width: 580px) { .form-row { grid-template-columns: 1fr; } }
+/* 탭 */
+.tab-group { display: flex; gap: 4px; margin-bottom: 20px; background: #F3F4F6; border-radius: 10px; padding: 4px; }
+.tab-btn {
+  flex: 1; padding: 10px 16px; border: none; border-radius: 8px;
+  font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; background: transparent; color: #6B7280; transition: all 0.2s;
+}
+.tab-btn.active { background: #fff; color: #8B5CF6; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
 
 label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
 select, input[type="text"], textarea {
@@ -73,15 +80,31 @@ select, input[type="text"], textarea {
   font-size: 14px; font-family: 'Noto Sans KR', sans-serif; color: #1A1A2E;
   background: #fff; outline: none; transition: border-color 0.2s;
 }
-textarea { resize: vertical; min-height: 80px; }
+textarea { resize: vertical; }
 select:focus, input:focus, textarea:focus {
   border-color: #8B5CF6; box-shadow: 0 0 0 3px rgba(139,92,246,0.1);
 }
 
 .char-count { font-size: 11px; color: #9CA3AF; text-align: right; margin-top: 4px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+@media(max-width: 580px) { .form-row { grid-template-columns: 1fr; } }
+
+/* 마커 미리보기 */
+.marker-preview {
+  display: none; margin-top: 12px; padding: 14px 16px;
+  background: #F0F4FF; border: 1px solid #D0DBFF; border-radius: 10px;
+}
+.marker-preview.show { display: block; }
+.marker-preview-title { font-size: 13px; font-weight: 700; color: #4F46E5; margin-bottom: 8px; }
+.marker-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.marker-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; background: #fff; border: 1px solid #D0DBFF;
+  border-radius: 6px; font-size: 12px; color: #374151;
+}
 
 .generate-btn {
-  width: 100%; padding: 15px; margin-top: 8px;
+  width: 100%; padding: 15px; margin-top: 16px;
   background: linear-gradient(135deg, #8B5CF6, #6D28D9); color: #fff;
   border: none; border-radius: 10px; font-family: 'Noto Sans KR', sans-serif;
   font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s;
@@ -89,7 +112,9 @@ select:focus, input:focus, textarea:focus {
 .generate-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(139,92,246,0.35); }
 .generate-btn:disabled { background: #9CA3AF; cursor: not-allowed; transform: none; box-shadow: none; }
 
-.remaining { font-size: 12px; color: #9CA3AF; text-align: right; margin-top: 8px; }
+.remaining { font-size: 13px; color: #6B7280; text-align: center; margin-top: 12px; padding: 8px; background: #F9FAFB; border-radius: 8px; }
+.remaining.admin { color: #3b82f6; background: #EFF6FF; }
+.remaining.blocked { color: #DC2626; background: #FFF0F1; }
 
 /* 로딩 */
 .loading { display: none; text-align: center; padding: 40px 20px; }
@@ -101,6 +126,7 @@ select:focus, input:focus, textarea:focus {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-text { font-size: 14px; color: #6B7280; }
+.loading-progress { font-size: 12px; color: #9CA3AF; margin-top: 8px; }
 
 /* 에러 */
 .error-box { display: none; background: #FFF0F1; border: 1px solid #FECACA; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; color: #DC2626; }
@@ -110,9 +136,7 @@ select:focus, input:focus, textarea:focus {
 .result-area { display: none; }
 .result-area.show { display: block; }
 
-.image-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
-}
+.image-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 @media(max-width: 580px) { .image-grid { grid-template-columns: 1fr; } }
 
 .image-card {
@@ -122,16 +146,27 @@ select:focus, input:focus, textarea:focus {
 .image-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
 .image-card.thumbnail { grid-column: 1 / -1; }
 .image-card img, .image-card canvas { width: 100%; display: block; }
+
+.image-card-marker {
+  padding: 8px 14px; background: #F0F4FF; border-bottom: 1px solid #E5E7EB;
+  font-size: 12px; font-weight: 600; color: #4F46E5;
+}
+
 .image-card-actions {
   padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;
 }
 .image-label { font-size: 12px; color: #6B7280; }
-.download-btn {
-  padding: 6px 14px; background: #8B5CF6; color: #fff; border: none;
-  border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;
-  font-family: 'Noto Sans KR', sans-serif; transition: background 0.15s;
+.action-btns { display: flex; gap: 6px; }
+.download-btn, .regen-btn {
+  padding: 6px 12px; border: none; border-radius: 6px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif; transition: all 0.15s;
 }
+.download-btn { background: #8B5CF6; color: #fff; }
 .download-btn:hover { background: #7C3AED; }
+.regen-btn { background: #F3F4F6; color: #374151; }
+.regen-btn:hover { background: #E5E7EB; }
+.regen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 footer {
   text-align: center; padding: 28px 20px; font-size: 13px;
@@ -146,36 +181,65 @@ footer a:hover { text-decoration: underline; }
 <nav class="navbar">
   <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
   <div class="navbar-links">
-    <a href="/">📝 제목</a>
-    <a href="hook-generator.html">🔥 후킹</a>
-    <a href="blog-writer.html">✍️ 블로그 글</a>
-    <a href="threads.html">🧵 스레드</a>
-    <a href="blog-image.html" class="active">🖼️ 이미지</a>
+    <a href="/">제목</a>
+    <a href="hook-generator.html">후킹</a>
+    <a href="blog-writer.html">블로그 글</a>
+    <a href="threads.html">스레드</a>
+    <a href="blog-image.html" class="active">이미지</a>
     <a href="column.html">칼럼</a>
     <a href="about.html">소개</a>
   </div>
 </nav>
 
 <div class="hero">
-  <div class="hero-badge">🖼️ PRO 도구 · 블로그 이미지</div>
-  <h1>블로그 주제만 입력하면<br><em>AI가 이미지를 만들어드립니다</em></h1>
-  <p>FLUX AI로 블로그에 딱 맞는 고품질 이미지를 생성하고<br>썸네일 텍스트까지 자동으로 합성합니다</p>
+  <div class="hero-badge">PRO · 블로그 이미지</div>
+  <h1>블로그 글에 딱 맞는<br><em>AI 이미지를 만들어드립니다</em></h1>
+  <p>블로그 글을 붙여넣으면 문맥에 맞는 이미지를 자동 생성하고<br>썸네일 텍스트까지 합성합니다</p>
 </div>
 
 <div class="container">
 
-  <!-- 입력 폼 -->
-  <div class="card">
-    <h2>🎨 이미지 생성 설정</h2>
+  <!-- 사용 현황 -->
+  <div class="remaining" id="remainingBar">남은 횟수 확인 중...</div>
 
-    <div style="margin-bottom:12px;">
-      <label>블로그 주제</label>
-      <textarea id="topicInput" placeholder="예: 강남 카페 인테리어, 자영업자 브랜딩 전략, 봄 나들이 코디..." maxlength="200"></textarea>
-      <div class="char-count"><span id="topicCount">0</span>/200</div>
+  <!-- 입력 카드 -->
+  <div class="card" style="margin-top:16px;">
+    <!-- 탭 -->
+    <div class="tab-group">
+      <button class="tab-btn active" onclick="switchTab('parse')">글에서 생성</button>
+      <button class="tab-btn" onclick="switchTab('direct')">직접 입력</button>
     </div>
 
-    <div class="form-row">
-      <div>
+    <!-- 탭1: 글에서 생성 -->
+    <div class="tab-content active" id="tab-parse">
+      <div style="margin-bottom:12px;">
+        <label>블로그 글 붙여넣기</label>
+        <textarea id="blogTextInput" placeholder="블로그 글 생성기에서 작성한 글을 붙여넣으세요. (사진: ...) 마커가 포함된 글을 넣으면 각 위치에 맞는 이미지를 생성합니다." style="min-height:200px;" oninput="detectMarkers()"></textarea>
+      </div>
+
+      <div class="marker-preview" id="markerPreview">
+        <div class="marker-preview-title" id="markerPreviewTitle"></div>
+        <div class="marker-list" id="markerList"></div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label>썸네일 텍스트 <span style="font-weight:400; color:#9CA3AF;">(선택, 첫 번째 이미지에 합성)</span></label>
+        <input type="text" id="thumbText1" placeholder="예: 카페 창업 비용 총정리" maxlength="30">
+      </div>
+
+      <div class="error-box" id="errorBox1"></div>
+      <button class="generate-btn" id="genBtn1" onclick="generateParse()">이미지 생성하기</button>
+    </div>
+
+    <!-- 탭2: 직접 입력 -->
+    <div class="tab-content" id="tab-direct">
+      <div style="margin-bottom:12px;">
+        <label>블로그 주제</label>
+        <textarea id="topicInput" placeholder="예: 강남 카페 인테리어, 자영업자 브랜딩 전략..." maxlength="200" style="min-height:80px;"></textarea>
+        <div class="char-count"><span id="topicCount">0</span>/200</div>
+      </div>
+
+      <div style="margin-bottom:12px;">
         <label>분위기 / 스타일</label>
         <select id="moodSelect">
           <option value="bright">밝고 깔끔한</option>
@@ -184,37 +248,28 @@ footer a:hover { text-decoration: underline; }
           <option value="emotional">감성적인</option>
         </select>
       </div>
-      <div>
-        <label>이미지 개수</label>
-        <select id="countSelect">
-          <option value="4">4장</option>
-          <option value="8">8장</option>
-        </select>
+
+      <div style="margin-bottom:12px;">
+        <label>썸네일 텍스트 <span style="font-weight:400; color:#9CA3AF;">(선택, 첫 번째 이미지에 합성)</span></label>
+        <input type="text" id="thumbText2" placeholder="예: 카페 창업 비용 총정리" maxlength="30">
       </div>
+
+      <div class="error-box" id="errorBox2"></div>
+      <button class="generate-btn" id="genBtn2" onclick="generateDirect()">이미지 8장 생성하기</button>
     </div>
-
-    <div style="margin-bottom:12px;">
-      <label>썸네일 텍스트 <span style="font-weight:400; color:#9CA3AF;">(선택사항, 첫 번째 이미지에 합성)</span></label>
-      <input type="text" id="thumbnailText" placeholder="예: 카페 창업 비용 총정리" maxlength="30">
-      <div class="char-count"><span id="thumbCount">0</span>/30</div>
-    </div>
-
-    <div class="error-box" id="errorBox"></div>
-
-    <button class="generate-btn" id="generateBtn" onclick="generateImages()">🖼️ AI 이미지 생성하기</button>
-    <div class="remaining" id="remainingCount">남은 횟수 확인 중...</div>
   </div>
 
   <!-- 로딩 -->
   <div class="loading" id="loadingArea">
     <div class="loading-spinner"></div>
     <div class="loading-text" id="loadingText">AI가 이미지를 생성하고 있습니다...</div>
+    <div class="loading-progress" id="loadingProgress"></div>
   </div>
 
   <!-- 결과 -->
   <div class="result-area" id="resultArea">
     <div class="card">
-      <h2>🖼️ 생성된 이미지</h2>
+      <h2 style="font-size:16px; font-weight:700; margin-bottom:16px;">생성된 이미지</h2>
       <div class="image-grid" id="imageGrid"></div>
     </div>
   </div>
@@ -222,210 +277,319 @@ footer a:hover { text-decoration: underline; }
 </div>
 
 <footer>
-  © 2026 뚝딱툴 &nbsp;|&nbsp;
+  &copy; 2026 뚝딱툴 &nbsp;|&nbsp;
   <a href="/">홈</a>
   <a href="about.html">소개</a>
-  <a href="contact.html">연락처</a>
   <a href="privacy.html">개인정보처리방침</a>
   <a href="terms.html">이용약관</a>
 </footer>
 
 <script>
-// 글자수 카운터
-document.getElementById('topicInput').addEventListener('input', function() {
-  document.getElementById('topicCount').textContent = this.value.length;
-});
-document.getElementById('thumbnailText').addEventListener('input', function() {
-  document.getElementById('thumbCount').textContent = this.value.length;
-});
+var currentTab = 'parse';
+var generatedImages = []; // [{url, marker, prompt, index}]
+var currentMode = '';
 
-// 남은 횟수 로드
+// ─── 탭 전환 ───
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(function(b, i) {
+    b.classList.toggle('active', (i === 0 && tab === 'parse') || (i === 1 && tab === 'direct'));
+  });
+  document.getElementById('tab-parse').classList.toggle('active', tab === 'parse');
+  document.getElementById('tab-direct').classList.toggle('active', tab === 'direct');
+}
+
+// ─── 마커 감지 미리보기 ───
+function detectMarkers() {
+  var text = document.getElementById('blogTextInput').value;
+  var regex = /\(사진:\s*([^)]+)\)/g;
+  var markers = [];
+  var m;
+  while ((m = regex.exec(text)) !== null) markers.push(m[1].trim());
+
+  var preview = document.getElementById('markerPreview');
+  var title = document.getElementById('markerPreviewTitle');
+  var list = document.getElementById('markerList');
+
+  if (markers.length === 0) {
+    preview.classList.remove('show');
+    return;
+  }
+
+  preview.classList.add('show');
+  title.textContent = '감지된 이미지 ' + markers.length + '개';
+  list.innerHTML = '';
+  markers.forEach(function(mk) {
+    var chip = document.createElement('span');
+    chip.className = 'marker-chip';
+    chip.textContent = mk;
+    list.appendChild(chip);
+  });
+}
+
+// ─── 남은 횟수 ───
 async function loadRemaining() {
   try {
     var res = await fetch('/api/blog-image');
     var data = await res.json();
-    var el = document.getElementById('remainingCount');
+    var el = document.getElementById('remainingBar');
     if (data.admin) {
       el.textContent = '관리자 모드 (무제한)';
-      el.style.color = '#3b82f6';
+      el.className = 'remaining admin';
     } else if (data.limit === 0) {
       el.textContent = '현재 무료 사용이 제한되어 있습니다';
-      el.style.color = '#FF4757';
-      document.getElementById('generateBtn').disabled = true;
-      document.getElementById('generateBtn').textContent = '사용 제한 중';
+      el.className = 'remaining blocked';
+      disableAllButtons();
+    } else if (data.remaining <= 0) {
+      el.textContent = '오늘 ' + data.limit + '회 모두 사용했어요. 내일 다시 오세요!';
+      el.className = 'remaining blocked';
+      disableAllButtons();
     } else {
-      el.textContent = '오늘 남은 횟수: ' + data.remaining + '/' + data.limit + '회';
-      if (data.remaining <= 1) el.style.color = '#FF4757';
-      if (data.remaining <= 0) {
-        document.getElementById('generateBtn').disabled = true;
-        document.getElementById('generateBtn').textContent = '오늘 사용 한도 초과';
-      }
+      el.textContent = '오늘 ' + (data.limit - data.remaining) + '/' + data.limit + '회 사용 | 남은 횟수 ' + data.remaining + '회';
+      el.className = 'remaining';
     }
   } catch(e) {}
 }
+
+function disableAllButtons() {
+  document.getElementById('genBtn1').disabled = true;
+  document.getElementById('genBtn1').textContent = '사용 한도 초과';
+  document.getElementById('genBtn2').disabled = true;
+  document.getElementById('genBtn2').textContent = '사용 한도 초과';
+}
+
+function updateRemaining(remaining, limit) {
+  var el = document.getElementById('remainingBar');
+  if (remaining >= 999) {
+    el.textContent = '관리자 모드 (무제한)';
+    el.className = 'remaining admin';
+  } else if (remaining <= 0) {
+    el.textContent = '오늘 ' + limit + '회 모두 사용했어요. 내일 다시 오세요!';
+    el.className = 'remaining blocked';
+    disableAllButtons();
+  } else {
+    el.textContent = '오늘 ' + (limit - remaining) + '/' + limit + '회 사용 | 남은 횟수 ' + remaining + '회';
+    el.className = 'remaining';
+  }
+}
+
 loadRemaining();
 
-function showError(msg) {
-  var box = document.getElementById('errorBox');
+// ─── 에러 ───
+function showError(id, msg) {
+  var box = document.getElementById(id);
   box.textContent = msg;
   box.classList.add('show');
 }
-
-function hideError() {
-  document.getElementById('errorBox').classList.remove('show');
+function hideErrors() {
+  document.getElementById('errorBox1').classList.remove('show');
+  document.getElementById('errorBox2').classList.remove('show');
 }
 
-async function generateImages() {
-  var topic = document.getElementById('topicInput').value.trim();
-  if (!topic) { showError('블로그 주제를 입력해주세요.'); return; }
+// ─── 글에서 생성 (parse 모드) ───
+async function generateParse() {
+  var blogText = document.getElementById('blogTextInput').value.trim();
+  if (!blogText) { showError('errorBox1', '블로그 글을 붙여넣어주세요.'); return; }
 
-  hideError();
-  var btn = document.getElementById('generateBtn');
+  var regex = /\(사진:\s*([^)]+)\)/g;
+  var testMarkers = [];
+  var m;
+  while ((m = regex.exec(blogText)) !== null) testMarkers.push(m[1].trim());
+  if (testMarkers.length === 0) {
+    showError('errorBox1', '(사진: ...) 마커를 찾을 수 없습니다. 블로그 글 생성기에서 작성한 글을 붙여넣어주세요.');
+    return;
+  }
+
+  hideErrors();
+  var btn = document.getElementById('genBtn1');
   btn.disabled = true;
   btn.textContent = '이미지 생성 중...';
 
   document.getElementById('loadingArea').classList.add('show');
+  document.getElementById('loadingText').textContent = 'AI가 ' + testMarkers.length + '개 이미지를 생성하고 있습니다...';
+  document.getElementById('loadingProgress').textContent = '마커 분석 → 프롬프트 변환 → 이미지 생성 (약 30초~1분)';
   document.getElementById('resultArea').classList.remove('show');
 
   try {
-    var mood = document.getElementById('moodSelect').value;
-    var numImages = parseInt(document.getElementById('countSelect').value);
-    var thumbnailText = document.getElementById('thumbnailText').value.trim();
-
+    var thumbnailText = document.getElementById('thumbText1').value.trim();
     var res = await fetch('/api/blog-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic: topic, mood: mood, numImages: numImages, thumbnailText: thumbnailText }),
+      body: JSON.stringify({ mode: 'parse', blogText: blogText, thumbnailText: thumbnailText }),
     });
-
     var data = await res.json();
 
-    if (res.status === 429) {
-      showError(data.error || '사용 한도를 초과했습니다.');
-      btn.disabled = false;
-      btn.textContent = '🖼️ AI 이미지 생성하기';
-      document.getElementById('loadingArea').classList.remove('show');
-      return;
-    }
+    if (res.status === 429) { showError('errorBox1', data.error); resetBtn(btn, 'parse'); return; }
+    if (!res.ok || !data.images || data.images.length === 0) { showError('errorBox1', data.error || '이미지 생성에 실패했습니다.'); resetBtn(btn, 'parse'); return; }
 
-    if (!res.ok || !data.images || data.images.length === 0) {
-      showError(data.error || '이미지 생성에 실패했습니다.');
-      btn.disabled = false;
-      btn.textContent = '🖼️ AI 이미지 생성하기';
-      document.getElementById('loadingArea').classList.remove('show');
-      return;
-    }
+    currentMode = 'parse';
+    generatedImages = data.images.map(function(img, i) {
+      return { url: img.url, marker: img.marker, prompt: img.prompt, index: i };
+    });
 
-    // 결과 렌더링
-    await renderResults(data.images, thumbnailText);
-
-    // 남은 횟수 업데이트
-    var remainEl = document.getElementById('remainingCount');
-    if (data.remaining >= 999) {
-      remainEl.textContent = '관리자 모드 (무제한)';
-      remainEl.style.color = '#3b82f6';
-    } else if (data.limit > 0) {
-      remainEl.textContent = '오늘 남은 횟수: ' + Math.max(data.remaining, 0) + '/' + data.limit + '회';
-      if (data.remaining <= 1) remainEl.style.color = '#FF4757';
-    }
+    renderResults(generatedImages, thumbnailText);
+    if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
 
     document.getElementById('loadingArea').classList.remove('show');
     document.getElementById('resultArea').classList.add('show');
     document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  } catch (e) {
-    showError('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-    document.getElementById('loadingArea').classList.remove('show');
+  } catch(e) {
+    showError('errorBox1', '서버 오류가 발생했습니다.');
   }
-
-  btn.disabled = false;
-  btn.textContent = '🖼️ AI 이미지 생성하기';
+  resetBtn(btn, 'parse');
 }
 
-async function renderResults(images, thumbnailText) {
+// ─── 직접 입력 (direct 모드) ───
+async function generateDirect() {
+  var topic = document.getElementById('topicInput').value.trim();
+  if (!topic) { showError('errorBox2', '블로그 주제를 입력해주세요.'); return; }
+
+  hideErrors();
+  var btn = document.getElementById('genBtn2');
+  btn.disabled = true;
+  btn.textContent = '이미지 생성 중...';
+
+  document.getElementById('loadingArea').classList.add('show');
+  document.getElementById('loadingText').textContent = 'AI가 이미지 8장을 생성하고 있습니다...';
+  document.getElementById('loadingProgress').textContent = '주제 분석 → 프롬프트 변환 → 이미지 생성 (약 20초~40초)';
+  document.getElementById('resultArea').classList.remove('show');
+
+  try {
+    var mood = document.getElementById('moodSelect').value;
+    var thumbnailText = document.getElementById('thumbText2').value.trim();
+    var res = await fetch('/api/blog-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'direct', topic: topic, mood: mood, thumbnailText: thumbnailText }),
+    });
+    var data = await res.json();
+
+    if (res.status === 429) { showError('errorBox2', data.error); resetBtn(btn, 'direct'); return; }
+    if (!res.ok || !data.images || data.images.length === 0) { showError('errorBox2', data.error || '이미지 생성에 실패했습니다.'); resetBtn(btn, 'direct'); return; }
+
+    currentMode = 'direct';
+    generatedImages = data.images.map(function(img, i) {
+      return { url: img.url, marker: null, prompt: img.prompt, index: i };
+    });
+
+    renderResults(generatedImages, thumbnailText);
+    if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
+
+    document.getElementById('loadingArea').classList.remove('show');
+    document.getElementById('resultArea').classList.add('show');
+    document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch(e) {
+    showError('errorBox2', '서버 오류가 발생했습니다.');
+  }
+  resetBtn(btn, 'direct');
+}
+
+function resetBtn(btn, mode) {
+  btn.disabled = false;
+  btn.textContent = mode === 'parse' ? '이미지 생성하기' : '이미지 8장 생성하기';
+  document.getElementById('loadingArea').classList.remove('show');
+}
+
+// ─── 결과 렌더링 ───
+function renderResults(images, thumbnailText) {
   var grid = document.getElementById('imageGrid');
   grid.innerHTML = '';
 
-  for (var i = 0; i < images.length; i++) {
+  images.forEach(function(item, i) {
     var isThumbnail = (i === 0 && thumbnailText);
     var card = document.createElement('div');
     card.className = 'image-card' + (isThumbnail ? ' thumbnail' : '');
+    card.id = 'image-card-' + i;
+
+    // 마커 라벨 (parse 모드)
+    if (item.marker) {
+      var markerEl = document.createElement('div');
+      markerEl.className = 'image-card-marker';
+      markerEl.textContent = '\ud83d\udcf7 ' + item.marker;
+      card.appendChild(markerEl);
+    }
 
     if (isThumbnail) {
-      // Canvas로 텍스트 오버레이
       var canvas = document.createElement('canvas');
-      canvas.width = 1024;
-      canvas.height = 1024;
+      canvas.width = 1024; canvas.height = 1024;
       canvas.style.width = '100%';
+      canvas.id = 'thumb-canvas';
       card.appendChild(canvas);
-      renderThumbnailCanvas(canvas, images[i].url, thumbnailText);
+      renderThumbnailCanvas(canvas, item.url, thumbnailText);
     } else {
       var img = document.createElement('img');
-      img.src = images[i].url;
-      img.alt = '블로그 이미지 ' + (i + 1);
+      img.src = item.url;
+      img.alt = item.marker || ('이미지 ' + (i + 1));
       img.loading = 'lazy';
       card.appendChild(img);
     }
 
+    // 액션 바
     var actions = document.createElement('div');
     actions.className = 'image-card-actions';
 
     var labelEl = document.createElement('span');
     labelEl.className = 'image-label';
-    labelEl.textContent = isThumbnail ? '썸네일 (텍스트 합성)' : '이미지 ' + (i + 1);
+    labelEl.textContent = isThumbnail ? '썸네일 (텍스트 합성)' : (item.marker || '이미지 ' + (i + 1));
+
+    var btns = document.createElement('div');
+    btns.className = 'action-btns';
+
+    var regenBtn = document.createElement('button');
+    regenBtn.className = 'regen-btn';
+    regenBtn.textContent = '\ud83d\udd04 재생성';
+    regenBtn.setAttribute('data-index', i);
+    regenBtn.onclick = function() { regenerateImage(this); };
 
     var dlBtn = document.createElement('button');
     dlBtn.className = 'download-btn';
     dlBtn.textContent = '다운로드';
     dlBtn.setAttribute('data-index', i);
-    dlBtn.setAttribute('data-url', images[i].url);
+    dlBtn.setAttribute('data-url', item.url);
     dlBtn.setAttribute('data-thumbnail', isThumbnail ? '1' : '0');
     dlBtn.onclick = function() { downloadImage(this); };
 
+    btns.appendChild(regenBtn);
+    btns.appendChild(dlBtn);
     actions.appendChild(labelEl);
-    actions.appendChild(dlBtn);
+    actions.appendChild(btns);
     card.appendChild(actions);
     grid.appendChild(card);
-  }
+  });
 }
 
+// ─── 썸네일 Canvas ───
 function renderThumbnailCanvas(canvas, imageUrl, text) {
   var ctx = canvas.getContext('2d');
   var img = new Image();
   img.crossOrigin = 'anonymous';
   img.onload = function() {
     ctx.drawImage(img, 0, 0, 1024, 1024);
+    if (!text) return;
 
-    // 하단 반투명 검정 그라데이션
     var grad = ctx.createLinearGradient(0, 1024 * 0.6, 0, 1024);
     grad.addColorStop(0, 'rgba(0,0,0,0)');
     grad.addColorStop(1, 'rgba(0,0,0,0.65)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 1024 * 0.6, 1024, 1024 * 0.4);
 
-    // 텍스트 (Noto Sans KR)
     document.fonts.ready.then(function() {
       var fontSize = 52;
       ctx.font = '900 ' + fontSize + 'px "Noto Sans KR"';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-
-      // 폰트 사이즈 자동 축소
       while (ctx.measureText(text).width > 900 && fontSize > 24) {
         fontSize -= 2;
         ctx.font = '900 ' + fontSize + 'px "Noto Sans KR"';
       }
-
-      // 텍스트 그림자
       ctx.shadowColor = 'rgba(0,0,0,0.5)';
       ctx.shadowBlur = 8;
       ctx.shadowOffsetX = 2;
       ctx.shadowOffsetY = 2;
-
       ctx.fillStyle = '#FFFFFF';
       ctx.fillText(text, 512, 1024 * 0.85);
-
-      // 그림자 초기화
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
     });
@@ -433,14 +597,55 @@ function renderThumbnailCanvas(canvas, imageUrl, text) {
   img.src = imageUrl;
 }
 
+// ─── 개별 재생성 ───
+async function regenerateImage(btn) {
+  var idx = parseInt(btn.getAttribute('data-index'));
+  var item = generatedImages[idx];
+  if (!item || !item.prompt) return;
+
+  btn.disabled = true;
+  btn.textContent = '생성 중...';
+
+  try {
+    var res = await fetch('/api/blog-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'regenerate', prompt: item.prompt }),
+    });
+    var data = await res.json();
+
+    if (res.ok && data.url) {
+      generatedImages[idx].url = data.url;
+
+      var card = document.getElementById('image-card-' + idx);
+      var imgEl = card.querySelector('img');
+      var canvasEl = card.querySelector('canvas');
+
+      if (canvasEl) {
+        var thumbText = document.getElementById('thumbText1').value.trim() || document.getElementById('thumbText2').value.trim();
+        renderThumbnailCanvas(canvasEl, data.url, thumbText);
+      } else if (imgEl) {
+        imgEl.src = data.url;
+      }
+
+      // 다운로드 URL 업데이트
+      var dlBtn = card.querySelector('.download-btn');
+      if (dlBtn) dlBtn.setAttribute('data-url', data.url);
+    }
+  } catch(e) {}
+
+  btn.disabled = false;
+  btn.textContent = '\ud83d\udd04 재생성';
+}
+
+// ─── 다운로드 ───
 function downloadImage(btn) {
   var index = parseInt(btn.getAttribute('data-index'));
   var url = btn.getAttribute('data-url');
   var isThumbnail = btn.getAttribute('data-thumbnail') === '1';
 
   if (isThumbnail) {
-    // Canvas에서 다운로드 (텍스트 합성본)
-    var canvas = document.querySelector('.image-card.thumbnail canvas');
+    var canvas = document.getElementById('thumb-canvas');
     if (canvas) {
       canvas.toBlob(function(blob) {
         var a = document.createElement('a');
@@ -451,7 +656,6 @@ function downloadImage(btn) {
       }, 'image/png');
     }
   } else {
-    // 일반 이미지 다운로드
     var a = document.createElement('a');
     a.href = url;
     a.download = 'blog-image-' + (index + 1) + '.png';
@@ -459,6 +663,22 @@ function downloadImage(btn) {
     a.click();
   }
 }
+
+// ─── 글자수 카운터 ───
+document.getElementById('topicInput').addEventListener('input', function() {
+  document.getElementById('topicCount').textContent = this.value.length;
+});
+
+// ─── localStorage 연동 (블로그 글 작성기에서 전달) ───
+(function() {
+  var saved = localStorage.getItem('blogTextForImage');
+  if (saved) {
+    localStorage.removeItem('blogTextForImage');
+    switchTab('parse');
+    document.getElementById('blogTextInput').value = saved;
+    detectMarkers();
+  }
+})();
 </script>
 </body>
 </html>
