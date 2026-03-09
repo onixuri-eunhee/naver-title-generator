@@ -98,9 +98,18 @@ async function handleSignup(req, res) {
     return res.status(409).json({ error: '이미 가입된 이메일입니다.' });
   }
 
+  // 가입 즉시 로그인: 세션 토큰 발급
+  const token = crypto.randomBytes(32).toString('hex');
+  await getRedis().set(`session:${token}`, JSON.stringify({
+    email,
+    createdAt: new Date().toISOString(),
+  }), { ex: 2592000 });
+
   return res.status(201).json({
     success: true,
     message: '회원가입이 완료되었습니다. 5크레딧이 지급되었습니다.',
+    token,
+    user: { name, email, credits: 5 },
   });
 }
 

@@ -254,8 +254,9 @@ document.getElementById('signupForm').addEventListener('submit', async function(
     });
     var data = await res.json();
     if (res.ok) {
-      alert('회원가입이 완료되었습니다! 5크레딧이 지급되었습니다.');
-      window.location.href = 'login.html';
+      localStorage.setItem('ddukddak_token', data.token);
+      localStorage.setItem('ddukddak_user', JSON.stringify(data.user));
+      window.location.href = '/';
     } else {
       showError(data.error || '회원가입에 실패했습니다.');
     }
