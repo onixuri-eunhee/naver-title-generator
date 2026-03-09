@@ -241,22 +241,38 @@ export default async function handler(req, res) {
       // 프롬프트 후처리
       prompts = prompts.map(p => `${p}, Korean style, East Asian, high quality, no text, no watermark`);
 
-      // FLUX: 마커별 1장씩 병렬 생성 (최대 4개씩 배치)
+      // FLUX: 마커별 2장씩 병렬 생성 (최대 4개씩 배치)
       const images = [];
       for (let i = 0; i < prompts.length; i += 4) {
         const batch = prompts.slice(i, i + 4);
         const batchResults = await Promise.all(
           batch.map(async (prompt, j) => {
             try {
-              const url = await callFlux(prompt);
-              return { url, marker: markers[i + j].text, prompt };
+              const response = await fetch('https://fal.run/fal-ai/flux/schnell', {
+                method: 'POST',
+                headers: {
+                  Authorization: `Key ${process.env.FAL_KEY}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  prompt,
+                  image_size: 'square_hd',
+                  num_images: 2,
+                  num_inference_steps: 4,
+                }),
+              });
+              const data = await response.json();
+              if (!response.ok || data.detail) throw new Error(JSON.stringify(data));
+              return (data.images || []).map(img => ({
+                url: img.url, marker: markers[i + j].text, prompt,
+              }));
             } catch (err) {
               console.error(`FLUX error for marker ${i + j}:`, err);
-              return { url: null, marker: markers[i + j].text, prompt };
+              return [{ url: null, marker: markers[i + j].text, prompt }];
             }
           })
         );
-        images.push(...batchResults);
+        for (const result of batchResults) images.push(...result);
       }
 
       const validImages = images.filter(img => img.url);
