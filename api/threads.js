@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 
-const FREE_DAILY_LIMIT = 0; // 0 = 무제한 (테스트 기간)
+const FREE_DAILY_LIMIT = 0; // 0 = 사용 차단 (테스트 기간)
 
 let redis;
 function getRedis() {
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
   // GET: 남은 횟수 조회
   if (req.method === 'GET') {
     if (FREE_DAILY_LIMIT <= 0) {
-      return res.status(200).json({ remaining: 999, limit: 0 });
+      return res.status(200).json({ remaining: 0, limit: 0 });
     }
     try {
       const ip = getClientIp(req);
@@ -94,11 +94,18 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '주제/소재를 입력해주세요.' });
     }
 
-    // Rate limit (INCR-first, 0 = 무제한 테스트 모드)
-    let remaining = 999;
+    // Rate limit (INCR-first, 0 = 사용 차단)
+    if (FREE_DAILY_LIMIT <= 0) {
+      return res.status(429).json({
+        error: '현재 테스트 기간으로 무료 사용이 제한되어 있습니다.',
+        remaining: 0,
+      });
+    }
+
+    let remaining = FREE_DAILY_LIMIT;
     let rateLimitKey = null;
 
-    if (FREE_DAILY_LIMIT > 0) {
+    {
       const ip = getClientIp(req);
       rateLimitKey = getTodayKey(ip);
       const newCount = await getRedis().incr(rateLimitKey);
