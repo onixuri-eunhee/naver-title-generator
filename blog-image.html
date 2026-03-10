@@ -325,7 +325,7 @@ footer a:hover { text-decoration: underline; }
       </div>
 
       <div style="margin-top:12px;">
-        <label>썸네일 텍스트 <span style="font-weight:400; color:#9CA3AF;">(선택, 첫 번째 이미지에 합성)</span></label>
+        <label>썸네일 텍스트 <span style="font-weight:400; color:#EF4444;">(필수, 대표이미지에 합성)</span></label>
         <input type="text" id="thumbText1" placeholder="예: 카페 창업 비용 총정리" maxlength="30">
       </div>
 
@@ -352,7 +352,7 @@ footer a:hover { text-decoration: underline; }
       </div>
 
       <div style="margin-bottom:12px;">
-        <label>썸네일 텍스트 <span style="font-weight:400; color:#9CA3AF;">(선택, 첫 번째 이미지에 합성)</span></label>
+        <label>썸네일 텍스트 <span style="font-weight:400; color:#EF4444;">(필수, 대표이미지에 합성)</span></label>
         <input type="text" id="thumbText2" placeholder="예: 카페 창업 비용 총정리" maxlength="30">
       </div>
 
@@ -578,6 +578,14 @@ async function generateParse() {
     return;
   }
 
+  // 썸네일 텍스트 필수 체크
+  var thumbnailCheck = document.getElementById('thumbText1').value.trim();
+  if (!thumbnailCheck) {
+    showError('errorBox1', '썸네일 텍스트를 입력해주세요. 대표이미지에 텍스트가 합성됩니다.');
+    document.getElementById('thumbText1').focus();
+    return;
+  }
+
   hideErrors();
   var btn = document.getElementById('genBtn1');
   btn.disabled = true;
@@ -602,7 +610,7 @@ async function generateParse() {
 
     currentMode = 'parse';
     generatedImages = data.images.map(function(img, i) {
-      return { url: img.url, marker: img.marker, prompt: img.prompt, index: i };
+      return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', layout: img.layout || null, index: i };
     });
 
     renderResults(generatedImages, thumbnailText);
@@ -622,6 +630,14 @@ async function generateParse() {
 async function generateDirect() {
   var topic = document.getElementById('topicInput').value.trim();
   if (!topic) { showError('errorBox2', '블로그 주제를 입력해주세요.'); return; }
+
+  // 썸네일 텍스트 필수 체크
+  var thumbnailCheck = document.getElementById('thumbText2').value.trim();
+  if (!thumbnailCheck) {
+    showError('errorBox2', '썸네일 텍스트를 입력해주세요. 대표이미지에 텍스트가 합성됩니다.');
+    document.getElementById('thumbText2').focus();
+    return;
+  }
 
   hideErrors();
   var btn = document.getElementById('genBtn2');
@@ -648,7 +664,7 @@ async function generateDirect() {
 
     currentMode = 'direct';
     generatedImages = data.images.map(function(img, i) {
-      return { url: img.url, marker: null, prompt: img.prompt, index: i };
+      return { url: img.url, marker: null, prompt: img.prompt, type: 'photo', layout: null, index: i };
     });
 
     renderResults(generatedImages, thumbnailText);
@@ -685,11 +701,18 @@ function renderResults(images, thumbnailText) {
     card.className = 'image-card' + (isThumbnail ? ' thumbnail' : '');
     card.id = 'image-card-' + i;
 
+    var isInfographic = item.type === 'infographic';
+
     // 마커 라벨 (parse 모드)
     if (item.marker) {
       var markerEl = document.createElement('div');
       markerEl.className = 'image-card-marker';
-      markerEl.textContent = '\ud83d\udcf7 ' + item.marker;
+      markerEl.textContent = (isInfographic ? '\ud83d\udcca ' : '\ud83d\udcf7 ') + item.marker;
+      if (isInfographic) {
+        markerEl.style.background = '#F0FFF4';
+        markerEl.style.borderBottomColor = '#C6F6D5';
+        markerEl.style.color = '#276749';
+      }
       card.appendChild(markerEl);
     }
 
@@ -702,6 +725,7 @@ function renderResults(images, thumbnailText) {
       renderThumbnailCanvas(canvas, item.url, thumbnailText);
     } else {
       var img = document.createElement('img');
+      if (!isInfographic) img.crossOrigin = 'anonymous';
       img.src = item.url;
       img.alt = item.marker || ('이미지 ' + (i + 1));
       img.loading = 'lazy';
@@ -714,7 +738,7 @@ function renderResults(images, thumbnailText) {
 
     var labelEl = document.createElement('span');
     labelEl.className = 'image-label';
-    labelEl.textContent = isThumbnail ? '썸네일 (텍스트 합성)' : (item.marker || '이미지 ' + (i + 1));
+    labelEl.textContent = isThumbnail ? '썸네일 (텍스트 합성)' : isInfographic ? '인포그래픽' : (item.marker || '이미지 ' + (i + 1));
 
     var btns = document.createElement('div');
     btns.className = 'action-btns';
@@ -725,6 +749,7 @@ function renderResults(images, thumbnailText) {
     dlBtn.setAttribute('data-index', i);
     dlBtn.setAttribute('data-url', item.url);
     dlBtn.setAttribute('data-thumbnail', isThumbnail ? '1' : '0');
+    dlBtn.setAttribute('data-infographic', isInfographic ? '1' : '0');
     dlBtn.onclick = function() { downloadImage(this); };
 
     btns.appendChild(dlBtn);
@@ -848,12 +873,26 @@ async function regenerateAll() {
     if (currentMode === 'parse') {
       var blogText = document.getElementById('blogTextInput').value.trim();
       thumbText = document.getElementById('thumbText1').value.trim();
+      if (!thumbText) {
+        showError('errorBox1', '썸네일 텍스트를 입력해주세요. 대표이미지에 텍스트가 합성됩니다.');
+        document.getElementById('thumbText1').focus();
+        btn.disabled = false; btn.textContent = '전체 재생성';
+        document.getElementById('loadingArea').classList.remove('show');
+        return;
+      }
       var markersForRegen = editableMarkers.filter(function(m) { return m.trim() !== ''; });
       body = { mode: 'parse', blogText: blogText, thumbnailText: thumbText, is_regenerate: true, markers: markersForRegen };
     } else {
       var topic = document.getElementById('topicInput').value.trim();
       var mood = document.getElementById('moodSelect').value;
       thumbText = document.getElementById('thumbText2').value.trim();
+      if (!thumbText) {
+        showError('errorBox2', '썸네일 텍스트를 입력해주세요. 대표이미지에 텍스트가 합성됩니다.');
+        document.getElementById('thumbText2').focus();
+        btn.disabled = false; btn.textContent = '전체 재생성';
+        document.getElementById('loadingArea').classList.remove('show');
+        return;
+      }
       body = { mode: 'direct', topic: topic, mood: mood, thumbnailText: thumbText, is_regenerate: true };
     }
 
@@ -868,12 +907,14 @@ async function regenerateAll() {
       showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', data.error);
     } else if (res.ok && data.images && data.images.length > 0) {
       generatedImages = data.images.map(function(img, i) {
-        return { url: img.url, marker: img.marker, prompt: img.prompt, index: i };
+        return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', layout: img.layout || null, index: i };
       });
       renderResults(generatedImages, thumbText);
       if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
     }
-  } catch(e) {}
+  } catch(e) {
+    showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', '서버 오류가 발생했습니다.');
+  }
 
   document.getElementById('loadingArea').classList.remove('show');
   btn.disabled = false;
@@ -885,6 +926,7 @@ function downloadImage(btn) {
   var index = parseInt(btn.getAttribute('data-index'));
   var url = btn.getAttribute('data-url');
   var isThumbnail = btn.getAttribute('data-thumbnail') === '1';
+  var isInfographic = btn.getAttribute('data-infographic') === '1';
 
   if (isThumbnail) {
     var canvas = document.getElementById('thumb-canvas');
@@ -897,12 +939,34 @@ function downloadImage(btn) {
         URL.revokeObjectURL(a.href);
       }, 'image/png');
     }
-  } else {
+  } else if (isInfographic) {
+    // data URL 직접 다운로드
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'blog-image-' + (index + 1) + '.png';
-    a.target = '_blank';
+    a.download = 'infographic-' + (index + 1) + '.png';
     a.click();
+  } else {
+    var card = btn.closest('.image-card');
+    var img = card ? card.querySelector('img') : null;
+    if (img && img.complete && img.naturalWidth > 0) {
+      try {
+        var canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        canvas.toBlob(function(blob) {
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'blog-image-' + (index + 1) + '.png';
+          a.click();
+          URL.revokeObjectURL(a.href);
+        }, 'image/png');
+      } catch (e) {
+        window.open(url, '_blank');
+      }
+    } else {
+      window.open(url, '_blank');
+    }
   }
 }
 

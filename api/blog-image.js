@@ -1,25 +1,25 @@
 import { Redis } from '@upstash/redis';
+import { renderInfographic } from './infographic-renderer.js';
 
 /*
  * 이미지 생성 구조
- * DALL-E 3 (2장): 한글텍스트/인포그래픽 담당
- * FLUX Schnell (6장): 순수 이미지 담당
+ * FLUX Schnell (6장 사진) + Satori (2장 인포그래픽): 혼합 파이프라인
  * Canvas API: 썸네일 텍스트 오버레이 (무료)
- * Haiku: 마커 분석 + API 라우팅 판단
+ * Haiku: 마커 분석 + photo/infographic 분류 + 프롬프트/데이터 생성
  *
  * 원가 구조 (1크레딧 기준)
- * DALL-E 3 2장:      120원
  * FLUX Schnell 6장:   27원
- * Haiku 8회 호출:     56원
- * 총 원가:           203원
+ * Satori 렌더 2장:     0원
+ * Haiku 1회 호출:      7원
+ * 총 원가:            34원
  *
  * 가격 구조
  * 이미지: 20크레딧 = 9,900원 (크레딧당 495원)
  * 블로그: 30크레딧 = 9,900원 (크레딧당 330원)
  *
  * 마진
- * 이미지: 59% (292원/크레딧)
- * 블로그: 71% (235원/크레딧)
+ * 이미지: 93% (461원/크레딧)
+ * 블로그: 90% (296원/크레딧)
  */
 
 const FREE_DAILY_LIMIT = 3;
@@ -98,26 +98,6 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 200) {
   return (data.content?.[0]?.text || '').trim();
 }
 
-async function callDalle(prompt) {
-  const response = await fetch('https://api.openai.com/v1/images/generations', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'dall-e-3',
-      prompt,
-      size: '1024x1024',
-      quality: 'standard',
-      n: 1,
-    }),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(JSON.stringify(data));
-  return data.data?.[0]?.url || null;
-}
-
 async function callFlux(prompt) {
   const response = await fetch('https://fal.run/fal-ai/flux/schnell', {
     method: 'POST',
@@ -167,60 +147,84 @@ async function callFluxBatch(prompt, count) {
 }
 
 async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
-  const blogSummary = blogText.substring(0, 100).trim();
+  // 블로그 주제 파악을 위해 첫 300자 + 제목/소제목 추출
+  const blogSummary = blogText.substring(0, 300).trim();
+  const firstLine = blogText.split('\n').find(l => l.trim()) || '';
+  const blogTitle = firstLine.trim().substring(0, 80);
+  const headings = blogText.match(/【\d+\.?】[^\n]*/g) || [];
+  const blogStructure = headings.map(h => h.trim()).join(' | ');
 
   const markerContext = markers.map((mk, i) => {
     const before = mk.before.substring(0, 200);
     const after = mk.after.substring(0, 200);
-    return `마커 ${i + 1}: "${mk.text}"\n  앞 문맥: "${before}"\n  뒤 문맥: "${after}"`;
+    return `마커 ${i + 1}: "${mk.text}"${mk.section ? `\n  소속 섹션: "${mk.section}"` : ''}\n  글 위치: ${mk.position}\n  앞 문맥 (200자): "${before}"\n  뒤 문맥 (200자): "${after}"`;
   }).join('\n\n');
 
-  const systemPrompt = `You are a blog image classifier and prompt generator for Korean lifestyle blogs.
+  const systemPrompt = `You are a blog image prompt engineer. Your CRITICAL job is classifying each marker as either "photo" or "infographic", then generating appropriate data.
 
-## Classification Rules
-For each marker, classify as:
-- 'dalle': requires Korean text overlay, infographic, data chart, comparison table, step-by-step guide, or numbered list visual.
-  Hint keywords: 리스트, 비교, 표, 순서, 단계, 정리, 요약, 체크리스트
-- 'flux': pure photo/lifestyle scene with NO text needed.
-  Hint keywords: 분위기, 풍경, 실내, 음식, 카페, 인테리어
+## CLASSIFICATION RULES
+Each marker must be classified as one of:
+- **photo** (최소 6개): Real photograph — for scenes, products, objects, people, places
+- **infographic** (최대 2개): Data visualization — for comparisons, lists, steps/procedures, statistics/numbers
 
-## Prompt Generation Rules
+Rules:
+- The FIRST marker MUST always be "photo" (대표이미지)
+- Maximum 2 infographic markers. If more qualify, keep only the best 2 as infographic.
+- Infographic is suitable ONLY when the surrounding text has clear structured data (비교표, 순위, 단계, 수치)
+- When in doubt, choose "photo"
 
-For 'dalle' type:
-- Include specific Korean text to display (max 4-5 short words per line).
-- Use bold, large sans-serif font style for best Korean rendering.
-- Specify clean layout: centered text, minimal design, solid or gradient background.
-- DALL-E 3 has limited Korean accuracy — simpler text = better results.
+## PHOTO MARKERS
+Generate purely visual English prompts for FLUX Schnell model:
+- Describe the EXACT subject/object from the marker context, not generic scenes
+- Include specific details: materials, colors, textures, arrangement, lighting, angle
+- MUST include Korean or East Asian context
+- NO text, signs, writing, or typography in any image
+- Compose for 1024x1024 square format
+${isRegenerate ? '- REGENERATION MODE: Generate MORE SPECIFIC prompts with exact details, different angles and compositions.' : ''}
 
-For 'flux' type:
-- Generate purely visual English prompts. NO text, signs, writing, or typography.
-- If the scene naturally has signs (storefronts, menus), describe them as "soft blurred background elements".
-- Compose for 1024x1024 square format — avoid wide panoramic or tall portrait compositions.
-- Be hyper-specific: reference surrounding blog context for exact scene details.
-${isRegenerate ? `
-REGENERATION MODE — user was not satisfied with previous images.
-- Generate MORE SPECIFIC prompts with exact location, lighting, colors, composition, props.
-- Try different angles, color palettes, or unexpected compositions from typical results.
-- For dalle: refine text content and layout.
-- For flux: be extremely specific about the scene details.
-- You may reassign which markers are dalle vs flux if it produces better results.
-Same total rule: dalle 2개, flux 6개.` : ''}
+## INFOGRAPHIC MARKERS
+Generate structured Korean data for Satori renderer. Choose one layout:
+
+1. **comparison**: A vs B 비교표
+   Required: "columns": ["A이름", "B이름"], "items": [{"label": "항목명", "values": ["A값", "B값"]}]
+   items: 3~6개
+
+2. **list**: 목록/순위/체크리스트
+   Required: "items": [{"icon": "이모지", "text": "항목 내용"}]
+   items: 4~8개
+
+3. **steps**: 단계/절차/과정
+   Required: "items": [{"step": "1", "title": "단계명", "desc": "설명(선택)"}]
+   items: 3~5개
+
+4. **stats**: 수치/통계/퍼센트
+   Required: "items": [{"number": "85%", "label": "항목명", "sub": "부가설명(선택)"}]
+   items: 2~4개
+
+All infographic text MUST be in Korean. Title must be concise (15자 이내).
 
 ## Output Format
 Return ONLY a valid JSON array:
-[{"marker": "마커텍스트", "type": "dalle", "prompt": "English prompt"}]`;
+[
+  {"marker": "마커텍스트", "type": "photo", "prompt": "English prompt..."},
+  {"marker": "마커텍스트", "type": "infographic", "layout": "comparison", "title": "비교 제목", "columns": ["A","B"], "items": [{"label":"항목","values":["값1","값2"]}]}
+]`;
 
-  const userPrompt = `블로그 전체 주제 (첫 100자): ${blogSummary}
+  const userPrompt = `블로그 제목: "${blogTitle}"
+블로그 전체 주제 (첫 300자): ${blogSummary}${blogStructure ? `\n글 구조: ${blogStructure}` : ''}
 
 마커 목록과 문맥:
 ${markerContext}
 
 규칙:
-- 반드시 dalle 2개, flux 6개로 배정할 것
-- dalle 2개는 텍스트/인포그래픽이 가장 필요한 마커 우선 선택
-- flux 6개 중 첫 번째는 반드시 블로그 대표이미지용으로 배정`;
+- 8개 마커 각각을 photo 또는 infographic으로 분류
+- 첫 번째 마커는 반드시 photo (블로그 대표이미지)
+- infographic은 최대 2개까지만
+- 주변 텍스트에 비교/목록/단계/수치 데이터가 명확할 때만 infographic 사용
+- photo 프롬프트는 반드시 블로그 주제("${blogTitle}")와 직접 관련
+- infographic 데이터는 반드시 한국어로`;
 
-  const raw = await callClaude(systemPrompt, userPrompt, 3000);
+  const raw = await callClaude(systemPrompt, userPrompt, 4000);
   const jsonMatch = raw.match(/\[[\s\S]*?\](?=[^[\]]*$)/);
   if (!jsonMatch) throw new Error('Haiku marker analysis: no JSON array found');
   const result = JSON.parse(jsonMatch[0]);
@@ -230,24 +234,39 @@ ${markerContext}
     throw new Error(`Haiku returned ${result.length} items, expected ${markers.length}`);
   }
 
-  // dalle/flux 비율 강제 조정 (직접 result 수정)
-  const dalleCount = result.filter(r => r.type === 'dalle').length;
-  const fluxCount = result.filter(r => r.type === 'flux').length;
-  if (dalleCount !== 2 || fluxCount !== 6) {
-    console.warn(`Haiku returned dalle:${dalleCount}, flux:${fluxCount} — adjusting to 2/6`);
-    let dalleAssigned = 0;
-    for (const item of result) {
-      if (item.type === 'dalle' && dalleAssigned < 2) {
-        dalleAssigned++;
-      } else {
-        item.type = 'flux';
+  // ─── 안전 검증 ───
+  // 첫 마커가 infographic이면 photo로 강제 변환
+  if (result[0].type === 'infographic') {
+    console.warn('[IMAGE] First marker was infographic — forcing to photo');
+    result[0].type = 'photo';
+    if (!result[0].prompt) {
+      result[0].prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style';
+    }
+  }
+
+  // infographic 3개 이상이면 3번째부터 photo로 변환
+  let infographicCount = 0;
+  for (const item of result) {
+    if (item.type === 'infographic') {
+      infographicCount++;
+      if (infographicCount > 2) {
+        console.warn(`[IMAGE] Too many infographics (${infographicCount}) — converting to photo`);
+        item.type = 'photo';
+        if (!item.prompt) {
+          item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style';
+        }
       }
     }
-    if (dalleAssigned < 2) {
-      for (const item of result) {
-        if (item.type !== 'dalle' && dalleAssigned < 2) {
-          item.type = 'dalle';
-          dalleAssigned++;
+  }
+
+  // infographic에 layout/title/items 누락 시 photo로 fallback
+  for (const item of result) {
+    if (item.type === 'infographic') {
+      if (!item.layout || !item.title || !item.items || !Array.isArray(item.items) || item.items.length === 0) {
+        console.warn(`[IMAGE] Infographic "${item.marker}" missing required fields — falling back to photo`);
+        item.type = 'photo';
+        if (!item.prompt) {
+          item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style';
         }
       }
     }
@@ -317,7 +336,7 @@ export default async function handler(req, res) {
       remaining = FREE_DAILY_LIMIT - newCount;
     }
 
-    // ===== PARSE 모드: 블로그 글에서 마커 파싱 → DALL-E 3 + FLUX 하이브리드 =====
+    // ===== PARSE 모드: 블로그 글에서 마커 파싱 → FLUX 전용 =====
     if (mode === 'parse') {
       const { blogText, thumbnailText } = req.body;
       const frontMarkers = req.body.markers;
@@ -336,6 +355,8 @@ export default async function handler(req, res) {
         .trim();
 
       let markers = [];
+
+      console.log(`[IMAGE] Mode: parse | blogText: ${totalLen} chars | frontMarkers: ${frontMarkers?.length || 0} | is_regenerate: ${is_regenerate}`);
 
       if (Array.isArray(frontMarkers) && frontMarkers.length > 0) {
         const validMarkers = frontMarkers.filter(m => m && m.trim()).slice(0, MAX_MARKERS);
@@ -358,6 +379,7 @@ export default async function handler(req, res) {
             const sectionMatches = [...textBeforeMarker.matchAll(/【\d+\.?】[^\n]*/g)];
             section = sectionMatches.length > 0 ? sectionMatches[sectionMatches.length - 1][0].trim() : '';
           } else {
+            console.warn(`[IMAGE] Marker NOT FOUND in blogText: "${text.substring(0, 40)}..." — using first 400 chars as context`);
             before = cleanContext(blogText.substring(0, Math.min(400, totalLen)));
             after = '';
             position = 'middle';
@@ -393,9 +415,12 @@ export default async function handler(req, res) {
       }
 
       if (markers.length === 0) {
+        console.warn('[IMAGE] No markers found in blogText');
         if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
         return res.status(400).json({ error: '블로그 글에서 (사진: ...) 또는 (이미지: ...) 마커를 찾을 수 없습니다. 블로그 글 생성기에서 작성한 글을 붙여넣어주세요.' });
       }
+
+      console.log(`[IMAGE] Markers found: ${markers.length} | contexts: ${markers.map(m => `"${m.text.substring(0, 20)}…" before:${m.before.length}ch after:${m.after.length}ch`).join(', ')}`);
 
       // 마커가 정확히 8개가 아닐 경우: FLUX 전용 로직 (fallback)
       if (markers.length !== 8) {
@@ -416,25 +441,27 @@ export default async function handler(req, res) {
           return entry;
         }).join('\n\n');
 
-        const claudeSystem = `You are a blog image prompt engineer for Korean lifestyle blogs.
+        const claudeSystem = `You are a blog image prompt engineer. Your CRITICAL job is generating prompts that PRECISELY match each marker's topic and surrounding context.
 ${is_regenerate
   ? `This is a REGENERATION request — generate MORE SPECIFIC and MORE CONTEXTUALLY ACCURATE prompts.
-Describe exact location, lighting, colors, composition, props. Try different angles and compositions.
+Describe exact subject, materials, colors, composition, props. Try different angles and compositions.
 No generic stock photo style. No people's faces.`
-  : `Your #1 priority is generating images that match the exact context of the blog content.
-Use the surrounding text to understand what specific scene, object, or situation is being described.
+  : `Your #1 priority is generating images that show the EXACT subject described in each marker and its context.
+Read the before/after text carefully to understand what specific item, product, or scene is being discussed.
 No generic images. No people's faces.`}
 
 ## Rules
-- Generate English-only prompts for FLUX Schnell model. All marker text is Korean — translate to English visual descriptions.
+- Generate English-only prompts for FLUX Schnell model. All marker text is Korean — translate to PRECISE English visual descriptions.
+- Every prompt MUST directly depict the subject of the blog and marker. If the blog is about wedding invitations, show wedding invitations. If about food, show food.
+- NEVER generate generic lifestyle/cafe/selfie images unrelated to the blog topic.
 - Compose for 1024x1024 square format. Avoid wide panoramic or tall portrait compositions.
-- Be hyper-specific, referencing the surrounding text context.
-- Korean/East Asian context required. No text, typography, signs, or writing in images.
+- Be hyper-specific: describe exact materials, textures, colors, arrangement, and lighting.
+- No text, typography, signs, or writing in images.
 - If the scene has storefronts or menus, describe signs as "soft blurred background elements".
 
 ## Output
-Return ONLY a valid JSON array of English prompt strings. Example:
-["A cozy Korean cafe interior with warm wood tables, brass pendant lights, soft afternoon light, square composition, editorial photography"]`;
+Return ONLY a valid JSON array of English prompt strings. Example for a blog about wedding invitations:
+["Elegant handmade wedding invitation card with dried flowers and kraft paper envelope on marble surface, warm natural light, closeup detail shot"]`;
 
         const claudeUser = `Blog title: "${blogTitle}"
 Blog summary (300 chars): "${blogSummary}"${blogStructure ? `\nArticle structure: "${blogStructure}"` : ''}
@@ -450,16 +477,18 @@ ${markersList}`;
           const jsonMatch = claudeRaw.match(/\[[\s\S]*?\](?=[^[\]]*$)/);
           prompts = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
         } catch (err) {
-          console.error('Claude parse error:', err);
+          console.error('[IMAGE] Claude parse error:', err);
           prompts = null;
         }
 
         if (!prompts || prompts.length !== markers.length) {
-          // fallback: 한글 마커를 기본 영어 프롬프트로 변환
-          prompts = markers.map(mk => `Korean lifestyle blog photo related to ${mk.text}, high quality, editorial photography, square composition`);
+          console.warn(`[IMAGE] Non-8 marker path: Claude returned ${prompts?.length || 0} prompts for ${markers.length} markers — using generic English fallback`);
+          // fallback: 순수 영어 generic 프롬프트로 대체 (한글을 FLUX에 넣지 않으면서 이미지 생성은 계속)
+          prompts = markers.map(() => `high quality Korean lifestyle blog photography, soft natural lighting, editorial style`);
         }
 
-        prompts = prompts.map(p => `${p}, Korean lifestyle photography${FLUX_NO_TEXT}`);
+        console.log('[IMAGE] Non-8 prompts generated:', prompts.map(p => p.substring(0, 60)));
+        prompts = prompts.map(p => `${p}, high quality editorial photography, square composition${FLUX_NO_TEXT}`);
 
         const images = [];
         for (let i = 0; i < prompts.length; i += 4) {
@@ -494,97 +523,113 @@ ${markersList}`;
         });
       }
 
-      // ===== 마커 8개: DALL-E 3 (2장) + FLUX Schnell (6장) 하이브리드 =====
+      // ===== 마커 8개: photo/infographic 혼합 파이프라인 =====
       let analysisResult;
+      let allPhoto = false; // fallback 시 전부 photo
       try {
         analysisResult = await callHaikuMarkerAnalysis(blogText, markers, is_regenerate);
+        const photoCount = analysisResult.filter(r => r.type === 'photo').length;
+        const infraCount = analysisResult.filter(r => r.type === 'infographic').length;
+        console.log(`[IMAGE] Haiku analysis SUCCESS - photo:${photoCount} infographic:${infraCount}`, JSON.stringify(analysisResult.map(r => ({ marker: r.marker, type: r.type, layout: r.layout, prompt: r.prompt?.substring(0, 60) }))));
       } catch (err) {
-        console.error('Haiku marker analysis error:', err);
-        // fallback: 전부 FLUX로 (한글 mk.text를 영어 기본 프롬프트로 변환)
-        analysisResult = markers.map(mk => ({
-          marker: mk.text,
-          type: 'flux',
-          prompt: `Korean lifestyle blog photo related to ${mk.text}, high quality, editorial photography, square composition`,
-        }));
+        console.error('[IMAGE] Haiku marker analysis FAILED:', err.message);
+        // fallback: 간단한 Haiku 호출로 마커별 영어 번역 시도 (전부 photo)
+        allPhoto = true;
+        try {
+          const firstLine = blogText.split('\n').find(l => l.trim()) || '';
+          const blogTitle = firstLine.trim().substring(0, 80);
+          const markerTexts = markers.map(mk => mk.text);
+          const fallbackRaw = await callClaude(
+            'You are a Korean-to-English translator for image generation. Translate each Korean image description into a specific, detailed English visual prompt (1-2 sentences). The prompts must describe the EXACT subject mentioned. No text/writing/signs in images. Output ONLY a JSON array of English prompt strings.',
+            `Blog topic: "${blogTitle}"\n\nTranslate these image descriptions:\n${markerTexts.map((t, i) => `${i + 1}. ${t}`).join('\n')}`,
+            1500
+          );
+          const fallbackMatch = fallbackRaw.match(/\[[\s\S]*?\](?=[^[\]]*$)/);
+          const fallbackPrompts = fallbackMatch ? JSON.parse(fallbackMatch[0]) : null;
+          if (fallbackPrompts && fallbackPrompts.length === markers.length) {
+            console.log('[IMAGE] Fallback translation SUCCESS (all photo)');
+            analysisResult = fallbackPrompts.map((prompt, i) => ({
+              marker: markers[i].text,
+              type: 'photo',
+              prompt,
+            }));
+          } else {
+            throw new Error('Fallback translation returned wrong count');
+          }
+        } catch (fallbackErr) {
+          console.error('[IMAGE] Fallback translation also FAILED:', fallbackErr.message);
+          if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+          return res.status(500).json({ error: 'AI 이미지 분석에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+        }
       }
 
-      // 원래 마커 순서대로 매핑 (undefined 방어)
-      const orderedAnalysis = markers.map((mk, i) => {
+      // 원래 마커 순서대로 매핑 + originalIndex 부여
+      const orderedItems = markers.map((mk, i) => {
         const found = analysisResult.find(a => a.marker === mk.text) || analysisResult[i];
-        if (!found || !found.type || !found.prompt) {
-          return {
-            marker: mk.text,
-            type: 'flux',
-            prompt: `Korean lifestyle blog photo, high quality, editorial photography, square composition`,
-            originalIndex: i,
-            markerObj: mk,
-          };
+        if (!found) {
+          return { type: 'photo', prompt: 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style', marker: mk.text, originalIndex: i };
         }
-        return { ...found, originalIndex: i, markerObj: mk };
+        return { ...found, marker: mk.text, originalIndex: i };
       });
 
-      const dalleItems = orderedAnalysis.filter(a => a.type === 'dalle');
-      const fluxItems = orderedAnalysis.filter(a => a.type === 'flux');
+      // photo/infographic 분리
+      const photoItems = orderedItems.filter(item => item.type !== 'infographic');
+      const infographicItems = orderedItems.filter(item => item.type === 'infographic');
 
-      // DALL-E 3: 병렬 호출
-      const dalleResults = await Promise.all(
-        dalleItems.map(async (item) => {
-          try {
-            const url = await callDalle(item.prompt);
-            return {
-              url,
-              marker: item.markerObj.text,
-              prompt: item.prompt,
-              type: 'dalle',
-              originalIndex: item.originalIndex,
-            };
-          } catch (err) {
-            console.error(`DALL-E error for marker "${item.markerObj.text}":`, err);
-            return {
-              url: null,
-              marker: item.markerObj.text,
-              prompt: item.prompt,
-              type: 'dalle',
-              originalIndex: item.originalIndex,
-            };
+      console.log(`[IMAGE] Pipeline: ${photoItems.length} photos + ${infographicItems.length} infographics`);
+
+      // ─── 병렬 실행: FLUX(photo) + Satori(infographic) ───
+      const [photoResults, infographicResults] = await Promise.all([
+        // FLUX 배치 처리 (4장씩)
+        (async () => {
+          const results = [];
+          for (let i = 0; i < photoItems.length; i += 4) {
+            const batch = photoItems.slice(i, i + 4);
+            const batchResults = await Promise.all(
+              batch.map(async (item) => {
+                const prompt = item.prompt || 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style';
+                const fullPrompt = `${prompt}, high quality editorial photography, square composition${FLUX_NO_TEXT}`;
+                try {
+                  const url = await callFlux(fullPrompt);
+                  return { url, marker: item.marker, prompt: fullPrompt, type: 'photo', originalIndex: item.originalIndex };
+                } catch (err) {
+                  console.error(`[IMAGE] FLUX error for marker "${item.marker}":`, err);
+                  return { url: null, marker: item.marker, prompt: fullPrompt, type: 'photo', originalIndex: item.originalIndex };
+                }
+              })
+            );
+            results.push(...batchResults);
           }
-        })
-      );
+          return results;
+        })(),
 
-      // FLUX: 배치 호출 (Haiku가 이미 no-text를 반영한 프롬프트 생성 → 짧은 suffix만 추가)
-      const fluxResults = [];
-      for (let i = 0; i < fluxItems.length; i += 4) {
-        const batch = fluxItems.slice(i, i + 4);
-        const batchResults = await Promise.all(
-          batch.map(async (item) => {
-            const fullPrompt = `${item.prompt}, Korean lifestyle photography${FLUX_NO_TEXT}`;
+        // Satori 인포그래픽 렌더링
+        Promise.all(
+          infographicItems.map(async (item) => {
             try {
-              const url = await callFlux(fullPrompt);
-              return {
-                url,
-                marker: item.markerObj.text,
-                prompt: fullPrompt,
-                type: 'flux',
-                originalIndex: item.originalIndex,
-              };
+              const dataUrl = await renderInfographic(item);
+              console.log(`[IMAGE] Infographic rendered: "${item.marker}" layout=${item.layout}`);
+              return { url: dataUrl, marker: item.marker, type: 'infographic', layout: item.layout, originalIndex: item.originalIndex };
             } catch (err) {
-              console.error(`FLUX error for marker "${item.markerObj.text}":`, err);
-              return {
-                url: null,
-                marker: item.markerObj.text,
-                prompt: fullPrompt,
-                type: 'flux',
-                originalIndex: item.originalIndex,
-              };
+              console.error(`[IMAGE] Satori error for "${item.marker}":`, err.message);
+              // Fallback: FLUX로 사진 생성 시도
+              try {
+                const fallbackPrompt = `high quality Korean lifestyle blog photography related to ${item.title || item.marker}, soft natural lighting, editorial style, square composition${FLUX_NO_TEXT}`;
+                const url = await callFlux(fallbackPrompt);
+                console.log(`[IMAGE] Infographic fallback to FLUX: "${item.marker}"`);
+                return { url, marker: item.marker, prompt: fallbackPrompt, type: 'photo', originalIndex: item.originalIndex };
+              } catch (fluxErr) {
+                console.error(`[IMAGE] Infographic FLUX fallback also failed for "${item.marker}":`, fluxErr);
+                return { url: null, marker: item.marker, type: 'photo', originalIndex: item.originalIndex };
+              }
             }
           })
-        );
-        fluxResults.push(...batchResults);
-      }
+        ),
+      ]);
 
-      // 결과 합산 후 원래 마커 순서로 정렬
-      const allResults = [...dalleResults, ...fluxResults];
-      allResults.sort((a, b) => a.originalIndex - b.originalIndex);
+      // originalIndex로 정렬하여 합산
+      const allResults = [...photoResults, ...infographicResults]
+        .sort((a, b) => a.originalIndex - b.originalIndex);
 
       const validImages = allResults.filter(img => img.url);
       if (validImages.length === 0) {
@@ -609,16 +654,17 @@ ${markersList}`;
     }
 
     const directSystem = is_regenerate
-      ? 'You are an image prompt translator. This is a REGENERATION request — generate MORE SPECIFIC and DETAILED prompts. Convert the Korean blog topic into a rich, detailed English image description (2-3 sentences). Describe exact location, lighting, colors, composition, and props. Focus on visual elements only. No people faces. Always specify Korean context. CRITICAL: Never include any text, typography, letters, signs, or written words. Compose for square 1024x1024 format. No explanations, just the prompt.'
-      : 'You are an image prompt translator. Convert the given Korean blog topic into a concise English image description (1-2 sentences). Focus on visual elements only. No people faces. IMPORTANT: Always specify Korean or East Asian context. CRITICAL: Never include any text, typography, letters, signs, or written words. Compose for square 1024x1024 format. Purely visual elements only. No explanations, just the prompt.';
+      ? 'You are an image prompt translator. This is a REGENERATION request — generate MORE SPECIFIC and DETAILED prompts. Convert the Korean blog topic into a rich, detailed English image description (2-3 sentences). Describe the EXACT subject of the topic with specific materials, colors, composition, and props. Focus on visual elements only. No people faces. CRITICAL: Never include any text, typography, letters, signs, or written words. Compose for square 1024x1024 format. No explanations, just the prompt.'
+      : 'You are an image prompt translator. Convert the given Korean blog topic into a concise English image description (1-2 sentences) that depicts the EXACT subject. Focus on visual elements only. No people faces. CRITICAL: Never include any text, typography, letters, signs, or written words. Compose for square 1024x1024 format. Purely visual elements only. No explanations, just the prompt.';
     const englishTopic = await callClaude(
       directSystem,
       topic,
       is_regenerate ? 300 : 150
     );
 
+    console.log('[IMAGE] Direct mode - topic:', topic, '→ prompt:', englishTopic.substring(0, 100));
     const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
-    const fullPrompt = `${englishTopic}, ${moodStyle}, Korean lifestyle photography${FLUX_NO_TEXT}`;
+    const fullPrompt = `${englishTopic}, ${moodStyle}${FLUX_NO_TEXT}`;
 
     const urls = await callFluxBatch(fullPrompt, DIRECT_IMAGES);
     if (urls.length === 0) {
