@@ -182,7 +182,10 @@ For each image marker, you must:
 2. Generate an appropriate English prompt based on the type:
    - For 'dalle': include specific Korean text content to display, layout instructions,
      clean design, white background preferred
-   - For 'flux': purely visual scene, no text, photorealistic, natural lighting
+   - For 'flux': purely visual scene, no text, photorealistic, natural lighting.
+     NEVER include any text, signs, or writing in the prompt.
+     If the scene naturally contains signs or text (like storefronts, menus, billboards),
+     explicitly add 'no visible text on signs, blurred signage' to the prompt.
 
 3. Use surrounding context (before/after 200 chars) to make prompts highly specific.
 ${isRegenerate ? `
@@ -446,7 +449,9 @@ ${markersList}`;
           prompts = markers.map(mk => `${mk.text}, Korean blog photo, high quality, no text, no watermark, no people faces`);
         }
 
-        prompts = prompts.map(p => `${p}, Korean lifestyle photography, no text, no watermark`);
+        const fallbackNoText = ', No text, no letters, no signs, no Korean characters, no writing of any kind, pure visual only';
+        const fallbackHeroNoText = ', Absolutely no text, no letters, no signs, no Korean writing, no Chinese characters, no any writing or typography anywhere in the image. Pure clean visual photography only.';
+        prompts = prompts.map((p, idx) => `${p}, Korean lifestyle photography, no text, no watermark${idx === 0 ? fallbackHeroNoText : fallbackNoText}`);
 
         const images = [];
         for (let i = 0; i < prompts.length; i += 4) {
@@ -534,11 +539,16 @@ ${markersList}`;
 
       // FLUX: 6장 (4개 + 2개 배치)
       const fluxResults = [];
+      const fluxNoTextSuffix = ', No text, no letters, no signs, no Korean characters, no writing of any kind, pure visual only';
+      const fluxHeroSuffix = ', Absolutely no text, no letters, no signs, no Korean writing, no Chinese characters, no any writing or typography anywhere in the image. Pure clean visual photography only.';
+      let isFirstFlux = true;
       for (let i = 0; i < fluxItems.length; i += 4) {
         const batch = fluxItems.slice(i, i + 4);
         const batchResults = await Promise.all(
           batch.map(async (item) => {
-            const fullPrompt = `${item.prompt}, Korean lifestyle photography, no text, no watermark`;
+            const suffix = isFirstFlux ? fluxHeroSuffix : fluxNoTextSuffix;
+            isFirstFlux = false;
+            const fullPrompt = `${item.prompt}, Korean lifestyle photography, no text, no watermark${suffix}`;
             try {
               const url = await callFlux(fullPrompt);
               return {
