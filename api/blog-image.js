@@ -1,5 +1,4 @@
 import { Redis } from '@upstash/redis';
-import { renderInfographic } from './infographic-renderer.js';
 
 /*
  * 이미지 생성 구조
@@ -603,10 +602,11 @@ ${markersList}`;
           return results;
         })(),
 
-        // Satori 인포그래픽 렌더링
+        // Satori 인포그래픽 렌더링 (동적 import — 네이티브 바이너리 로드 실패 방어)
         Promise.all(
           infographicItems.map(async (item) => {
             try {
+              const { renderInfographic } = await import('./infographic-renderer.js');
               const dataUrl = await renderInfographic(item);
               console.log(`[IMAGE] Infographic rendered: "${item.marker}" layout=${item.layout}`);
               return { url: dataUrl, marker: item.marker, type: 'infographic', layout: item.layout, originalIndex: item.originalIndex };
