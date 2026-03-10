@@ -1,0 +1,39 @@
+/* 모바일 네비바 반응형 */
+@media (max-width: 768px) {
+  .navbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 8px 12px;
+    gap: 4px;
+  }
+  .navbar-logo {
+    font-size: 16px;
+  }
+  .navbar-links {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 0 2px;
+    gap: 2px;
+    scrollbar-width: none;
+  }
+  .navbar-links::-webkit-scrollbar {
+    display: none;
+  }
+  .navbar-links a {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .navbar-auth {
+    gap: 4px;
+  }
+  .navbar-login-btn,
+  .navbar-signup-btn,
+  .navbar-mypage-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+}
