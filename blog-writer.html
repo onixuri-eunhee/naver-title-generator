@@ -2100,6 +2100,11 @@
     var offset = circumference - (circumference * totalScore / maxScore);
 
     var gaugeFill = document.getElementById('gauge-fill');
+    // 기존 값 리셋 후 새 값 적용 (재검수 시 애니메이션 재생)
+    gaugeFill.style.transition = 'none';
+    gaugeFill.style.strokeDashoffset = circumference;
+    gaugeFill.offsetHeight; // reflow 강제
+    gaugeFill.style.transition = '';
     gaugeFill.style.stroke = color;
     setTimeout(function() {
       gaugeFill.style.strokeDashoffset = offset;
@@ -2198,9 +2203,26 @@
     btnImprove.disabled = true;
     btnImprove.textContent = 'AI가 수정 중...';
 
+    // 전체 검수 결과를 점수와 함께 전달 (AI가 감점 항목을 정확히 파악하도록)
+    var fullText = (generatedData.hook || '') + '\n\n' + (generatedData.body || '') + '\n\n' + (generatedData.cta || '');
+    var allResults = [
+      checkAIVocabulary(fullText),
+      checkEndingRepeat(fullText),
+      checkSpecificity(fullText),
+      checkDirectExperience(fullText),
+      checkNegativeExpression(fullText),
+      checkSentenceLengthVariance(fullText),
+      checkStructuralMechanicity(fullText)
+    ];
+    var currentTotal = allResults.reduce(function(sum, r) { return sum + r.score; }, 0);
+
     var improveParts = [];
-    lastReviewSuggestions.forEach(function(r) {
-      if (r.suggestion) improveParts.push('- ' + r.suggestion);
+    var focusItems = [];
+    allResults.forEach(function(r, i) {
+      var num = i + 1;
+      var statusMark = r.score === r.max ? 'PASS' : r.score > 0 ? 'WARN' : 'FAIL';
+      improveParts.push('(' + num + ') ' + r.label + ': ' + r.score + '/' + r.max + '점 [' + statusMark + ']' + (r.suggestion ? ' — ' + r.suggestion : ''));
+      if (r.score < r.max) focusItems.push('(' + num + ') ' + r.label);
     });
 
     var improveSystem = '당신은 네이버 블로그 전문 작가입니다.\n' +
@@ -2237,17 +2259,22 @@
       '이미지 마커 (사진: ...) 개수와 위치는 원본 그대로 유지하세요.\n' +
       '해시태그와 내부링크 추천도 원본 그대로 유지하세요.\n\n' +
       '반드시 아래 JSON 형식으로만 응답하세요.\n' +
-      '{\n  "title": "제목",\n  "hook": "도입부",\n  "body": "본문",\n  "cta": "마무리",\n  "tags": ["태그1",...],\n  "internal_links": ["글제목1",...]\n}';
+      (selectedType === 'naver-seo'
+        ? '{\n  "title": "제목",\n  "description": "설명문 (45자 이내, 제목과 다른 각도로 핵심 요약)",\n  "hook": "도입부",\n  "body": "본문",\n  "cta": "마무리",\n  "tags": ["태그1",...],\n  "internal_links": ["글제목1",...]\n}'
+        : '{\n  "title": "제목",\n  "hook": "도입부",\n  "body": "본문",\n  "cta": "마무리",\n  "tags": ["태그1",...],\n  "internal_links": ["글제목1",...]\n}');
 
     var userMsg = '【원본 글】\n' +
-      '제목: ' + (generatedData.title || '') + '\n\n' +
+      '제목: ' + (generatedData.title || '') + '\n' +
+      (selectedType === 'naver-seo' && generatedData.description ? '설명문: ' + generatedData.description + '\n' : '') + '\n' +
       '도입부:\n' + (generatedData.hook || '') + '\n\n' +
       '본문:\n' + (generatedData.body || '') + '\n\n' +
       '마무리:\n' + (generatedData.cta || '') + '\n\n' +
       '해시태그: ' + (generatedData.tags || []).join(', ') + '\n' +
       '내부링크: ' + (generatedData.internal_links || []).join(', ') + '\n\n' +
-      '【AI 검수 결과 — 개선 요청사항】\n' + improveParts.join('\n') + '\n\n' +
-      '위 항목을 반영하여 AI 티가 나지 않도록 글을 수정해주세요.';
+      '【AI 검수 결과 — 현재 ' + currentTotal + '/90점】\n' + improveParts.join('\n') + '\n\n' +
+      '★ 집중 개선 필요 항목: ' + focusItems.join(', ') + '\n' +
+      '★ 목표: 80점 이상 (각 항목 만점 달성 필수). 위 감점 항목을 최우선으로 수정하세요.\n' +
+      '★ PASS 항목은 현재 수준을 절대 떨어뜨리지 마세요.';
 
     try {
       var res = await fetch('/api/generate', {
@@ -2684,6 +2711,7 @@
     hideError();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+
 
   // ─── 남은 횟수 UI 업데이트 ───
   function updateRemainingUI(remaining, limit) {
