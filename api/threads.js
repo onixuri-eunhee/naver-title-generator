@@ -69,7 +69,7 @@ const typeGuide = {
 const toneGuide = {
   '친구체': '말투: ~했어, ~이야, ~거든, ~잖아 반말. 친구한테 얘기하듯 편하게. 문장이 자연스럽게 이어지는 수다체.',
   '해요체': '말투: ~해요, ~예요, ~거든요. 따뜻하고 부드럽게. 독자를 존중하되 딱딱하지 않게.',
-  '단문체': '말투: 전체 100자 이내. 한 문장 최대 10자. 마침표로 끊기. 설명 없이 여운만. 총 4~6줄. 반드시 사용자가 입력한 소재와 타겟에 맞는 내용을 담아라.',
+  '단문체': '말투: 전체 60자 이내. 한 문장 최대 8자. 마침표로 끊기. 총 3~4줄만. 소재와 타겟에 맞는 내용을 담아라.',
   '격식체': '말투: ~합니다, ~입니다. 전문가 톤. 논리적이고 신뢰감 있게. 감정보다 근거 중심.',
 };
 
@@ -182,11 +182,11 @@ export default async function handler(req, res) {
 
 [강제 규칙 #2 — 글자수 제한]
 기본: 각 글 300자 이내. 넘기면 실패.
-단문체: 각 글 100자 이내. 넘기면 실패. 전체 4~6줄. 한 줄 최대 10자. 여백이 힘이다.
+단문체: 각 글 60자 이내. 넘기면 실패. 전체 3~4줄. 한 줄 최대 8자.
 
 [글 구조]
 기본: 후킹(1~2줄) → 본문(3~5줄) → CTA(1줄)
-단문체: 후킹(1줄) → 본문(2~3줄) → CTA(1줄). 총 4~6줄만.
+단문체: 후킹(1줄) → 본문(1~2줄) → CTA(1줄). 총 3~4줄만.
 
 [줄바꿈 규칙]
 1문장 1줄. 한 줄 15~25자. 문단 사이 빈 줄 1개. 긴 문장은 쪼개기.
@@ -201,7 +201,7 @@ export default async function handler(req, res) {
 해시태그 없음. 이모지 0~2개. 한국어 맞춤법 정확히 (자모 오류 절대 금지).
 글 3개 작성 후 "===검수===" 구분자 넣고 맞춤법 자체 검수.`;
 
-    const charLimit = tone === '단문체' ? '100자 이내로 작성. 짧고 강하고 임팩트 있게. 한 문장 10자 내외로 끊어라' : '300자 이내로 작성';
+    const charLimit = tone === '단문체' ? '60자 이내로 작성. 짧고 강하고 임팩트. 한 문장 8자 이내로 끊어라. 3~4줄만' : '300자 이내로 작성';
 
     const userMessage = `[핵심 주제 — 이 내용을 반드시 글에 담아라]
 업종: ${industry || '무관'}
@@ -251,6 +251,22 @@ export default async function handler(req, res) {
     const [contentPart, reviewPart] = raw.split(/===검수===/);
     const results = (contentPart || '').trim().split(/\n?---\n?/).map(s => s.trim()).filter(Boolean);
     while (results.length < 3) results.push('');
+
+    // 단문체: 100자 초과 시 줄 단위로 잘라냄
+    if (tone === '단문체') {
+      for (let i = 0; i < results.length; i++) {
+        if (results[i].replace(/\s/g, '').length > 100) {
+          const lines = results[i].split('\n').filter(l => l.trim());
+          let trimmed = '';
+          for (const line of lines) {
+            const next = trimmed ? trimmed + '\n' + line : line;
+            if (next.replace(/\s/g, '').length > 100) break;
+            trimmed = next;
+          }
+          results[i] = trimmed;
+        }
+      }
+    }
 
     // 검수 결과에서 오타→수정 패턴 추출 및 적용
     if (reviewPart) {
