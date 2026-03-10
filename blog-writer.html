@@ -1152,7 +1152,7 @@
         <h4>개선 제안</h4>
         <ul id="suggestion-list"></ul>
       </div>
-      <button class="btn-improve" id="btn-improve" style="display:none;" onclick="improveContent()">검수 기준으로 자동 수정하기</button>
+      <button class="btn-improve" id="btn-improve" style="display:none;" onclick="improveContent()">자동 수정하기 (1회 재생성 가능)</button>
     </div>
 
     <!-- 전체 복사 + 다시 쓰기 -->
@@ -2158,7 +2158,7 @@
       if (!hasImproved) {
         btnImprove.style.display = 'block';
         btnImprove.disabled = false;
-        btnImprove.textContent = '검수 기준으로 자동 수정하기';
+        btnImprove.textContent = '자동 수정하기 (1회 재생성 가능)';
       } else {
         btnImprove.style.display = 'block';
         btnImprove.disabled = true;
@@ -2289,7 +2289,7 @@
         btnImprove.textContent = '자동 수정 완료 (1회 제한)';
       } else {
         btnImprove.disabled = false;
-        btnImprove.textContent = '검수 기준으로 자동 수정하기';
+        btnImprove.textContent = '자동 수정하기 (1회 재생성 가능)';
       }
     }
   }
