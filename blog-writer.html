@@ -2201,7 +2201,8 @@
           model: 'claude-sonnet-4-20250514',
           max_tokens: 8192,
           system: improveSystem,
-          messages: [{ role: 'user', content: userMsg }]
+          messages: [{ role: 'user', content: userMsg }],
+          skipRateLimit: true
         })
       });
 

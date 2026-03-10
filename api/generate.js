@@ -78,7 +78,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { prompt, system, messages, model, max_tokens } = req.body;
+    const { prompt, system, messages, model, max_tokens, skipRateLimit } = req.body;
 
     // prompt 방식 (기존 호환) 또는 messages 방식 (threads-writer 등)
     const apiMessages = messages || (prompt ? [{ role: 'user', content: prompt }] : null);
@@ -88,12 +88,13 @@ export default async function handler(req, res) {
     }
 
     // Rate limit (화이트리스트 IP 스킵, INCR-first)
+    // skipRateLimit: 검수 기준 자동 수정(재생성)은 횟수 차감하지 않음
     const ip = getClientIp(req);
     const whitelisted = await getRedis().get(`admin:whitelist:${ip}`);
     let remaining = whitelisted ? 999 : FREE_DAILY_LIMIT;
     let rateLimitKey = null;
 
-    if (!whitelisted) {
+    if (!whitelisted && !skipRateLimit) {
       rateLimitKey = getTodayKey(ip);
       const newCount = await getRedis().incr(rateLimitKey);
       await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
@@ -106,6 +107,11 @@ export default async function handler(req, res) {
         });
       }
       remaining = FREE_DAILY_LIMIT - newCount;
+    } else if (!whitelisted && skipRateLimit) {
+      // 재생성: 차감하지 않되, 현재 남은 횟수는 조회해서 반환
+      const key = getTodayKey(ip);
+      const count = (await getRedis().get(key)) || 0;
+      remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
     }
 
     const apiBody = {
