@@ -444,6 +444,8 @@
     /* Meta description & FAQ (Google SEO only) */
     .google-seo-only { display: none; }
     .google-seo-only.show { display: block; }
+    .naver-seo-only { display: none; }
+    .naver-seo-only.show { display: block; }
 
     .faq-item { margin-bottom: 16px; }
     .faq-item:last-child { margin-bottom: 0; }
@@ -1056,6 +1058,18 @@
       </div>
     </div>
 
+    <!-- 설명문 (네이버 SEO 전용) -->
+    <div class="result-card naver-seo-only" id="description-card">
+      <div class="result-card-header">
+        <h3>설명문</h3>
+        <button class="copy-btn" onclick="copySection('result-description', this)">복사</button>
+      </div>
+      <div class="result-card-body">
+        <p style="font-size:11px;color:var(--muted);margin:0 0 8px 0;">검색 결과에서 제목 아래 표시되는 설명문입니다. 블로그 발행 시 첫 문단에 자연스럽게 녹여주세요.</p>
+        <div class="result-text" id="result-description"></div>
+      </div>
+    </div>
+
     <!-- 메타 디스크립션 (구글 SEO 전용) -->
     <div class="result-card google-seo-only" id="meta-desc-card">
       <div class="result-card-header">
@@ -1414,22 +1428,23 @@
 4. ★★★ 글 길이: 2200자 내외 (최소 2000자). 소제목 4~5개, 각 파트 350자+. ★★★
 
 ★★★ 5. 이미지 마커 — 정확히 8개 필수 ★★★
-본문 중간에 "(사진: OO 이미지 추천)" 형태로 이미지 삽입 위치를 정확히 8개 표기해야 합니다.
+본문 중간에 "(사진: OO 이미지 추천, alt: 이미지를 설명하는 문장)" 형태로 이미지 삽입 위치를 정확히 8개 표기해야 합니다.
+- alt 텍스트는 해당 이미지가 무엇을 보여주는지 구체적으로 설명하는 한 줄 문장으로 작성 (검색엔진 접근성용)
 - 배치 전략: 도입부 직후 대표이미지 1개 + 나머지 7개를 소제목 본문에 고르게 배치 (아래 예시를 정확히 따를 것)
 - 예시 구조 (소제목 4개 기준, 마커 정확히 8개):
   [hook 끝]
-  (사진: OO 대표 이미지 추천)         ← 1번
+  (사진: OO 대표 이미지 추천, alt: OO 매장 외관 전경)         ← 1번
   🔹 소제목1
-  본문... (사진: OO 이미지 추천) ...  ← 2번
-  (사진: OO 이미지 추천)              ← 3번
+  본문... (사진: OO 이미지 추천, alt: OO 시술 과정 모습) ...  ← 2번
+  (사진: OO 이미지 추천, alt: OO 사용 전후 비교)              ← 3번
   🔹 소제목2
-  본문... (사진: OO 이미지 추천) ...  ← 4번
+  본문... (사진: OO 이미지 추천, alt: OO 제품 상세 모습) ...  ← 4번
   🔹 소제목3
-  (사진: OO 이미지 추천) ...          ← 5번
-  본문... (사진: OO 이미지 추천)       ← 6번
+  (사진: OO 이미지 추천, alt: OO 내부 인테리어) ...          ← 5번
+  본문... (사진: OO 이미지 추천, alt: OO 결과물 클로즈업)       ← 6번
   🔹 소제목4
-  본문... (사진: OO 이미지 추천)       ← 7번
-  (사진: OO 이미지 추천)              ← 8번
+  본문... (사진: OO 이미지 추천, alt: OO 활용 팁 예시)       ← 7번
+  (사진: OO 이미지 추천, alt: OO 최종 완성 모습)              ← 8번
 - 8개 미만이면 출력 금지. 반드시 세어볼 것.
 6. 해시태그: 10개. [제목키워드 + 대표키워드 + 보조키워드] 조합. 메인 키워드 변형, 연관 키워드, 지역+키워드, 롱테일 키워드를 골고루 배치.
 7. 내부링크 추천: internal_links에 이 글과 함께 읽으면 좋을 연관 글 제목 3개를 생성. 독자가 클릭하고 싶은 자연스러운 제목으로.
@@ -1494,6 +1509,7 @@
 3. 감정 솔직 표현 — "솔직히 좀 실망했어요", "이건 진짜 놀라웠음"
 4. 짧은 문장과 긴 문장 자연스럽게 교차 — "진짜였다." 다음에 긴 설명이 오는 리듬감
 5. 중간중간 독자에게 말 거는 문장 — "이거 아시는 분?", "혹시 나만 그런가?"
+6. 타 블로그의 내용을 복제/재작성하지 마세요. 모든 경험과 사례는 독창적으로 구성하세요.
 
 【첫문장 규칙 — 검색 유입자의 이탈을 막는 핵심】
 1. 첫문장은 아래 패턴 중 주제에 맞는 것으로 시작:
@@ -1515,6 +1531,7 @@
    - 나쁜 예: "오늘은 OO에 대해 알아보겠습니다." ← AI 냄새
    - 나쁜 예: "안녕하세요~" (전문성/자격 없이 단독 인사만 하는 것은 금지)
 2. 첫 5줄 필수 포함: 검색 의도 직접 응답, 구체적 숫자/경험 단서 1개, 글의 구조 예고.
+★ 네이버 검색 결과에서 제목 아래 표시되는 설명문(스니펫)은 글의 첫 2~3줄에서 추출됩니다. 따라서 첫 2줄에 핵심 정보 + 메인 키워드를 반드시 포함하세요.
 3. 첫 5줄 금지: 일반론/상식, 사전적 정의, 자격 없는 단독 인사말, "~에 대해 알아보겠습니다" 패턴.
 
 【사람이 쓴 글의 특징 — 실제 경험자 느낌 필수】
@@ -1535,7 +1552,7 @@
 1. 제목: 20~25자. [핵심 키워드 + 후킹 문장] 구조. 키워드를 제목 맨 앞에 배치.
    [제목 키워드 원칙]
    - 핵심 키워드는 반드시 제목 왼쪽(앞부분)에 배치
-   - 제목 내 키워드 최대 2~3개 조합 (나열/도배 금지)
+   - 키워드가 여러 개인 경우 핵심 1개 + 연관 1개 조합으로 문맥에 맞게 구성 (3개 이상 나열/도배 금지)
    [제목 패턴 — 주제와 업종에 맞는 것을 선택]
    ① 이득+숫자형: 키워드 + 얻을 수 있는 이득 + 구체적 숫자
       예: "필라테스 효과, 2개월이면 허리둘레 3cm 줄어든다"
@@ -1562,22 +1579,23 @@
 5. ★★★ 글 길이: 2200자 내외 (최소 2000자). 소제목 4~5개, 각 파트 350자+. ★★★
 
 ★★★ 6. 이미지 마커 — 정확히 8개 필수 ★★★
-본문 중간에 "(사진: OO 이미지 추천)" 형태로 이미지 삽입 위치를 정확히 8개 표기해야 합니다.
+본문 중간에 "(사진: OO 이미지 추천, alt: 이미지를 설명하는 문장)" 형태로 이미지 삽입 위치를 정확히 8개 표기해야 합니다.
+- alt 텍스트는 해당 이미지가 무엇을 보여주는지 구체적으로 설명하는 한 줄 문장으로 작성 (검색엔진 접근성용)
 - 배치 전략: 도입부 직후 대표이미지 1개 + 나머지 7개를 소제목 본문에 고르게 배치 (아래 예시를 정확히 따를 것)
 - 예시 구조 (소제목 4개 기준, 마커 정확히 8개):
   [hook 끝]
-  (사진: OO 대표 이미지 추천)         ← 1번
+  (사진: OO 대표 이미지 추천, alt: OO 매장 외관 전경)         ← 1번
   【01.】 소제목1
-  본문... (사진: OO 이미지 추천) ...  ← 2번
-  (사진: OO 이미지 추천)              ← 3번
+  본문... (사진: OO 이미지 추천, alt: OO 시술 과정 모습) ...  ← 2번
+  (사진: OO 이미지 추천, alt: OO 사용 전후 비교)              ← 3번
   【02.】 소제목2
-  본문... (사진: OO 이미지 추천) ...  ← 4번
+  본문... (사진: OO 이미지 추천, alt: OO 제품 상세 모습) ...  ← 4번
   【03.】 소제목3
-  (사진: OO 이미지 추천) ...          ← 5번
-  본문... (사진: OO 이미지 추천)       ← 6번
+  (사진: OO 이미지 추천, alt: OO 내부 인테리어) ...          ← 5번
+  본문... (사진: OO 이미지 추천, alt: OO 결과물 클로즈업)       ← 6번
   【04.】 소제목4
-  본문... (사진: OO 이미지 추천)       ← 7번
-  (사진: OO 이미지 추천)              ← 8번
+  본문... (사진: OO 이미지 추천, alt: OO 활용 팁 예시)       ← 7번
+  (사진: OO 이미지 추천, alt: OO 최종 완성 모습)              ← 8번
 - 8개 미만이면 출력 금지. 반드시 세어볼 것.
 7. 해시태그: 10개. [제목키워드 + 대표키워드 + 보조키워드] 조합. 메인 키워드 변형, 연관 키워드, 지역+키워드, 세부 키워드, 롱테일 키워드를 골고루 배치.
 8. 내부링크 추천: internal_links에 이 글과 함께 읽으면 좋을 연관 글 제목 3개를 생성. 독자가 클릭하고 싶은 자연스러운 제목으로.
@@ -1599,6 +1617,7 @@
 【출력 형식 - 반드시 아래 JSON으로만 응답】
 {
   "title": "제목 (20~25자, [키워드+후킹] 구조)",
+  "description": "설명문 (★45자 이내★. 제목과 다른 각도로 핵심 내용 요약. 검색자가 클릭하고 싶은 한 줄. 제목을 그대로 반복하지 말 것. 메인 키워드 1회 포함)",
   "hook": "도입부 (★400자 내외, 최소 400자★. 첫문장 패턴 5가지 중 택1: 경험답변/권위정보/YES세트/위험손해/질문. 5~7문장. \\n\\n 문단 구분. 키워드 포함)",
   "body": "본문 (★1500자 내외, 최소 1450자★. 【01.】【02.】【03.】 소제목 4~5개. 각 파트 350자+. \\n\\n 구분. (사진: ...) 마커 정확히 8개 포함 필수)",
   "cta": "마무리 (★200자 내외, 최소 150자★. 4~5문장. CTA 방향에 맞춰. 키워드 1회 포함)",
@@ -2349,6 +2368,16 @@
       });
     }
 
+    // 네이버 SEO 전용 섹션 처리
+    var naverSeoCards = document.querySelectorAll('.naver-seo-only');
+    if (selectedType === 'naver-seo') {
+      naverSeoCards.forEach(function(card) { card.classList.add('show'); });
+      document.getElementById('result-description').textContent = data.description || '';
+    } else {
+      naverSeoCards.forEach(function(card) { card.classList.remove('show'); });
+      document.getElementById('result-description').textContent = '';
+    }
+
     // 구글 SEO 전용 섹션 처리
     var googleSeoCards = document.querySelectorAll('.google-seo-only');
     if (selectedType === 'google-seo') {
@@ -2490,7 +2519,7 @@
         console.log('[맞춤법 자체검수] corrections 발견:', parsed.corrections);
         parsed.corrections.forEach(function(c) {
           if (c.wrong && c.correct && c.wrong !== c.correct) {
-            ['title', 'hook', 'body', 'cta', 'faq', 'meta_description'].forEach(function(field) {
+            ['title', 'description', 'hook', 'body', 'cta', 'faq', 'meta_description'].forEach(function(field) {
               if (parsed[field] && parsed[field].indexOf(c.wrong) !== -1) {
                 parsed[field] = parsed[field].split(c.wrong).join(c.correct);
                 console.log('[맞춤법 수정] ' + field + ': "' + c.wrong + '" → "' + c.correct + '"');
@@ -2564,6 +2593,12 @@
     // 제목
     if (generatedData.title) {
       parts.push(generatedData.title);
+      parts.push('');
+    }
+
+    // 설명문 (네이버 SEO 전용)
+    if (selectedType === 'naver-seo' && generatedData.description) {
+      parts.push(generatedData.description);
       parts.push('');
     }
 
