@@ -714,6 +714,146 @@
       .card { padding: 18px; }
       .result-card-body { padding: 16px; }
     }
+
+    /* ===== AI 글 검수기 ===== */
+    .review-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      padding: 24px;
+      animation: fadeUp 0.4s ease;
+    }
+    .review-header {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+    .review-gauge {
+      position: relative;
+      width: 110px;
+      height: 110px;
+      flex-shrink: 0;
+    }
+    .review-svg {
+      width: 110px;
+      height: 110px;
+      transform: rotate(-90deg);
+    }
+    .gauge-bg {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 8;
+    }
+    .gauge-fill {
+      fill: none;
+      stroke: #22c55e;
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 326.73;
+      stroke-dashoffset: 326.73;
+      transition: stroke-dashoffset 1.2s ease, stroke 0.3s ease;
+    }
+    .gauge-score {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -58%);
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .gauge-label {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, 50%);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .review-summary {
+      flex: 1;
+    }
+    .review-summary-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .review-summary-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .review-checklist {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .review-check-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .review-check-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .review-check-icon.pass { background: rgba(34,197,94,0.15); color: #22c55e; }
+    .review-check-icon.warn { background: rgba(234,179,8,0.15); color: #eab308; }
+    .review-check-icon.fail { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .review-check-label { flex: 1; color: var(--text); }
+    .review-check-score { font-weight: 700; font-size: 12px; color: var(--muted); }
+    .review-suggestions {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 8px;
+      background: rgba(239,68,68,0.06);
+      border: 1px solid rgba(239,68,68,0.15);
+    }
+    .review-suggestions h4 {
+      font-size: 13px;
+      font-weight: 700;
+      color: #ef4444;
+      margin-bottom: 10px;
+    }
+    .review-suggestions ul {
+      list-style: none;
+      padding: 0;
+    }
+    .review-suggestions li {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.6;
+      padding: 4px 0;
+      padding-left: 16px;
+      position: relative;
+    }
+    .review-suggestions li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: #ef4444;
+    }
+    @media (max-width: 600px) {
+      .review-header { flex-direction: column; text-align: center; gap: 14px; }
+      .review-checklist { grid-template-columns: 1fr; }
+      .review-card { padding: 18px; }
+    }
   </style>
 <link rel="stylesheet" href="/navbar-mobile.css">
 </head>
@@ -975,6 +1115,26 @@
       <div class="result-card-body">
         <p class="internal-links-guide">AI가 추천한 제목입니다. 내 블로그 글 URL로 교체하면 체류시간이 올라갑니다.</p>
         <div id="result-internal-links"></div>
+      </div>
+    </div>
+
+    <!-- AI 글 검수기 -->
+    <div class="review-card" id="review-card" style="display:none;">
+      <div class="review-header">
+        <div class="review-gauge">
+          <svg viewBox="0 0 120 120" class="review-svg">
+            <circle cx="60" cy="60" r="52" class="gauge-bg"/>
+            <circle cx="60" cy="60" r="52" class="gauge-fill" id="gauge-fill"/>
+          </svg>
+          <div class="gauge-score" id="gauge-score">0</div>
+          <div class="gauge-label" id="gauge-label">검수 중...</div>
+        </div>
+        <div class="review-summary" id="review-summary"></div>
+      </div>
+      <div class="review-checklist" id="review-checklist"></div>
+      <div class="review-suggestions" id="review-suggestions" style="display:none;">
+        <h4>개선 제안</h4>
+        <ul id="suggestion-list"></ul>
       </div>
     </div>
 
@@ -1764,6 +1924,188 @@
     }
   }
 
+  // ─── AI 글 검수기 ───
+  function checkCharCount(fullText) {
+    var len = fullText.length;
+    var score = len >= 2000 ? 15 : len >= 1700 ? 10 : len >= 1400 ? 5 : 0;
+    return { score: score, max: 15, label: '전체 글자수 (' + len + '자)', status: score >= 10 ? 'pass' : score >= 5 ? 'warn' : 'fail', suggestion: score < 15 ? '글자수가 부족합니다. 본문 내용을 보강하여 2,000자 이상을 목표로 하세요.' : '' };
+  }
+
+  function checkMarkers(fullText) {
+    var matches = fullText.match(/\((사진|이미지):/g);
+    var count = matches ? matches.length : 0;
+    var score = count >= 8 ? 15 : count >= 6 ? 10 : count >= 4 ? 5 : 0;
+    return { score: score, max: 15, label: '이미지 마커 (' + count + '개)', status: score >= 10 ? 'pass' : score >= 5 ? 'warn' : 'fail', suggestion: score < 15 ? '이미지 마커가 부족합니다. (사진: 설명) 형태로 8개 이상 삽입하세요.' : '' };
+  }
+
+  function checkSubheadings(body) {
+    var h2 = body.match(/^##\s/gm);
+    var bold = body.match(/\*\*[^*]+\*\*/g);
+    var count = (h2 ? h2.length : 0) + (bold ? bold.length : 0);
+    var score = count >= 4 ? 10 : count >= 3 ? 7 : count >= 2 ? 4 : 0;
+    return { score: score, max: 10, label: '소제목 구성 (' + count + '개)', status: score >= 7 ? 'pass' : score >= 4 ? 'warn' : 'fail', suggestion: score < 10 ? '소제목을 4개 이상 사용하여 글의 구조를 명확하게 해주세요.' : '' };
+  }
+
+  function checkAIExpressions(fullText) {
+    var banned = ['효과적인','체계적인','다양한','특별한','풍부한','획기적인','혁신적인','최적의','극대화','필수적인','핵심적인','중요한 역할','활용하여','통해서','측면에서','관점에서'];
+    var found = 0;
+    banned.forEach(function(w) {
+      var regex = new RegExp(w, 'g');
+      var m = fullText.match(regex);
+      if (m) found += m.length;
+    });
+    var score = found === 0 ? 15 : found <= 2 ? 10 : found <= 4 ? 5 : 0;
+    return { score: score, max: 15, label: 'AI 전형 표현 (' + found + '개)', status: score >= 10 ? 'pass' : score >= 5 ? 'warn' : 'fail', suggestion: score < 15 ? 'AI 전형 표현(' + banned.slice(0, 4).join(', ') + ' 등)을 자연스러운 표현으로 바꿔주세요.' : '' };
+  }
+
+  function checkFirstSentence(hook) {
+    if (!hook) return { score: 3, max: 10, label: '첫문장 패턴', status: 'fail', suggestion: '도입부에 에피소드, 질문, 수치 등 후킹 패턴을 사용하세요.' };
+    var first = hook.split(/[.!?]\s/)[0] || hook;
+    var patterns = [/["'"]/, /\?/, /\d+[%만원명개월일]/, /솔직히|사실|어제|오늘|지난|처음/, /위험|주의|경고|실수|후회/];
+    var matched = patterns.some(function(p) { return p.test(first); });
+    return { score: matched ? 10 : 3, max: 10, label: '첫문장 패턴', status: matched ? 'pass' : 'warn', suggestion: matched ? '' : '첫 문장에 에피소드, 질문, 수치, 경험담, 경고 등의 후킹 패턴을 사용해보세요.' };
+  }
+
+  function checkSentenceDiversity(fullText) {
+    var sentences = fullText.split(/[.!?]\s+/);
+    var endings = sentences.map(function(s) {
+      s = s.trim();
+      if (/다$/.test(s)) return '다';
+      if (/요$/.test(s)) return '요';
+      if (/죠$/.test(s)) return '죠';
+      if (/음$/.test(s)) return '음';
+      return 'other';
+    }).filter(function(e) { return e !== 'other'; });
+    var repeats = 0;
+    for (var i = 2; i < endings.length; i++) {
+      if (endings[i] === endings[i-1] && endings[i] === endings[i-2]) repeats++;
+    }
+    var score = repeats === 0 ? 10 : repeats === 1 ? 6 : 2;
+    return { score: score, max: 10, label: '문장 다양성', status: score >= 6 ? 'pass' : 'warn', suggestion: score < 10 ? '같은 어미(~다/~요/~죠)가 3번 이상 연속됩니다. 문장 끝을 다양하게 바꿔보세요.' : '' };
+  }
+
+  function checkSpecificity(fullText) {
+    var numPattern = /\d+[%만원명개월일년세시분초평점점위배칼로리km회차g장권개월살인분]/g;
+    var numMatches = fullText.match(numPattern);
+    var count = numMatches ? numMatches.length : 0;
+    var score = count >= 5 ? 15 : count >= 3 ? 10 : count >= 1 ? 5 : 0;
+    return { score: score, max: 15, label: '구체성 (' + count + '개)', status: score >= 10 ? 'pass' : score >= 5 ? 'warn' : 'fail', suggestion: score < 15 ? '숫자+단위(가격, 기간, 수량 등)를 더 많이 활용하여 글의 신뢰도를 높이세요.' : '' };
+  }
+
+  function checkEmotionExperience(fullText) {
+    var emotionWords = ['솔직히','진짜','실제로','느낌','후회','감동','놀라','깜짝','걱정','행복','불안','설레','아쉬','만족','실망','기대','경험','직접','써보','먹어보','가보','해보'];
+    var count = 0;
+    emotionWords.forEach(function(w) {
+      if (fullText.indexOf(w) !== -1) count++;
+    });
+    var score = count >= 3 ? 10 : count >= 1 ? 6 : 2;
+    return { score: score, max: 10, label: '감정/경험 표현 (' + count + '개)', status: score >= 6 ? 'pass' : score >= 1 ? 'warn' : 'fail', suggestion: score < 10 ? '개인적인 감정이나 경험 표현(솔직히, 진짜, 실제로 써보니 등)을 더 추가하세요.' : '' };
+  }
+
+  function runReview(data) {
+    var fullText = (data.hook || '') + (data.body || '') + (data.cta || '');
+    var results = [
+      checkCharCount(fullText),
+      checkMarkers(fullText),
+      checkSubheadings(data.body || ''),
+      checkAIExpressions(fullText),
+      checkFirstSentence(data.hook || ''),
+      checkSentenceDiversity(fullText),
+      checkSpecificity(fullText),
+      checkEmotionExperience(fullText)
+    ];
+    var totalScore = results.reduce(function(sum, r) { return sum + r.score; }, 0);
+    renderReview(results, totalScore);
+  }
+
+  function renderReview(results, totalScore) {
+    var card = document.getElementById('review-card');
+    card.style.display = 'block';
+
+    // 게이지 색상 결정
+    var color = totalScore >= 80 ? '#22c55e' : totalScore >= 60 ? '#eab308' : '#ef4444';
+    var circumference = 326.73;
+    var offset = circumference - (circumference * totalScore / 100);
+
+    var gaugeFill = document.getElementById('gauge-fill');
+    gaugeFill.style.stroke = color;
+    // 애니메이션을 위해 약간 딜레이
+    setTimeout(function() {
+      gaugeFill.style.strokeDashoffset = offset;
+    }, 50);
+
+    // 점수 카운트업 애니메이션
+    var scoreEl = document.getElementById('gauge-score');
+    var labelEl = document.getElementById('gauge-label');
+    var current = 0;
+    var step = Math.ceil(totalScore / 30);
+    var counter = setInterval(function() {
+      current += step;
+      if (current >= totalScore) {
+        current = totalScore;
+        clearInterval(counter);
+      }
+      scoreEl.textContent = current;
+    }, 30);
+
+    // 레이블
+    if (totalScore >= 80) {
+      labelEl.textContent = '발행 가능';
+      labelEl.style.color = '#22c55e';
+    } else if (totalScore >= 60) {
+      labelEl.textContent = '수정 권장';
+      labelEl.style.color = '#eab308';
+    } else {
+      labelEl.textContent = '개선 필요';
+      labelEl.style.color = '#ef4444';
+    }
+
+    // 요약 메시지
+    var summaryEl = document.getElementById('review-summary');
+    var summaryTitle, summaryDesc;
+    if (totalScore >= 80) {
+      summaryTitle = '발행 가능! 품질이 우수합니다';
+      summaryDesc = '글의 구조, 표현, 구체성이 모두 좋습니다. 그대로 발행해도 좋습니다.';
+    } else if (totalScore >= 60) {
+      summaryTitle = '수정 후 발행을 권장합니다';
+      summaryDesc = '기본 구조는 갖춰져 있지만, 아래 항목을 보완하면 더 좋은 글이 됩니다.';
+    } else {
+      summaryTitle = '개선이 필요합니다';
+      summaryDesc = '여러 항목에서 보완이 필요합니다. 아래 제안을 참고하여 수정해주세요.';
+    }
+    summaryEl.innerHTML = '<div class="review-summary-title" style="color:' + color + '">' + summaryTitle + '</div><div class="review-summary-desc">' + summaryDesc + '</div>';
+
+    // 체크리스트
+    var checklistEl = document.getElementById('review-checklist');
+    checklistEl.innerHTML = '';
+    results.forEach(function(r) {
+      var iconClass = r.status === 'pass' ? 'pass' : r.status === 'warn' ? 'warn' : 'fail';
+      var icon = r.status === 'pass' ? '✓' : '!';
+      var item = document.createElement('div');
+      item.className = 'review-check-item';
+      item.innerHTML = '<div class="review-check-icon ' + iconClass + '">' + icon + '</div>' +
+        '<span class="review-check-label">' + r.label + '</span>' +
+        '<span class="review-check-score">' + r.score + '/' + r.max + '</span>';
+      checklistEl.appendChild(item);
+    });
+
+    // 개선 제안
+    var suggestionsEl = document.getElementById('review-suggestions');
+    var suggestionList = document.getElementById('suggestion-list');
+    var suggestions = results.filter(function(r) { return r.suggestion && r.score < r.max; });
+    if (totalScore < 80 && suggestions.length > 0) {
+      suggestionsEl.style.display = 'block';
+      suggestionList.innerHTML = '';
+      suggestions.forEach(function(r) {
+        var li = document.createElement('li');
+        li.textContent = r.suggestion;
+        suggestionList.appendChild(li);
+      });
+    } else {
+      suggestionsEl.style.display = 'none';
+    }
+  }
+
   // ─── 결과 렌더링 ───
   function renderResult(data) {
     generatedData = data;
@@ -1835,6 +2177,9 @@
       document.getElementById('result-meta-desc').innerHTML = '';
       document.getElementById('result-faq').innerHTML = '';
     }
+
+    // AI 글 검수 실행
+    runReview(data);
 
     // 결과 영역 표시 + 폼 숨기기
     document.getElementById('form-section').style.display = 'none';
@@ -2104,6 +2449,13 @@
     document.getElementById('industry').value = '';
     document.getElementById('cta-custom').value = '';
     document.getElementById('cta-custom-wrap').style.display = 'none';
+    // 검수기 초기화
+    var reviewCard = document.getElementById('review-card');
+    reviewCard.style.display = 'none';
+    document.getElementById('gauge-fill').style.strokeDashoffset = '326.73';
+    document.getElementById('gauge-score').textContent = '0';
+    document.getElementById('gauge-label').textContent = '검수 중...';
+    document.getElementById('gauge-label').style.color = '';
     hideError();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
