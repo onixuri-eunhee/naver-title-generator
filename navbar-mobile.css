@@ -17,6 +17,7 @@
     padding: 4px 0 2px;
     gap: 2px;
     scrollbar-width: none;
+    justify-content: center;
   }
   .navbar-links::-webkit-scrollbar {
     display: none;
