@@ -304,7 +304,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
   color: #ff5f1f;
   letter-spacing: 0.3px;
 }
-.copy-btn {
+.copy-btn, .publish-btn, .schedule-btn {
   font-size: 13px;
   color: #6B7280;
   background: #fff;
@@ -315,8 +315,66 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
   font-family: 'Noto Sans KR', sans-serif;
   transition: all 0.18s;
 }
-.copy-btn:hover { color: #1A1A2E; border-color: #1A1A2E; }
+.copy-btn:hover, .publish-btn:hover, .schedule-btn:hover { color: #1A1A2E; border-color: #1A1A2E; }
 .copy-btn.copied { color: #00C73C; border-color: #00C73C; }
+.publish-btn { color: #8B5CF6; border-color: #8B5CF6; }
+.publish-btn:hover { background: rgba(139,92,246,0.06); }
+.publish-btn:disabled { color: #9CA3AF; border-color: #E5E7EB; cursor: not-allowed; background: #F9FAFB; }
+.schedule-btn { color: #3B82F6; border-color: #3B82F6; }
+.schedule-btn:hover { background: rgba(59,130,246,0.06); }
+
+/* 토스트 */
+.toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+  background: #1A1A2E; color: #fff; padding: 12px 28px;
+  border-radius: 10px; font-size: 14px; font-weight: 600;
+  z-index: 9999; opacity: 0; transition: opacity 0.3s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; }
+.toast.error { background: #FF4757; }
+.toast.success { background: #00C73C; }
+
+/* 예약 모달 */
+.schedule-modal-overlay {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4); z-index: 1000;
+  align-items: center; justify-content: center;
+}
+.schedule-modal-overlay.show { display: flex; }
+.schedule-modal {
+  background: #fff; border-radius: 16px; padding: 28px 32px;
+  max-width: 400px; width: 90%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.schedule-modal h3 {
+  font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #1A1A2E;
+}
+.schedule-modal label {
+  display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px;
+}
+.schedule-modal input[type="datetime-local"] {
+  width: 100%; padding: 11px 14px;
+  border: 1.5px solid #E5E7EB; border-radius: 8px;
+  font-size: 14px; font-family: 'Noto Sans KR', sans-serif;
+  color: #1A1A2E; background: #fff;
+  outline: none; margin-bottom: 16px;
+}
+.schedule-modal input[type="datetime-local"]:focus {
+  border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+}
+.schedule-modal-btns {
+  display: flex; gap: 8px; justify-content: flex-end;
+}
+.schedule-modal-btns button {
+  padding: 10px 20px; border-radius: 8px; font-size: 14px;
+  font-weight: 600; cursor: pointer; border: none;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.schedule-cancel-btn { background: #F3F4F6; color: #6B7280; }
+.schedule-cancel-btn:hover { background: #E5E7EB; }
+.schedule-confirm-btn { background: #3B82F6; color: #fff; }
+.schedule-confirm-btn:hover { background: #2563EB; }
 
 .result-text {
   font-size: 15px;
@@ -518,7 +576,11 @@ footer a:hover { text-decoration: underline; }
       </div>
       <div class="result-meta">
         <span class="result-tag" id="resultTag">정보형 · 친구체</span>
-        <button class="copy-btn" id="copyBtn" onclick="copyResult()">복사</button>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button class="copy-btn" id="copyBtn" onclick="copyResult()">복사</button>
+          <button class="publish-btn" id="publishBtn" onclick="publishNow()" style="display:none;">즉시 발행</button>
+          <button class="schedule-btn" id="scheduleBtn" onclick="openScheduleModal()" style="display:none;">예약 발행</button>
+        </div>
       </div>
       <div class="result-text" id="resultText"></div>
       <div class="char-count" id="charCount"></div>
@@ -737,12 +799,134 @@ function updateRemainingUI(remaining, limit) {
   }
 }
 
-loadRemaining();
-
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) generate();
 });
+
+// --- Threads 발행 기능 (관리자 전용) ---
+var isAdmin = false;
+var adminKey = '';
+
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  setTimeout(function() { t.className = 'toast'; }, 3000);
+}
+
+// 관리자 감지 (loadRemaining에서 admin: true 확인)
+var _origLoadRemaining = loadRemaining;
+loadRemaining = async function() {
+  try {
+    var res = await fetch('/api/threads');
+    var data = await res.json();
+    updateRemainingUI(data.remaining, data.limit);
+    if (data.admin) {
+      isAdmin = true;
+      adminKey = localStorage.getItem('adminKey') || '';
+      if (!adminKey) {
+        adminKey = prompt('관리자 키를 입력하세요 (발행 기능용):') || '';
+        if (adminKey) localStorage.setItem('adminKey', adminKey);
+      }
+      showPublishButtons();
+    }
+  } catch(e) {
+    document.getElementById('remainingCount').textContent = '';
+  }
+};
+
+function showPublishButtons() {
+  document.getElementById('publishBtn').style.display = '';
+  document.getElementById('scheduleBtn').style.display = '';
+}
+
+async function publishNow() {
+  var text = results[activeTab];
+  if (!text) { showToast('발행할 글이 없습니다.', 'error'); return; }
+  if (!confirm('이 글을 Threads에 바로 발행할까요?')) return;
+
+  var btn = document.getElementById('publishBtn');
+  btn.disabled = true;
+  btn.textContent = '발행 중...';
+
+  try {
+    var res = await fetch('/api/threads-publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text, adminKey: adminKey })
+    });
+    var data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || '발행 실패');
+    }
+    showToast('발행 완료!', 'success');
+  } catch (err) {
+    showToast('발행 실패: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '즉시 발행';
+  }
+}
+
+function openScheduleModal() {
+  // Set default to 1 hour from now in KST
+  var now = new Date();
+  now.setHours(now.getHours() + 1);
+  var local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  document.getElementById('scheduleTime').value = local.toISOString().slice(0, 16);
+  document.getElementById('scheduleModal').classList.add('show');
+}
+
+function closeScheduleModal() {
+  document.getElementById('scheduleModal').classList.remove('show');
+}
+
+async function confirmSchedule() {
+  var text = results[activeTab];
+  if (!text) { showToast('발행할 글이 없습니다.', 'error'); return; }
+
+  var scheduleTime = document.getElementById('scheduleTime').value;
+  if (!scheduleTime) { showToast('예약 시간을 선택해주세요.', 'error'); return; }
+
+  var publishAt = new Date(scheduleTime).toISOString();
+  closeScheduleModal();
+
+  try {
+    var res = await fetch('/api/threads-schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text, publishAt: publishAt, adminKey: adminKey })
+    });
+    var data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || '예약 실패');
+    }
+    var dt = new Date(data.publishAt);
+    var timeStr = dt.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+    showToast('예약 완료! ' + timeStr + ' 발행 예정', 'success');
+  } catch (err) {
+    showToast('예약 실패: ' + err.message, 'error');
+  }
+}
+
+loadRemaining();
 </script>
+<!-- 예약 발행 모달 -->
+<div class="schedule-modal-overlay" id="scheduleModal">
+  <div class="schedule-modal">
+    <h3>예약 발행</h3>
+    <label for="scheduleTime">발행 날짜/시간</label>
+    <input type="datetime-local" id="scheduleTime" />
+    <div class="schedule-modal-btns">
+      <button class="schedule-cancel-btn" onclick="closeScheduleModal()">취소</button>
+      <button class="schedule-confirm-btn" onclick="confirmSchedule()">예약하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 토스트 -->
+<div class="toast" id="toast"></div>
+
 <script src="auth-ui.js"></script>
 
 </body>

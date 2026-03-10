@@ -446,7 +446,10 @@ footer a:hover { text-decoration: underline; }
       </div>
     </div>
 
-    <button class="generate-btn" onclick="generateHooks()">🔥 스크롤 멈추는 후킹문구 15개 생성하기</button>
+    <button class="generate-btn" id="generateBtn" onclick="generateHooks()">🔥 스크롤 멈추는 후킹문구 15개 생성하기</button>
+    <div id="remainingInfo" style="text-align:center; margin-top:10px; font-size:12px; color:#9CA3AF; display:none;">
+      오늘 남은 AI 생성 횟수: <strong id="remainingCount" style="color:var(--primary);">-</strong>회
+    </div>
   </div>
 
   <div class="results card" id="results">
@@ -709,24 +712,118 @@ function shuffle(arr) {
   return a;
 }
 
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function makeItem(num, text) {
-  const safe = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  const safeText = escapeHtml(text);
   return `<div class="hook-item">
     <span class="hook-num">${num}</span>
-    <span class="hook-text">${text}</span>
-    <button class="copy-btn" onclick="copyOne(this,'${safe}')">복사</button>
+    <span class="hook-text">${safeText}</span>
+    <button class="copy-btn" onclick="copyOne(this,${JSON.stringify(text)})">복사</button>
   </div>`;
 }
 
-function generateHooks() {
+// 남은 횟수 로드
+async function loadRemaining() {
+  try {
+    const resp = await fetch('/api/hooks');
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.remaining !== undefined) {
+        document.getElementById('remainingCount').textContent = data.remaining;
+        document.getElementById('remainingInfo').style.display = 'block';
+      }
+    }
+  } catch (e) {
+    // 조회 실패 시 무시
+  }
+}
+
+// 남은 횟수 업데이트
+function updateRemaining(remaining) {
+  if (remaining === undefined) return;
+  document.getElementById('remainingCount').textContent = remaining;
+  document.getElementById('remainingInfo').style.display = 'block';
+}
+
+// 로딩 상태 관리
+function setLoading(loading) {
+  const btn = document.getElementById('generateBtn');
+  if (loading) {
+    btn.disabled = true;
+    btn.textContent = '🔄 AI가 후킹문구를 생성하고 있습니다...';
+    btn.style.opacity = '0.7';
+    btn.style.cursor = 'not-allowed';
+  } else {
+    btn.disabled = false;
+    btn.textContent = '🔥 스크롤 멈추는 후킹문구 15개 생성하기';
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+  }
+}
+
+// 기존 JS 템플릿으로 fallback 생성
+function generateWithTemplates(I, K) {
+  const picked = shuffle(HOOKS).slice(0, 15);
+  document.getElementById('hook-list').innerHTML = picked.map((fn, i) => makeItem(i + 1, fn(I, K))).join('');
+}
+
+// API 결과로 렌더링
+function renderApiResults(results) {
+  document.getElementById('hook-list').innerHTML = results.map((text, i) => makeItem(i + 1, text)).join('');
+}
+
+async function generateHooks() {
   const I = document.getElementById('industry').value.trim();
   const K = document.getElementById('keyword').value.trim();
   if (!I) { alert('업종을 입력해주세요!'); return; }
   if (!K) { alert('키워드 / 주제를 입력해주세요!'); return; }
 
-  const picked = shuffle(HOOKS).slice(0, 15);
-  document.getElementById('hook-list').innerHTML = picked.map((fn, i) => makeItem(i + 1, fn(I, K))).join('');
-  document.getElementById('results-title').textContent = `✅ ${I} × ${K} 후킹문구 15개`;
+  setLoading(true);
+
+  try {
+    const resp = await fetch('/api/hooks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ industry: I, keyword: K })
+    });
+
+    if (resp.status === 429) {
+      const errData = await resp.json();
+      alert(errData.error || '일일 사용 한도를 초과했습니다. 내일 다시 이용해주세요.');
+      updateRemaining(0);
+      // fallback
+      generateWithTemplates(I, K);
+    } else if (resp.ok) {
+      const data = await resp.json();
+      updateRemaining(data.remaining);
+
+      if (data.fallback || !data.results || data.results.length === 0) {
+        generateWithTemplates(I, K);
+      } else {
+        renderApiResults(data.results);
+      }
+    } else {
+      // 기타 에러: fallback
+      console.error('API error, using fallback');
+      generateWithTemplates(I, K);
+    }
+  } catch (e) {
+    // 네트워크 에러: fallback
+    console.error('Fetch error, using fallback:', e);
+    generateWithTemplates(I, K);
+  } finally {
+    setLoading(false);
+  }
+
+  document.getElementById('results-title').textContent = `${I} x ${K} 후킹문구 15개`;
 
   const results = document.getElementById('results');
   results.classList.add('show');
@@ -735,7 +832,7 @@ function generateHooks() {
 
 function copyOne(btn, text) {
   navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = '✅ 복사됨';
+    btn.textContent = '복사됨';
     btn.classList.add('copied');
     setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 1500);
   });
@@ -746,7 +843,7 @@ function copyAll() {
   const all = Array.from(items).map((el, i) => `${i+1}. ${el.textContent}`).join('\n');
   navigator.clipboard.writeText(all).then(() => {
     const btn = document.querySelector('.copy-all-btn');
-    btn.textContent = '✅ 전체 복사 완료!';
+    btn.textContent = '전체 복사 완료!';
     setTimeout(() => { btn.textContent = '📋 전체 복사'; }, 2000);
   });
 }
@@ -754,6 +851,7 @@ function copyAll() {
 function toggleFaq(btn) { btn.closest('.faq-item').classList.toggle('open'); }
 
 document.addEventListener('DOMContentLoaded', () => {
+  loadRemaining();
   ['industry','keyword'].forEach(id => {
     document.getElementById(id).addEventListener('keydown', e => {
       if (e.key === 'Enter') generateHooks();

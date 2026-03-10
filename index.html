@@ -561,7 +561,10 @@
       <div class="hint-tags" id="hintTags"></div>
     </div>
 
-    <button class="generate-btn" onclick="generateTitles()">✨ 클릭을 부르는 제목 12가지 패턴 생성하기</button>
+    <button class="generate-btn" id="generateBtn" onclick="generateTitles()">✨ 클릭을 부르는 제목 12가지 패턴 생성하기</button>
+    <div id="remainingInfo" style="text-align:center; margin-top:10px; font-size:12px; color:#6B7280; display:none;">
+      오늘 남은 AI 생성 횟수: <strong id="remainingCount">-</strong>회
+    </div>
   </div>
 
   <!-- 결과 -->
@@ -891,6 +894,7 @@ const hints = {
   }
 };
 
+// 기존 JS 템플릿 (fallback용 유지)
 const templates = {
   p1: [
     (kw) => `${kw} 시작 전 꼭 알아야 할 3가지, 이것만 알면 됩니다`,
@@ -942,6 +946,18 @@ const templates = {
   ]
 };
 
+// 업종 카테고리 value → 한글 라벨 매핑
+const categoryLabels = {
+  wedding: '웨딩/결혼',
+  food: '요식업/카페',
+  edu: '온라인 강의/교육',
+  beauty: '뷰티/피부/헤어',
+  realty: '부동산/인테리어',
+  fitness: '헬스/운동',
+  marketing: '마케팅/블로그',
+  other: '기타'
+};
+
 function showHints() {
   const cat = document.getElementById('category').value;
   const hintBox = document.getElementById('hintBox');
@@ -957,18 +973,128 @@ function useTag(tag) {
   document.getElementById('keyword').value = tag;
 }
 
-function makeItem(text) {
-  return `<div class="title-item"><span class="title-text">${text}</span><button class="copy-btn" onclick="copyOne(this, '${text.replace(/'/g, "\\'")}')">복사</button></div>`;
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-function generateTitles() {
-  const kw = document.getElementById('keyword').value.trim();
-  if (!kw) { alert('키워드를 입력해주세요!'); return; }
+function makeItem(text) {
+  const safeText = escapeHtml(text);
+  return `<div class="title-item"><span class="title-text">${safeText}</span><button class="copy-btn" onclick="copyOne(this, ${JSON.stringify(text)})">복사</button></div>`;
+}
 
+// 남은 횟수 로드
+async function loadRemaining() {
+  try {
+    const resp = await fetch('/api/titles');
+    if (resp.ok) {
+      const data = await resp.json();
+      const infoEl = document.getElementById('remainingInfo');
+      const countEl = document.getElementById('remainingCount');
+      if (data.remaining !== undefined) {
+        countEl.textContent = data.remaining;
+        infoEl.style.display = 'block';
+      }
+    }
+  } catch (e) {
+    // 조회 실패 시 무시 — 횟수 정보를 안 보여줄 뿐
+  }
+}
+
+// 남은 횟수 업데이트
+function updateRemaining(remaining) {
+  if (remaining === undefined) return;
+  const infoEl = document.getElementById('remainingInfo');
+  const countEl = document.getElementById('remainingCount');
+  countEl.textContent = remaining;
+  infoEl.style.display = 'block';
+}
+
+// JS 템플릿으로 fallback 생성
+function generateWithTemplates(kw) {
   for (let i = 1; i <= 12; i++) {
     const pid = 'p' + i;
     const tpls = templates[pid];
     document.getElementById(pid).innerHTML = tpls.map(fn => makeItem(fn(kw))).join('');
+  }
+}
+
+// API 결과로 렌더링
+function renderApiResults(results) {
+  for (let i = 1; i <= 12; i++) {
+    const pid = 'p' + i;
+    const titles = results[pid] || [];
+    if (titles.length > 0) {
+      document.getElementById(pid).innerHTML = titles.map(t => makeItem(t)).join('');
+    }
+  }
+}
+
+// 로딩 상태 관리
+function setLoading(loading) {
+  const btn = document.getElementById('generateBtn');
+  if (loading) {
+    btn.disabled = true;
+    btn.textContent = '🔄 AI가 제목을 생성하고 있습니다...';
+    btn.style.opacity = '0.7';
+    btn.style.cursor = 'not-allowed';
+  } else {
+    btn.disabled = false;
+    btn.textContent = '✨ 클릭을 부르는 제목 12가지 패턴 생성하기';
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+  }
+}
+
+async function generateTitles() {
+  const kw = document.getElementById('keyword').value.trim();
+  if (!kw) { alert('키워드를 입력해주세요!'); return; }
+
+  const catValue = document.getElementById('category').value;
+  const category = categoryLabels[catValue] || '';
+
+  setLoading(true);
+
+  try {
+    const resp = await fetch('/api/titles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword: kw, category })
+    });
+
+    if (resp.status === 429) {
+      const errData = await resp.json();
+      alert(errData.error || '일일 사용 한도를 초과했습니다. 내일 다시 이용해주세요.');
+      updateRemaining(0);
+      // fallback으로 기존 템플릿 사용
+      generateWithTemplates(kw);
+    } else if (resp.ok) {
+      const data = await resp.json();
+      updateRemaining(data.remaining);
+
+      // fallback 플래그 또는 빈 결과 시 기존 템플릿 사용
+      if (data.fallback || !data.results || Object.keys(data.results).length === 0) {
+        generateWithTemplates(kw);
+      } else {
+        // API 결과에 없는 패턴은 기존 템플릿으로 채움
+        generateWithTemplates(kw);
+        renderApiResults(data.results);
+      }
+    } else {
+      // 기타 에러: fallback
+      console.error('API error, using fallback');
+      generateWithTemplates(kw);
+    }
+  } catch (e) {
+    // 네트워크 에러 등: fallback
+    console.error('Fetch error, using fallback:', e);
+    generateWithTemplates(kw);
+  } finally {
+    setLoading(false);
   }
 
   const results = document.getElementById('results');
@@ -978,7 +1104,7 @@ function generateTitles() {
 
 function copyOne(btn, text) {
   navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = '✅ 복사됨';
+    btn.textContent = '복사됨';
     btn.classList.add('copied');
     setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 1500);
   });
@@ -989,10 +1115,19 @@ function copyAll() {
   const all = Array.from(items).map(el => el.textContent).join('\n');
   navigator.clipboard.writeText(all).then(() => {
     const btn = document.querySelector('.copy-all-btn');
-    btn.textContent = '✅ 전체 복사 완료!';
+    btn.textContent = '전체 복사 완료!';
     setTimeout(() => { btn.textContent = '📋 전체 제목 복사'; }, 2000);
   });
 }
+
+// 페이지 로드 시 남은 횟수 조회
+document.addEventListener('DOMContentLoaded', () => {
+  loadRemaining();
+  // Enter 키로 생성
+  document.getElementById('keyword').addEventListener('keydown', e => {
+    if (e.key === 'Enter') generateTitles();
+  });
+});
 </script>
 <script src="auth-ui.js"></script>
 </body>
