@@ -2103,7 +2103,7 @@
       labelEl.textContent = '발행 가능';
       labelEl.style.color = '#4ade80';
     } else if (totalScore >= 60) {
-      labelEl.textContent = '수정 필요';
+      labelEl.textContent = '수정 후 발행';
       labelEl.style.color = '#facc15';
     } else {
       labelEl.textContent = '재작성 필요';
@@ -2118,7 +2118,7 @@
       summaryDesc = '사람이 쓴 느낌의 자연스러운 글입니다. 그대로 발행하세요.';
     } else if (totalScore >= 60) {
       summaryTitle = '수정 후 발행을 권장합니다';
-      summaryDesc = '일부 항목에서 AI 느낌이 감지됩니다. 아래 제안을 참고하여 수정하세요.';
+      summaryDesc = '일부 항목에서 AI 느낌이 감지됩니다. 자동 수정 버튼으로 개선하세요.';
     } else {
       summaryTitle = '재작성이 필요합니다';
       summaryDesc = 'AI가 쓴 티가 많이 납니다. 아래 제안을 반영하여 수정하세요.';
@@ -2154,16 +2154,27 @@
         li.textContent = r.suggestion;
         suggestionList.appendChild(li);
       });
-      btnImprove.style.display = 'block';
+      // 재작성 1회 제한: 이미 사용했으면 버튼 숨김
+      if (!hasImproved) {
+        btnImprove.style.display = 'block';
+        btnImprove.disabled = false;
+        btnImprove.textContent = '검수 기준으로 자동 수정하기';
+      } else {
+        btnImprove.style.display = 'block';
+        btnImprove.disabled = true;
+        btnImprove.textContent = '자동 수정 완료 (1회 제한)';
+      }
     } else {
       suggestionsEl.style.display = 'none';
       btnImprove.style.display = 'none';
     }
   }
 
-  // ─── 검수 기준 자동 수정 ───
+  // ─── 검수 기준 자동 수정 (최대 1회) ───
+  var hasImproved = false;
+
   async function improveContent() {
-    if (!generatedData) return;
+    if (!generatedData || hasImproved) return;
 
     var btnImprove = document.getElementById('btn-improve');
     btnImprove.disabled = true;
@@ -2174,12 +2185,39 @@
       if (r.suggestion) improveParts.push('- ' + r.suggestion);
     });
 
-    var improveSystem = '당신은 블로그 글에서 AI 티를 제거하는 전문가입니다.\n' +
-      '주어진 블로그 글을 검수 결과를 바탕으로 개선해주세요.\n' +
-      '핵심 목표: 사람이 직접 쓴 것처럼 자연스럽게 만들기.\n' +
-      '원본의 핵심 내용, 키워드, 톤, 글의 주제를 유지하면서 지적된 부분만 수정하세요.\n' +
+    var improveSystem = '당신은 네이버 블로그 전문 작가입니다.\n' +
+      '아래 글을 반드시 사람이 쓴 것처럼 완전히 재작성하세요.\n\n' +
+      '【절대 금지 어휘 — 한 개라도 포함되면 실패】\n' +
+      '효과적인, 체계적인, 다양한, 중요합니다, 도움이 됩니다, 활용하세요,\n' +
+      '살펴보겠습니다, 알아보겠습니다, 소개해드리겠습니다, 필수적인, 핵심적인,\n' +
+      '전반적인, 포괄적인, 이를 통해, 결론적으로, 최적화된, 진행해보겠습니다\n' +
+      '→ 위 17개 단어는 출력에서 단 한 번도 사용하지 마세요.\n\n' +
+      '【어미 반복 금지】\n' +
+      '같은 종결어미(~습니다/~합니다/~됩니다/~해요/~네요/~거든요/~더라고요/~잖아요/~죠 등)를 2문장 연속 사용 금지.\n' +
+      '~다로 끝나는 경우도 "했다/왔다/이다"처럼 앞 글자까지 구분하므로 주의.\n' +
+      '반드시 매 문장마다 어미를 바꿔가며 사용하세요.\n\n' +
+      '【반드시 포함해야 할 요소】\n' +
+      '1. 숫자+단위 3개 이상 (검수기는 "숫자+단위" 형태만 인정)\n' +
+      '   인정O: 3개월, 2만원, 15분, 80%, 3번째, 500g, 2km, 30평, 5가지, 10회\n' +
+      '   인정X: "서울"(단위없음), "스타벅스"(숫자없음), "많은"(구체적이지 않음)\n\n' +
+      '2. 직접 경험 문장 2개 이상 (아래 패턴만 검수기가 인식)\n' +
+      '   인정되는 패턴: 했더니, 해보니, 써보니, 먹어보니, 가보니, 만들어보니,\n' +
+      '   처음엔, 직접 써/해/가/먹/만들어, 실제로 해/써,\n' +
+      '   제가 ~했을 때, 써봤, 해봤, 가봤, 먹어봤\n' +
+      '   주의: "사용해보니", "경험해보니", "시도해보니"는 인정 안 됨\n\n' +
+      '3. 부정/반전 표현 1개 이상 (원본에 있으면 절대 제거 금지)\n' +
+      '   인정되는 표현: 솔직히, 별로, 아쉬웠, 실패, 생각보다, 예상보다 못,\n' +
+      '   사실 좀, 후회, 불편했, 안 좋았, 힘들었, 아쉽게도\n\n' +
+      '4. 문장 길이 편차: 가장 짧은 문장과 가장 긴 문장의 차이 40자 이상\n' +
+      '   반드시 10자 이하 초단문 1~2개 포함 (예: "진짜였다.", "이게 핵심이다.")\n' +
+      '   그리고 60자 이상 긴 설명 문장도 1~2개 포함\n\n' +
+      '5. 구조 다양성: 문단 길이를 의도적으로 불규칙하게\n' +
+      '   1~2줄 짧은 독백 문단 2~3개 + 5줄 이상 긴 설명 문단 1~2개\n' +
+      '   모든 문단이 비슷한 길이면 감점 (균일 비율 50% 미만 유지)\n\n' +
+      '위 조건을 모두 지키면 AI 검수 점수 80점 이상이 보장됩니다.\n' +
+      '원본 글의 주제, 정보, 키워드, 톤은 유지하되 문체와 표현을 완전히 바꾸세요.\n' +
       '이미지 마커 (사진: ...) 개수와 위치는 원본 그대로 유지하세요.\n' +
-      '해시태그와 내부링크 추천도 원본 그대로 유지하세요.\n' +
+      '해시태그와 내부링크 추천도 원본 그대로 유지하세요.\n\n' +
       '반드시 아래 JSON 형식으로만 응답하세요.\n' +
       '{\n  "title": "제목",\n  "hook": "도입부",\n  "body": "본문",\n  "cta": "마무리",\n  "tags": ["태그1",...],\n  "internal_links": ["글제목1",...]\n}';
 
@@ -2237,6 +2275,7 @@
       }
 
       renderResult(parsed);
+      hasImproved = true;
 
       if (typeof data.remaining === 'number') {
         updateRemainingUI(data.remaining);
@@ -2245,8 +2284,13 @@
     } catch (err) {
       alert('수정 실패: ' + err.message);
     } finally {
-      btnImprove.disabled = false;
-      btnImprove.textContent = '검수 기준으로 자동 수정하기';
+      if (hasImproved) {
+        btnImprove.disabled = true;
+        btnImprove.textContent = '자동 수정 완료 (1회 제한)';
+      } else {
+        btnImprove.disabled = false;
+        btnImprove.textContent = '검수 기준으로 자동 수정하기';
+      }
     }
   }
 
@@ -2594,6 +2638,7 @@
     document.getElementById('cta-custom').value = '';
     document.getElementById('cta-custom-wrap').style.display = 'none';
     // 검수기 초기화
+    hasImproved = false;
     var reviewCard = document.getElementById('review-card');
     reviewCard.style.display = 'none';
     document.getElementById('gauge-fill').style.strokeDashoffset = '326.73';
