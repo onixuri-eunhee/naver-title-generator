@@ -1,22 +1,25 @@
 import { Redis } from '@upstash/redis';
 
 /*
+ * 이미지 생성 구조
+ * DALL-E 3 (2장): 한글텍스트/인포그래픽 담당
+ * FLUX Schnell (6장): 순수 이미지 담당
+ * Canvas API: 썸네일 텍스트 오버레이 (무료)
+ * Haiku: 마커 분석 + API 라우팅 판단
+ *
  * 원가 구조 (1크레딧 기준)
- * Haiku API 8회 호출: 56원
- * fal.ai FLUX Schnell 8장: 36원
- * 총 원가: 92원
+ * DALL-E 3 2장:      120원
+ * FLUX Schnell 6장:   27원
+ * Haiku 8회 호출:     56원
+ * 총 원가:           203원
  *
- * 판매가: 330원 (9,900원 ÷ 30크레딧)
- * 마진: 238원 (72%)
+ * 가격 구조
+ * 이미지: 20크레딧 = 9,900원 (크레딧당 495원)
+ * 블로그: 30크레딧 = 9,900원 (크레딧당 330원)
  *
- * 충전 플랜
- * 30크레딧  = 9,900원  (크레딧당 330원)
- * 100크레딧 = 29,900원 (크레딧당 299원, 9% 할인)
- * 200크레딧 = 49,900원 (크레딧당 250원, 24% 할인)
- *
- * 1크레딧 = 마커당 1장 이미지 생성 (parse 모드: 마커 수만큼, direct 모드: 8장 고정)
- * 재생성: 1크레딧 (강화된 프롬프트로 전체 재생성)
- * 개별 재생성: 없음
+ * 마진
+ * 이미지: 59% (292원/크레딧)
+ * 블로그: 71% (235원/크레딧)
  */
 
 const FREE_DAILY_LIMIT = 3;
@@ -92,6 +95,26 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 200) {
   return (data.content?.[0]?.text || '').trim();
 }
 
+async function callDalle(prompt) {
+  const response = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'dall-e-3',
+      prompt,
+      size: '1024x1024',
+      quality: 'standard',
+      n: 1,
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(JSON.stringify(data));
+  return data.data[0].url;
+}
+
 async function callFlux(prompt) {
   const response = await fetch('https://fal.run/fal-ai/flux/schnell', {
     method: 'POST',
@@ -138,6 +161,87 @@ async function callFluxBatch(prompt, count) {
     }
   }
   return images;
+}
+
+async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
+  const blogSummary = blogText.substring(0, 100).trim();
+
+  const markerContext = markers.map((mk, i) => {
+    const before = mk.before.substring(0, 200);
+    const after = mk.after.substring(0, 200);
+    return `마커 ${i + 1}: "${mk.text}"\n  앞 문맥: "${before}"\n  뒤 문맥: "${after}"`;
+  }).join('\n\n');
+
+  const systemPrompt = `You are a blog image classifier and prompt generator for Korean lifestyle blogs.
+For each image marker, you must:
+1. Classify the image type:
+   - 'dalle': if the image requires Korean text overlay, infographic, data visualization,
+     comparison table, step-by-step guide, or any text-heavy visual
+   - 'flux': if the image is a pure photo/lifestyle scene with no text required
+
+2. Generate an appropriate English prompt based on the type:
+   - For 'dalle': include specific Korean text content to display, layout instructions,
+     clean design, white background preferred
+   - For 'flux': purely visual scene, no text, photorealistic, natural lighting
+
+3. Use surrounding context (before/after 200 chars) to make prompts highly specific.
+${isRegenerate ? `
+This is a REGENERATION request - user was not satisfied.
+Generate MORE SPECIFIC and MORE CONTEXTUALLY ACCURATE prompts.
+- Describe exact location, lighting, colors, composition, props
+- For dalle: make text content more specific and layout cleaner
+- For flux: be extremely specific about the scene
+Same rule: dalle 2개, flux 6개 배정 유지` : ''}
+
+Output JSON array only:
+[{
+  "marker": "마커텍스트",
+  "type": "dalle" or "flux",
+  "prompt": "English prompt",
+  "korean_text": "포함할 한글 텍스트 (dalle만 해당, 없으면 null)"
+}]`;
+
+  const userPrompt = `블로그 전체 주제 (첫 100자): ${blogSummary}
+
+마커 목록과 문맥:
+${markerContext}
+
+규칙:
+- 반드시 dalle 2개, flux 6개로 배정할 것
+- dalle 2개는 텍스트/인포그래픽이 가장 필요한 마커 우선 선택
+- flux 6개 중 첫 번째는 반드시 블로그 대표이미지용으로 배정`;
+
+  const raw = await callClaude(systemPrompt, userPrompt, 3000);
+  const jsonMatch = raw.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) throw new Error('Haiku marker analysis: no JSON array found');
+  const result = JSON.parse(jsonMatch[0]);
+
+  // dalle/flux 카운트 검증
+  const dalleCount = result.filter(r => r.type === 'dalle').length;
+  const fluxCount = result.filter(r => r.type === 'flux').length;
+  if (dalleCount !== 2 || fluxCount !== 6) {
+    console.warn(`Haiku returned dalle:${dalleCount}, flux:${fluxCount} — adjusting to 2/6`);
+    // 강제 조정: type이 없거나 비율이 맞지 않으면 앞 2개를 dalle로
+    const sorted = [...result];
+    let dalleAssigned = 0;
+    for (const item of sorted) {
+      if (item.type === 'dalle' && dalleAssigned < 2) {
+        dalleAssigned++;
+      } else if (item.type === 'dalle' && dalleAssigned >= 2) {
+        item.type = 'flux';
+      }
+    }
+    if (dalleAssigned < 2) {
+      for (const item of sorted) {
+        if (item.type !== 'dalle' && dalleAssigned < 2) {
+          item.type = 'dalle';
+          dalleAssigned++;
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 export default async function handler(req, res) {
@@ -200,20 +304,16 @@ export default async function handler(req, res) {
       remaining = FREE_DAILY_LIMIT - newCount;
     }
 
-    // ===== PARSE 모드: 블로그 글에서 마커 파싱 =====
+    // ===== PARSE 모드: 블로그 글에서 마커 파싱 → DALL-E 3 + FLUX 하이브리드 =====
     if (mode === 'parse') {
       const { blogText, thumbnailText } = req.body;
-      const frontMarkers = req.body.markers; // 프론트에서 편집된 마커
+      const frontMarkers = req.body.markers;
       if (!blogText) {
         if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
         return res.status(400).json({ error: '블로그 글을 입력해주세요.' });
       }
 
       const totalLen = blogText.length;
-
-      // 소제목 추출
-      const headings = blogText.match(/【\d+\.?】[^\n]*/g) || [];
-      const blogStructure = headings.map(h => h.trim()).join(' | ');
 
       const cleanContext = (str) => str
         .replace(/\((사진|이미지):\s*[^)]+\)/g, '')
@@ -225,11 +325,9 @@ export default async function handler(req, res) {
       let markers = [];
 
       if (Array.isArray(frontMarkers) && frontMarkers.length > 0) {
-        // 프론트에서 편집된 마커 사용
         const validMarkers = frontMarkers.filter(m => m && m.trim()).slice(0, MAX_MARKERS);
         markers = validMarkers.map((markerText) => {
           const text = markerText.trim();
-          // blogText에서 해당 마커 위치 찾기
           const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const findRegex = new RegExp(`\\((사진|이미지):\\s*${escapedText}[^)]*\\)`);
           const found = blogText.match(findRegex);
@@ -247,7 +345,6 @@ export default async function handler(req, res) {
             const sectionMatches = [...textBeforeMarker.matchAll(/【\d+\.?】[^\n]*/g)];
             section = sectionMatches.length > 0 ? sectionMatches[sectionMatches.length - 1][0].trim() : '';
           } else {
-            // 수동 추가된 마커: blogText 앞부분을 문맥으로 사용
             before = cleanContext(blogText.substring(0, Math.min(400, totalLen)));
             after = '';
             position = 'middle';
@@ -256,7 +353,6 @@ export default async function handler(req, res) {
           return { text, altText: '', before, after, position, section };
         });
       } else {
-        // 기존 로직: blogText에서 regex 추출 (하위 호환)
         const markerRegex = /\((사진|이미지):\s*([^)]+)\)/g;
         let m;
 
@@ -288,96 +384,47 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: '블로그 글에서 (사진: ...) 또는 (이미지: ...) 마커를 찾을 수 없습니다. 블로그 글 생성기에서 작성한 글을 붙여넣어주세요.' });
       }
 
-      const firstLine = blogText.split('\n').find(l => l.trim()) || '';
-      const blogTitle = firstLine.trim().substring(0, 80);
-      const blogSummary = blogText.substring(0, 300).trim();
-      const allMarkerNames = markers.map(mk => mk.text);
+      // 마커가 정확히 8개가 아닐 경우: 기존 FLUX 전용 로직 (fallback)
+      if (markers.length !== 8) {
+        const firstLine = blogText.split('\n').find(l => l.trim()) || '';
+        const blogTitle = firstLine.trim().substring(0, 80);
+        const blogSummary = blogText.substring(0, 300).trim();
+        const headings = blogText.match(/【\d+\.?】[^\n]*/g) || [];
+        const blogStructure = headings.map(h => h.trim()).join(' | ');
+        const allMarkerNames = markers.map(mk => mk.text);
 
-      const markersList = markers.map((mk, i) => {
-        let entry = `Image ${i + 1} of ${markers.length}:\n  Marker: "${mk.text}"`;
-        if (mk.altText) entry += `\n  Alt text: "${mk.altText}"`;
-        if (mk.section) entry += `\n  Section: "${mk.section}"`;
-        entry += `\n  Position in article: ${mk.position}`;
-        entry += `\n  Before (400 chars): "${mk.before}"`;
-        entry += `\n  After (400 chars): "${mk.after}"`;
-        return entry;
-      }).join('\n\n');
+        const markersList = markers.map((mk, i) => {
+          let entry = `Image ${i + 1} of ${markers.length}:\n  Marker: "${mk.text}"`;
+          if (mk.altText) entry += `\n  Alt text: "${mk.altText}"`;
+          if (mk.section) entry += `\n  Section: "${mk.section}"`;
+          entry += `\n  Position in article: ${mk.position}`;
+          entry += `\n  Before (400 chars): "${mk.before}"`;
+          entry += `\n  After (400 chars): "${mk.after}"`;
+          return entry;
+        }).join('\n\n');
 
-      // 시스템 프롬프트: 일반 vs 재생성(강화)
-      const claudeSystem = `${is_regenerate
-        ? `You are a blog image prompt engineer for Korean lifestyle blogs.
+        const claudeSystem = `${is_regenerate
+          ? `You are a blog image prompt engineer for Korean lifestyle blogs.
 This is a REGENERATION request — the user was not satisfied with the previous images.
 You must generate MORE SPECIFIC and MORE CONTEXTUALLY ACCURATE prompts than before.
 - Describe exact location, lighting, colors, composition, props
-- Be extremely specific about the scene (not just 'cafe' but 'modern minimalist Seoul cafe interior with marble countertop, pour-over coffee equipment, soft morning light through large windows')
+- Be extremely specific about the scene
 - Reference the surrounding blog text as much as possible
 - No generic stock photo style. No people's faces.`
-        : `You are a blog image prompt engineer for Korean lifestyle blogs.
+          : `You are a blog image prompt engineer for Korean lifestyle blogs.
 Your #1 priority is generating images that match the exact context of the blog content.
 Use the surrounding text to understand what specific scene, object, or situation is being described.
 No generic images. No people's faces.`}
 
 ## Your Task
 Generate English image prompts for FLUX Schnell model based on blog context.
-
-## Context Understanding Rules
-1. Read the blog title and summary to understand the overall topic and tone.
-2. Read before/after text carefully to identify the SPECIFIC scene, object, or situation being described at that exact point.
-3. Consider the image's position in the article flow — use the matching camera style:
-   - early: wide establishing shot from entrance or doorway, showing the overall environment and space, eye-level or slightly elevated angle, deep depth of field to capture the full scene
-   - middle: close-up or macro detail shot, showing a specific object, texture, or food, shallow depth of field, 45-degree overhead or straight-on angle, emphasis on tactile details
-   - ending: atmospheric mood shot with soft focus, warm golden tones, low angle or slightly blurred background, conveying satisfaction, relaxation, or a sense of conclusion
-4. Each image must be visually distinct from others in the same article.
-
-## Korean Cultural Context Translation
-When converting Korean marker text to English prompts, translate the cultural context into SPECIFIC visual details that FLUX can render:
-- Korean food: include specific tableware (stainless steel chopsticks, small banchan dishes, stone pot), restaurant setting details (wooden tables, soju glasses, Korean menu boards as blurred background)
-- Korean cafe: bright minimalist interior, white/wood tones, dried flowers, Hangul signage as blurred background element, latte art in ceramic cup
-- Korean fitness/pilates: bright studio with light wood floor, reformer machine, mirror wall, Korean woman's hands or back view in activewear
-- Korean beauty/skincare: glass-skin texture close-up, cushion compact, sheet mask packaging, vanity with LED mirror, Korean cosmetic bottles
-- Korean street/neighborhood: narrow alley with potted plants, small Korean shops with awnings, warm street lighting, traditional and modern mixed architecture
-- Korean home interior: compact apartment, warm ondol floor, minimalist furniture, natural light from large window, indoor plants
-
-## Prompt Structure (follow this template for each prompt)
-"[Subject/Scene from context], [specific details from surrounding text], [setting/environment with Korean cultural details], [lighting/mood], [camera angle matching position], clean Korean lifestyle blog photography style"
-
-## Mandatory Rules
-- Korean/East Asian context: Korean interiors, Korean food, Korean street scenes, Korean products.
-- When people appear: specify "Korean person" with only back view, hands, or silhouette — NEVER faces.
-- NEVER include any text, typography, letters, signs, labels, captions, or written words.
-- Be hyper-specific: NOT "a cafe interior" but "a small Korean cafe with warm wood tables, brass pendant lights, and dried flower arrangements on a sunny afternoon, shot from the entrance looking in"
-- Style consistency: warm natural lighting, shallow depth of field, editorial lifestyle photography feel.
-
-## Examples
-
-### Example 1 (food blog, middle position)
-Input:
-  Marker: "봉골레 파스타 이미지 추천"
-  Position: middle
-  Before: "...마늘 향이 확 올라오는 순간 '아 여기다' 싶었어요. 바지락이 통통하고..."
-Output:
-  "A steaming bowl of vongole pasta with plump clams on a warm wooden table in a small Korean restaurant, garlic oil glistening on al dente spaghetti, brass chopstick rest beside the plate, soft warm pendant lighting from above, close-up shot at 45-degree angle, shallow depth of field, Korean food photography style"
-
-### Example 2 (fitness blog, early position)
-Input:
-  Marker: "리포머 기구 운동 이미지 추천"
-  Position: early
-  Before: "처음 필라테스 스튜디오에 들어갔을 때 넓은 공간이 인상적이었어요..."
-Output:
-  "A bright Korean Pilates studio interior with rows of reformer machines on light maple wood floor, large mirrors along the wall reflecting natural sunlight from floor-to-ceiling windows, clean white walls, wide establishing shot from the entrance doorway, deep depth of field, airy and inviting atmosphere"
-
-### Example 3 (beauty blog, ending position)
-Input:
-  Marker: "스킨케어 루틴 마무리 이미지 추천"
-  Position: ending
-  Before: "...이렇게 2주 동안 꾸준히 했더니 피부결이 확실히 달라졌어요..."
-Output:
-  "A Korean vanity shelf with neatly arranged skincare bottles and a jade roller, soft morning light streaming through sheer curtains, dewy glass-skin reflection visible on a small round mirror, warm golden tones, atmospheric mood shot with gentle bokeh, sense of calm completion"
+Each prompt should be hyper-specific, referencing the surrounding text context.
+Korean/East Asian context required. No text/typography in images. No faces.
 
 ## Output
 Return ONLY a valid JSON array of prompt strings. No explanation.`;
 
-      const claudeUser = `Blog title: "${blogTitle}"
+        const claudeUser = `Blog title: "${blogTitle}"
 Blog summary (300 chars): "${blogSummary}"${blogStructure ? `\nArticle structure: "${blogStructure}"` : ''}
 
 All image markers in order: ${JSON.stringify(allMarkerNames)}
@@ -385,42 +432,144 @@ All image markers in order: ${JSON.stringify(allMarkerNames)}
 ---
 ${markersList}`;
 
-      let prompts;
+        let prompts;
+        try {
+          const claudeRaw = await callClaude(claudeSystem, claudeUser, 2000);
+          const jsonMatch = claudeRaw.match(/\[[\s\S]*\]/);
+          prompts = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+        } catch (err) {
+          console.error('Claude parse error:', err);
+          prompts = null;
+        }
+
+        if (!prompts || prompts.length !== markers.length) {
+          prompts = markers.map(mk => `${mk.text}, Korean blog photo, high quality, no text, no watermark, no people faces`);
+        }
+
+        prompts = prompts.map(p => `${p}, Korean lifestyle photography, no text, no watermark`);
+
+        const images = [];
+        for (let i = 0; i < prompts.length; i += 4) {
+          const batch = prompts.slice(i, i + 4);
+          const batchResults = await Promise.all(
+            batch.map(async (prompt, j) => {
+              const markerIndex = i + j;
+              try {
+                const url = await callFlux(prompt);
+                return { url, marker: markers[markerIndex].text, prompt, type: 'flux' };
+              } catch (err) {
+                console.error(`FLUX error for marker ${markerIndex}:`, err);
+                return { url: null, marker: markers[markerIndex].text, prompt, type: 'flux' };
+              }
+            })
+          );
+          images.push(...batchResults);
+        }
+
+        const validImages = images.filter(img => img.url);
+        if (validImages.length === 0) {
+          if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+          return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+        }
+
+        return res.status(200).json({
+          mode: 'parse',
+          images: validImages,
+          thumbnailText: thumbnailText || '',
+          remaining,
+          limit: FREE_DAILY_LIMIT,
+        });
+      }
+
+      // ===== 마커 8개: DALL-E 3 (2장) + FLUX Schnell (6장) 하이브리드 =====
+      let analysisResult;
       try {
-        const claudeRaw = await callClaude(claudeSystem, claudeUser, 2000);
-        const jsonMatch = claudeRaw.match(/\[[\s\S]*\]/);
-        prompts = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+        analysisResult = await callHaikuMarkerAnalysis(blogText, markers, is_regenerate);
       } catch (err) {
-        console.error('Claude parse error:', err);
-        prompts = null;
+        console.error('Haiku marker analysis error:', err);
+        // fallback: 전부 FLUX로
+        analysisResult = markers.map(mk => ({
+          marker: mk.text,
+          type: 'flux',
+          prompt: `${mk.text}, Korean blog photo, high quality, no text, no watermark, no people faces`,
+          korean_text: null,
+        }));
       }
 
-      if (!prompts || prompts.length !== markers.length) {
-        prompts = markers.map(mk => `${mk.text}, Korean blog photo, high quality, no text, no watermark, no people faces`);
-      }
+      // 원래 마커 순서대로 매핑
+      const orderedAnalysis = markers.map((mk, i) => {
+        const found = analysisResult.find(a => a.marker === mk.text) || analysisResult[i];
+        return { ...found, originalIndex: i, markerObj: mk };
+      });
 
-      prompts = prompts.map(p => `${p}, Korean lifestyle photography, no text, no watermark`);
+      const dalleItems = orderedAnalysis.filter(a => a.type === 'dalle');
+      const fluxItems = orderedAnalysis.filter(a => a.type === 'flux');
 
-      // FLUX: 마커당 1장 (1:1 매핑)
-      const images = [];
-      for (let i = 0; i < prompts.length; i += 4) {
-        const batch = prompts.slice(i, i + 4);
+      // DALL-E 3: 2장 병렬 호출
+      const dalleResults = await Promise.all(
+        dalleItems.map(async (item) => {
+          try {
+            const url = await callDalle(item.prompt);
+            return {
+              url,
+              marker: item.markerObj.text,
+              prompt: item.prompt,
+              type: 'dalle',
+              korean_text: item.korean_text || null,
+              originalIndex: item.originalIndex,
+            };
+          } catch (err) {
+            console.error(`DALL-E error for marker "${item.markerObj.text}":`, err);
+            return {
+              url: null,
+              marker: item.markerObj.text,
+              prompt: item.prompt,
+              type: 'dalle',
+              korean_text: item.korean_text || null,
+              originalIndex: item.originalIndex,
+            };
+          }
+        })
+      );
+
+      // FLUX: 6장 (4개 + 2개 배치)
+      const fluxResults = [];
+      for (let i = 0; i < fluxItems.length; i += 4) {
+        const batch = fluxItems.slice(i, i + 4);
         const batchResults = await Promise.all(
-          batch.map(async (prompt, j) => {
-            const markerIndex = i + j;
+          batch.map(async (item) => {
+            const fullPrompt = `${item.prompt}, Korean lifestyle photography, no text, no watermark`;
             try {
-              const url = await callFlux(prompt);
-              return { url, marker: markers[markerIndex].text, prompt };
+              const url = await callFlux(fullPrompt);
+              return {
+                url,
+                marker: item.markerObj.text,
+                prompt: fullPrompt,
+                type: 'flux',
+                korean_text: null,
+                originalIndex: item.originalIndex,
+              };
             } catch (err) {
-              console.error(`FLUX error for marker ${markerIndex}:`, err);
-              return { url: null, marker: markers[markerIndex].text, prompt };
+              console.error(`FLUX error for marker "${item.markerObj.text}":`, err);
+              return {
+                url: null,
+                marker: item.markerObj.text,
+                prompt: fullPrompt,
+                type: 'flux',
+                korean_text: null,
+                originalIndex: item.originalIndex,
+              };
             }
           })
         );
-        images.push(...batchResults);
+        fluxResults.push(...batchResults);
       }
 
-      const validImages = images.filter(img => img.url);
+      // 결과 합산 후 원래 마커 순서로 정렬
+      const allResults = [...dalleResults, ...fluxResults];
+      allResults.sort((a, b) => a.originalIndex - b.originalIndex);
+
+      const validImages = allResults.filter(img => img.url);
       if (validImages.length === 0) {
         if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
         return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
@@ -435,14 +584,13 @@ ${markersList}`;
       });
     }
 
-    // ===== DIRECT 모드: 주제+분위기 → DIRECT_IMAGES장 고정 =====
+    // ===== DIRECT 모드: 주제+분위기 → DIRECT_IMAGES장 고정 (FLUX 전용) =====
     const { topic, mood, thumbnailText } = req.body;
     if (!topic) {
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
       return res.status(400).json({ error: '블로그 주제를 입력해주세요.' });
     }
 
-    // Claude: 주제 → 영어 프롬프트 변환 (일반 vs 재생성)
     const directSystem = is_regenerate
       ? 'You are an image prompt translator. This is a REGENERATION request — generate MORE SPECIFIC and DETAILED prompts. Convert the Korean blog topic into a rich, detailed English image description (2-3 sentences). Describe exact location, lighting, colors, composition, and props. Focus on visual elements only. No people faces. Always specify Korean context. No text/typography. No explanations, just the prompt.'
       : 'You are an image prompt translator. Convert the given Korean blog topic into a concise English image description (1-2 sentences). Focus on visual elements only. No people faces. IMPORTANT: Always specify Korean or East Asian context — Korean settings, Korean food, Korean interior, Korean people when depicting humans. CRITICAL: Never include any text, typography, letters, signs, or written words in the description. Purely visual elements only. No explanations, just the prompt.';
@@ -455,7 +603,6 @@ ${markersList}`;
     const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
     const fullPrompt = `${englishTopic}, ${moodStyle}, Korean lifestyle photography, no text, no watermark`;
 
-    // FLUX: DIRECT_IMAGES장 생성
     const urls = await callFluxBatch(fullPrompt, DIRECT_IMAGES);
     if (urls.length === 0) {
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}

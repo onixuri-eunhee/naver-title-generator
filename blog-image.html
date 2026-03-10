@@ -782,12 +782,24 @@ function renderThumbnailCanvas(canvas, imageUrl, text) {
     ctx.drawImage(img, 0, 0, 1024, 1024);
     if (!text) return;
 
-    // 중앙 배치를 위한 전체 오버레이
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    // 하단 그라데이션: transparent → rgba(0,0,0,0.7) (하단 50%)
+    var gradient = ctx.createLinearGradient(0, 512, 0, 1024);
+    gradient.addColorStop(0, 'transparent');
+    gradient.addColorStop(1, 'rgba(0,0,0,0.7)');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 1024, 1024);
 
     document.fonts.ready.then(function() {
-      var fontSize = 104; // 기존 52 → 104 (100% 확대)
+      var textLen = text.length;
+      var fontSize;
+      if (textLen <= 15) {
+        fontSize = 100; // 1줄
+      } else if (textLen <= 25) {
+        fontSize = 80;  // 2줄
+      } else {
+        fontSize = 64;  // 3줄
+      }
+
       var maxWidth = 920;
       ctx.font = '900 ' + fontSize + 'px "Noto Sans KR"';
       ctx.textAlign = 'center';
@@ -800,9 +812,8 @@ function renderThumbnailCanvas(canvas, imageUrl, text) {
         lines = wrapText(ctx, text, maxWidth);
       }
 
-      var lineHeight = fontSize * 1.35;
+      var lineHeight = fontSize * 1.4;
       var totalHeight = lines.length * lineHeight;
-      // 정중앙 배치: 캔버스 중심(512)에서 텍스트 블록 절반 높이를 빼고 첫 줄 중심 보정
       var startY = 512 - (totalHeight / 2) + (lineHeight / 2);
 
       ctx.shadowColor = 'rgba(0,0,0,0.7)';
