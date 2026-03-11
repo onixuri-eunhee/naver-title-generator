@@ -100,20 +100,24 @@ async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
 
 ## CLASSIFICATION RULES
 Each marker must be classified as one of:
-- **photo** (최소 6개): Real photograph — for scenes, products, objects, people, places
-- **infographic** (최대 2개): Data visualization — for comparisons, lists, steps/procedures, statistics/numbers
+- **photo**: Real photograph — for scenes, products, OBJECTS, places, documents, environments
+- **infographic**: Data visualization — for comparisons, lists, steps/procedures, statistics/numbers, graphs, ranges, explanations
 
 Rules:
 - The FIRST marker MUST always be "photo" (대표이미지)
-- Maximum 2 infographic markers. If more qualify, keep only the best 2 as infographic.
-- Infographic is suitable ONLY when the surrounding text has clear structured data (비교표, 순위, 단계, 수치)
-- When in doubt, choose "photo"
+- Maximum 4 infographic markers. Choose the best candidates based on data-heavy content.
+- Infographic keywords: 비교, 순위, 단계, 수치, 그래프, 조건, 범위, 연계, 인상, 안정성, 지급조건
+- When the marker describes data, conditions, comparisons, or processes → infographic
+- When the marker describes a scene, object, or environment → photo
 
-## PHOTO MARKERS
+## PHOTO MARKERS — CRITICAL RULES
 Generate purely visual English prompts for GPT Image model:
-- Describe the EXACT subject/object from the marker context, not generic scenes
-- Include specific details: materials, colors, textures, arrangement, lighting, angle
-- MUST include Korean or East Asian context
+- **ABSOLUTELY NO PEOPLE, NO FACES, NO HUMAN FIGURES, NO PORTRAITS** — this is the #1 rule
+- Show OBJECTS, DOCUMENTS, ENVIRONMENTS, FLAT-LAY arrangements, conceptual still life
+- For insurance/finance/medical topics: show documents, folders, stethoscope, medicine, hospital hallway (empty), insurance forms, calculator, prescription, medical chart — NEVER people
+- For consultation topics: show desk with documents, laptop, pen, coffee — NOT a person sitting
+- Describe specific materials, colors, textures, arrangement, lighting, angle
+- Korean or East Asian context where relevant
 - NO text, signs, writing, or typography in any image
 - Compose for 1024x1024 square format
 ${isRegenerate ? '- REGENERATION MODE: Generate MORE SPECIFIC prompts with exact details, different angles and compositions.' : ''}
@@ -155,8 +159,8 @@ ${markerContext}
 규칙:
 - 8개 마커 각각을 photo 또는 infographic으로 분류
 - 첫 번째 마커는 반드시 photo (블로그 대표이미지)
-- infographic은 최대 2개까지만
-- 주변 텍스트에 비교/목록/단계/수치 데이터가 명확할 때만 infographic 사용
+- infographic은 최대 4개까지 (데이터/비교/그래프/조건 마커는 적극적으로 infographic 분류)
+- photo 프롬프트: 절대 사람/얼굴/인물 금지. 사물/문서/환경만 묘사
 - photo 프롬프트는 반드시 블로그 주제("${blogTitle}")와 직접 관련
 - infographic 데이터는 반드시 한국어로`;
 
@@ -177,12 +181,12 @@ ${markerContext}
     }
   }
 
-  // infographic 3개 이상이면 photo로 변환
+  // infographic 5개 이상이면 photo로 변환
   let infographicCount = 0;
   for (const item of result) {
     if (item.type === 'infographic') {
       infographicCount++;
-      if (infographicCount > 2) {
+      if (infographicCount > 4) {
         item.type = 'photo';
         if (!item.prompt) {
           item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style';
@@ -335,19 +339,25 @@ export default async function handler(req, res) {
         const claudeSystem = `You are a blog image prompt engineer. Your CRITICAL job is generating prompts that PRECISELY match each marker's topic and surrounding context.
 ${is_regenerate
   ? `This is a REGENERATION request — generate MORE SPECIFIC and MORE CONTEXTUALLY ACCURATE prompts.
-Describe exact subject, materials, colors, composition, props. Try different angles and compositions.
-No generic stock photo style. No people's faces.`
+Describe exact subject, materials, colors, composition, props. Try different angles and compositions.`
   : `Your #1 priority is generating images that show the EXACT subject described in each marker and its context.
-Read the before/after text carefully to understand what specific item, product, or scene is being discussed.
-No generic images. No people's faces.`}
+Read the before/after text carefully to understand what specific item, product, or scene is being discussed.`}
 
-## Rules
+## ABSOLUTE RULES
+- **NO PEOPLE, NO FACES, NO HUMAN FIGURES, NO PORTRAITS** — this is the #1 rule, never violated
 - Generate English-only prompts for GPT Image model. All marker text is Korean — translate to PRECISE English visual descriptions.
 - Every prompt MUST directly depict the subject of the blog and marker.
 - NEVER generate generic lifestyle/cafe/selfie images unrelated to the blog topic.
 - Compose for 1024x1024 square format.
 - Be hyper-specific: describe exact materials, textures, colors, arrangement, and lighting.
 - No text, typography, signs, or writing in images.
+
+## Topic-specific guidance
+- Insurance/finance: show documents, folders, calculator, pen, insurance policy papers, medical forms on a desk
+- Medical/health: show medicine, stethoscope, empty hospital corridor, medical chart, prescription bottle
+- Consultation: show desk with laptop, documents, coffee cup — NOT a person
+- Food/restaurant: show the food/dishes/interior — NOT diners
+- Beauty/skincare: show products, tools, ingredients — NOT models
 
 ## Output
 Return ONLY a valid JSON array of English prompt strings.`;
@@ -469,7 +479,7 @@ ${markersList}`;
             const batchResults = await Promise.all(
               batch.map(async (item) => {
                 const prompt = item.prompt || 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style';
-                const fullPrompt = `${prompt}, high quality editorial photography, square composition, no text, no writing, no signs`;
+                const fullPrompt = `${prompt}, high quality editorial photography, square composition, absolutely no people no faces no human figures, no text, no writing, no signs`;
                 try {
                   const url = await callGptImage(fullPrompt);
                   return { url, marker: item.marker, prompt: fullPrompt, type: 'photo', originalIndex: item.originalIndex };
@@ -532,8 +542,8 @@ ${markersList}`;
     }
 
     const directSystem = is_regenerate
-      ? 'You are an image prompt translator. This is a REGENERATION request — generate MORE SPECIFIC and DETAILED prompts. Convert the Korean blog topic into a rich, detailed English image description (2-3 sentences). Describe the EXACT subject of the topic with specific materials, colors, composition, and props. Focus on visual elements only. No people faces. No text, typography, letters, signs, or written words. Compose for square 1024x1024 format. No explanations, just the prompt.'
-      : 'You are an image prompt translator. Convert the given Korean blog topic into a concise English image description (1-2 sentences) that depicts the EXACT subject. Focus on visual elements only. No people faces. No text, typography, letters, signs, or written words. Compose for square 1024x1024 format. No explanations, just the prompt.';
+      ? 'You are an image prompt translator. This is a REGENERATION request — generate MORE SPECIFIC and DETAILED prompts. Convert the Korean blog topic into a rich, detailed English image description (2-3 sentences). Describe the EXACT subject with specific materials, colors, composition, and props. ABSOLUTELY NO PEOPLE, NO FACES, NO HUMAN FIGURES — show objects, documents, environments only. No text, typography, letters, signs, or written words. Compose for square 1024x1024 format. No explanations, just the prompt.'
+      : 'You are an image prompt translator. Convert the given Korean blog topic into a concise English image description (1-2 sentences) that depicts the EXACT subject. ABSOLUTELY NO PEOPLE, NO FACES, NO HUMAN FIGURES — show objects, documents, environments only. No text, typography, letters, signs, or written words. Compose for square 1024x1024 format. No explanations, just the prompt.';
     const englishTopic = await callClaude(
       directSystem,
       topic,
