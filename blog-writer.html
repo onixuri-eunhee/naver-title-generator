@@ -2792,7 +2792,8 @@
     if (generatedData.cta) parts.push(generatedData.cta);
     var fullText = parts.join('\n\n');
     localStorage.setItem('blogTextForImage', fullText);
-    window.location.href = 'blog-image.html';
+    var adminParam = sessionStorage.getItem('ddukddak_admin') === '8524' ? '?admin=8524' : '';
+    window.location.href = 'blog-image.html' + adminParam;
   }
 
   // ─── 프리미엄 이미지 생성기로 글 전달 ───
