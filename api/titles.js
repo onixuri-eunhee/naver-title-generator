@@ -141,9 +141,9 @@ function parseResponse(raw) {
       if (title.length <= 32) return title;
       const slice = title.slice(0, 33);
       const minLen = 15;
-      for (let i = slice.length - 1; i >= minLen; i--) {
-        if (slice[i] === ' ' || slice[i] === ',') {
-          return slice.slice(0, i).replace(/[,\s]+$/, '') + '...';
+      for (let j = slice.length - 1; j >= minLen; j--) {
+        if (slice[j] === ' ' || slice[j] === ',') {
+          return slice.slice(0, j).replace(/[,\s]+$/, '') + '...';
         }
       }
       return slice.slice(0, 32).replace(/[,\s]+$/, '') + '...';

@@ -140,7 +140,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: '글 생성 중 오류가 발생했습니다.' });
     }
 
-    return res.status(200).json({ ...data, remaining });
+    return res.status(200).json({ ...data, remaining, limit: FREE_DAILY_LIMIT });
 
   } catch (error) {
     console.error('API Error:', error);

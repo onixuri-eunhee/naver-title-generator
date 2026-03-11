@@ -550,7 +550,6 @@
     }
     .error-box.show { display: block; }
 
-    /* ===== RESPONSIVE ===== */
     /* ===== EXAMPLE CAROUSEL ===== */
     .example-section { margin-bottom: 8px; }
     .example-section .card-label { margin-bottom: 10px; }
@@ -710,8 +709,6 @@
       .input-row {
         grid-template-columns: 1fr;
       }
-      .nav-links { gap: 12px; }
-      .nav-links a { font-size: 12px; }
       main { padding: 32px 16px 80px; }
       .card { padding: 18px; }
       .result-card-body { padding: 16px; }
@@ -1529,9 +1526,9 @@
 3. 첫 5줄 금지: 일반론/상식, 사전적 정의, 자격 없는 단독 인사말, "~에 대해 알아보겠습니다" 패턴.
 
 【사람이 쓴 글의 특징 — 실제 경험자 느낌 필수】
-1. 숫자+단위 3개 이상 필수: "3개월", "2만원", "15분", "80%", "30평" 등. "여러 번", "많은"은 불인정.
-2. 직접 경험 서술 2개 이상 필수: "해보니", "써보니", "처음엔", "직접 해봤", "가보니", "먹어보니", "만들어보니" 등. (주의: "사용해보니", "경험해보니"는 불인정)
-3. 부정/반전 표현 1개 이상 필수: "솔직히", "별로", "아쉬웠", "생각보다", "실패", "후회", "힘들었" 중 택. 긍정만 나열 금지.
+1. 숫자+단위 3개 이상 필수: "3개월", "2만원", "15분", "80%", "30평", "5가지", "2배", "10회", "3번째", "500g" 등. "여러 번", "많은"은 불인정.
+2. 직접 경험 서술 2개 이상 필수: "했더니", "해보니", "써보니", "먹어보니", "가보니", "만들어보니", "처음엔", "직접 써/해/가/먹/만들어", "실제로 해/써", "제가 ~했을 때", "써봤", "해봤", "가봤", "먹어봤" 등. (주의: "사용해보니", "경험해보니"는 불인정)
+3. 부정/반전 표현 1개 이상 필수: "솔직히", "별로", "아쉬웠", "실패", "생각보다", "예상보다 못", "사실 좀", "후회", "불편했", "안 좋았", "힘들었", "아쉽게도" 중 택. 긍정만 나열 금지.
 4. 감각 묘사: 시각 외 감각(후각, 촉각, 청각) 1개 이상 포함.
 5. 불필요한 디테일 허용: "거기 주차가 좀 힘들어서" 같이 주제와 직접 무관한 상황 디테일을 가끔 넣을 것.
 6. 의성어/의태어: "후다닥", "찌릿", "슬금슬금" 같은 표현 1~2개 사용.
@@ -2274,7 +2271,9 @@
       '반드시 아래 JSON 형식으로만 응답하세요.\n' +
       (selectedType === 'naver-seo'
         ? '{\n  "title": "제목",\n  "description": "설명문 (45자 이내, 제목과 다른 각도로 핵심 요약)",\n  "hook": "도입부",\n  "body": "본문",\n  "cta": "마무리",\n  "tags": ["태그1",...],\n  "internal_links": ["글제목1",...]\n}'
-        : '{\n  "title": "제목",\n  "hook": "도입부",\n  "body": "본문",\n  "cta": "마무리",\n  "tags": ["태그1",...],\n  "internal_links": ["글제목1",...]\n}');
+        : selectedType === 'google-seo'
+          ? '{\n  "title": "제목",\n  "meta_description": "메타 디스크립션 (120~155자)",\n  "hook": "도입부",\n  "body": "본문",\n  "faq": "FAQ",\n  "cta": "마무리",\n  "tags": ["태그1",...],\n  "internal_links": ["글제목1",...]\n}'
+          : '{\n  "title": "제목",\n  "hook": "도입부",\n  "body": "본문",\n  "cta": "마무리",\n  "tags": ["태그1",...],\n  "internal_links": ["글제목1",...]\n}');
 
     var userMsg = '【원본 글】\n' +
       '제목: ' + (generatedData.title || '') + '\n' +
@@ -2337,7 +2336,7 @@
       hasImproved = true;
 
       if (typeof data.remaining === 'number') {
-        updateRemainingUI(data.remaining);
+        updateRemainingUI(data.remaining, data.limit);
       }
 
     } catch (err) {
@@ -2557,13 +2556,11 @@
 
       // 자체 검수 corrections 적용
       if (parsed.corrections && Array.isArray(parsed.corrections) && parsed.corrections.length > 0) {
-        console.log('[맞춤법 자체검수] corrections 발견:', parsed.corrections);
         parsed.corrections.forEach(function(c) {
           if (c.wrong && c.correct && c.wrong !== c.correct) {
             ['title', 'description', 'hook', 'body', 'cta', 'faq', 'meta_description'].forEach(function(field) {
               if (parsed[field] && parsed[field].indexOf(c.wrong) !== -1) {
                 parsed[field] = parsed[field].split(c.wrong).join(c.correct);
-                console.log('[맞춤법 수정] ' + field + ': "' + c.wrong + '" → "' + c.correct + '"');
               }
             });
           }
@@ -2578,7 +2575,7 @@
 
       // 남은 횟수 갱신
       if (typeof data.remaining === 'number') {
-        updateRemainingUI(data.remaining);
+        updateRemainingUI(data.remaining, data.limit);
       }
 
     } catch (err) {
@@ -2723,12 +2720,15 @@
     document.getElementById('gauge-score').textContent = '0';
     document.getElementById('gauge-label').textContent = '검수 중...';
     document.getElementById('gauge-label').style.color = '';
+    document.getElementById('review-summary').innerHTML = '';
+    document.getElementById('review-checklist').innerHTML = '';
+    document.getElementById('review-suggestions').style.display = 'none';
+    document.getElementById('suggestion-list').innerHTML = '';
     document.getElementById('btn-improve').style.display = 'none';
     lastReviewSuggestions = [];
     hideError();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-
 
   // ─── 남은 횟수 UI 업데이트 ───
   function updateRemainingUI(remaining, limit) {
