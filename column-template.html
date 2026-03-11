@@ -161,6 +161,19 @@ footer a:hover { text-decoration: underline; }
   .article { padding: 24px 20px; }
   .hero { padding: 36px 20px 32px; }
 }
+.navbar-links a.new-badge::after {
+  content: 'NEW';
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  font-size: 8px;
+  font-weight: 800;
+  color: #fff;
+  background: #FF4757;
+  border-radius: 4px;
+  padding: 1px 3px;
+  line-height: 1.4;
+}
 </style>
 <link rel="stylesheet" href="/navbar-mobile.css">
 </head>
@@ -175,7 +188,7 @@ footer a:hover { text-decoration: underline; }
     <a href="blog-writer.html" class="pro-badge">블로그 글</a>
     <a href="blog-image.html" class="pro-badge">이미지</a>
     <a href="guide.html">사용법</a>
-    <a href="column.html" style="color:#00C73C; font-weight:700;">칼럼</a>
+    <a href="column.html" class="new-badge" style="color:#00C73C; font-weight:700;">칼럼</a>
   </div>
 </nav>
 
