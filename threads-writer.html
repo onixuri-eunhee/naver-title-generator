@@ -25,18 +25,123 @@
       min-height: 100vh;
     }
 
-    header {
-      padding: 16px 24px;
-      border-bottom: 1px solid var(--border);
+    /* ===== NAVBAR ===== */
+    .navbar {
+      background: #fff;
+      border-bottom: 1px solid #E5E7EB;
+      padding: 0 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      height: 52px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
-    .logo { font-size: 16px; font-weight: 700; color: var(--text); text-decoration: none; }
-    .logo em { color: var(--accent); font-style: normal; }
-    .nav-links { display: flex; gap: 20px; }
-    .nav-links a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.2s; }
-    .nav-links a:hover { color: var(--text); }
+    .navbar-logo {
+      font-size: 18px;
+      font-weight: 900;
+      color: #1A1A2E;
+      text-decoration: none;
+    }
+    .navbar-logo span { color: #00C73C; }
+    .navbar-links { display: flex; gap: 4px; }
+    .navbar-links a {
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6B7280;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+      position: relative;
+    }
+    .navbar-links a:hover {
+      background: #F3F4F6;
+      color: #1A1A2E;
+    }
+    .navbar-links a.pro-badge::after {
+      content: 'PRO';
+      position: absolute;
+      top: 1px;
+      right: 1px;
+      font-size: 8px;
+      font-weight: 800;
+      color: #fff;
+      background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+      border-radius: 4px;
+      padding: 1px 3px;
+      line-height: 1.4;
+    }
+    .navbar-auth {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .navbar-login-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6B7280;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .navbar-login-btn:hover {
+      background: #F3F4F6;
+      color: #1A1A2E;
+    }
+    .navbar-signup-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #00C73C;
+      color: #fff;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .navbar-signup-btn:hover {
+      background: #00A830;
+    }
+    .navbar-user-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #00C73C;
+      text-decoration: none;
+    }
+    .navbar-credit {
+      font-size: 12px;
+      color: #8B5CF6;
+      font-weight: 600;
+    }
+    .navbar-mypage-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6B7280;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .navbar-mypage-btn:hover {
+      background: #F3F4F6;
+      color: #1A1A2E;
+    }
+    .navbar-links a.new-badge { position: relative; margin-right: 12px; }
+    .navbar-links a.new-badge::after {
+      content: 'NEW';
+      position: absolute;
+      top: 1px;
+      right: 1px;
+      font-size: 8px;
+      font-weight: 800;
+      color: #fff;
+      background: #FF4757;
+      border-radius: 4px;
+      padding: 1px 3px;
+      line-height: 1.4;
+    }
 
     main {
       max-width: 600px;
@@ -235,18 +340,23 @@
     footer a { color: var(--muted); text-decoration: none; }
     footer a:hover { color: var(--text); }
   </style>
+<link rel="stylesheet" href="/navbar-mobile.css">
 </head>
 <body>
 
-<header>
-  <a href="/" class="logo">뚝딱<em>툴</em></a>
-  <nav class="nav-links">
-    <a href="/index.html">블로그 제목</a>
-    <a href="/hook-generator.html">후킹문구</a>
-    <a href="/blog-writer.html">✍️ 블로그 글</a>
-    <a href="/column.html">칼럼</a>
-  </nav>
-</header>
+<nav class="navbar">
+  <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
+  <div class="navbar-links">
+    <a href="guide.html">사용법</a>
+    <a href="/">제목</a>
+    <a href="hook-generator.html">후킹</a>
+    <a href="threads.html">스레드</a>
+    <a href="blog-writer.html" class="pro-badge" style="color:#8B5CF6; font-weight:700;">블로그 글</a>
+    <a href="blog-image.html" class="pro-badge">이미지</a>
+    <a href="column.html" class="new-badge">칼럼</a>
+  </div>
+  <div class="navbar-auth" id="navbarAuth"></div>
+</nav>
 
 <main>
   <div class="page-header">
@@ -519,6 +629,7 @@ ${toneGuide[selectedTone]}
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) generate();
   });
 </script>
+<script src="auth-ui.js"></script>
 
 </body>
 </html>
