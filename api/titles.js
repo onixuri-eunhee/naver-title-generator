@@ -136,17 +136,17 @@ function parseResponse(raw) {
       .map(l => l.trim())
       .filter(l => l.length > 0);
 
-    // 30자 초과 시 어절 경계 스마트 트리밍 + "..." 붙이기
+    // 32자 초과 시 어절 경계 스마트 트리밍 + "..." 붙이기
     const trimmed = lines.slice(0, 2).map(title => {
-      if (title.length <= 30) return title;
-      const slice = title.slice(0, 31);
+      if (title.length <= 32) return title;
+      const slice = title.slice(0, 33);
       const minLen = 15;
       for (let i = slice.length - 1; i >= minLen; i--) {
         if (slice[i] === ' ' || slice[i] === ',') {
           return slice.slice(0, i).replace(/[,\s]+$/, '') + '...';
         }
       }
-      return slice.slice(0, 30).replace(/[,\s]+$/, '') + '...';
+      return slice.slice(0, 32).replace(/[,\s]+$/, '') + '...';
     });
 
     results[key] = trimmed;
