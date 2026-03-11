@@ -100,15 +100,15 @@ async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
 
 ## CLASSIFICATION RULES
 Each marker must be classified as one of:
-- **photo**: Real photograph — for scenes, products, OBJECTS, places, documents, environments
-- **infographic**: Data visualization — for comparisons, lists, steps/procedures, statistics/numbers, graphs, ranges, explanations
+- **photo**: ONLY for purely visual scenes that need NO text/labels at all — landscapes, food close-ups, product flat-lays, empty interiors
+- **infographic**: ANY marker that would benefit from Korean text labels, explanations, data, comparisons, lists, steps, conditions, processes, or descriptions
 
 Rules:
 - The FIRST marker MUST always be "photo" (대표이미지)
-- Maximum 4 infographic markers. Choose the best candidates based on data-heavy content.
-- Infographic keywords: 비교, 순위, 단계, 수치, 그래프, 조건, 범위, 연계, 인상, 안정성, 지급조건
-- When the marker describes data, conditions, comparisons, or processes → infographic
-- When the marker describes a scene, object, or environment → photo
+- Maximum 5 infographic markers. Aggressively classify as infographic when Korean labels would help.
+- Infographic keywords: 비교, 순위, 단계, 수치, 그래프, 조건, 범위, 연계, 인상, 안정성, 지급조건, 설명, 내용, 과정, 종류, 특징, 방법, 장단점, 혜택, 약관
+- When the marker contains ANY explanatory or descriptive content → infographic
+- When the marker is purely a visual scene/object with no text needed → photo
 
 ## PHOTO MARKERS — MANDATORY COMPOSITION RULES
 Generate purely visual English prompts for GPT Image model. Every prompt MUST follow ALL of these rules:
@@ -183,7 +183,7 @@ ${markerContext}
 규칙:
 - 8개 마커 각각을 photo 또는 infographic으로 분류
 - 첫 번째 마커는 반드시 photo (블로그 대표이미지)
-- infographic은 최대 4개까지 (데이터/비교/그래프/조건 마커는 적극적으로 infographic 분류)
+- infographic은 최대 5개까지 (설명/조건/과정/비교/그래프 마커는 적극적으로 infographic 분류)
 - photo 프롬프트: 사물/문서/환경만 묘사. overhead flat-lay 또는 macro close-up 앵글 사용
 - photo 프롬프트는 반드시 블로그 주제("${blogTitle}")와 직접 관련
 - infographic 데이터는 반드시 한국어로`;
@@ -205,12 +205,12 @@ ${markerContext}
     }
   }
 
-  // infographic 5개 이상이면 photo로 변환
+  // infographic 6개 이상이면 photo로 변환
   let infographicCount = 0;
   for (const item of result) {
     if (item.type === 'infographic') {
       infographicCount++;
-      if (infographicCount > 4) {
+      if (infographicCount > 5) {
         item.type = 'photo';
         if (!item.prompt) {
           item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style';

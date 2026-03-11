@@ -726,6 +726,7 @@ function renderResults(images, thumbnailText) {
 }
 
 // ─── 텍스트 줄바꿈 ───
+// 어절(띄어쓰기) 단위로만 줄바꿈 — 글자 단위 쪼개기 없음
 function wrapText(ctx, text, maxWidth) {
   var words = text.split(' ');
   var lines = [];
@@ -740,26 +741,7 @@ function wrapText(ctx, text, maxWidth) {
     }
   }
   if (currentLine) lines.push(currentLine);
-  var finalLines = [];
-  for (var j = 0; j < lines.length; j++) {
-    if (ctx.measureText(lines[j]).width <= maxWidth) {
-      finalLines.push(lines[j]);
-    } else {
-      var chars = lines[j].split('');
-      var cl = '';
-      for (var k = 0; k < chars.length; k++) {
-        var tl = cl + chars[k];
-        if (ctx.measureText(tl).width > maxWidth && cl) {
-          finalLines.push(cl);
-          cl = chars[k];
-        } else {
-          cl = tl;
-        }
-      }
-      if (cl) finalLines.push(cl);
-    }
-  }
-  return finalLines;
+  return lines;
 }
 
 // ─── 썸네일 Canvas ───
@@ -793,10 +775,13 @@ function renderThumbnailCanvas(canvas, imageUrl, text) {
       ctx.textBaseline = 'middle';
 
       var lines = wrapText(ctx, text, maxWidth);
-      while (lines.length > 3 && fontSize > 48) {
+      // 어절이 넘치거나 줄이 3줄 초과면 폰트 축소
+      var hasOverflow = lines.some(function(l) { return ctx.measureText(l).width > maxWidth; });
+      while ((lines.length > 3 || hasOverflow) && fontSize > 36) {
         fontSize -= 4;
         ctx.font = '900 ' + fontSize + 'px "Noto Sans KR"';
         lines = wrapText(ctx, text, maxWidth);
+        hasOverflow = lines.some(function(l) { return ctx.measureText(l).width > maxWidth; });
       }
 
       var lineHeight = fontSize * 1.4;
