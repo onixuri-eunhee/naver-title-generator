@@ -110,17 +110,41 @@ Rules:
 - When the marker describes data, conditions, comparisons, or processes → infographic
 - When the marker describes a scene, object, or environment → photo
 
-## PHOTO MARKERS — CRITICAL RULES
-Generate purely visual English prompts for GPT Image model:
-- **ABSOLUTELY NO PEOPLE, NO FACES, NO HUMAN FIGURES, NO PORTRAITS** — this is the #1 rule
-- Show OBJECTS, DOCUMENTS, ENVIRONMENTS, FLAT-LAY arrangements, conceptual still life
-- For insurance/finance/medical topics: show documents, folders, stethoscope, medicine, hospital hallway (empty), insurance forms, calculator, prescription, medical chart — NEVER people
-- For consultation topics: show desk with documents, laptop, pen, coffee — NOT a person sitting
-- Describe specific materials, colors, textures, arrangement, lighting, angle
-- Korean or East Asian context where relevant
-- NO text, signs, writing, or typography in any image
-- Compose for 1024x1024 square format
-${isRegenerate ? '- REGENERATION MODE: Generate MORE SPECIFIC prompts with exact details, different angles and compositions.' : ''}
+## PHOTO MARKERS — MANDATORY COMPOSITION RULES
+Generate purely visual English prompts for GPT Image model. Every prompt MUST follow ALL of these rules:
+
+### SUBJECT RULE: Inanimate objects and environments ONLY
+- Every image depicts ONLY inanimate objects, documents, tools, products, furniture, architecture, nature, or empty spaces
+- Frame every scene as a STILL LIFE, FLAT-LAY, PRODUCT SHOT, or EMPTY ENVIRONMENT
+- The scene is always UNINHABITED — show the space as if photographed before or after hours, with zero living beings present
+
+### CAMERA ANGLE RULE: Use angles that exclude human presence
+- DEFAULT: overhead flat-lay (top-down 90-degree bird's-eye view looking straight down at objects on a surface)
+- ALTERNATIVE 1: extreme close-up macro (fills frame with object texture/detail)
+- ALTERNATIVE 2: wide-angle empty environment (hallway, room, exterior — shot at dawn/dusk when space is vacant)
+- ALTERNATIVE 3: 45-degree tabletop product photography (objects arranged on surface, camera angled down)
+
+### DOCUMENT/PAPER RULE: All papers shown as abstract visual elements
+- Documents, forms, papers, receipts appear as STACKED, FANNED, or FOLDED arrangements — shot from overhead so content is a soft blur
+- Describe paper surfaces with: "soft-focus printed patterns", "abstract paragraph shapes", "blurred ink impressions"
+- Screens (laptop, phone, tablet) show SOLID COLOR GRADIENTS or are turned off with reflective dark glass
+
+### PROMPT STRUCTURE (follow this exact order)
+1. SUBJECT: name the specific objects/items (e.g., "insurance policy folder, calculator, ballpoint pen, reading glasses")
+2. ARRANGEMENT: how objects are positioned (e.g., "arranged in a diagonal flat-lay on a white marble surface")
+3. CAMERA: angle and lens (e.g., "shot from directly overhead, 50mm lens, shallow depth of field")
+4. LIGHTING: specific light description (e.g., "soft diffused window light from upper left, gentle shadows")
+5. STYLE: "editorial still-life photography, clean Korean aesthetic"
+6. ALWAYS END WITH: "inanimate objects only, empty scene, all surfaces show abstract blurred patterns"
+
+### TOPIC TRANSLATION EXAMPLES
+- 보험상담 → "insurance policy documents, premium calculator, wooden stamp, ballpoint pen arranged on oak desk, overhead flat-lay, soft window light, editorial still-life"
+- 암 진단비 → "medical diagnostic form with blurred printed lines, prescription bottle, stethoscope on clean white surface, extreme close-up macro shot, clinical lighting"
+- 치료비 영수증 → "stack of fanned receipt papers with indistinct printed text, wooden clipboard, coins scattered nearby, overhead flat-lay on linen cloth, warm ambient light"
+- 음식 리뷰 → "ceramic bowl of bibimbap with steel chopsticks resting on bamboo mat, extreme close-up overhead, steam rising, warm restaurant lighting"
+
+Korean or East Asian context must be maintained. Compose for 1024x1024 square format.
+${isRegenerate ? 'REGENERATION MODE: Generate MORE SPECIFIC prompts with different arrangements and angles.' : ''}
 
 ## INFOGRAPHIC MARKERS
 Generate structured Korean data for Satori renderer. Choose one layout:
@@ -160,7 +184,7 @@ ${markerContext}
 - 8개 마커 각각을 photo 또는 infographic으로 분류
 - 첫 번째 마커는 반드시 photo (블로그 대표이미지)
 - infographic은 최대 4개까지 (데이터/비교/그래프/조건 마커는 적극적으로 infographic 분류)
-- photo 프롬프트: 절대 사람/얼굴/인물 금지. 사물/문서/환경만 묘사
+- photo 프롬프트: 사물/문서/환경만 묘사. overhead flat-lay 또는 macro close-up 앵글 사용
 - photo 프롬프트는 반드시 블로그 주제("${blogTitle}")와 직접 관련
 - infographic 데이터는 반드시 한국어로`;
 
@@ -343,21 +367,22 @@ Describe exact subject, materials, colors, composition, props. Try different ang
   : `Your #1 priority is generating images that show the EXACT subject described in each marker and its context.
 Read the before/after text carefully to understand what specific item, product, or scene is being discussed.`}
 
-## ABSOLUTE RULES
-- **NO PEOPLE, NO FACES, NO HUMAN FIGURES, NO PORTRAITS** — this is the #1 rule, never violated
+## MANDATORY COMPOSITION RULES
+- Every image is a STILL LIFE, FLAT-LAY, PRODUCT SHOT, or EMPTY ENVIRONMENT — inanimate objects and vacant spaces only
+- Camera: overhead flat-lay (90-degree bird's-eye), extreme close-up macro, or wide-angle empty space
+- Documents/papers: describe as stacked/fanned arrangements showing soft-focus abstract printed patterns
+- Screens: dark reflective glass or solid color gradients
 - Generate English-only prompts for GPT Image model. All marker text is Korean — translate to PRECISE English visual descriptions.
 - Every prompt MUST directly depict the subject of the blog and marker.
-- NEVER generate generic lifestyle/cafe/selfie images unrelated to the blog topic.
 - Compose for 1024x1024 square format.
 - Be hyper-specific: describe exact materials, textures, colors, arrangement, and lighting.
-- No text, typography, signs, or writing in images.
 
-## Topic-specific guidance
-- Insurance/finance: show documents, folders, calculator, pen, insurance policy papers, medical forms on a desk
-- Medical/health: show medicine, stethoscope, empty hospital corridor, medical chart, prescription bottle
-- Consultation: show desk with laptop, documents, coffee cup — NOT a person
-- Food/restaurant: show the food/dishes/interior — NOT diners
-- Beauty/skincare: show products, tools, ingredients — NOT models
+## Topic-specific framing
+- Insurance/finance: overhead flat-lay of policy folder, calculator, stamp, pen on wooden desk surface
+- Medical/health: macro close-up of medicine bottles, stethoscope draped over clipboard, empty corridor at dawn
+- Consultation: overhead shot of desk surface with laptop (screen showing color gradient), documents, coffee cup
+- Food/restaurant: extreme close-up overhead of plated dish, chopsticks, ceramic bowls
+- Beauty/skincare: flat-lay of product bottles, tools, ingredients on marble surface
 
 ## Output
 Return ONLY a valid JSON array of English prompt strings.`;
@@ -384,7 +409,7 @@ ${markersList}`;
           prompts = markers.map(() => `high quality Korean lifestyle blog photography, soft natural lighting, editorial style`);
         }
 
-        prompts = prompts.map(p => `${p}, high quality editorial photography, square composition, no text, no writing, no signs`);
+        prompts = prompts.map(p => `${p}, high quality editorial still-life photography, square 1024x1024 composition, inanimate objects only, uninhabited empty scene, overhead or macro camera angle, all visible surfaces and papers show soft-focus abstract patterns with indistinct marks, clean Korean aesthetic`);
 
         // GPT Image 병렬 생성 (2장씩 배치)
         const images = [];
@@ -479,7 +504,7 @@ ${markersList}`;
             const batchResults = await Promise.all(
               batch.map(async (item) => {
                 const prompt = item.prompt || 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style';
-                const fullPrompt = `${prompt}, high quality editorial photography, square composition, absolutely no people no faces no human figures, no text, no writing, no signs`;
+                const fullPrompt = `${prompt}, high quality editorial still-life photography, square 1024x1024 composition, inanimate objects only, uninhabited empty scene, overhead or macro camera angle, all visible surfaces and papers show soft-focus abstract patterns with indistinct marks, clean Korean aesthetic`;
                 try {
                   const url = await callGptImage(fullPrompt);
                   return { url, marker: item.marker, prompt: fullPrompt, type: 'photo', originalIndex: item.originalIndex };
@@ -506,7 +531,7 @@ ${markersList}`;
               console.error(`[IMAGE-PRO] Satori error for "${item.marker}":`, err.message);
               // Fallback: GPT Image로 사진 생성
               try {
-                const fallbackPrompt = `high quality Korean lifestyle blog photography related to ${item.title || item.marker}, soft natural lighting, editorial style, square composition, no text, no writing, no signs`;
+                const fallbackPrompt = `high quality editorial still-life of objects related to ${item.title || item.marker}, overhead flat-lay on clean surface, soft natural lighting, inanimate objects only, uninhabited empty scene, all visible surfaces show soft-focus abstract patterns, clean Korean aesthetic`;
                 const url = await callGptImage(fallbackPrompt);
                 return { url, marker: item.marker, prompt: fallbackPrompt, type: 'photo', originalIndex: item.originalIndex };
               } catch (gptErr) {
@@ -542,8 +567,8 @@ ${markersList}`;
     }
 
     const directSystem = is_regenerate
-      ? 'You are an image prompt translator. This is a REGENERATION request — generate MORE SPECIFIC and DETAILED prompts. Convert the Korean blog topic into a rich, detailed English image description (2-3 sentences). Describe the EXACT subject with specific materials, colors, composition, and props. ABSOLUTELY NO PEOPLE, NO FACES, NO HUMAN FIGURES — show objects, documents, environments only. No text, typography, letters, signs, or written words. Compose for square 1024x1024 format. No explanations, just the prompt.'
-      : 'You are an image prompt translator. Convert the given Korean blog topic into a concise English image description (1-2 sentences) that depicts the EXACT subject. ABSOLUTELY NO PEOPLE, NO FACES, NO HUMAN FIGURES — show objects, documents, environments only. No text, typography, letters, signs, or written words. Compose for square 1024x1024 format. No explanations, just the prompt.';
+      ? 'You are an image prompt translator. This is a REGENERATION request. Convert the Korean blog topic into a rich, detailed English still-life or environment description (2-3 sentences). Describe ONLY inanimate objects, products, documents, tools, or empty spaces — frame as overhead flat-lay, macro close-up, or vacant environment. Name specific materials, colors, textures, arrangement. Camera: overhead bird-eye or extreme macro. Documents/papers: describe as showing soft-focus abstract printed patterns. Screens: dark reflective glass or solid color gradient. Compose for square 1024x1024. Output only the prompt.'
+      : 'You are an image prompt translator. Convert the Korean blog topic into a concise English still-life or environment description (1-2 sentences). Describe ONLY inanimate objects, documents, or empty spaces as overhead flat-lay, macro close-up, or vacant environment. Documents show soft-focus abstract patterns. Compose for square 1024x1024. Output only the prompt.';
     const englishTopic = await callClaude(
       directSystem,
       topic,
@@ -552,7 +577,7 @@ ${markersList}`;
 
     console.log('[IMAGE-PRO] Direct mode - topic:', topic, '→ prompt:', englishTopic.substring(0, 100));
     const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
-    const fullPrompt = `${englishTopic}, ${moodStyle}, no text, no writing, no signs`;
+    const fullPrompt = `${englishTopic}, ${moodStyle}, high quality editorial still-life photography, inanimate objects only, uninhabited empty scene, overhead or macro camera angle, all visible surfaces and papers show soft-focus abstract patterns with indistinct marks, clean Korean aesthetic`;
 
     // 8장 GPT Image 생성 (2장씩 배치)
     const images = [];
