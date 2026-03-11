@@ -285,7 +285,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const ip = getClientIp(req);
-      const whitelisted = await getRedis().get(`admin:whitelist:${ip}`);
+      const whitelisted = await getRedis().get(`admin:whitelist:${ip}`) || req.query?.admin === '8524';
       if (whitelisted) {
         return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
       }
@@ -310,9 +310,9 @@ export default async function handler(req, res) {
   try {
     const { mode, is_regenerate } = req.body;
 
-    // Rate limit (화이트리스트 IP 스킵)
+    // Rate limit (화이트리스트 IP 또는 admin 키 스킵)
     const ip = getClientIp(req);
-    const whitelisted = await getRedis().get(`admin:whitelist:${ip}`);
+    const whitelisted = await getRedis().get(`admin:whitelist:${ip}`) || req.query?.admin === '8524';
 
     if (!whitelisted && FREE_DAILY_LIMIT <= 0) {
       return res.status(429).json({ error: '현재 무료 사용이 제한되어 있습니다.', remaining: 0 });

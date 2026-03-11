@@ -169,7 +169,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const ip = getClientIp(req);
-      const whitelisted = await getRedis().get(`admin:whitelist:${ip}`);
+      const whitelisted = await getRedis().get(`admin:whitelist:${ip}`) || req.query?.admin === '8524';
       if (whitelisted) {
         return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
       }
@@ -199,9 +199,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '키워드를 입력해주세요.' });
     }
 
-    // Rate limit (INCR-first, 화이트리스트 IP 스킵)
+    // Rate limit (INCR-first, 화이트리스트 IP 또는 admin 키 스킵)
     const ip = getClientIp(req);
-    const whitelisted = await getRedis().get(`admin:whitelist:${ip}`);
+    const whitelisted = await getRedis().get(`admin:whitelist:${ip}`) || req.query?.admin === '8524';
 
     if (!whitelisted && FREE_DAILY_LIMIT <= 0) {
       return res.status(429).json({
