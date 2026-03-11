@@ -1190,6 +1190,7 @@
   <div style="text-align:center; margin-top:32px; padding:0 20px;">
     <button onclick="goToImageGenerator()" style="display:inline-block; background:linear-gradient(135deg, #8B5CF6, #6D28D9); color:#fff; padding:16px 36px; border-radius:12px; font-size:16px; font-weight:700; border:none; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(139,92,246,0.25); font-family:'Noto Sans KR',sans-serif;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(139,92,246,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 16px rgba(139,92,246,0.25)'">📷 이 글에 맞는 이미지 생성하기 →</button>
     <p style="margin-top:10px; font-size:13px; color:#888;">글 내용이 자동으로 전달되어 문맥에 맞는 이미지를 생성합니다</p>
+    <button id="premiumImageBtn" onclick="goToPremiumImageGenerator()" style="display:none; margin-top:12px; background:linear-gradient(135deg, #F59E0B, #D97706); color:#fff; padding:14px 32px; border-radius:12px; font-size:15px; font-weight:700; border:none; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(245,158,11,0.25); font-family:'Noto Sans KR',sans-serif;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(245,158,11,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 16px rgba(245,158,11,0.25)'">PREMIUM GPT Image로 생성하기</button>
   </div>
 
 </main>
@@ -2792,6 +2793,29 @@
     localStorage.setItem('blogTextForImage', fullText);
     window.location.href = 'blog-image.html';
   }
+
+  // ─── 프리미엄 이미지 생성기로 글 전달 ───
+  function goToPremiumImageGenerator() {
+    if (!generatedData) return;
+    var parts = [];
+    if (generatedData.title) parts.push(generatedData.title);
+    if (generatedData.hook) parts.push(generatedData.hook);
+    if (generatedData.body) parts.push(generatedData.body);
+    if (generatedData.faq) parts.push(generatedData.faq);
+    if (generatedData.cta) parts.push(generatedData.cta);
+    var fullText = parts.join('\n\n');
+    localStorage.setItem('blogTextForImagePro', fullText);
+    window.location.href = 'img-pro-8524.html?key=8524';
+  }
+
+  // ─── 관리자 모드: 프리미엄 버튼 표시 ───
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('admin') === '8524') {
+      var btn = document.getElementById('premiumImageBtn');
+      if (btn) btn.style.display = 'inline-block';
+    }
+  })();
 
   // ─── Ctrl+Enter / Cmd+Enter 단축키 ───
   document.addEventListener('keydown', function(e) {

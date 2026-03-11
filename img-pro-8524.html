@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow" />
+<title>프리미엄 이미지 생성기 | 뚝딱툴 (비공개)</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1A2E; line-height: 1.7; }
+
+.navbar {
+  background: #fff; border-bottom: 1px solid #E5E7EB;
+  padding: 0 20px; display: flex; align-items: center;
+  justify-content: space-between; height: 52px;
+  position: sticky; top: 0; z-index: 100;
+}
+.navbar-logo { font-size: 18px; font-weight: 900; color: #1A1A2E; text-decoration: none; }
+.navbar-logo span { color: #00C73C; }
+.navbar-links { display: flex; gap: 4px; }
+.navbar-links a {
+  padding: 7px 14px; border-radius: 8px; font-size: 13px;
+  font-weight: 500; color: #9CA3AF; text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.navbar-links a:hover { background: #F3F4F6; color: #1A1A2E; }
+.navbar-links a.active { color: #F59E0B; font-weight: 700; }
+.navbar-links a.pro-badge { position: relative; }
+.navbar-links a.pro-badge::after {
+  content: 'PRO';
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  font-size: 8px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+  border-radius: 4px;
+  padding: 1px 3px;
+  line-height: 1.4;
+}
+.navbar-auth {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.navbar-login-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+.navbar-login-btn:hover {
+  background: #F3F4F6;
+  color: #1A1A2E;
+}
+.navbar-signup-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #00C73C;
+  color: #fff;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+.navbar-signup-btn:hover {
+  background: #00A830;
+}
+.navbar-user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #00C73C;
+  text-decoration: none;
+}
+.navbar-credit {
+  font-size: 12px;
+  color: #8B5CF6;
+  font-weight: 600;
+}
+.navbar-mypage-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  text-decoration: none;
+  border: 1px solid #E5E7EB;
+  transition: all 0.15s;
+}
+.navbar-mypage-btn:hover {
+  background: #F3F4F6;
+  color: #1A1A2E;
+}
+
+.hero {
+  background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+  padding: 48px 20px 40px; text-align: center;
+}
+.hero-badge {
+  display: inline-block;
+  background: rgba(245,158,11,0.15); color: #F59E0B;
+  border: 1px solid rgba(245,158,11,0.3);
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; margin-bottom: 18px; letter-spacing: 0.05em;
+}
+.hero h1 {
+  font-size: clamp(22px, 4.5vw, 34px); font-weight: 700;
+  color: #fff; line-height: 1.4; margin-bottom: 14px; letter-spacing: -0.5px;
+}
+.hero h1 em { color: #F59E0B; font-style: normal; }
+.hero p { color: rgba(255,255,255,0.6); font-size: 14px; max-width: 520px; margin: 0 auto; line-height: 1.8; }
+
+.container { max-width: 860px; margin: 0 auto; padding: 32px 20px 80px; }
+
+.card {
+  background: #fff; border-radius: 16px; padding: 28px;
+  border: 1px solid #E5E7EB; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  margin-bottom: 20px;
+}
+
+/* 탭 */
+.tab-group { display: flex; gap: 4px; margin-bottom: 20px; background: #F3F4F6; border-radius: 10px; padding: 4px; }
+.tab-btn {
+  flex: 1; padding: 10px 16px; border: none; border-radius: 8px;
+  font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; background: transparent; color: #6B7280; transition: all 0.2s;
+}
+.tab-btn.active { background: #fff; color: #F59E0B; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+select, input[type="text"], textarea {
+  width: 100%; padding: 11px 14px; border: 1.5px solid #E5E7EB; border-radius: 8px;
+  font-size: 14px; font-family: 'Noto Sans KR', sans-serif; color: #1A1A2E;
+  background: #fff; outline: none; transition: border-color 0.2s;
+}
+textarea { resize: vertical; }
+select:focus, input:focus, textarea:focus {
+  border-color: #F59E0B; box-shadow: 0 0 0 3px rgba(245,158,11,0.1);
+}
+
+.char-count { font-size: 11px; color: #9CA3AF; text-align: right; margin-top: 4px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+@media(max-width: 580px) { .form-row { grid-template-columns: 1fr; } }
+
+/* 마커 미리보기 */
+.marker-preview {
+  display: none; margin-top: 12px; padding: 14px 16px;
+  background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px;
+}
+.marker-preview.show { display: block; }
+.marker-preview-title { font-size: 13px; font-weight: 700; color: #D97706; margin-bottom: 8px; }
+.marker-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.marker-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; background: #fff; border: 1px solid #FDE68A;
+  border-radius: 6px; font-size: 12px; color: #374151;
+}
+
+/* 마커 편집 UI */
+.marker-editor-list { display: flex; flex-direction: column; gap: 8px; }
+.marker-editor-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.marker-editor-num {
+  flex-shrink: 0; width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: #F59E0B; color: #fff; border-radius: 50%;
+  font-size: 11px; font-weight: 700;
+}
+.marker-editor-input {
+  flex: 1; padding: 8px 12px; border: 1.5px solid #FDE68A; border-radius: 8px;
+  font-size: 13px; font-family: 'Noto Sans KR', sans-serif; color: #1A1A2E;
+  background: #fff; outline: none; transition: border-color 0.2s;
+}
+.marker-editor-input:focus { border-color: #F59E0B; box-shadow: 0 0 0 3px rgba(245,158,11,0.1); }
+.marker-delete-btn {
+  flex-shrink: 0; width: 28px; height: 28px; border: none; border-radius: 6px;
+  background: #FEE2E2; color: #DC2626; font-size: 14px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.marker-delete-btn:hover { background: #FECACA; }
+.marker-add-btn {
+  margin-top: 8px; padding: 8px 14px; border: 1.5px dashed #FDE68A;
+  border-radius: 8px; background: transparent; color: #D97706;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif; transition: all 0.15s;
+}
+.marker-add-btn:hover { background: #FFFBEB; border-color: #F59E0B; }
+.marker-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.generate-btn {
+  width: 100%; padding: 15px; margin-top: 16px;
+  background: linear-gradient(135deg, #F59E0B, #D97706); color: #fff;
+  border: none; border-radius: 10px; font-family: 'Noto Sans KR', sans-serif;
+  font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+}
+.generate-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,158,11,0.35); }
+.generate-btn:disabled { background: #9CA3AF; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.remaining { font-size: 13px; color: #D97706; text-align: center; margin-top: 12px; padding: 8px; background: #FFFBEB; border-radius: 8px; }
+
+/* 로딩 */
+.loading { display: none; text-align: center; padding: 40px 20px; }
+.loading.show { display: block; }
+.loading-spinner {
+  width: 40px; height: 40px; border: 3px solid #E5E7EB;
+  border-top: 3px solid #F59E0B; border-radius: 50%;
+  animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; color: #6B7280; }
+.loading-progress { font-size: 12px; color: #9CA3AF; margin-top: 8px; }
+
+/* 에러 */
+.error-box { display: none; background: #FFF0F1; border: 1px solid #FECACA; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; color: #DC2626; }
+.error-box.show { display: block; }
+
+/* 결과 */
+.result-area { display: none; }
+.result-area.show { display: block; }
+
+.image-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+@media(max-width: 580px) { .image-grid { grid-template-columns: 1fr; } }
+
+.image-card {
+  background: #fff; border-radius: 12px; overflow: hidden;
+  border: 1px solid #E5E7EB; transition: all 0.2s;
+}
+.image-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+.image-card.thumbnail { grid-column: 1 / -1; }
+.image-card img, .image-card canvas { width: 100%; display: block; }
+
+.image-card-marker {
+  padding: 8px 14px; background: #FFFBEB; border-bottom: 1px solid #FDE68A;
+  font-size: 12px; font-weight: 600; color: #D97706;
+}
+
+.image-card-actions {
+  padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;
+}
+.image-label { font-size: 12px; color: #6B7280; }
+.action-btns { display: flex; gap: 6px; }
+.download-btn {
+  padding: 6px 12px; border: none; border-radius: 6px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif; transition: all 0.15s;
+  background: #F59E0B; color: #fff;
+}
+.download-btn:hover { background: #D97706; }
+
+footer {
+  text-align: center; padding: 28px 20px; font-size: 13px;
+  color: #9CA3AF; border-top: 1px solid #E5E7EB; background: #fff;
+}
+footer a { color: #9CA3AF; text-decoration: none; margin: 0 8px; }
+footer a:hover { text-decoration: underline; }
+
+/* 접근 차단 */
+.access-denied {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 60vh; text-align: center; padding: 40px 20px;
+}
+.access-denied h2 { font-size: 24px; color: #DC2626; margin-bottom: 12px; }
+.access-denied p { font-size: 14px; color: #6B7280; }
+</style>
+<link rel="stylesheet" href="/navbar-mobile.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
+  <div class="navbar-links">
+    <a href="guide.html">사용법</a>
+    <a href="/">제목</a>
+    <a href="hook-generator.html">후킹</a>
+    <a href="threads.html">스레드</a>
+    <a href="blog-writer.html" class="pro-badge">블로그 글</a>
+    <a href="blog-image.html" class="pro-badge">이미지</a>
+    <a href="column.html">칼럼</a>
+  </div>
+  <div class="navbar-auth" id="navbarAuth"></div>
+</nav>
+
+<!-- 접근 차단 화면 -->
+<div class="access-denied" id="accessDenied" style="display:none;">
+  <h2>관리자 전용 페이지</h2>
+  <p>접근 권한이 없습니다.</p>
+</div>
+
+<!-- 메인 콘텐츠 -->
+<div id="mainContent" style="display:none;">
+
+<div class="hero">
+  <div class="hero-badge">PREMIUM · 프리미엄 이미지</div>
+  <h1>GPT Image로 만드는<br><em>고품질 블로그 이미지</em></h1>
+  <p>GPT Image 1 모델로 더 정교한 이미지를 생성합니다<br>기존 FLUX 대비 높은 문맥 이해도와 품질</p>
+</div>
+
+<div class="container">
+
+  <!-- 상태 표시 -->
+  <div class="remaining" id="remainingBar">관리자 모드 (무제한)</div>
+
+  <!-- 입력 카드 -->
+  <div class="card" style="margin-top:16px;">
+    <!-- 탭 -->
+    <div class="tab-group">
+      <button class="tab-btn active" onclick="switchTab('parse')">글에서 생성</button>
+      <button class="tab-btn" onclick="switchTab('direct')">직접 입력</button>
+    </div>
+
+    <!-- 탭1: 글에서 생성 -->
+    <div class="tab-content active" id="tab-parse">
+      <div style="margin-bottom:12px;">
+        <label>블로그 글 붙여넣기</label>
+        <textarea id="blogTextInput" placeholder="블로그 글 생성기에서 작성한 글을 붙여넣으세요. (사진: ...) 마커가 포함된 글을 넣으면 각 위치에 맞는 이미지를 생성합니다." style="min-height:200px;" oninput="detectMarkers()"></textarea>
+      </div>
+
+      <div class="marker-preview" id="markerPreview">
+        <div class="marker-preview-title" id="markerPreviewTitle"></div>
+        <div class="marker-editor-list" id="markerEditorList"></div>
+        <button class="marker-add-btn" id="markerAddBtn" onclick="addMarker()">+ 마커 추가</button>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label>썸네일 텍스트 <span style="font-weight:400; color:#EF4444;">(필수, 대표이미지에 합성)</span></label>
+        <input type="text" id="thumbText1" placeholder="예: 카페 창업 비용 총정리" maxlength="30">
+      </div>
+
+      <div class="error-box" id="errorBox1"></div>
+      <button class="generate-btn" id="genBtn1" onclick="generateParse()">이미지 생성하기</button>
+    </div>
+
+    <!-- 탭2: 직접 입력 -->
+    <div class="tab-content" id="tab-direct">
+      <div style="margin-bottom:12px;">
+        <label>블로그 주제</label>
+        <textarea id="topicInput" placeholder="예: 강남 카페 인테리어, 자영업자 브랜딩 전략..." maxlength="200" style="min-height:80px;"></textarea>
+        <div class="char-count"><span id="topicCount">0</span>/200</div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label>분위기 / 스타일</label>
+        <select id="moodSelect">
+          <option value="bright">밝고 깔끔한</option>
+          <option value="warm">따뜻하고 아늑한</option>
+          <option value="professional">전문적인</option>
+          <option value="emotional">감성적인</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label>썸네일 텍스트 <span style="font-weight:400; color:#EF4444;">(필수, 대표이미지에 합성)</span></label>
+        <input type="text" id="thumbText2" placeholder="예: 카페 창업 비용 총정리" maxlength="30">
+      </div>
+
+      <div class="error-box" id="errorBox2"></div>
+      <button class="generate-btn" id="genBtn2" onclick="generateDirect()">이미지 8장 생성하기</button>
+    </div>
+  </div>
+
+  <!-- 로딩 -->
+  <div class="loading" id="loadingArea">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loadingText">GPT Image가 이미지를 생성하고 있습니다...</div>
+    <div class="loading-progress" id="loadingProgress"></div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="result-area" id="resultArea">
+    <div class="card">
+      <h2 style="font-size:16px; font-weight:700; margin-bottom:16px;">생성된 이미지 (GPT Image 1)</h2>
+      <div class="image-grid" id="imageGrid"></div>
+      <button class="generate-btn" id="regenAllBtn" onclick="regenerateAll()" style="margin-top:20px; background:linear-gradient(135deg,#D97706,#B45309);">전체 재생성</button>
+      <p style="text-align:center; font-size:12px; color:#9CA3AF; margin-top:8px;">마음에 들지 않으면 눌러주세요. 새 이미지를 생성합니다.</p>
+    </div>
+  </div>
+
+</div>
+
+</div><!-- /mainContent -->
+
+<footer>
+  <div style="margin-bottom:4px;">어나더핸즈 | 대표: 공은희 | 사업자등록번호: 561-01-02951 | onixuri@gmail.com</div>
+  <div>&copy; 2026 어나더핸즈. All rights reserved.</div>
+</footer>
+
+<script>
+// ─── 관리자키 검증 ───
+var ADMIN_KEY = '8524';
+var urlParams = new URLSearchParams(window.location.search);
+var adminKey = urlParams.get('key');
+
+if (adminKey !== ADMIN_KEY) {
+  document.getElementById('accessDenied').style.display = 'flex';
+} else {
+  document.getElementById('mainContent').style.display = 'block';
+}
+
+var currentTab = 'parse';
+var generatedImages = [];
+var currentMode = '';
+
+// ─── API 호출 헬퍼 ───
+function apiUrl(path) {
+  return path + (path.includes('?') ? '&' : '?') + 'key=' + ADMIN_KEY;
+}
+
+// ─── 탭 전환 ───
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(function(b, i) {
+    b.classList.toggle('active', (i === 0 && tab === 'parse') || (i === 1 && tab === 'direct'));
+  });
+  document.getElementById('tab-parse').classList.toggle('active', tab === 'parse');
+  document.getElementById('tab-direct').classList.toggle('active', tab === 'direct');
+}
+
+// ─── 마커 감지 + 편집 ───
+var editableMarkers = [];
+
+function detectMarkers() {
+  var text = document.getElementById('blogTextInput').value;
+  var regex = /\((사진|이미지):\s*([^)]+)\)/g;
+  var markers = [];
+  var m;
+  while ((m = regex.exec(text)) !== null) {
+    var rawText = m[2].trim();
+    var altMatch = rawText.match(/^(.+?),\s*alt:\s*(.+)$/);
+    markers.push(altMatch ? altMatch[1].trim() : rawText);
+  }
+
+  if (markers.length === 0) {
+    editableMarkers = [];
+    document.getElementById('markerPreview').classList.remove('show');
+    updateGenBtnText();
+    return;
+  }
+
+  editableMarkers = markers.slice();
+  renderMarkerEditor();
+}
+
+function renderMarkerEditor() {
+  var preview = document.getElementById('markerPreview');
+  var title = document.getElementById('markerPreviewTitle');
+  var list = document.getElementById('markerEditorList');
+
+  if (editableMarkers.length === 0) {
+    preview.classList.remove('show');
+    updateGenBtnText();
+    return;
+  }
+
+  preview.classList.add('show');
+  title.textContent = '이미지 마커 ' + editableMarkers.length + '개 (수정/삭제 가능)';
+  list.innerHTML = '';
+
+  editableMarkers.forEach(function(mk, i) {
+    var row = document.createElement('div');
+    row.className = 'marker-editor-row';
+
+    var num = document.createElement('span');
+    num.className = 'marker-editor-num';
+    num.textContent = (i + 1);
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'marker-editor-input';
+    input.value = mk;
+    input.setAttribute('data-index', i);
+    input.oninput = function() {
+      editableMarkers[parseInt(this.getAttribute('data-index'))] = this.value;
+    };
+
+    var delBtn = document.createElement('button');
+    delBtn.className = 'marker-delete-btn';
+    delBtn.innerHTML = '&times;';
+    delBtn.setAttribute('data-index', i);
+    delBtn.onclick = function() { deleteMarker(parseInt(this.getAttribute('data-index'))); };
+
+    row.appendChild(num);
+    row.appendChild(input);
+    row.appendChild(delBtn);
+    list.appendChild(row);
+  });
+
+  var addBtn = document.getElementById('markerAddBtn');
+  addBtn.disabled = editableMarkers.length >= 10;
+
+  updateGenBtnText();
+}
+
+function addMarker() {
+  if (editableMarkers.length >= 10) return;
+  editableMarkers.push('');
+  renderMarkerEditor();
+  var inputs = document.querySelectorAll('.marker-editor-input');
+  if (inputs.length > 0) inputs[inputs.length - 1].focus();
+}
+
+function deleteMarker(i) {
+  if (editableMarkers.length <= 1) return;
+  editableMarkers.splice(i, 1);
+  renderMarkerEditor();
+}
+
+function updateGenBtnText() {
+  var btn = document.getElementById('genBtn1');
+  if (btn.textContent === '이미지 생성 중...') return;
+  var count = editableMarkers.length;
+  if (count === 0) {
+    btn.textContent = '이미지 생성하기';
+    btn.disabled = true;
+  } else {
+    btn.textContent = '이미지 ' + count + '장 생성하기';
+    btn.disabled = false;
+  }
+}
+
+// ─── 에러 ───
+function showError(id, msg) {
+  var box = document.getElementById(id);
+  box.textContent = msg;
+  box.classList.add('show');
+}
+function hideErrors() {
+  document.getElementById('errorBox1').classList.remove('show');
+  document.getElementById('errorBox2').classList.remove('show');
+}
+
+// ─── 글에서 생성 (parse 모드) ───
+async function generateParse() {
+  var blogText = document.getElementById('blogTextInput').value.trim();
+  if (!blogText) { showError('errorBox1', '블로그 글을 붙여넣어주세요.'); return; }
+
+  var markersToSend = editableMarkers.filter(function(m) { return m.trim() !== ''; });
+  if (markersToSend.length === 0) {
+    showError('errorBox1', '이미지 마커가 없습니다. 마커를 추가하거나 (사진: ...) 마커가 포함된 글을 붙여넣어주세요.');
+    return;
+  }
+
+  var thumbnailCheck = document.getElementById('thumbText1').value.trim();
+  if (!thumbnailCheck) {
+    showError('errorBox1', '썸네일 텍스트를 입력해주세요. 대표이미지에 텍스트가 합성됩니다.');
+    document.getElementById('thumbText1').focus();
+    return;
+  }
+
+  hideErrors();
+  var btn = document.getElementById('genBtn1');
+  btn.disabled = true;
+  btn.textContent = '이미지 생성 중...';
+
+  document.getElementById('loadingArea').classList.add('show');
+  document.getElementById('loadingText').textContent = 'GPT Image가 ' + markersToSend.length + '개 이미지를 생성하고 있습니다...';
+  document.getElementById('loadingProgress').textContent = '마커 분석 → 프롬프트 변환 → 이미지 생성 (약 1~2분)';
+  document.getElementById('resultArea').classList.remove('show');
+
+  try {
+    var thumbnailText = document.getElementById('thumbText1').value.trim();
+    var res = await fetch(apiUrl('/api/blog-image-pro'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'parse', blogText: blogText, thumbnailText: thumbnailText, markers: markersToSend, adminKey: ADMIN_KEY }),
+    });
+    var data = await res.json();
+
+    if (res.status === 403) { showError('errorBox1', '관리자 인증에 실패했습니다.'); resetBtn(btn, 'parse'); return; }
+    if (res.status === 429) { showError('errorBox1', data.error); resetBtn(btn, 'parse'); return; }
+    if (!res.ok || !data.images || data.images.length === 0) { showError('errorBox1', data.error || '이미지 생성에 실패했습니다.'); resetBtn(btn, 'parse'); return; }
+
+    currentMode = 'parse';
+    generatedImages = data.images.map(function(img, i) {
+      return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', layout: img.layout || null, index: i };
+    });
+
+    renderResults(generatedImages, thumbnailText);
+
+    document.getElementById('loadingArea').classList.remove('show');
+    document.getElementById('resultArea').classList.add('show');
+    document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch(e) {
+    showError('errorBox1', '서버 오류가 발생했습니다.');
+  }
+  resetBtn(btn, 'parse');
+}
+
+// ─── 직접 입력 (direct 모드) ───
+async function generateDirect() {
+  var topic = document.getElementById('topicInput').value.trim();
+  if (!topic) { showError('errorBox2', '블로그 주제를 입력해주세요.'); return; }
+
+  var thumbnailCheck = document.getElementById('thumbText2').value.trim();
+  if (!thumbnailCheck) {
+    showError('errorBox2', '썸네일 텍스트를 입력해주세요. 대표이미지에 텍스트가 합성됩니다.');
+    document.getElementById('thumbText2').focus();
+    return;
+  }
+
+  hideErrors();
+  var btn = document.getElementById('genBtn2');
+  btn.disabled = true;
+  btn.textContent = '이미지 생성 중...';
+
+  document.getElementById('loadingArea').classList.add('show');
+  document.getElementById('loadingText').textContent = 'GPT Image가 이미지 8장을 생성하고 있습니다...';
+  document.getElementById('loadingProgress').textContent = '주제 분석 → 프롬프트 변환 → 이미지 생성 (약 1~2분)';
+  document.getElementById('resultArea').classList.remove('show');
+
+  try {
+    var mood = document.getElementById('moodSelect').value;
+    var thumbnailText = document.getElementById('thumbText2').value.trim();
+    var res = await fetch(apiUrl('/api/blog-image-pro'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'direct', topic: topic, mood: mood, thumbnailText: thumbnailText, adminKey: ADMIN_KEY }),
+    });
+    var data = await res.json();
+
+    if (res.status === 403) { showError('errorBox2', '관리자 인증에 실패했습니다.'); resetBtn(btn, 'direct'); return; }
+    if (res.status === 429) { showError('errorBox2', data.error); resetBtn(btn, 'direct'); return; }
+    if (!res.ok || !data.images || data.images.length === 0) { showError('errorBox2', data.error || '이미지 생성에 실패했습니다.'); resetBtn(btn, 'direct'); return; }
+
+    currentMode = 'direct';
+    generatedImages = data.images.map(function(img, i) {
+      return { url: img.url, marker: null, prompt: img.prompt, type: 'photo', layout: null, index: i };
+    });
+
+    renderResults(generatedImages, thumbnailText);
+
+    document.getElementById('loadingArea').classList.remove('show');
+    document.getElementById('resultArea').classList.add('show');
+    document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch(e) {
+    showError('errorBox2', '서버 오류가 발생했습니다.');
+  }
+  resetBtn(btn, 'direct');
+}
+
+function resetBtn(btn, mode) {
+  btn.disabled = false;
+  if (mode === 'parse') {
+    updateGenBtnText();
+  } else {
+    btn.textContent = '이미지 8장 생성하기';
+  }
+  document.getElementById('loadingArea').classList.remove('show');
+}
+
+// ─── 결과 렌더링 ───
+function renderResults(images, thumbnailText) {
+  var grid = document.getElementById('imageGrid');
+  grid.innerHTML = '';
+
+  images.forEach(function(item, i) {
+    var isThumbnail = (i === 0 && thumbnailText);
+    var card = document.createElement('div');
+    card.className = 'image-card' + (isThumbnail ? ' thumbnail' : '');
+    card.id = 'image-card-' + i;
+
+    var isInfographic = item.type === 'infographic';
+
+    if (item.marker) {
+      var markerEl = document.createElement('div');
+      markerEl.className = 'image-card-marker';
+      markerEl.textContent = (isInfographic ? '\ud83d\udcca ' : '\ud83d\udcf7 ') + item.marker;
+      if (isInfographic) {
+        markerEl.style.background = '#F0FFF4';
+        markerEl.style.borderBottomColor = '#C6F6D5';
+        markerEl.style.color = '#276749';
+      }
+      card.appendChild(markerEl);
+    }
+
+    if (isThumbnail) {
+      var canvas = document.createElement('canvas');
+      canvas.width = 1024; canvas.height = 1024;
+      canvas.style.width = '100%';
+      canvas.id = 'thumb-canvas';
+      card.appendChild(canvas);
+      renderThumbnailCanvas(canvas, item.url, thumbnailText);
+    } else {
+      var img = document.createElement('img');
+      img.src = item.url;
+      img.alt = item.marker || ('이미지 ' + (i + 1));
+      img.loading = 'lazy';
+      card.appendChild(img);
+    }
+
+    var actions = document.createElement('div');
+    actions.className = 'image-card-actions';
+
+    var labelEl = document.createElement('span');
+    labelEl.className = 'image-label';
+    labelEl.textContent = isThumbnail ? '썸네일 (텍스트 합성)' : isInfographic ? '인포그래픽' : (item.marker || '이미지 ' + (i + 1));
+
+    var btns = document.createElement('div');
+    btns.className = 'action-btns';
+
+    var dlBtn = document.createElement('button');
+    dlBtn.className = 'download-btn';
+    dlBtn.textContent = '다운로드';
+    dlBtn.setAttribute('data-index', i);
+    dlBtn.setAttribute('data-url', item.url);
+    dlBtn.setAttribute('data-thumbnail', isThumbnail ? '1' : '0');
+    dlBtn.setAttribute('data-infographic', isInfographic ? '1' : '0');
+    dlBtn.onclick = function() { downloadImage(this); };
+
+    btns.appendChild(dlBtn);
+    actions.appendChild(labelEl);
+    actions.appendChild(btns);
+    card.appendChild(actions);
+    grid.appendChild(card);
+  });
+}
+
+// ─── 텍스트 줄바꿈 ───
+function wrapText(ctx, text, maxWidth) {
+  var words = text.split(' ');
+  var lines = [];
+  var currentLine = words[0] || '';
+  for (var i = 1; i < words.length; i++) {
+    var testLine = currentLine + ' ' + words[i];
+    if (ctx.measureText(testLine).width > maxWidth) {
+      lines.push(currentLine);
+      currentLine = words[i];
+    } else {
+      currentLine = testLine;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  var finalLines = [];
+  for (var j = 0; j < lines.length; j++) {
+    if (ctx.measureText(lines[j]).width <= maxWidth) {
+      finalLines.push(lines[j]);
+    } else {
+      var chars = lines[j].split('');
+      var cl = '';
+      for (var k = 0; k < chars.length; k++) {
+        var tl = cl + chars[k];
+        if (ctx.measureText(tl).width > maxWidth && cl) {
+          finalLines.push(cl);
+          cl = chars[k];
+        } else {
+          cl = tl;
+        }
+      }
+      if (cl) finalLines.push(cl);
+    }
+  }
+  return finalLines;
+}
+
+// ─── 썸네일 Canvas ───
+function renderThumbnailCanvas(canvas, imageUrl, text) {
+  var ctx = canvas.getContext('2d');
+  var img = new Image();
+  img.onload = function() {
+    ctx.drawImage(img, 0, 0, 1024, 1024);
+    if (!text) return;
+
+    var gradient = ctx.createLinearGradient(0, 512, 0, 1024);
+    gradient.addColorStop(0, 'transparent');
+    gradient.addColorStop(1, 'rgba(0,0,0,0.7)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 1024, 1024);
+
+    document.fonts.ready.then(function() {
+      var textLen = text.length;
+      var fontSize;
+      if (textLen <= 15) {
+        fontSize = 100;
+      } else if (textLen <= 25) {
+        fontSize = 80;
+      } else {
+        fontSize = 64;
+      }
+
+      var maxWidth = 920;
+      ctx.font = '900 ' + fontSize + 'px "Noto Sans KR"';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      var lines = wrapText(ctx, text, maxWidth);
+      while (lines.length > 3 && fontSize > 48) {
+        fontSize -= 4;
+        ctx.font = '900 ' + fontSize + 'px "Noto Sans KR"';
+        lines = wrapText(ctx, text, maxWidth);
+      }
+
+      var lineHeight = fontSize * 1.4;
+      var totalHeight = lines.length * lineHeight;
+      var startY = 512 - (totalHeight / 2) + (lineHeight / 2);
+
+      ctx.shadowColor = 'rgba(0,0,0,0.7)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetX = 3;
+      ctx.shadowOffsetY = 3;
+      ctx.fillStyle = '#FFFFFF';
+      for (var j = 0; j < lines.length; j++) {
+        ctx.fillText(lines[j], 512, startY + j * lineHeight);
+      }
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+    });
+  };
+  img.src = imageUrl;
+}
+
+// ─── 전체 재생성 ───
+async function regenerateAll() {
+  if (!generatedImages || generatedImages.length === 0) return;
+
+  var btn = document.getElementById('regenAllBtn');
+  btn.disabled = true;
+  btn.textContent = '이미지 재생성 중...';
+
+  document.getElementById('loadingArea').classList.add('show');
+  document.getElementById('loadingText').textContent = 'GPT Image가 새 이미지를 생성하고 있습니다...';
+  document.getElementById('loadingProgress').textContent = '강화된 프롬프트로 이미지 재생성 중 (약 1~2분)';
+
+  try {
+    var body, thumbText;
+    if (currentMode === 'parse') {
+      var blogText = document.getElementById('blogTextInput').value.trim();
+      thumbText = document.getElementById('thumbText1').value.trim();
+      if (!thumbText) {
+        showError('errorBox1', '썸네일 텍스트를 입력해주세요.');
+        document.getElementById('thumbText1').focus();
+        btn.disabled = false; btn.textContent = '전체 재생성';
+        document.getElementById('loadingArea').classList.remove('show');
+        return;
+      }
+      var markersForRegen = editableMarkers.filter(function(m) { return m.trim() !== ''; });
+      body = { mode: 'parse', blogText: blogText, thumbnailText: thumbText, is_regenerate: true, markers: markersForRegen, adminKey: ADMIN_KEY };
+    } else {
+      var topic = document.getElementById('topicInput').value.trim();
+      var mood = document.getElementById('moodSelect').value;
+      thumbText = document.getElementById('thumbText2').value.trim();
+      if (!thumbText) {
+        showError('errorBox2', '썸네일 텍스트를 입력해주세요.');
+        document.getElementById('thumbText2').focus();
+        btn.disabled = false; btn.textContent = '전체 재생성';
+        document.getElementById('loadingArea').classList.remove('show');
+        return;
+      }
+      body = { mode: 'direct', topic: topic, mood: mood, thumbnailText: thumbText, is_regenerate: true, adminKey: ADMIN_KEY };
+    }
+
+    var res = await fetch(apiUrl('/api/blog-image-pro'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    var data = await res.json();
+
+    if (res.ok && data.images && data.images.length > 0) {
+      generatedImages = data.images.map(function(img, i) {
+        return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', layout: img.layout || null, index: i };
+      });
+      renderResults(generatedImages, thumbText);
+    } else {
+      showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', data.error || '재생성에 실패했습니다.');
+    }
+  } catch(e) {
+    showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', '서버 오류가 발생했습니다.');
+  }
+
+  document.getElementById('loadingArea').classList.remove('show');
+  btn.disabled = false;
+  btn.textContent = '전체 재생성';
+}
+
+// ─── 다운로드 (data URL 지원) ───
+function downloadImage(btn) {
+  var index = parseInt(btn.getAttribute('data-index'));
+  var url = btn.getAttribute('data-url');
+  var isThumbnail = btn.getAttribute('data-thumbnail') === '1';
+
+  if (isThumbnail) {
+    var canvas = document.getElementById('thumb-canvas');
+    if (canvas) {
+      canvas.toBlob(function(blob) {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'thumbnail.png';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }, 'image/png');
+    }
+  } else if (url.startsWith('data:')) {
+    // data URL 직접 다운로드
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'blog-image-' + (index + 1) + '.webp';
+    a.click();
+  } else {
+    // 외부 URL (인포그래픽 등)
+    var card = btn.closest('.image-card');
+    var img = card ? card.querySelector('img') : null;
+    if (img && img.complete && img.naturalWidth > 0) {
+      try {
+        var canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        canvas.toBlob(function(blob) {
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'blog-image-' + (index + 1) + '.png';
+          a.click();
+          URL.revokeObjectURL(a.href);
+        }, 'image/png');
+      } catch (e) {
+        window.open(url, '_blank');
+      }
+    } else {
+      window.open(url, '_blank');
+    }
+  }
+}
+
+// ─── 글자수 카운터 ───
+document.getElementById('topicInput').addEventListener('input', function() {
+  document.getElementById('topicCount').textContent = this.value.length;
+});
+
+// ─── localStorage 연동 (blog-writer에서 전달) ───
+(function() {
+  var saved = localStorage.getItem('blogTextForImagePro');
+  if (saved) {
+    localStorage.removeItem('blogTextForImagePro');
+    switchTab('parse');
+    document.getElementById('blogTextInput').value = saved;
+    detectMarkers();
+  }
+})();
+</script>
+<script src="auth-ui.js"></script>
+</body>
+</html>
