@@ -107,6 +107,17 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
   font-size: 11px; font-weight: 700; margin-left: 10px;
   vertical-align: middle;
 }
+.column-card-new {
+  display: inline-block; background: #EF4444; color: #fff;
+  padding: 2px 8px; border-radius: 10px;
+  font-size: 10px; font-weight: 800; margin-left: 8px;
+  vertical-align: middle; letter-spacing: 0.05em;
+  animation: newPulse 2s ease-in-out infinite;
+}
+@keyframes newPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
 .column-card h2 {
   font-size: 18px; font-weight: 700; color: #1A1A2E;
   line-height: 1.5; margin-bottom: 10px;
@@ -669,5 +680,28 @@ footer a:hover { text-decoration: underline; }
   <div>&copy; 2026 어나더핸즈. All rights reserved.</div>
 </footer>
 
+<script>
+// 7일 이내 발행된 칼럼에 NEW 뱃지 자동 표시
+(function() {
+  var now = new Date();
+  var cards = document.querySelectorAll('.column-card');
+  cards.forEach(function(card) {
+    var meta = card.querySelector('.column-card-meta span');
+    if (!meta) return;
+    var dateStr = meta.textContent.trim().replace(/\./g, '-');
+    var pubDate = new Date(dateStr);
+    var diffDays = (now - pubDate) / (1000 * 60 * 60 * 24);
+    if (diffDays <= 7 && diffDays >= 0) {
+      var tagEl = card.querySelector('.column-card-tag');
+      if (tagEl) {
+        var badge = document.createElement('span');
+        badge.className = 'column-card-new';
+        badge.textContent = 'NEW';
+        tagEl.parentNode.insertBefore(badge, tagEl.nextSibling);
+      }
+    }
+  });
+})();
+</script>
 </body>
 </html>
