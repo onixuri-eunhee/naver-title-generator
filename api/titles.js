@@ -136,18 +136,17 @@ function parseResponse(raw) {
       .map(l => l.trim())
       .filter(l => l.length > 0);
 
-    // 28자 초과 시 어절 경계 스마트 트리밍
+    // 30자 초과 시 어절 경계 스마트 트리밍 + "..." 붙이기
     const trimmed = lines.slice(0, 2).map(title => {
-      if (title.length <= 28) return title;
-      const slice = title.slice(0, 29);
+      if (title.length <= 30) return title;
+      const slice = title.slice(0, 31);
       const minLen = 15;
-      // 뒤에서부터 공백(어절 경계)을 찾아 자연스럽게 자름
       for (let i = slice.length - 1; i >= minLen; i--) {
         if (slice[i] === ' ' || slice[i] === ',') {
-          return slice.slice(0, i).replace(/[,\s]+$/, '');
+          return slice.slice(0, i).replace(/[,\s]+$/, '') + '...';
         }
       }
-      return slice.slice(0, 28).replace(/[,\s]+$/, '');
+      return slice.slice(0, 30).replace(/[,\s]+$/, '') + '...';
     });
 
     results[key] = trimmed;
