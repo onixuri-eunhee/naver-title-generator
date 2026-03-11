@@ -1952,6 +1952,29 @@
   // ─── AI 글 검수기 (90점 만점) ───
   var lastReviewSuggestions = [];
 
+  // AI 전형 어휘 자동 치환 (후처리)
+  function replaceAIVocabulary(parsed) {
+    var map = {
+      '효과적인': '좋은', '체계적인': '꼼꼼한', '다양한': '여러',
+      '중요합니다': '중요해요', '도움이 됩니다': '도움이 돼요',
+      '활용하세요': '써보세요', '살펴보겠습니다': '정리해 볼게요',
+      '알아보겠습니다': '정리해 봤어요', '소개해드리겠습니다': '알려드릴게요',
+      '필수적인': '꼭 필요한', '핵심적인': '가장 중요한', '전반적인': '전체적인',
+      '포괄적인': '폭넓은', '이를 통해': '덕분에', '결론적으로': '결국',
+      '최적화된': '딱 맞는', '진행해보겠습니다': '해 볼게요'
+    };
+    var fields = ['title', 'description', 'hook', 'body', 'cta', 'faq', 'meta_description'];
+    fields.forEach(function(field) {
+      if (parsed[field]) {
+        Object.keys(map).forEach(function(word) {
+          if (parsed[field].indexOf(word) !== -1) {
+            parsed[field] = parsed[field].split(word).join(map[word]);
+          }
+        });
+      }
+    });
+  }
+
   // ① AI 전형 어휘 (15점)
   function checkAIVocabulary(fullText) {
     var banned = ['효과적인','체계적인','다양한','중요합니다','도움이 됩니다','활용하세요','살펴보겠습니다','알아보겠습니다','소개해드리겠습니다','필수적인','핵심적인','전반적인','포괄적인','이를 통해','결론적으로','최적화된','진행해보겠습니다'];
@@ -2309,6 +2332,7 @@
         }
       }
 
+      replaceAIVocabulary(parsed);
       renderResult(parsed);
       hasImproved = true;
 
@@ -2545,6 +2569,9 @@
           }
         });
       }
+
+      // AI 전형 어휘 자동 치환
+      replaceAIVocabulary(parsed);
 
       // 결과 렌더링
       renderResult(parsed);
