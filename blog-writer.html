@@ -2833,7 +2833,11 @@
   // ─── 관리자 모드: 프리미엄 버튼 표시 ───
   (function() {
     var params = new URLSearchParams(window.location.search);
-    if (params.get('admin') === '8524') {
+    var isAdmin = params.get('admin') === '8524';
+    if (!isAdmin) {
+      try { isAdmin = sessionStorage.getItem('ddukddak_admin') === '8524'; } catch(e) {}
+    }
+    if (isAdmin) {
       var btn = document.getElementById('premiumImageBtn');
       if (btn) btn.style.display = 'inline-block';
     }
