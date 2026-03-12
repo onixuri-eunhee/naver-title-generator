@@ -155,7 +155,12 @@
       color: #1A1A2E;
     }
 
-    /* ===== HERO BADGE ===== */
+    /* ===== HERO ===== */
+    .hero {
+      background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+      padding: 52px 20px 44px;
+      text-align: center;
+    }
     .hero-badge {
       display: inline-block;
       background: rgba(139,92,246,0.15);
@@ -165,21 +170,26 @@
       border-radius: 20px;
       font-size: 12px;
       font-weight: 700;
-      margin-bottom: 12px;
+      margin-bottom: 18px;
       letter-spacing: 0.05em;
     }
-
-    /* ===== MAIN ===== */
-    main {
-      max-width: 640px;
-      margin: 0 auto;
-      padding: 48px 20px 100px;
+    .hero h1 {
+      font-size: clamp(22px, 4.5vw, 34px);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.4;
+      margin-bottom: 14px;
+      letter-spacing: -0.5px;
     }
+    .hero h1 em { color: #ff5f1f; font-style: normal; }
+    .hero p { color: rgba(255,255,255,0.6); font-size: 14px; max-width: 520px; margin: 0 auto; line-height: 1.8; }
 
-    /* ===== PAGE HEADER ===== */
-    .page-header { text-align: center; margin-bottom: 36px; }
-    .page-header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
-    .page-header p { font-size: 14px; color: var(--muted); line-height: 1.7; }
+    /* ===== CONTAINER ===== */
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 20px 80px;
+    }
 
     /* ===== CARD ===== */
     .card {
@@ -712,7 +722,7 @@
       .input-row {
         grid-template-columns: 1fr;
       }
-      main { padding: 32px 16px 80px; }
+      .container { padding: 24px 16px 80px; }
       .card { padding: 18px; }
       .result-card-body { padding: 16px; }
     }
@@ -906,13 +916,13 @@
   <div class="navbar-auth" id="navbarAuth"></div>
 </nav>
 
-<main>
-  <!-- 페이지 헤더 -->
-  <div class="page-header">
-    <div class="hero-badge">PRO · 블로그 글</div>
-    <h1>블로그 글 작성기</h1>
-    <p>업종과 주제만 입력하면 상위노출에 최적화된 블로그 글을 뚝딱 만들어드려요.</p>
-  </div>
+<div class="hero">
+  <div class="hero-badge">PRO · 블로그 글</div>
+  <h1><em>블로그 글</em> 작성기</h1>
+  <p>업종과 주제만 입력하면 상위노출에 최적화된 블로그 글을 뚝딱 만들어드려요</p>
+</div>
+
+<div class="container">
 
   <!-- 사용 가이드 -->
   <div class="card guide-card">
@@ -1197,7 +1207,7 @@
     <button id="premiumImageBtn" onclick="goToPremiumImageGenerator()" style="display:none; margin-top:12px; background:linear-gradient(135deg, #F59E0B, #D97706); color:#fff; padding:14px 32px; border-radius:12px; font-size:15px; font-weight:700; border:none; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(245,158,11,0.25); font-family:'Noto Sans KR',sans-serif;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(245,158,11,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 16px rgba(245,158,11,0.25)'">PREMIUM GPT Image로 생성하기</button>
   </div>
 
-</main>
+</div>
 
 <footer>
   <div style="margin-bottom:4px;">상호명: 어나더핸즈 | 대표자명: 공은희 | 사업자등록번호: 561-01-02951</div>
