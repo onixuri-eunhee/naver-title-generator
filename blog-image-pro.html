@@ -267,6 +267,21 @@ select:focus, input:focus, textarea:focus {
   background: #F59E0B; color: #fff;
 }
 .download-btn:hover { background: #D97706; }
+.regen-single-btn {
+  padding: 6px 12px; border: 1.5px solid #E5E7EB; border-radius: 6px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif; transition: all 0.15s;
+  background: #fff; color: #6B7280;
+}
+.regen-single-btn:hover { background: #FFFBEB; border-color: #F59E0B; color: #D97706; }
+.regen-single-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.image-card { position: relative; }
+.card-loading-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255,255,255,0.8);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10; border-radius: 12px;
+}
 
 footer {
   text-align: center; padding: 28px 20px; font-size: 13px;
@@ -414,7 +429,7 @@ footer a:hover { text-decoration: underline; }
       <h2 style="font-size:16px; font-weight:700; margin-bottom:16px;">생성된 이미지 (자동 모델 라우팅)</h2>
       <div class="image-grid" id="imageGrid"></div>
       <button class="generate-btn" id="regenAllBtn" onclick="regenerateAll()" style="margin-top:20px; background:linear-gradient(135deg,#D97706,#B45309);">전체 재생성</button>
-      <p style="text-align:center; font-size:12px; color:#9CA3AF; margin-top:8px;">마음에 들지 않으면 눌러주세요. 새 이미지를 생성합니다.</p>
+      <p style="text-align:center; font-size:12px; color:#9CA3AF; margin-top:8px;">개별 이미지는 "다시 생성" 버튼으로 1회 무료 재생성할 수 있습니다.</p>
     </div>
   </div>
 
@@ -816,6 +831,13 @@ function renderResults(images, thumbnailText) {
     dlBtn.setAttribute('data-infographic', isInfographic ? '1' : '0');
     dlBtn.onclick = function() { downloadImage(this); };
 
+    var regenBtn = document.createElement('button');
+    regenBtn.className = 'regen-single-btn';
+    regenBtn.textContent = '다시 생성';
+    regenBtn.setAttribute('data-index', i);
+    regenBtn.onclick = function() { regenerateSingle(parseInt(this.getAttribute('data-index'))); };
+
+    btns.appendChild(regenBtn);
     btns.appendChild(dlBtn);
     actions.appendChild(labelEl);
     actions.appendChild(btns);
@@ -939,6 +961,7 @@ async function regenerateAll() {
       generatedImages = data.images.map(function(img, i) {
         return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', model: img.model || 'fluxr', reason: img.reason || '', layout: img.layout || null, index: i };
       });
+      regenUsed = {}; // 전체 재생성 시 개별 재생성 카운트 초기화
       renderResults(generatedImages, thumbText);
       if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
     } else {
@@ -951,6 +974,83 @@ async function regenerateAll() {
   document.getElementById('loadingArea').classList.remove('show');
   btn.disabled = false;
   btn.textContent = '전체 재생성';
+}
+
+// ─── 개별 1장 재생성 ───
+var regenUsed = {}; // {이미지인덱스: true} — 이미지당 1회 제한
+
+async function regenerateSingle(index) {
+  if (regenUsed[index]) return;
+  var item = generatedImages[index];
+  if (!item) return;
+
+  var card = document.getElementById('image-card-' + index);
+  if (!card) return;
+
+  var regenBtn = card.querySelector('.regen-single-btn');
+  if (regenBtn) { regenBtn.disabled = true; regenBtn.textContent = '생성 중...'; }
+
+  var overlay = document.createElement('div');
+  overlay.className = 'card-loading-overlay';
+  overlay.innerHTML = '<div class="loading-spinner"></div>';
+  card.appendChild(overlay);
+
+  try {
+    var body = Object.assign({ mode: 'regenerate_single' }, getAuthBody());
+    if (currentMode === 'parse' && item.marker) {
+      body.blogText = document.getElementById('blogTextInput').value.trim();
+      body.markerText = item.marker;
+      body.originalPrompt = item.prompt;
+      body.originalType = item.type || 'photo';
+      body.originalModel = item.model || 'fluxr';
+    } else {
+      body.originalPrompt = item.prompt;
+      body.originalModel = item.model || 'fluxr';
+    }
+
+    var res = await fetch('/api/blog-image-pro', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    var data = await res.json();
+
+    if (res.ok && data.image && data.image.url) {
+      generatedImages[index].url = data.image.url;
+      generatedImages[index].prompt = data.image.prompt;
+      if (data.image.type) generatedImages[index].type = data.image.type;
+      if (data.image.model) generatedImages[index].model = data.image.model;
+
+      var thumbText = currentMode === 'parse'
+        ? document.getElementById('thumbText1').value.trim()
+        : document.getElementById('thumbText2').value.trim();
+      var isThumbnail = (index === 0 && thumbText);
+
+      if (isThumbnail) {
+        var canvas = card.querySelector('canvas');
+        if (canvas) renderThumbnailCanvas(canvas, data.image.url, thumbText);
+      } else {
+        var img = card.querySelector('img');
+        if (img) img.src = data.image.url;
+      }
+
+      var dlBtn = card.querySelector('.download-btn');
+      if (dlBtn) dlBtn.setAttribute('data-url', data.image.url);
+
+      if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
+
+      regenUsed[index] = true;
+      if (regenBtn) { regenBtn.textContent = '재생성 완료'; regenBtn.disabled = true; }
+    } else {
+      if (regenBtn) { regenBtn.textContent = '다시 생성'; regenBtn.disabled = false; }
+      showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', data.error || '재생성에 실패했습니다.');
+    }
+  } catch (e) {
+    if (regenBtn) { regenBtn.textContent = '다시 생성'; regenBtn.disabled = false; }
+    showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', '서버 오류가 발생했습니다.');
+  }
+
+  if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
 }
 
 // ─── 다운로드 (data URL 지원) ───

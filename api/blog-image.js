@@ -12,6 +12,12 @@ const MAX_MARKERS = 10;
 const DIRECT_IMAGES = 8;
 const IMAGE_SIZE = 'square_hd'; // 1024×1024
 
+// 크레딧 10배 스케일링 (소수점 회피: 0.2cr → 2단위, 1cr → 10단위)
+const CREDIT_SCALE = 10;
+const FULL_COST = 10;         // 전체 생성/재생성: 1 크레딧
+const SINGLE_REGEN_COST = 2;  // 개별 1장 재생성: 0.2 크레딧
+const DAILY_LIMIT_SCALED = FREE_DAILY_LIMIT * CREDIT_SCALE;
+
 // FLUX no-text suffix (단일 정의, 모든 모드에서 공유)
 const FLUX_NO_TEXT = ', no text, no writing, no signs, no letters, no characters, pure visual only';
 
@@ -42,7 +48,7 @@ function getKSTDate() {
 }
 
 function getTodayKey(ip) {
-  return `ratelimit:blogimage:${ip}:${getKSTDate()}`;
+  return `ratelimit:blogimage:v2:${ip}:${getKSTDate()}`;
 }
 
 function getTTLUntilMidnightKST() {
@@ -193,6 +199,43 @@ ${markerContext}
   return result;
 }
 
+async function callHaikuSingleMarker(blogText, marker) {
+  const blogSummary = blogText.substring(0, 300).trim();
+  const firstLine = blogText.split('\n').find(l => l.trim()) || '';
+  const blogTitle = firstLine.trim().substring(0, 80);
+
+  const systemPrompt = `You are a blog image prompt engineer for FLUX Schnell (1024x1024 square, photo only).
+Generate ONE new English photo prompt. SINGLE IMAGE REGENERATION — create a COMPLETELY DIFFERENT composition and visual approach.
+
+## PHOTO PROMPT RULES
+- Describe as cinematic/editorial photography matching the marker's meaning
+- Read context carefully — prompt MUST match the specific subject discussed
+- Even if the marker mentions data/charts/comparisons, generate a mood/atmosphere photo instead
+- Include: materials, colors, textures, arrangement, lighting, camera angle
+- Signs/menus → describe as blurred background elements
+- End with: ", no text, no letters, photography style"
+- Prompt: 80-150 English words, 100% English (NO Korean)
+- Maintain Korean/East Asian aesthetic
+- Use DIFFERENT composition, angle, and mood from typical approaches
+
+## Output Format
+Return ONLY a JSON object: {"prompt": "English prompt 80-150 words..."}`;
+
+  const userPrompt = `블로그 제목: "${blogTitle}"
+블로그 요약: ${blogSummary}
+마커: "${marker.text}"${marker.altText ? ` (alt: "${marker.altText}")` : ''}${marker.section ? `\n소속 섹션: "${marker.section}"` : ''}
+앞 문맥: "${marker.before.substring(0, 200)}"
+뒤 문맥: "${marker.after.substring(0, 200)}"
+
+이 마커에 대해 새로운 프롬프트를 생성하세요.`;
+
+  const raw = await callClaude(systemPrompt, userPrompt, 500);
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Haiku single marker: no JSON found');
+  const result = JSON.parse(jsonMatch[0]);
+  return result.prompt;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -212,8 +255,8 @@ export default async function handler(req, res) {
         return res.status(200).json({ remaining: 0, limit: 0 });
       }
       const key = getTodayKey(ip);
-      const count = (await getRedis().get(key)) || 0;
-      const remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
+      const count = Number((await getRedis().get(key)) || 0);
+      const remaining = Math.max(Math.round((DAILY_LIMIT_SCALED - count) / CREDIT_SCALE * 10) / 10, 0);
       return res.status(200).json({ remaining, limit: FREE_DAILY_LIMIT });
     } catch {
       return res.status(200).json({ remaining: FREE_DAILY_LIMIT, limit: FREE_DAILY_LIMIT });
@@ -225,9 +268,11 @@ export default async function handler(req, res) {
   }
 
   let rateLimitKey = null;
+  let creditCost = FULL_COST;
 
   try {
     const { mode, is_regenerate } = req.body;
+    creditCost = mode === 'regenerate_single' ? SINGLE_REGEN_COST : FULL_COST;
 
     // Rate limit (화이트리스트 IP 또는 admin 키 스킵)
     const ip = getClientIp(req);
@@ -239,19 +284,78 @@ export default async function handler(req, res) {
 
     let remaining = whitelisted ? 999 : FREE_DAILY_LIMIT;
 
-    if (!whitelisted && FREE_DAILY_LIMIT > 0) {
+    // 개별 재생성은 테스트 기간 무료 (프론트에서 이미지당 1회 제한)
+    if (mode !== 'regenerate_single' && !whitelisted && FREE_DAILY_LIMIT > 0) {
       rateLimitKey = getTodayKey(ip);
-      const newCount = await getRedis().incr(rateLimitKey);
+      const newCount = await getRedis().incrby(rateLimitKey, creditCost);
       await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
 
-      if (newCount > FREE_DAILY_LIMIT) {
-        await getRedis().decr(rateLimitKey);
+      if (newCount > DAILY_LIMIT_SCALED) {
+        await getRedis().decrby(rateLimitKey, creditCost);
         return res.status(429).json({
           error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}크레딧)를 초과했습니다. 내일 다시 이용해주세요.`,
           remaining: 0,
         });
       }
-      remaining = FREE_DAILY_LIMIT - newCount;
+      remaining = Math.round((DAILY_LIMIT_SCALED - newCount) / CREDIT_SCALE * 10) / 10;
+    }
+
+    // ===== REGENERATE_SINGLE 모드: 개별 1장 재생성 (테스트 기간 무료) =====
+    if (mode === 'regenerate_single') {
+      const { blogText, markerText, originalPrompt } = req.body;
+
+      if (!markerText && !originalPrompt) {
+        if (rateLimitKey) try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {}
+        return res.status(400).json({ error: '마커 정보 또는 프롬프트가 누락되었습니다.' });
+      }
+
+      let fullPrompt;
+
+      if (markerText && blogText) {
+        // Parse 모드 이미지: 마커 컨텍스트 추출 → Haiku 재생성
+        const totalLen = blogText.length;
+        const cleanCtx = (s) => s.replace(/\((사진|이미지):\s*[^)]+\)/g, '').replace(/#\S+/g, '').replace(/【\d+\.?】/g, '').replace(/\s{2,}/g, ' ').trim();
+        const marker = { text: markerText, altText: '', before: '', after: '', position: 'middle', section: '' };
+        const escaped = markerText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const found = blogText.match(new RegExp(`\\((사진|이미지):\\s*${escaped}[^)]*\\)`));
+        if (found) {
+          const pos = blogText.indexOf(found[0]);
+          marker.before = cleanCtx(blogText.substring(Math.max(0, pos - 400), pos));
+          marker.after = cleanCtx(blogText.substring(pos + found[0].length, Math.min(totalLen, pos + found[0].length + 400)));
+          const ratio = pos / totalLen;
+          marker.position = ratio < 0.25 ? 'early' : ratio < 0.75 ? 'middle' : 'ending';
+          const beforeText = blogText.substring(0, pos);
+          const secs = [...beforeText.matchAll(/【\d+\.?】[^\n]*/g)];
+          marker.section = secs.length > 0 ? secs[secs.length - 1][0].trim() : '';
+        }
+
+        let newPrompt;
+        try {
+          newPrompt = await callHaikuSingleMarker(blogText, marker);
+        } catch (err) {
+          console.warn('[IMAGE] Haiku single regen failed, using original prompt:', err.message);
+          newPrompt = originalPrompt || 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style';
+        }
+        fullPrompt = `${newPrompt}, high quality editorial photography, square composition${FLUX_NO_TEXT}`;
+      } else {
+        // Direct 모드 이미지: 기존 프롬프트 재사용 (FLUX 시드 랜덤으로 다른 결과)
+        fullPrompt = originalPrompt;
+      }
+
+      try {
+        const url = await callFlux(fullPrompt);
+        if (!url) throw new Error('No image URL');
+        return res.status(200).json({
+          mode: 'regenerate_single',
+          image: { url, marker: markerText || '', prompt: fullPrompt, type: 'photo' },
+          remaining,
+          limit: FREE_DAILY_LIMIT,
+        });
+      } catch (err) {
+        console.error('[IMAGE] Single regen FLUX error:', err);
+        if (rateLimitKey) try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {}
+        return res.status(500).json({ error: '이미지 재생성에 실패했습니다.' });
+      }
     }
 
     // ===== PARSE 모드: 블로그 글에서 마커 파싱 → FLUX 전용 =====
@@ -259,7 +363,7 @@ export default async function handler(req, res) {
       const { blogText, thumbnailText } = req.body;
       const frontMarkers = req.body.markers;
       if (!blogText) {
-        if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+        if (rateLimitKey) try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {}
         return res.status(400).json({ error: '블로그 글을 입력해주세요.' });
       }
 
@@ -334,7 +438,7 @@ export default async function handler(req, res) {
 
       if (markers.length === 0) {
         console.warn('[IMAGE] No markers found in blogText');
-        if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+        if (rateLimitKey) try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {}
         return res.status(400).json({ error: '블로그 글에서 (사진: ...) 또는 (이미지: ...) 마커를 찾을 수 없습니다. 블로그 글 생성기에서 작성한 글을 붙여넣어주세요.' });
       }
 
@@ -423,7 +527,7 @@ ${markersList}`;
 
         const validImages = images.filter(img => img.url);
         if (validImages.length === 0) {
-          if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+          if (rateLimitKey) try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {}
           return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
         }
 
@@ -471,7 +575,7 @@ ${markersList}`;
           }
         } catch (fallbackErr) {
           console.error('[IMAGE] Fallback translation also FAILED:', fallbackErr.message);
-          if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+          if (rateLimitKey) try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {}
           return res.status(500).json({ error: 'AI 이미지 분석에 실패했습니다. 잠시 후 다시 시도해주세요.' });
         }
       }
@@ -509,7 +613,7 @@ ${markersList}`;
 
       const validImages = allResults.filter(img => img.url);
       if (validImages.length === 0) {
-        if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+        if (rateLimitKey) try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {}
         return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
       }
 
@@ -525,7 +629,7 @@ ${markersList}`;
     // ===== DIRECT 모드: 주제+분위기 → DIRECT_IMAGES장 고정 (FLUX 전용) =====
     const { topic, mood, thumbnailText } = req.body;
     if (!topic) {
-      if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+      if (rateLimitKey) try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {}
       return res.status(400).json({ error: '블로그 주제를 입력해주세요.' });
     }
 
@@ -544,7 +648,7 @@ ${markersList}`;
 
     const urls = await callFluxBatch(fullPrompt, DIRECT_IMAGES);
     if (urls.length === 0) {
-      if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+      if (rateLimitKey) try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {}
       return res.status(500).json({ error: '이미지 생성에 실패했습니다.' });
     }
 
@@ -558,7 +662,7 @@ ${markersList}`;
 
   } catch (error) {
     console.error('Blog Image API Error:', error);
-    if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+    if (rateLimitKey) try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {}
     return res.status(500).json({ error: '서버 오류가 발생했습니다.' });
   }
 }

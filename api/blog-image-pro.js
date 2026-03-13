@@ -19,6 +19,12 @@ const FREE_CUTOFF = '2026-03-24T23:59:59+09:00';
 const MAX_MARKERS = 8;
 const DIRECT_IMAGES = 8;
 
+// 크레딧 10배 스케일링 (소수점 회피: 0.7cr → 7단위, 1cr → 10단위)
+const CREDIT_SCALE = 10;
+const FULL_COST = 10;         // 전체 생성/재생성: 1 크레딧
+const SINGLE_REGEN_COST = 7;  // 개별 1장 재생성: 0.7 크레딧
+const DAILY_LIMIT_SCALED = FREE_DAILY_LIMIT * CREDIT_SCALE;
+
 let redis;
 function getRedis() {
   if (!redis) {
@@ -46,7 +52,7 @@ function getKSTDate() {
 }
 
 function getTodayKeyPro(ip) {
-  return `ratelimit:blogimage-pro:${ip}:${getKSTDate()}`;
+  return `ratelimit:blogimage-pro:v2:${ip}:${getKSTDate()}`;
 }
 
 function getTTLUntilMidnightKST() {
@@ -303,6 +309,60 @@ ${markerContext}
   return result;
 }
 
+// ─── 개별 1장 재생성: Haiku 단일 마커 프롬프트 ───
+
+async function callHaikuSingleMarkerPro(blogText, marker, targetType) {
+  const blogSummary = blogText.substring(0, 300).trim();
+  const firstLine = blogText.split('\n').find(l => l.trim()) || '';
+  const blogTitle = firstLine.trim().substring(0, 80);
+
+  const typeInstructions = {
+    photo: `Cinematic/editorial photo prompt.
+- Describe subjects, lighting, angle, mood
+- Signs/menus → describe as blurred
+- End with: ", photorealistic, clean composition, no text, no letters, photography style"`,
+    infographic_data: `Data visualization for GPT Image (2:3 vertical layout).
+CHART RULES: (A) Data labels on every point (B) Y-axis units, X-axis Korean labels (C) Chart fills 70%+ (D) Source footer (E) Bold key data, muted secondary (F) 15% top + 10% bottom padding (G) Two-level Korean title`,
+    infographic_flow: `Flow/timeline for Nano Banana 2.
+- Top-to-bottom or left-to-right flow, numbered Korean labels
+- Arrows/connectors, soft gradient background, 3-5 step nodes
+- Include Korean text in quotes`,
+    poster: `Poster/banner for Nano Banana 2.
+- Large centered Korean headline in quotes, subtitle below
+- Bold typography, high contrast background, 2-3 colors max`,
+  };
+
+  const instruction = typeInstructions[targetType] || typeInstructions.photo;
+  const isPhotoType = targetType === 'photo';
+
+  const systemPrompt = `You are a blog image prompt engineer. Generate ONE new prompt for SINGLE IMAGE REGENERATION.
+Type: ${targetType}. Create a COMPLETELY DIFFERENT composition and visual approach.
+
+${instruction}
+
+Rules:
+- prompt 100% English${isPhotoType ? '' : ' (Korean text only inside double quotes for infographic/poster)'}
+- 80-150 English words
+- Maintain Korean/East Asian aesthetic
+${isPhotoType ? '- Do NOT add Korean text' : '- Do NOT add "no text" — text IS the point'}
+
+Output: Return ONLY a JSON object: {"prompt": "English prompt 80-150 words..."}`;
+
+  const userPrompt = `블로그 제목: "${blogTitle}"
+블로그 요약: ${blogSummary}
+마커: "${marker.text}"${marker.altText ? ` (alt: "${marker.altText}")` : ''}${marker.section ? `\n소속 섹션: "${marker.section}"` : ''}
+앞 문맥: "${marker.before.substring(0, 200)}"
+뒤 문맥: "${marker.after.substring(0, 200)}"
+
+이 마커에 대해 ${targetType} 유형으로 새로운 프롬프트를 생성하세요.`;
+
+  const raw = await callClaude(systemPrompt, userPrompt, 500);
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Haiku single marker pro: no JSON found');
+  const result = JSON.parse(jsonMatch[0]);
+  return result.prompt;
+}
+
 // ─── 핸들러 ───
 
 export default async function handler(req, res) {
@@ -345,10 +405,9 @@ export default async function handler(req, res) {
       return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
     }
     try {
-      const ip = getClientIp(req);
       const key = getTodayKeyPro(ip);
-      const count = (await getRedis().get(key)) || 0;
-      const remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
+      const count = Number((await getRedis().get(key)) || 0);
+      const remaining = Math.max(Math.round((DAILY_LIMIT_SCALED - count) / CREDIT_SCALE * 10) / 10, 0);
       return res.status(200).json({ remaining, limit: FREE_DAILY_LIMIT });
     } catch {
       return res.status(200).json({ remaining: FREE_DAILY_LIMIT, limit: FREE_DAILY_LIMIT });
@@ -360,27 +419,103 @@ export default async function handler(req, res) {
   }
 
   // ─── POST: 횟수 제한 ───
+  const reqMode = req.body?.mode;
+  const creditCost = reqMode === 'regenerate_single' ? SINGLE_REGEN_COST : FULL_COST;
   let remaining = isAdmin ? 999 : FREE_DAILY_LIMIT;
   let rateLimitKey = null;
 
-  if (!isAdmin) {
-    const ip = getClientIp(req);
+  // 개별 재생성은 테스트 기간 무료 (프론트에서 이미지당 1회 제한)
+  if (reqMode !== 'regenerate_single' && !isAdmin) {
     rateLimitKey = getTodayKeyPro(ip);
-    const newCount = await getRedis().incr(rateLimitKey);
+    const newCount = await getRedis().incrby(rateLimitKey, creditCost);
     await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
 
-    if (newCount > FREE_DAILY_LIMIT) {
-      await getRedis().decr(rateLimitKey);
+    if (newCount > DAILY_LIMIT_SCALED) {
+      await getRedis().decrby(rateLimitKey, creditCost);
       return res.status(429).json({
         error: `프리미엄 이미지 일일 무료 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
         remaining: 0,
       });
     }
-    remaining = FREE_DAILY_LIMIT - newCount;
+    remaining = Math.round((DAILY_LIMIT_SCALED - newCount) / CREDIT_SCALE * 10) / 10;
   }
 
   try {
     const { mode, is_regenerate } = req.body;
+
+    // ===== REGENERATE_SINGLE 모드: 개별 1장 재생성 (0.7크레딧) =====
+    if (mode === 'regenerate_single') {
+      const { blogText, markerText, originalPrompt, originalType, originalModel } = req.body;
+
+      if (!markerText && !originalPrompt) {
+        if (rateLimitKey) try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {}
+        return res.status(400).json({ error: '마커 정보 또는 프롬프트가 누락되었습니다.' });
+      }
+
+      const targetModel = originalModel || 'fluxr';
+      const targetType = originalType || 'photo';
+      let finalPrompt;
+
+      if (markerText && blogText) {
+        // Parse 모드 이미지: 마커 컨텍스트 추출 → Haiku 재생성
+        const totalLen = blogText.length;
+        const cleanCtx = (s) => s.replace(/\((사진|이미지):\s*[^)]+\)/g, '').replace(/#\S+/g, '').replace(/【\d+\.?】/g, '').replace(/\s{2,}/g, ' ').trim();
+        const marker = { text: markerText, altText: '', before: '', after: '', position: 'middle', section: '' };
+        const escaped = markerText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const found = blogText.match(new RegExp(`\\((사진|이미지):\\s*${escaped}[^)]*\\)`));
+        if (found) {
+          const pos = blogText.indexOf(found[0]);
+          marker.before = cleanCtx(blogText.substring(Math.max(0, pos - 400), pos));
+          marker.after = cleanCtx(blogText.substring(pos + found[0].length, Math.min(totalLen, pos + found[0].length + 400)));
+          const ratio = pos / totalLen;
+          marker.position = ratio < 0.25 ? 'early' : ratio < 0.75 ? 'middle' : 'ending';
+          const beforeText = blogText.substring(0, pos);
+          const secs = [...beforeText.matchAll(/【\d+\.?】[^\n]*/g)];
+          marker.section = secs.length > 0 ? secs[secs.length - 1][0].trim() : '';
+        }
+
+        try {
+          finalPrompt = await callHaikuSingleMarkerPro(blogText, marker, targetType);
+        } catch (err) {
+          console.warn('[IMAGE-PRO] Haiku single regen failed, using original prompt:', err.message);
+          finalPrompt = originalPrompt || 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, no text, no letters, photography style';
+        }
+      } else {
+        // Direct 모드: 기존 프롬프트 재사용 (시드 랜덤으로 다른 결과)
+        finalPrompt = originalPrompt;
+      }
+
+      try {
+        const url = await generateByModel(targetModel, finalPrompt);
+        if (!url) throw new Error('No image URL');
+        return res.status(200).json({
+          mode: 'regenerate_single',
+          image: { url, marker: markerText || '', prompt: finalPrompt, type: targetType, model: targetModel },
+          remaining,
+          limit: FREE_DAILY_LIMIT,
+        });
+      } catch (err) {
+        console.error(`[IMAGE-PRO] Single regen ${targetModel} error:`, err.message);
+        // fallback: FLUX Realism
+        if (targetModel !== 'fluxr') {
+          try {
+            const fbPrompt = (finalPrompt || '').replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
+              ', no text, no letters, photography style';
+            const url = await callFluxRealism(fbPrompt);
+            if (url) {
+              return res.status(200).json({
+                mode: 'regenerate_single',
+                image: { url, marker: markerText || '', prompt: fbPrompt, type: 'photo', model: 'fluxr' },
+                remaining,
+                limit: FREE_DAILY_LIMIT,
+              });
+            }
+          } catch (_) {}
+        }
+        if (rateLimitKey) try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {}
+        return res.status(500).json({ error: '이미지 재생성에 실패했습니다.' });
+      }
+    }
 
     // ===== PARSE 모드: 블로그 글에서 마커 파싱 → 자동 모델 라우팅 =====
     if (mode === 'parse') {
