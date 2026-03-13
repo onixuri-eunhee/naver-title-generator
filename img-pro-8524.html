@@ -497,13 +497,13 @@ function renderMarkerEditor() {
   });
 
   var addBtn = document.getElementById('markerAddBtn');
-  addBtn.disabled = editableMarkers.length >= 10;
+  addBtn.disabled = editableMarkers.length >= 8;
 
   updateGenBtnText();
 }
 
 function addMarker() {
-  if (editableMarkers.length >= 10) return;
+  if (editableMarkers.length >= 8) return;
   editableMarkers.push('');
   renderMarkerEditor();
   var inputs = document.querySelectorAll('.marker-editor-input');

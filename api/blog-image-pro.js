@@ -15,7 +15,7 @@ import { Redis } from '@upstash/redis';
  */
 
 const ADMIN_KEY = '8524';
-const MAX_MARKERS = 10;
+const MAX_MARKERS = 8;
 const DIRECT_IMAGES = 8;
 
 let redis;
@@ -101,7 +101,7 @@ async function callGptImageHigh(prompt) {
       model: 'gpt-image-1',
       prompt,
       n: 1,
-      size: '1024x1024',
+      size: '1024x1536',
       quality: 'high',
       output_format: 'webp',
     }),
@@ -162,97 +162,68 @@ async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
   }).join('\n\n');
 
   const systemPrompt = `You are a blog image prompt engineer with automatic model routing.
-Your job: classify each marker into ONE of 4 types, select the best AI model, and generate the prompt.
+Classify each marker into ONE of 4 types, select the best AI model, and generate the prompt.
 
 ## 4 IMAGE TYPES & MODEL ROUTING
 
 ### 1. photo → model: "fluxr"
 For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 사물
-- The FIRST marker MUST always be "photo" (대표이미지)
-- FLUX Realism LoRA for photorealistic results
-- Focus on visual composition: describe subjects, lighting, angle, mood
-- Use text-free photography styles: "shallow depth of field", "bokeh background", "close-up shot", "macro photography"
-- If the scene naturally contains signs/menus/labels, describe them as blurred or abstract
-- Always end with: ", photorealistic, clean composition, shallow depth of field, no text, photography style"
+- FIRST marker MUST be "photo" (대표이미지)
+- Describe subjects, lighting, angle, mood. Use text-free styles (shallow DOF, bokeh, macro)
+- Signs/menus in scene → describe as blurred
+- End with: ", photorealistic, clean composition, shallow depth of field, no text, photography style"
 
 ### 2. infographic_data → model: "gpth"
-**COST GUARD: Only use this type when the marker text or surrounding context contains DATA KEYWORDS:**
+**COST GUARD: Only use when marker/context contains DATA KEYWORDS:**
 통계, 데이터, 데이타, 수치, 확률, 퍼센트, %, 그래프, 차트, KPI, 증감, 추이, 비율, 전년대비
-- If none of these keywords appear in the marker or its before/after context → use infographic_flow (nb2) instead
-- Data-heavy visuals with numbers, percentages, charts
-- GPT Image 1 high excels at structured data visualization
+- No data keywords → use infographic_flow (nb2) instead
+- Data-heavy visuals: numbers, percentages, charts (GPT Image 1 high)
 
-**MANDATORY CHART RULES for infographic_data prompts:**
-
-(A) DATA LABELS — Every data point must have its numeric value directly on the chart:
-  - Bar chart: value written inside or at the tip of each bar
-  - Pie/donut chart: percentage written inside each segment
-  - Line chart: value written above each data point node
-
-(B) AXIS UNITS — Always specify unit labels:
-  - Y-axis label must include unit (e.g., "비용(만원)", "비율(%)", "건수(명)")
-  - X-axis item names must be complete Korean text
-  - Include subtle grid lines for readability
-
-(C) TIGHT COMPOSITION — Minimize white space:
-  - Always include "no empty space, all elements tightly composed, chart fills 70% of image area"
-  - Chart must dominate the image, not float in empty space
-
-(D) SOURCE FOOTER — Bottom of image must show data source or reference year:
-  - e.g., "Source: 한국소비자원 2024" or "기준: 2024년"
-
-(E) COLOR CONTRAST — Emphasize key data:
-  - Primary/highlighted items use bold saturated color
-  - Secondary items use muted gray tones for contrast
-  - Legend placed clearly at right side or bottom of chart
-
-(F) TITLE STRUCTURE — Two-level title:
-  - Main title: large bold Korean text
-  - Subtitle: reference year, comparison period, or data scope in smaller text
+**CHART RULES (infographic_data — MUST follow all):**
+(A) DATA LABELS: Show numeric value on every data point (bar tips, pie segments, line nodes)
+(B) AXIS UNITS: Y-axis includes unit (e.g. "비용(만원)"), X-axis full Korean labels, subtle grid lines
+(C) COMPOSITION: Chart fills 70%+ of image, no floating empty space
+(D) SOURCE: Footer with data source/year (e.g. "Source: 한국소비자원 2024")
+(E) COLOR: Key data bold saturated, secondary muted gray. Legend at right or bottom
+(F) PADDING: 15% top + 10% bottom empty padding. Title/chart must not touch edges. Add "generous top and bottom padding" to prompt
+(G) TITLE: Two-level — large bold Korean main title + smaller subtitle (year/scope)
 
 ### 3. infographic_flow → model: "nb2"
 For: 타임라인, 로드맵, 단계, 흐름도, 프로세스, 한글 텍스트 위주 설명
-- Sequential/flow content with Korean text labels
-- Nano Banana 2 handles Korean text rendering well
+- Sequential/flow with Korean text labels (Nano Banana 2)
 
 ### 4. poster → model: "nb2"
 For: 한글 타이포그래피, 공지, 텍스트 위주 포스터, 배너
-- Text-heavy Korean poster/banner designs
-- Nano Banana 2 handles Korean typography well
+- Korean text poster/banner (Nano Banana 2)
 
-## PROMPT RULES (CRITICAL — MUST FOLLOW ALL)
+## PROMPT RULES (CRITICAL)
 
-### Rule 1: prompt field MUST be 100% English
-- Write the entire prompt in English only
-- NO Korean characters (한글) anywhere in the prompt — ABSOLUTE PROHIBITION
-- Korean text that needs to appear IN the image must be written in Korean within double quotes inside the English prompt
-  Example: A clean infographic showing "월별 매출 추이" as the title, with bar chart...
+### Rule 1: prompt MUST be 100% English
+- NO Korean except image-text in double quotes (e.g. "월별 매출 추이" as title)
+- ABSOLUTE PROHIBITION on Korean outside quotes
 
-### Rule 2: Photo type suffix
-- For type "photo": ALWAYS append ", no text, no letters, photography style" at the end
-- Photo prompts describe inanimate objects, still life, flat-lay, empty environments
-- Camera angles: overhead flat-lay, macro close-up, wide-angle empty space, 45-degree tabletop
+### Rule 2: Photo suffix
+- photo type: ALWAYS end with ", no text, no letters, photography style"
+- Describe inanimate objects, still life, empty environments. Camera: overhead, macro, wide-angle, 45-degree
 
-### Rule 3: Infographic/poster types — include Korean text
-- For infographic_data/infographic_flow/poster: include Korean text strings in quotes within the prompt
-- Describe the visual layout, structure, colors, and Korean labels
-- Do NOT add "no text" suffix — text IS the point
-- For infographic_data specifically: MUST follow ALL 6 MANDATORY CHART RULES (A)~(F) above — include data labels, axis units, tight composition, source footer, color contrast, and two-level title structure in the prompt
+### Rule 3: Infographic/poster types
+- Include Korean text in quotes within the prompt. Describe layout, structure, colors
+- Do NOT add "no text" — text IS the point
+- infographic_data: MUST follow ALL CHART RULES (A)~(G) above
 
 ### Rule 4: Prompt length
 - Each prompt: 80-150 English words
-- Be specific: describe composition, colors, layout structure, lighting, style
+- Be specific: composition, colors, layout, lighting, style
 
 ### Rule 5: Context accuracy
-- Read the marker text AND surrounding context (before/after) carefully
-- The prompt must accurately represent what the marker is about
-- Korean/East Asian aesthetic context must be maintained
+- Read marker text + before/after context carefully. Prompt must match the marker's meaning
+- Maintain Korean/East Asian aesthetic
 
 ${isRegenerate ? '\nREGENERATION MODE: Generate MORE SPECIFIC prompts with different compositions and visual approaches.' : ''}
 
 ## OUTPUT FORMAT
 Return ONLY a valid JSON array. Each element:
-{"type":"[photo|infographic_data|infographic_flow|poster]","model":"[fluxr|gpth|nb2]","reason":"[한국어 1문장 — 이 유형과 모델을 선택한 이유]","prompt":"[영어 전용 프롬프트 80-150 words]"}`;
+{"type":"[photo|infographic_data|infographic_flow|poster]","model":"[fluxr|gpth|nb2]","reason":"[한국어 1문장]","prompt":"[영어 전용 80-150 words]"}`;
 
   const userPrompt = `블로그 제목: "${blogTitle}"
 블로그 전체 주제 (첫 300자): ${blogSummary}${blogStructure ? `\n글 구조: ${blogStructure}` : ''}
@@ -262,11 +233,8 @@ ${markerContext}
 
 규칙:
 - ${markers.length}개 마커 각각을 4가지 유형 중 하나로 분류
-- 첫 번째 마커는 반드시 photo/flux2 (블로그 대표이미지)
-- 각 마커의 문맥을 읽고 가장 적합한 유형과 모델을 선택
-- prompt는 반드시 영어로만 작성 (한글 텍스트는 따옴표 안에 포함)
-- photo 프롬프트 끝에 ", no text, no letters, photography style" 필수
-- infographic/poster 프롬프트에는 "no text" 붙이지 말 것`;
+- 첫 번째 마커는 반드시 photo (블로그 대표이미지)
+- 각 마커의 문맥을 읽고 가장 적합한 유형과 모델을 선택`;
 
   const raw = await callClaude(systemPrompt, userPrompt, 4000);
   const jsonMatch = raw.match(/\[[\s\S]*?\](?=[^[\]]*$)/);
