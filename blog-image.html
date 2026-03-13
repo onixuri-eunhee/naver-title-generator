@@ -1052,27 +1052,20 @@ function downloadImage(btn) {
     a.download = 'infographic-' + (index + 1) + '.png';
     a.click();
   } else {
-    var card = btn.closest('.image-card');
-    var img = card ? card.querySelector('img') : null;
-    if (img && img.complete && img.naturalWidth > 0) {
-      try {
-        var canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        canvas.getContext('2d').drawImage(img, 0, 0);
-        canvas.toBlob(function(blob) {
-          var a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = 'blog-image-' + (index + 1) + '.png';
-          a.click();
-          URL.revokeObjectURL(a.href);
-        }, 'image/png');
-      } catch (e) {
+    fetch(url)
+      .then(function(res) { return res.blob(); })
+      .then(function(blob) {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'blog-image-' + (index + 1) + '.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+      })
+      .catch(function() {
         window.open(url, '_blank');
-      }
-    } else {
-      window.open(url, '_blank');
-    }
+      });
   }
 }
 
