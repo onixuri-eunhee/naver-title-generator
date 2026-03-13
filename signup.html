@@ -209,6 +209,14 @@ footer a:hover { text-decoration: underline; }
         <label for="phone">전화번호</label>
         <input type="tel" id="phone" name="phone" required placeholder="010-0000-0000">
       </div>
+      <div style="margin:16px 0 8px; display:flex; align-items:flex-start; gap:8px;">
+        <input type="checkbox" id="agreeTerms" style="margin-top:3px; width:16px; height:16px; accent-color:#00C73C; cursor:pointer;">
+        <label for="agreeTerms" style="font-size:13px; color:#6B7280; font-weight:400; cursor:pointer; line-height:1.6;">
+          <a href="/terms.html" target="_blank" style="color:#00C73C; text-decoration:underline;">이용약관</a>,
+          <a href="/privacy.html" target="_blank" style="color:#00C73C; text-decoration:underline;">개인정보처리방침</a>,
+          <a href="/refund-policy.html" target="_blank" style="color:#00C73C; text-decoration:underline;">환불규정</a>에 동의합니다.
+        </label>
+      </div>
       <button type="submit" class="submit-btn" id="submitBtn">회원가입</button>
     </form>
     <div class="auth-link">
@@ -221,6 +229,7 @@ footer a:hover { text-decoration: underline; }
   <div style="margin-bottom:4px;">상호명: 어나더핸즈 | 대표자명: 공은희 | 사업자등록번호: 561-01-02951</div>
   <div style="margin-bottom:4px;">통신판매업 신고번호: 2023-서울강남-01379 | 유선번호: 010-4761-5951 | onixuri@gmail.com</div>
   <div style="margin-bottom:4px;">주소: 서울특별시 강남구 논현로2길 60, 2층 2147호 (개포동, 세화빌딩)</div>
+  <div style="margin-bottom:4px;"><a href="/terms.html" style="color:#9CA3AF; text-decoration:none;">이용약관</a> | <a href="/privacy.html" style="color:#9CA3AF; text-decoration:none;">개인정보처리방침</a> | <a href="/refund-policy.html" style="color:#9CA3AF; text-decoration:none;">환불규정</a></div>
   <div>&copy; 2026 어나더핸즈. All rights reserved.</div>
 </footer>
 
@@ -255,6 +264,10 @@ document.getElementById('signupForm').addEventListener('submit', async function(
   }
   if (password !== passwordConfirm) {
     showError('비밀번호가 일치하지 않습니다.');
+    return;
+  }
+  if (!document.getElementById('agreeTerms').checked) {
+    showError('이용약관, 개인정보처리방침, 환불규정에 동의해주세요.');
     return;
   }
 
