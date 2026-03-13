@@ -168,12 +168,12 @@ Your job: classify each marker into ONE of 4 types, select the best AI model, an
 
 ### 1. photo → model: "fluxr"
 For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 사물
-- Purely visual scenes, no text/labels needed
 - The FIRST marker MUST always be "photo" (대표이미지)
 - FLUX Realism LoRA for photorealistic results
-- **CRITICAL: Korean text (한글) is ABSOLUTELY FORBIDDEN in photo prompts — it will break rendering**
-- English text is allowed if contextually needed
-- Always end with: ", no text, no Korean letters, photography style"
+- Focus on visual composition: describe subjects, lighting, angle, mood
+- Use text-free photography styles: "shallow depth of field", "bokeh background", "close-up shot", "macro photography"
+- If the scene naturally contains signs/menus/labels, describe them as blurred or abstract
+- Always end with: ", photorealistic, clean composition, shallow depth of field, no text, photography style"
 
 ### 2. infographic_data → model: "gpth"
 **COST GUARD: Only use this type when the marker text or surrounding context contains DATA KEYWORDS:**
@@ -307,7 +307,7 @@ ${markerContext}
 
     // prompt 누락 시 기본값
     if (!item.prompt) {
-      item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, no text, no Korean letters, photography style';
+      item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, photorealistic, clean composition, shallow depth of field, no text, photography style';
       item.type = 'photo';
       item.model = 'fluxr';
     }
@@ -318,7 +318,7 @@ ${markerContext}
     result[0].type = 'photo';
     result[0].model = 'fluxr';
     if (!result[0].prompt.includes('no text')) {
-      result[0].prompt += ', no text, no Korean letters, photography style';
+      result[0].prompt += ', photorealistic, clean composition, shallow depth of field, no text, photography style';
     }
   }
 
