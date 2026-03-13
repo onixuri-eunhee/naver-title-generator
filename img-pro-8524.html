@@ -300,8 +300,8 @@ footer a:hover { text-decoration: underline; }
 
 <div class="hero">
   <div class="hero-badge">PREMIUM · 프리미엄 이미지</div>
-  <h1>GPT Image로 만드는<br><em>고품질 블로그 이미지</em></h1>
-  <p>GPT Image 1 모델로 더 정교한 이미지를 생성합니다<br>기존 FLUX 대비 높은 문맥 이해도와 품질</p>
+  <h1>AI 자동 라우팅으로 만드는<br><em>고품질 블로그 이미지</em></h1>
+  <p>Haiku가 이미지 유형을 판단해 최적 모델을 자동 선택합니다<br>사진→FLUX.2 pro | 데이터→GPT Image | 흐름도/포스터→Nano Banana 2</p>
 </div>
 
 <div class="container">
@@ -370,14 +370,14 @@ footer a:hover { text-decoration: underline; }
   <!-- 로딩 -->
   <div class="loading" id="loadingArea">
     <div class="loading-spinner"></div>
-    <div class="loading-text" id="loadingText">GPT Image가 이미지를 생성하고 있습니다...</div>
+    <div class="loading-text" id="loadingText">AI가 최적 모델을 선택하여 이미지를 생성하고 있습니다...</div>
     <div class="loading-progress" id="loadingProgress"></div>
   </div>
 
   <!-- 결과 -->
   <div class="result-area" id="resultArea">
     <div class="card">
-      <h2 style="font-size:16px; font-weight:700; margin-bottom:16px;">생성된 이미지 (GPT Image 1)</h2>
+      <h2 style="font-size:16px; font-weight:700; margin-bottom:16px;">생성된 이미지 (자동 모델 라우팅)</h2>
       <div class="image-grid" id="imageGrid"></div>
       <button class="generate-btn" id="regenAllBtn" onclick="regenerateAll()" style="margin-top:20px; background:linear-gradient(135deg,#D97706,#B45309);">전체 재생성</button>
       <p style="text-align:center; font-size:12px; color:#9CA3AF; margin-top:8px;">마음에 들지 않으면 눌러주세요. 새 이미지를 생성합니다.</p>
@@ -564,7 +564,7 @@ async function generateParse() {
   btn.textContent = '이미지 생성 중...';
 
   document.getElementById('loadingArea').classList.add('show');
-  document.getElementById('loadingText').textContent = 'GPT Image가 ' + markersToSend.length + '개 이미지를 생성하고 있습니다...';
+  document.getElementById('loadingText').textContent = 'Haiku가 유형 분석 중... ' + markersToSend.length + '개 이미지 자동 라우팅';
   document.getElementById('loadingProgress').textContent = '마커 분석 → 프롬프트 변환 → 이미지 생성 (약 1~2분)';
   document.getElementById('resultArea').classList.remove('show');
 
@@ -583,7 +583,7 @@ async function generateParse() {
 
     currentMode = 'parse';
     generatedImages = data.images.map(function(img, i) {
-      return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', layout: img.layout || null, index: i };
+      return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', model: img.model || 'flux2', reason: img.reason || '', layout: img.layout || null, index: i };
     });
 
     renderResults(generatedImages, thumbnailText);
@@ -616,7 +616,7 @@ async function generateDirect() {
   btn.textContent = '이미지 생성 중...';
 
   document.getElementById('loadingArea').classList.add('show');
-  document.getElementById('loadingText').textContent = 'GPT Image가 이미지 8장을 생성하고 있습니다...';
+  document.getElementById('loadingText').textContent = 'FLUX.2 pro가 이미지 8장을 생성하고 있습니다...';
   document.getElementById('loadingProgress').textContent = '주제 분석 → 프롬프트 변환 → 이미지 생성 (약 1~2분)';
   document.getElementById('resultArea').classList.remove('show');
 
@@ -636,7 +636,7 @@ async function generateDirect() {
 
     currentMode = 'direct';
     generatedImages = data.images.map(function(img, i) {
-      return { url: img.url, marker: null, prompt: img.prompt, type: 'photo', layout: null, index: i };
+      return { url: img.url, marker: null, prompt: img.prompt, type: img.type || 'photo', model: img.model || 'flux2', reason: '', layout: null, index: i };
     });
 
     renderResults(generatedImages, thumbnailText);
@@ -672,12 +672,28 @@ function renderResults(images, thumbnailText) {
     card.className = 'image-card' + (isThumbnail ? ' thumbnail' : '');
     card.id = 'image-card-' + i;
 
-    var isInfographic = item.type === 'infographic';
+    var typeIcons = { photo: '\ud83d\udcf7', infographic_data: '\ud83d\udcca', infographic_flow: '\ud83d\udd04', poster: '\ud83c\udfad' };
+    var typeLabels = { photo: 'FLUX.2 pro', infographic_data: 'GPT Image high', infographic_flow: 'Nano Banana 2', poster: 'Nano Banana 2' };
+    var modelLabels = { flux2: 'FLUX.2 pro', gpth: 'GPT Image high', nb2: 'Nano Banana 2' };
+    var itemType = item.type || 'photo';
+    var itemModel = item.model || 'flux2';
+    var isInfographic = itemType !== 'photo';
 
     if (item.marker) {
       var markerEl = document.createElement('div');
       markerEl.className = 'image-card-marker';
-      markerEl.textContent = (isInfographic ? '\ud83d\udcca ' : '\ud83d\udcf7 ') + item.marker;
+      var icon = typeIcons[itemType] || '\ud83d\udcf7';
+      var modelLabel = modelLabels[itemModel] || typeLabels[itemType] || '';
+      markerEl.textContent = icon + ' ' + item.marker;
+      if (modelLabel) {
+        var badge = document.createElement('span');
+        badge.style.cssText = 'margin-left:8px; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:700;';
+        if (itemModel === 'flux2') { badge.style.background = '#EBF5FF'; badge.style.color = '#1D4ED8'; }
+        else if (itemModel === 'gpth') { badge.style.background = '#F0FDF4'; badge.style.color = '#166534'; }
+        else if (itemModel === 'nb2') { badge.style.background = '#FFF7ED'; badge.style.color = '#C2410C'; }
+        badge.textContent = modelLabel;
+        markerEl.appendChild(badge);
+      }
       if (isInfographic) {
         markerEl.style.background = '#F0FFF4';
         markerEl.style.borderBottomColor = '#C6F6D5';
@@ -706,7 +722,8 @@ function renderResults(images, thumbnailText) {
 
     var labelEl = document.createElement('span');
     labelEl.className = 'image-label';
-    labelEl.textContent = isThumbnail ? '썸네일 (텍스트 합성)' : isInfographic ? '인포그래픽' : (item.marker || '이미지 ' + (i + 1));
+    var typeNames = { photo: '사진', infographic_data: '데이터 인포', infographic_flow: '흐름도', poster: '포스터' };
+    labelEl.textContent = isThumbnail ? '썸네일 (텍스트 합성)' : (typeNames[itemType] || item.marker || '이미지 ' + (i + 1));
 
     var btns = document.createElement('div');
     btns.className = 'action-btns';
@@ -815,7 +832,7 @@ async function regenerateAll() {
   btn.textContent = '이미지 재생성 중...';
 
   document.getElementById('loadingArea').classList.add('show');
-  document.getElementById('loadingText').textContent = 'GPT Image가 새 이미지를 생성하고 있습니다...';
+  document.getElementById('loadingText').textContent = 'AI가 새 이미지를 생성하고 있습니다...';
   document.getElementById('loadingProgress').textContent = '강화된 프롬프트로 이미지 재생성 중 (약 1~2분)';
 
   try {
@@ -855,7 +872,7 @@ async function regenerateAll() {
 
     if (res.ok && data.images && data.images.length > 0) {
       generatedImages = data.images.map(function(img, i) {
-        return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', layout: img.layout || null, index: i };
+        return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', model: img.model || 'flux2', reason: img.reason || '', layout: img.layout || null, index: i };
       });
       renderResults(generatedImages, thumbText);
     } else {

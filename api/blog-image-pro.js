@@ -1,12 +1,17 @@
 import { Redis } from '@upstash/redis';
 
 /*
- * 프리미엄 이미지 생성 (비공개 테스트)
- * GPT Image 1 medium (사진) + Satori (인포그래픽): 혼합 파이프라인
- * Canvas API: 썸네일 텍스트 오버레이 (프론트엔드)
- * Haiku: 마커 분석 + photo/infographic 분류 + 프롬프트/데이터 생성
+ * 프리미엄 이미지 생성 v2 (비공개 테스트)
+ * 자동 모델 라우팅: Haiku가 이미지 유형 판단 → 최적 모델 선택
  *
- * 기존 blog-image.js와 동일한 구조, FLUX → GPT Image 1 교체
+ * 모델 라우팅:
+ *   photo → FLUX.2 pro (fal-ai/flux-2-pro)
+ *   infographic_data → GPT Image 1 high (gpt-image-1, quality: high)
+ *   infographic_flow → Nano Banana 2 (fal-ai/nano-banana-2)
+ *   poster → Nano Banana 2 (fal-ai/nano-banana-2)
+ *
+ * Canvas API: 썸네일 텍스트 오버레이 (프론트엔드)
+ * Haiku: 마커 분석 + 4-type 분류 + 프롬프트 생성
  */
 
 const ADMIN_KEY = '8524';
@@ -40,6 +45,8 @@ const moodPrompts = {
   'emotional': 'emotional, moody, aesthetic Korean blog image, soft bokeh, film tone, high quality',
 };
 
+// ─── AI API 호출 함수들 ───
+
 async function callClaude(systemPrompt, userMessage, maxTokens = 200) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -60,7 +67,29 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 200) {
   return (data.content?.[0]?.text || '').trim();
 }
 
-async function callGptImage(prompt) {
+// FLUX.2 pro — 사진/배경/풍경/음식/인물/제품
+async function callFlux2Pro(prompt) {
+  const response = await fetch('https://fal.run/fal-ai/flux-2-pro', {
+    method: 'POST',
+    headers: {
+      Authorization: `Key ${process.env.FAL_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt,
+      image_size: { width: 1024, height: 1024 },
+      num_images: 1,
+      num_inference_steps: 28,
+      guidance_scale: 3.5,
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok || data.detail) throw new Error(JSON.stringify(data));
+  return data.images?.[0]?.url || null;
+}
+
+// GPT Image 1 high — 차트/그래프/통계/수치 인포그래픽
+async function callGptImageHigh(prompt) {
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: {
@@ -72,7 +101,7 @@ async function callGptImage(prompt) {
       prompt,
       n: 1,
       size: '1024x1024',
-      quality: 'medium',
+      quality: 'high',
       output_format: 'webp',
     }),
   });
@@ -82,6 +111,41 @@ async function callGptImage(prompt) {
   if (!b64) return null;
   return `data:image/webp;base64,${b64}`;
 }
+
+// Nano Banana 2 — 타임라인/로드맵/한글 텍스트/포스터
+async function callNanoBanana2(prompt) {
+  const response = await fetch('https://fal.run/fal-ai/nano-banana-2', {
+    method: 'POST',
+    headers: {
+      Authorization: `Key ${process.env.FAL_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt,
+      image_size: { width: 1024, height: 1024 },
+      num_images: 1,
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok || data.detail) throw new Error(JSON.stringify(data));
+  return data.images?.[0]?.url || null;
+}
+
+// 모델 라우팅: type → API 호출
+async function generateByModel(model, prompt) {
+  switch (model) {
+    case 'flux2':
+      return await callFlux2Pro(prompt);
+    case 'gpth':
+      return await callGptImageHigh(prompt);
+    case 'nb2':
+      return await callNanoBanana2(prompt);
+    default:
+      return await callFlux2Pro(prompt);
+  }
+}
+
+// ─── Haiku 마커 분석 (4-type 자동 분류) ───
 
 async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
   const blogSummary = blogText.substring(0, 300).trim();
@@ -96,83 +160,63 @@ async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
     return `마커 ${i + 1}: "${mk.text}"${mk.section ? `\n  소속 섹션: "${mk.section}"` : ''}\n  글 위치: ${mk.position}\n  앞 문맥 (200자): "${before}"\n  뒤 문맥 (200자): "${after}"`;
   }).join('\n\n');
 
-  const systemPrompt = `You are a blog image prompt engineer. Your CRITICAL job is classifying each marker as either "photo" or "infographic", then generating appropriate data.
+  const systemPrompt = `You are a blog image prompt engineer with automatic model routing.
+Your job: classify each marker into ONE of 4 types, select the best AI model, and generate the prompt.
 
-## CLASSIFICATION RULES
-Each marker must be classified as one of:
-- **photo**: ONLY for purely visual scenes that need NO text/labels at all — landscapes, food close-ups, product flat-lays, empty interiors
-- **infographic**: ANY marker that would benefit from Korean text labels, explanations, data, comparisons, lists, steps, conditions, processes, or descriptions
+## 4 IMAGE TYPES & MODEL ROUTING
 
-Rules:
+### 1. photo → model: "flux2"
+For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 사물
+- Purely visual scenes, no text/labels needed
 - The FIRST marker MUST always be "photo" (대표이미지)
-- Maximum 5 infographic markers. Aggressively classify as infographic when Korean labels would help.
-- Infographic keywords: 비교, 순위, 단계, 수치, 그래프, 조건, 범위, 연계, 인상, 안정성, 지급조건, 설명, 내용, 과정, 종류, 특징, 방법, 장단점, 혜택, 약관
-- When the marker contains ANY explanatory or descriptive content → infographic
-- When the marker is purely a visual scene/object with no text needed → photo
 
-## PHOTO MARKERS — MANDATORY COMPOSITION RULES
-Generate purely visual English prompts for GPT Image model. Every prompt MUST follow ALL of these rules:
+### 2. infographic_data → model: "gpth"
+For: 차트, 그래프, 통계, 수치, KPI, 비교표, 데이터 시각화
+- Data-heavy visuals with numbers, percentages, charts
+- GPT Image 1 excels at structured data visualization
 
-### SUBJECT RULE: Inanimate objects and environments ONLY
-- Every image depicts ONLY inanimate objects, documents, tools, products, furniture, architecture, nature, or empty spaces
-- Frame every scene as a STILL LIFE, FLAT-LAY, PRODUCT SHOT, or EMPTY ENVIRONMENT
-- The scene is always UNINHABITED — show the space as if photographed before or after hours, with zero living beings present
+### 3. infographic_flow → model: "nb2"
+For: 타임라인, 로드맵, 단계, 흐름도, 프로세스, 한글 텍스트 위주 설명
+- Sequential/flow content with Korean text labels
+- Nano Banana 2 handles Korean text rendering well
 
-### CAMERA ANGLE RULE: Use angles that exclude human presence
-- DEFAULT: overhead flat-lay (top-down 90-degree bird's-eye view looking straight down at objects on a surface)
-- ALTERNATIVE 1: extreme close-up macro (fills frame with object texture/detail)
-- ALTERNATIVE 2: wide-angle empty environment (hallway, room, exterior — shot at dawn/dusk when space is vacant)
-- ALTERNATIVE 3: 45-degree tabletop product photography (objects arranged on surface, camera angled down)
+### 4. poster → model: "nb2"
+For: 한글 타이포그래피, 공지, 텍스트 위주 포스터, 배너
+- Text-heavy Korean poster/banner designs
+- Nano Banana 2 handles Korean typography well
 
-### DOCUMENT/PAPER RULE: All papers shown as abstract visual elements
-- Documents, forms, papers, receipts appear as STACKED, FANNED, or FOLDED arrangements — shot from overhead so content is a soft blur
-- Describe paper surfaces with: "soft-focus printed patterns", "abstract paragraph shapes", "blurred ink impressions"
-- Screens (laptop, phone, tablet) show SOLID COLOR GRADIENTS or are turned off with reflective dark glass
+## PROMPT RULES (CRITICAL — MUST FOLLOW ALL)
 
-### PROMPT STRUCTURE (follow this exact order)
-1. SUBJECT: name the specific objects/items (e.g., "insurance policy folder, calculator, ballpoint pen, reading glasses")
-2. ARRANGEMENT: how objects are positioned (e.g., "arranged in a diagonal flat-lay on a white marble surface")
-3. CAMERA: angle and lens (e.g., "shot from directly overhead, 50mm lens, shallow depth of field")
-4. LIGHTING: specific light description (e.g., "soft diffused window light from upper left, gentle shadows")
-5. STYLE: "editorial still-life photography, clean Korean aesthetic"
-6. ALWAYS END WITH: "inanimate objects only, empty scene, all surfaces show abstract blurred patterns"
+### Rule 1: prompt field MUST be 100% English
+- Write the entire prompt in English only
+- NO Korean characters (한글) anywhere in the prompt — ABSOLUTE PROHIBITION
+- Korean text that needs to appear IN the image must be written in Korean within double quotes inside the English prompt
+  Example: A clean infographic showing "월별 매출 추이" as the title, with bar chart...
 
-### TOPIC TRANSLATION EXAMPLES
-- 보험상담 → "insurance policy documents, premium calculator, wooden stamp, ballpoint pen arranged on oak desk, overhead flat-lay, soft window light, editorial still-life"
-- 암 진단비 → "medical diagnostic form with blurred printed lines, prescription bottle, stethoscope on clean white surface, extreme close-up macro shot, clinical lighting"
-- 치료비 영수증 → "stack of fanned receipt papers with indistinct printed text, wooden clipboard, coins scattered nearby, overhead flat-lay on linen cloth, warm ambient light"
-- 음식 리뷰 → "ceramic bowl of bibimbap with steel chopsticks resting on bamboo mat, extreme close-up overhead, steam rising, warm restaurant lighting"
+### Rule 2: Photo type suffix
+- For type "photo": ALWAYS append ", no text, no letters, photography style" at the end
+- Photo prompts describe inanimate objects, still life, flat-lay, empty environments
+- Camera angles: overhead flat-lay, macro close-up, wide-angle empty space, 45-degree tabletop
 
-Korean or East Asian context must be maintained. Compose for 1024x1024 square format.
-${isRegenerate ? 'REGENERATION MODE: Generate MORE SPECIFIC prompts with different arrangements and angles.' : ''}
+### Rule 3: Infographic/poster types — include Korean text
+- For infographic_data/infographic_flow/poster: include Korean text strings in quotes within the prompt
+- Describe the visual layout, structure, colors, and Korean labels
+- Do NOT add "no text" suffix — text IS the point
 
-## INFOGRAPHIC MARKERS
-Generate structured Korean data for Satori renderer. Choose one layout:
+### Rule 4: Prompt length
+- Each prompt: 80-150 English words
+- Be specific: describe composition, colors, layout structure, lighting, style
 
-1. **comparison**: A vs B 비교표
-   Required: "columns": ["A이름", "B이름"], "items": [{"label": "항목명", "values": ["A값", "B값"]}]
-   items: 3~6개
+### Rule 5: Context accuracy
+- Read the marker text AND surrounding context (before/after) carefully
+- The prompt must accurately represent what the marker is about
+- Korean/East Asian aesthetic context must be maintained
 
-2. **list**: 목록/순위/체크리스트
-   Required: "items": [{"icon": "이모지", "text": "항목 내용"}]
-   items: 4~8개
+${isRegenerate ? '\nREGENERATION MODE: Generate MORE SPECIFIC prompts with different compositions and visual approaches.' : ''}
 
-3. **steps**: 단계/절차/과정
-   Required: "items": [{"step": "1", "title": "단계명", "desc": "설명(선택)"}]
-   items: 3~5개
-
-4. **stats**: 수치/통계/퍼센트
-   Required: "items": [{"number": "85%", "label": "항목명", "sub": "부가설명(선택)"}]
-   items: 2~4개
-
-All infographic text MUST be in Korean. Title must be concise (15자 이내).
-
-## Output Format
-Return ONLY a valid JSON array:
-[
-  {"marker": "마커텍스트", "type": "photo", "prompt": "English prompt..."},
-  {"marker": "마커텍스트", "type": "infographic", "layout": "comparison", "title": "비교 제목", "columns": ["A","B"], "items": [{"label":"항목","values":["값1","값2"]}]}
-]`;
+## OUTPUT FORMAT
+Return ONLY a valid JSON array. Each element:
+{"type":"[photo|infographic_data|infographic_flow|poster]","model":"[flux2|gpth|nb2]","reason":"[한국어 1문장 — 이 유형과 모델을 선택한 이유]","prompt":"[영어 전용 프롬프트 80-150 words]"}`;
 
   const userPrompt = `블로그 제목: "${blogTitle}"
 블로그 전체 주제 (첫 300자): ${blogSummary}${blogStructure ? `\n글 구조: ${blogStructure}` : ''}
@@ -181,12 +225,12 @@ Return ONLY a valid JSON array:
 ${markerContext}
 
 규칙:
-- 8개 마커 각각을 photo 또는 infographic으로 분류
-- 첫 번째 마커는 반드시 photo (블로그 대표이미지)
-- infographic은 최대 5개까지 (설명/조건/과정/비교/그래프 마커는 적극적으로 infographic 분류)
-- photo 프롬프트: 사물/문서/환경만 묘사. overhead flat-lay 또는 macro close-up 앵글 사용
-- photo 프롬프트는 반드시 블로그 주제("${blogTitle}")와 직접 관련
-- infographic 데이터는 반드시 한국어로`;
+- ${markers.length}개 마커 각각을 4가지 유형 중 하나로 분류
+- 첫 번째 마커는 반드시 photo/flux2 (블로그 대표이미지)
+- 각 마커의 문맥을 읽고 가장 적합한 유형과 모델을 선택
+- prompt는 반드시 영어로만 작성 (한글 텍스트는 따옴표 안에 포함)
+- photo 프롬프트 끝에 ", no text, no letters, photography style" 필수
+- infographic/poster 프롬프트에는 "no text" 붙이지 말 것`;
 
   const raw = await callClaude(systemPrompt, userPrompt, 4000);
   const jsonMatch = raw.match(/\[[\s\S]*?\](?=[^[\]]*$)/);
@@ -197,42 +241,38 @@ ${markerContext}
     throw new Error(`Haiku returned ${result.length} items, expected ${markers.length}`);
   }
 
-  // 첫 마커가 infographic이면 photo로 강제 변환
-  if (result[0].type === 'infographic') {
+  // 후처리: 안전장치
+  const validTypes = ['photo', 'infographic_data', 'infographic_flow', 'poster'];
+  const modelMap = { photo: 'flux2', infographic_data: 'gpth', infographic_flow: 'nb2', poster: 'nb2' };
+
+  for (const item of result) {
+    // 잘못된 type 보정
+    if (!validTypes.includes(item.type)) {
+      item.type = 'photo';
+    }
+    // model이 type과 불일치하면 강제 보정
+    item.model = modelMap[item.type];
+    // prompt 누락 시 기본값
+    if (!item.prompt) {
+      item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, no text, no letters, photography style';
+      item.type = 'photo';
+      item.model = 'flux2';
+    }
+  }
+
+  // 첫 마커가 photo가 아니면 강제 변환
+  if (result[0].type !== 'photo') {
     result[0].type = 'photo';
-    if (!result[0].prompt) {
-      result[0].prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style';
-    }
-  }
-
-  // infographic 6개 이상이면 photo로 변환
-  let infographicCount = 0;
-  for (const item of result) {
-    if (item.type === 'infographic') {
-      infographicCount++;
-      if (infographicCount > 5) {
-        item.type = 'photo';
-        if (!item.prompt) {
-          item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style';
-        }
-      }
-    }
-  }
-
-  // infographic에 필수 필드 누락 시 photo로 fallback
-  for (const item of result) {
-    if (item.type === 'infographic') {
-      if (!item.layout || !item.title || !item.items || !Array.isArray(item.items) || item.items.length === 0) {
-        item.type = 'photo';
-        if (!item.prompt) {
-          item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style';
-        }
-      }
+    result[0].model = 'flux2';
+    if (!result[0].prompt.includes('no text')) {
+      result[0].prompt += ', no text, no letters, photography style';
     }
   }
 
   return result;
 }
+
+// ─── 핸들러 ───
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -259,7 +299,7 @@ export default async function handler(req, res) {
   try {
     const { mode, is_regenerate } = req.body;
 
-    // ===== PARSE 모드: 블로그 글에서 마커 파싱 → GPT Image =====
+    // ===== PARSE 모드: 블로그 글에서 마커 파싱 → 자동 모델 라우팅 =====
     if (mode === 'parse') {
       const { blogText, thumbnailText } = req.body;
       const frontMarkers = req.body.markers;
@@ -341,125 +381,27 @@ export default async function handler(req, res) {
 
       console.log(`[IMAGE-PRO] Markers found: ${markers.length}`);
 
-      // 마커가 정확히 8개가 아닌 경우: GPT Image 전용
-      if (markers.length !== 8) {
-        const firstLine = blogText.split('\n').find(l => l.trim()) || '';
-        const blogTitle = firstLine.trim().substring(0, 80);
-        const blogSummary = blogText.substring(0, 300).trim();
-        const headings = blogText.match(/【\d+\.?】[^\n]*/g) || [];
-        const blogStructure = headings.map(h => h.trim()).join(' | ');
-        const allMarkerNames = markers.map(mk => mk.text);
-
-        const markersList = markers.map((mk, i) => {
-          let entry = `Image ${i + 1} of ${markers.length}:\n  Marker: "${mk.text}"`;
-          if (mk.altText) entry += `\n  Alt text: "${mk.altText}"`;
-          if (mk.section) entry += `\n  Section: "${mk.section}"`;
-          entry += `\n  Position in article: ${mk.position}`;
-          entry += `\n  Before (400 chars): "${mk.before}"`;
-          entry += `\n  After (400 chars): "${mk.after}"`;
-          return entry;
-        }).join('\n\n');
-
-        const claudeSystem = `You are a blog image prompt engineer. Your CRITICAL job is generating prompts that PRECISELY match each marker's topic and surrounding context.
-${is_regenerate
-  ? `This is a REGENERATION request — generate MORE SPECIFIC and MORE CONTEXTUALLY ACCURATE prompts.
-Describe exact subject, materials, colors, composition, props. Try different angles and compositions.`
-  : `Your #1 priority is generating images that show the EXACT subject described in each marker and its context.
-Read the before/after text carefully to understand what specific item, product, or scene is being discussed.`}
-
-## MANDATORY COMPOSITION RULES
-- Every image is a STILL LIFE, FLAT-LAY, PRODUCT SHOT, or EMPTY ENVIRONMENT — inanimate objects and vacant spaces only
-- Camera: overhead flat-lay (90-degree bird's-eye), extreme close-up macro, or wide-angle empty space
-- Documents/papers: describe as stacked/fanned arrangements showing soft-focus abstract printed patterns
-- Screens: dark reflective glass or solid color gradients
-- Generate English-only prompts for GPT Image model. All marker text is Korean — translate to PRECISE English visual descriptions.
-- Every prompt MUST directly depict the subject of the blog and marker.
-- Compose for 1024x1024 square format.
-- Be hyper-specific: describe exact materials, textures, colors, arrangement, and lighting.
-
-## Topic-specific framing
-- Insurance/finance: overhead flat-lay of policy folder, calculator, stamp, pen on wooden desk surface
-- Medical/health: macro close-up of medicine bottles, stethoscope draped over clipboard, empty corridor at dawn
-- Consultation: overhead shot of desk surface with laptop (screen showing color gradient), documents, coffee cup
-- Food/restaurant: extreme close-up overhead of plated dish, chopsticks, ceramic bowls
-- Beauty/skincare: flat-lay of product bottles, tools, ingredients on marble surface
-
-## Output
-Return ONLY a valid JSON array of English prompt strings.`;
-
-        const claudeUser = `Blog title: "${blogTitle}"
-Blog summary (300 chars): "${blogSummary}"${blogStructure ? `\nArticle structure: "${blogStructure}"` : ''}
-
-All image markers in order: ${JSON.stringify(allMarkerNames)}
-
----
-${markersList}`;
-
-        let prompts;
-        try {
-          const claudeRaw = await callClaude(claudeSystem, claudeUser, 2000);
-          const jsonMatch = claudeRaw.match(/\[[\s\S]*?\](?=[^[\]]*$)/);
-          prompts = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-        } catch (err) {
-          console.error('[IMAGE-PRO] Claude parse error:', err);
-          prompts = null;
-        }
-
-        if (!prompts || prompts.length !== markers.length) {
-          prompts = markers.map(() => `high quality Korean lifestyle blog photography, soft natural lighting, editorial style`);
-        }
-
-        prompts = prompts.map(p => `${p}, high quality editorial still-life photography, square 1024x1024 composition, inanimate objects only, uninhabited empty scene, overhead or macro camera angle, all visible surfaces and papers show soft-focus abstract patterns with indistinct marks, clean Korean aesthetic`);
-
-        // GPT Image 병렬 생성 (2장씩 배치)
-        const images = [];
-        for (let i = 0; i < prompts.length; i += 2) {
-          const batch = prompts.slice(i, i + 2);
-          const batchResults = await Promise.all(
-            batch.map(async (prompt, j) => {
-              const markerIndex = i + j;
-              try {
-                const url = await callGptImage(prompt);
-                return { url, marker: markers[markerIndex].text, prompt, type: 'photo' };
-              } catch (err) {
-                console.error(`[IMAGE-PRO] GPT Image error for marker ${markerIndex}:`, err);
-                return { url: null, marker: markers[markerIndex].text, prompt, type: 'photo' };
-              }
-            })
-          );
-          images.push(...batchResults);
-        }
-
-        const validImages = images.filter(img => img.url);
-        if (validImages.length === 0) {
-          return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
-        }
-
-        return res.status(200).json({
-          mode: 'parse',
-          images: validImages,
-          thumbnailText: thumbnailText || '',
-          remaining: 999,
-          limit: 999,
-        });
-      }
-
-      // ===== 마커 8개: photo/infographic 혼합 파이프라인 =====
+      // ===== Haiku 4-type 분석 (마커 수 무관) =====
       let analysisResult;
       try {
         analysisResult = await callHaikuMarkerAnalysis(blogText, markers, is_regenerate);
-        const photoCount = analysisResult.filter(r => r.type === 'photo').length;
-        const infraCount = analysisResult.filter(r => r.type === 'infographic').length;
-        console.log(`[IMAGE-PRO] Haiku analysis - photo:${photoCount} infographic:${infraCount}`);
+        const typeCounts = {};
+        for (const r of analysisResult) {
+          typeCounts[r.type] = (typeCounts[r.type] || 0) + 1;
+        }
+        console.log(`[IMAGE-PRO] Haiku routing:`, JSON.stringify(typeCounts));
+        for (const r of analysisResult) {
+          console.log(`[IMAGE-PRO]   "${r.marker || '?'}" → ${r.type}/${r.model} — ${r.reason || ''}`);
+        }
       } catch (err) {
-        console.error('[IMAGE-PRO] Haiku marker analysis FAILED:', err.message);
-        // fallback: 전부 photo
+        console.error('[IMAGE-PRO] Haiku analysis FAILED:', err.message);
+        // fallback: 전부 photo/flux2
         try {
           const firstLine = blogText.split('\n').find(l => l.trim()) || '';
           const blogTitle = firstLine.trim().substring(0, 80);
           const markerTexts = markers.map(mk => mk.text);
           const fallbackRaw = await callClaude(
-            'You are a Korean-to-English translator for image generation. Translate each Korean image description into a specific, detailed English visual prompt (1-2 sentences). The prompts must describe the EXACT subject mentioned. No text/writing/signs in images. Output ONLY a JSON array of English prompt strings.',
+            'You are a Korean-to-English translator for image generation. Translate each Korean image description into a specific, detailed English visual prompt (1-2 sentences). The prompts must describe the EXACT subject mentioned. Always end with: ", no text, no letters, photography style". Output ONLY a JSON array of English prompt strings.',
             `Blog topic: "${blogTitle}"\n\nTranslate these image descriptions:\n${markerTexts.map((t, i) => `${i + 1}. ${t}`).join('\n')}`,
             1500
           );
@@ -469,6 +411,8 @@ ${markersList}`;
             analysisResult = fallbackPrompts.map((prompt, i) => ({
               marker: markers[i].text,
               type: 'photo',
+              model: 'flux2',
+              reason: 'Haiku 분석 실패 → 기본 사진 모드',
               prompt,
             }));
           } else {
@@ -482,71 +426,59 @@ ${markersList}`;
 
       // 원래 마커 순서대로 매핑
       const orderedItems = markers.map((mk, i) => {
-        const found = analysisResult.find(a => a.marker === mk.text) || analysisResult[i];
+        const found = analysisResult[i] || analysisResult.find(a => a.marker === mk.text);
         if (!found) {
-          return { type: 'photo', prompt: 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style', marker: mk.text, originalIndex: i };
+          return {
+            type: 'photo', model: 'flux2',
+            prompt: 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, no text, no letters, photography style',
+            marker: mk.text, reason: '매핑 실패 → 기본값', originalIndex: i,
+          };
         }
         return { ...found, marker: mk.text, originalIndex: i };
       });
 
-      const photoItems = orderedItems.filter(item => item.type !== 'infographic');
-      const infographicItems = orderedItems.filter(item => item.type === 'infographic');
+      // 모델별 그룹화 후 병렬 생성
+      console.log(`[IMAGE-PRO] Generating ${orderedItems.length} images with auto-routing...`);
 
-      console.log(`[IMAGE-PRO] Pipeline: ${photoItems.length} photos (GPT Image) + ${infographicItems.length} infographics (Satori)`);
-
-      // 병렬 실행: GPT Image(photo) + Satori(infographic)
-      const [photoResults, infographicResults] = await Promise.all([
-        // GPT Image 배치 처리 (2장씩)
-        (async () => {
-          const results = [];
-          for (let i = 0; i < photoItems.length; i += 2) {
-            const batch = photoItems.slice(i, i + 2);
-            const batchResults = await Promise.all(
-              batch.map(async (item) => {
-                const prompt = item.prompt || 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style';
-                const fullPrompt = `${prompt}, high quality editorial still-life photography, square 1024x1024 composition, inanimate objects only, uninhabited empty scene, overhead or macro camera angle, all visible surfaces and papers show soft-focus abstract patterns with indistinct marks, clean Korean aesthetic`;
-                try {
-                  const url = await callGptImage(fullPrompt);
-                  return { url, marker: item.marker, prompt: fullPrompt, type: 'photo', originalIndex: item.originalIndex };
-                } catch (err) {
-                  console.error(`[IMAGE-PRO] GPT Image error for "${item.marker}":`, err);
-                  return { url: null, marker: item.marker, prompt: fullPrompt, type: 'photo', originalIndex: item.originalIndex };
-                }
-              })
-            );
-            results.push(...batchResults);
-          }
-          return results;
-        })(),
-
-        // Satori 인포그래픽 (기존과 동일)
-        Promise.all(
-          infographicItems.map(async (item) => {
-            try {
-              const { renderInfographic } = await import('./infographic-renderer.js');
-              const dataUrl = await renderInfographic(item);
-              console.log(`[IMAGE-PRO] Infographic rendered: "${item.marker}" layout=${item.layout}`);
-              return { url: dataUrl, marker: item.marker, type: 'infographic', layout: item.layout, originalIndex: item.originalIndex };
-            } catch (err) {
-              console.error(`[IMAGE-PRO] Satori error for "${item.marker}":`, err.message);
-              // Fallback: GPT Image로 사진 생성
+      const imageResults = await Promise.all(
+        orderedItems.map(async (item) => {
+          const modelName = item.model || 'flux2';
+          const modelLabel = { flux2: 'FLUX.2 pro', gpth: 'GPT Image high', nb2: 'Nano Banana 2' }[modelName] || modelName;
+          try {
+            const url = await generateByModel(modelName, item.prompt);
+            console.log(`[IMAGE-PRO] ✓ "${item.marker}" → ${modelLabel} (${item.type})`);
+            return {
+              url, marker: item.marker, prompt: item.prompt,
+              type: item.type, model: modelName, reason: item.reason,
+              originalIndex: item.originalIndex,
+            };
+          } catch (err) {
+            console.error(`[IMAGE-PRO] ✗ "${item.marker}" → ${modelLabel} FAILED:`, err.message);
+            // fallback: FLUX.2 pro로 재시도
+            if (modelName !== 'flux2') {
               try {
-                const fallbackPrompt = `high quality editorial still-life of objects related to ${item.title || item.marker}, overhead flat-lay on clean surface, soft natural lighting, inanimate objects only, uninhabited empty scene, all visible surfaces show soft-focus abstract patterns, clean Korean aesthetic`;
-                const url = await callGptImage(fallbackPrompt);
-                return { url, marker: item.marker, prompt: fallbackPrompt, type: 'photo', originalIndex: item.originalIndex };
-              } catch (gptErr) {
-                console.error(`[IMAGE-PRO] GPT Image fallback also failed for "${item.marker}":`, gptErr);
-                return { url: null, marker: item.marker, type: 'photo', originalIndex: item.originalIndex };
+                const fallbackPrompt = item.prompt.replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
+                  ', no text, no letters, photography style';
+                const url = await callFlux2Pro(fallbackPrompt);
+                console.log(`[IMAGE-PRO] ↩ "${item.marker}" fallback to FLUX.2 pro`);
+                return {
+                  url, marker: item.marker, prompt: fallbackPrompt,
+                  type: 'photo', model: 'flux2', reason: `${modelLabel} 실패 → FLUX.2 pro 대체`,
+                  originalIndex: item.originalIndex,
+                };
+              } catch (fallbackErr) {
+                console.error(`[IMAGE-PRO] ✗ "${item.marker}" FLUX.2 fallback also FAILED`);
               }
             }
-          })
-        ),
-      ]);
+            return { url: null, marker: item.marker, type: item.type, model: modelName, originalIndex: item.originalIndex };
+          }
+        })
+      );
 
-      const allResults = [...photoResults, ...infographicResults]
-        .sort((a, b) => a.originalIndex - b.originalIndex);
+      const validImages = imageResults
+        .sort((a, b) => a.originalIndex - b.originalIndex)
+        .filter(img => img.url);
 
-      const validImages = allResults.filter(img => img.url);
       if (validImages.length === 0) {
         return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
       }
@@ -560,15 +492,15 @@ ${markersList}`;
       });
     }
 
-    // ===== DIRECT 모드: 주제+분위기 → 8장 (GPT Image) =====
+    // ===== DIRECT 모드: 주제+분위기 → 8장 (FLUX.2 pro) =====
     const { topic, mood, thumbnailText } = req.body;
     if (!topic) {
       return res.status(400).json({ error: '블로그 주제를 입력해주세요.' });
     }
 
     const directSystem = is_regenerate
-      ? 'You are an image prompt translator. This is a REGENERATION request. Convert the Korean blog topic into a rich, detailed English still-life or environment description (2-3 sentences). Describe ONLY inanimate objects, products, documents, tools, or empty spaces — frame as overhead flat-lay, macro close-up, or vacant environment. Name specific materials, colors, textures, arrangement. Camera: overhead bird-eye or extreme macro. Documents/papers: describe as showing soft-focus abstract printed patterns. Screens: dark reflective glass or solid color gradient. Compose for square 1024x1024. Output only the prompt.'
-      : 'You are an image prompt translator. Convert the Korean blog topic into a concise English still-life or environment description (1-2 sentences). Describe ONLY inanimate objects, documents, or empty spaces as overhead flat-lay, macro close-up, or vacant environment. Documents show soft-focus abstract patterns. Compose for square 1024x1024. Output only the prompt.';
+      ? 'You are an image prompt translator. This is a REGENERATION request. Convert the Korean blog topic into a rich, detailed English still-life or environment description (2-3 sentences). Describe ONLY inanimate objects, products, documents, tools, or empty spaces — frame as overhead flat-lay, macro close-up, or vacant environment. Name specific materials, colors, textures, arrangement. Camera: overhead bird-eye or extreme macro. Compose for square 1024x1024. Always end with: ", no text, no letters, photography style". Output only the prompt.'
+      : 'You are an image prompt translator. Convert the Korean blog topic into a concise English still-life or environment description (1-2 sentences). Describe ONLY inanimate objects, documents, or empty spaces as overhead flat-lay, macro close-up, or vacant environment. Compose for square 1024x1024. Always end with: ", no text, no letters, photography style". Output only the prompt.';
     const englishTopic = await callClaude(
       directSystem,
       topic,
@@ -577,20 +509,20 @@ ${markersList}`;
 
     console.log('[IMAGE-PRO] Direct mode - topic:', topic, '→ prompt:', englishTopic.substring(0, 100));
     const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
-    const fullPrompt = `${englishTopic}, ${moodStyle}, high quality editorial still-life photography, inanimate objects only, uninhabited empty scene, overhead or macro camera angle, all visible surfaces and papers show soft-focus abstract patterns with indistinct marks, clean Korean aesthetic`;
+    const fullPrompt = `${englishTopic}, ${moodStyle}, high quality editorial still-life photography, inanimate objects only, uninhabited empty scene, overhead or macro camera angle, clean Korean aesthetic, no text, no letters, photography style`;
 
-    // 8장 GPT Image 생성 (2장씩 배치)
+    // 8장 FLUX.2 pro 생성 (2장씩 배치)
     const images = [];
     for (let i = 0; i < DIRECT_IMAGES; i += 2) {
       const batchSize = Math.min(2, DIRECT_IMAGES - i);
       const batchResults = await Promise.all(
         Array.from({ length: batchSize }, async (_, j) => {
           try {
-            const url = await callGptImage(fullPrompt);
-            return { url, prompt: fullPrompt };
+            const url = await callFlux2Pro(fullPrompt);
+            return { url, prompt: fullPrompt, type: 'photo', model: 'flux2' };
           } catch (err) {
-            console.error(`[IMAGE-PRO] GPT Image error (direct ${i + j}):`, err);
-            return { url: null, prompt: fullPrompt };
+            console.error(`[IMAGE-PRO] FLUX.2 pro error (direct ${i + j}):`, err);
+            return { url: null, prompt: fullPrompt, type: 'photo', model: 'flux2' };
           }
         })
       );
