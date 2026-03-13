@@ -175,7 +175,35 @@ For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 사물
 ### 2. infographic_data → model: "gpth"
 For: 차트, 그래프, 통계, 수치, KPI, 비교표, 데이터 시각화
 - Data-heavy visuals with numbers, percentages, charts
-- GPT Image 1 excels at structured data visualization
+- GPT Image 1 high excels at structured data visualization
+
+**MANDATORY CHART RULES for infographic_data prompts:**
+
+(A) DATA LABELS — Every data point must have its numeric value directly on the chart:
+  - Bar chart: value written inside or at the tip of each bar
+  - Pie/donut chart: percentage written inside each segment
+  - Line chart: value written above each data point node
+
+(B) AXIS UNITS — Always specify unit labels:
+  - Y-axis label must include unit (e.g., "비용(만원)", "비율(%)", "건수(명)")
+  - X-axis item names must be complete Korean text
+  - Include subtle grid lines for readability
+
+(C) TIGHT COMPOSITION — Minimize white space:
+  - Always include "no empty space, all elements tightly composed, chart fills 70% of image area"
+  - Chart must dominate the image, not float in empty space
+
+(D) SOURCE FOOTER — Bottom of image must show data source or reference year:
+  - e.g., "Source: 한국소비자원 2024" or "기준: 2024년"
+
+(E) COLOR CONTRAST — Emphasize key data:
+  - Primary/highlighted items use bold saturated color
+  - Secondary items use muted gray tones for contrast
+  - Legend placed clearly at right side or bottom of chart
+
+(F) TITLE STRUCTURE — Two-level title:
+  - Main title: large bold Korean text
+  - Subtitle: reference year, comparison period, or data scope in smaller text
 
 ### 3. infographic_flow → model: "nb2"
 For: 타임라인, 로드맵, 단계, 흐름도, 프로세스, 한글 텍스트 위주 설명
@@ -204,6 +232,7 @@ For: 한글 타이포그래피, 공지, 텍스트 위주 포스터, 배너
 - For infographic_data/infographic_flow/poster: include Korean text strings in quotes within the prompt
 - Describe the visual layout, structure, colors, and Korean labels
 - Do NOT add "no text" suffix — text IS the point
+- For infographic_data specifically: MUST follow ALL 6 MANDATORY CHART RULES (A)~(F) above — include data labels, axis units, tight composition, source footer, color contrast, and two-level title structure in the prompt
 
 ### Rule 4: Prompt length
 - Each prompt: 80-150 English words
@@ -218,7 +247,7 @@ ${isRegenerate ? '\nREGENERATION MODE: Generate MORE SPECIFIC prompts with diffe
 
 ## OUTPUT FORMAT
 Return ONLY a valid JSON array. Each element:
-{"type":"[photo|infographic_data|infographic_flow|poster]","model":"[flux2|gpth|nb2]","reason":"[한국어 1문장 — 이 유형과 모델을 선택한 이유]","prompt":"[영어 전용 프롬프트 80-150 words]"}`;
+{"type":"[photo|infographic_data|infographic_flow|poster]","model":"[fluxr|gpth|nb2]","reason":"[한국어 1문장 — 이 유형과 모델을 선택한 이유]","prompt":"[영어 전용 프롬프트 80-150 words]"}`;
 
   const userPrompt = `블로그 제목: "${blogTitle}"
 블로그 전체 주제 (첫 300자): ${blogSummary}${blogStructure ? `\n글 구조: ${blogStructure}` : ''}
