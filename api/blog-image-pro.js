@@ -67,9 +67,9 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 200) {
   return (data.content?.[0]?.text || '').trim();
 }
 
-// FLUX.2 pro — 사진/배경/풍경/음식/인물/제품
-async function callFlux2Pro(prompt) {
-  const response = await fetch('https://fal.run/fal-ai/flux-2-pro', {
+// FLUX Realism LoRA — 사실적 사진/배경/풍경/음식/인물/제품
+async function callFluxRealism(prompt) {
+  const response = await fetch('https://fal.run/fal-ai/flux-lora', {
     method: 'POST',
     headers: {
       Authorization: `Key ${process.env.FAL_KEY}`,
@@ -81,6 +81,7 @@ async function callFlux2Pro(prompt) {
       num_images: 1,
       num_inference_steps: 28,
       guidance_scale: 3.5,
+      loras: [{ path: 'XLabs-AI/flux-RealismLora', scale: 1 }],
     }),
   });
   const data = await response.json();
@@ -134,14 +135,14 @@ async function callNanoBanana2(prompt) {
 // 모델 라우팅: type → API 호출
 async function generateByModel(model, prompt) {
   switch (model) {
-    case 'flux2':
-      return await callFlux2Pro(prompt);
+    case 'fluxr':
+      return await callFluxRealism(prompt);
     case 'gpth':
       return await callGptImageHigh(prompt);
     case 'nb2':
       return await callNanoBanana2(prompt);
     default:
-      return await callGptImageHigh(prompt);
+      return await callFluxRealism(prompt);
   }
 }
 
@@ -165,11 +166,11 @@ Your job: classify each marker into ONE of 4 types, select the best AI model, an
 
 ## 4 IMAGE TYPES & MODEL ROUTING
 
-### 1. photo → model: "gpth"
+### 1. photo → model: "fluxr"
 For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 사물
 - Purely visual scenes, no text/labels needed
 - The FIRST marker MUST always be "photo" (대표이미지)
-- GPT Image 1 high quality for best photo results
+- FLUX Realism LoRA for photorealistic results
 
 ### 2. infographic_data → model: "gpth"
 For: 차트, 그래프, 통계, 수치, KPI, 비교표, 데이터 시각화
@@ -244,7 +245,7 @@ ${markerContext}
 
   // 후처리: 안전장치
   const validTypes = ['photo', 'infographic_data', 'infographic_flow', 'poster'];
-  const modelMap = { photo: 'gpth', infographic_data: 'gpth', infographic_flow: 'nb2', poster: 'nb2' };
+  const modelMap = { photo: 'fluxr', infographic_data: 'gpth', infographic_flow: 'nb2', poster: 'nb2' };
 
   for (const item of result) {
     // 잘못된 type 보정
@@ -412,7 +413,7 @@ export default async function handler(req, res) {
             analysisResult = fallbackPrompts.map((prompt, i) => ({
               marker: markers[i].text,
               type: 'photo',
-              model: 'gpth',
+              model: 'fluxr',
               reason: 'Haiku 분석 실패 → 기본 사진 모드',
               prompt,
             }));
@@ -430,7 +431,7 @@ export default async function handler(req, res) {
         const found = analysisResult[i] || analysisResult.find(a => a.marker === mk.text);
         if (!found) {
           return {
-            type: 'photo', model: 'gpth',
+            type: 'photo', model: 'fluxr',
             prompt: 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, no text, no letters, photography style',
             marker: mk.text, reason: '매핑 실패 → 기본값', originalIndex: i,
           };
@@ -455,20 +456,20 @@ export default async function handler(req, res) {
             };
           } catch (err) {
             console.error(`[IMAGE-PRO] ✗ "${item.marker}" → ${modelLabel} FAILED:`, err.message);
-            // fallback: GPT Image high로 재시도
-            if (modelName !== 'gpth') {
+            // fallback: FLUX Realism으로 재시도
+            if (modelName !== 'fluxr') {
               try {
                 const fallbackPrompt = item.prompt.replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
                   ', no text, no letters, photography style';
-                const url = await callGptImageHigh(fallbackPrompt);
-                console.log(`[IMAGE-PRO] ↩ "${item.marker}" fallback to GPT Image high`);
+                const url = await callFluxRealism(fallbackPrompt);
+                console.log(`[IMAGE-PRO] ↩ "${item.marker}" fallback to FLUX Realism`);
                 return {
                   url, marker: item.marker, prompt: fallbackPrompt,
-                  type: 'photo', model: 'gpth', reason: `${modelLabel} 실패 → GPT Image high 대체`,
+                  type: 'photo', model: 'fluxr', reason: `${modelLabel} 실패 → FLUX Realism 대체`,
                   originalIndex: item.originalIndex,
                 };
               } catch (fallbackErr) {
-                console.error(`[IMAGE-PRO] ✗ "${item.marker}" GPT Image high fallback also FAILED`);
+                console.error(`[IMAGE-PRO] ✗ "${item.marker}" FLUX Realism fallback also FAILED`);
               }
             }
             return { url: null, marker: item.marker, type: item.type, model: modelName, originalIndex: item.originalIndex };
@@ -512,18 +513,18 @@ export default async function handler(req, res) {
     const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
     const fullPrompt = `${englishTopic}, ${moodStyle}, high quality editorial still-life photography, inanimate objects only, uninhabited empty scene, overhead or macro camera angle, clean Korean aesthetic, no text, no letters, photography style`;
 
-    // 8장 GPT Image high 생성 (2장씩 배치)
+    // 8장 FLUX Realism 생성 (2장씩 배치)
     const images = [];
     for (let i = 0; i < DIRECT_IMAGES; i += 2) {
       const batchSize = Math.min(2, DIRECT_IMAGES - i);
       const batchResults = await Promise.all(
         Array.from({ length: batchSize }, async (_, j) => {
           try {
-            const url = await callGptImageHigh(fullPrompt);
-            return { url, prompt: fullPrompt, type: 'photo', model: 'gpth' };
+            const url = await callFluxRealism(fullPrompt);
+            return { url, prompt: fullPrompt, type: 'photo', model: 'fluxr' };
           } catch (err) {
-            console.error(`[IMAGE-PRO] GPT Image high error (direct ${i + j}):`, err);
-            return { url: null, prompt: fullPrompt, type: 'photo', model: 'gpth' };
+            console.error(`[IMAGE-PRO] FLUX Realism error (direct ${i + j}):`, err);
+            return { url: null, prompt: fullPrompt, type: 'photo', model: 'fluxr' };
           }
         })
       );

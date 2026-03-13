@@ -301,7 +301,7 @@ footer a:hover { text-decoration: underline; }
 <div class="hero">
   <div class="hero-badge">PREMIUM · 프리미엄 이미지</div>
   <h1>AI 자동 라우팅으로 만드는<br><em>고품질 블로그 이미지</em></h1>
-  <p>Haiku가 이미지 유형을 판단해 최적 모델을 자동 선택합니다<br>사진/데이터→GPT Image high | 흐름도/포스터→Nano Banana 2</p>
+  <p>Haiku가 이미지 유형을 판단해 최적 모델을 자동 선택합니다<br>사진→FLUX Realism | 데이터→GPT Image high | 흐름도/포스터→Nano Banana 2</p>
 </div>
 
 <div class="container">
@@ -583,7 +583,7 @@ async function generateParse() {
 
     currentMode = 'parse';
     generatedImages = data.images.map(function(img, i) {
-      return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', model: img.model || 'flux2', reason: img.reason || '', layout: img.layout || null, index: i };
+      return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', model: img.model || 'fluxr', reason: img.reason || '', layout: img.layout || null, index: i };
     });
 
     renderResults(generatedImages, thumbnailText);
@@ -616,7 +616,7 @@ async function generateDirect() {
   btn.textContent = '이미지 생성 중...';
 
   document.getElementById('loadingArea').classList.add('show');
-  document.getElementById('loadingText').textContent = 'GPT Image high가 이미지 8장을 생성하고 있습니다...';
+  document.getElementById('loadingText').textContent = 'FLUX Realism이 이미지 8장을 생성하고 있습니다...';
   document.getElementById('loadingProgress').textContent = '주제 분석 → 프롬프트 변환 → 이미지 생성 (약 1~2분)';
   document.getElementById('resultArea').classList.remove('show');
 
@@ -636,7 +636,7 @@ async function generateDirect() {
 
     currentMode = 'direct';
     generatedImages = data.images.map(function(img, i) {
-      return { url: img.url, marker: null, prompt: img.prompt, type: img.type || 'photo', model: img.model || 'flux2', reason: '', layout: null, index: i };
+      return { url: img.url, marker: null, prompt: img.prompt, type: img.type || 'photo', model: img.model || 'fluxr', reason: '', layout: null, index: i };
     });
 
     renderResults(generatedImages, thumbnailText);
@@ -673,10 +673,10 @@ function renderResults(images, thumbnailText) {
     card.id = 'image-card-' + i;
 
     var typeIcons = { photo: '\ud83d\udcf7', infographic_data: '\ud83d\udcca', infographic_flow: '\ud83d\udd04', poster: '\ud83c\udfad' };
-    var typeLabels = { photo: 'GPT Image high', infographic_data: 'GPT Image high', infographic_flow: 'Nano Banana 2', poster: 'Nano Banana 2' };
-    var modelLabels = { flux2: 'FLUX.2 pro', gpth: 'GPT Image high', nb2: 'Nano Banana 2' };
+    var typeLabels = { photo: 'FLUX Realism', infographic_data: 'GPT Image high', infographic_flow: 'Nano Banana 2', poster: 'Nano Banana 2' };
+    var modelLabels = { fluxr: 'FLUX Realism', gpth: 'GPT Image high', nb2: 'Nano Banana 2' };
     var itemType = item.type || 'photo';
-    var itemModel = item.model || 'flux2';
+    var itemModel = item.model || 'fluxr';
     var isInfographic = itemType !== 'photo';
 
     if (item.marker) {
@@ -688,7 +688,7 @@ function renderResults(images, thumbnailText) {
       if (modelLabel) {
         var badge = document.createElement('span');
         badge.style.cssText = 'margin-left:8px; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:700;';
-        if (itemModel === 'flux2') { badge.style.background = '#EBF5FF'; badge.style.color = '#1D4ED8'; }
+        if (itemModel === 'fluxr') { badge.style.background = '#EBF5FF'; badge.style.color = '#1D4ED8'; }
         else if (itemModel === 'gpth') { badge.style.background = '#F0FDF4'; badge.style.color = '#166534'; }
         else if (itemModel === 'nb2') { badge.style.background = '#FFF7ED'; badge.style.color = '#C2410C'; }
         badge.textContent = modelLabel;
@@ -872,7 +872,7 @@ async function regenerateAll() {
 
     if (res.ok && data.images && data.images.length > 0) {
       generatedImages = data.images.map(function(img, i) {
-        return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', model: img.model || 'flux2', reason: img.reason || '', layout: img.layout || null, index: i };
+        return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', model: img.model || 'fluxr', reason: img.reason || '', layout: img.layout || null, index: i };
       });
       renderResults(generatedImages, thumbText);
     } else {
