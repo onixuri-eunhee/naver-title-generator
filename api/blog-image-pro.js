@@ -312,9 +312,11 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // ─── 인증: admin OR 로그인 회원 ───
+  // ─── 인증: admin OR IP 화이트리스트 OR 로그인 회원 ───
+  const ip = getClientIp(req);
   const adminKey = req.query?.key || req.query?.admin || req.body?.adminKey;
-  const isAdmin = adminKey === ADMIN_KEY;
+  const ipWhitelisted = await getRedis().get(`admin:whitelist:${ip}`);
+  const isAdmin = adminKey === ADMIN_KEY || !!ipWhitelisted;
 
   let sessionEmail = null;
 
