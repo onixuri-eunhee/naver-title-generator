@@ -301,7 +301,7 @@ footer a:hover { text-decoration: underline; }
 <div class="hero">
   <div class="hero-badge">PREMIUM · 프리미엄 이미지</div>
   <h1>AI 자동 라우팅으로 만드는<br><em>고품질 블로그 이미지</em></h1>
-  <p>Haiku가 이미지 유형을 판단해 최적 모델을 자동 선택합니다<br>사진→FLUX.2 pro | 데이터→GPT Image | 흐름도/포스터→Nano Banana 2</p>
+  <p>Haiku가 이미지 유형을 판단해 최적 모델을 자동 선택합니다<br>사진/데이터→GPT Image high | 흐름도/포스터→Nano Banana 2</p>
 </div>
 
 <div class="container">
@@ -616,7 +616,7 @@ async function generateDirect() {
   btn.textContent = '이미지 생성 중...';
 
   document.getElementById('loadingArea').classList.add('show');
-  document.getElementById('loadingText').textContent = 'FLUX.2 pro가 이미지 8장을 생성하고 있습니다...';
+  document.getElementById('loadingText').textContent = 'GPT Image high가 이미지 8장을 생성하고 있습니다...';
   document.getElementById('loadingProgress').textContent = '주제 분석 → 프롬프트 변환 → 이미지 생성 (약 1~2분)';
   document.getElementById('resultArea').classList.remove('show');
 
@@ -673,7 +673,7 @@ function renderResults(images, thumbnailText) {
     card.id = 'image-card-' + i;
 
     var typeIcons = { photo: '\ud83d\udcf7', infographic_data: '\ud83d\udcca', infographic_flow: '\ud83d\udd04', poster: '\ud83c\udfad' };
-    var typeLabels = { photo: 'FLUX.2 pro', infographic_data: 'GPT Image high', infographic_flow: 'Nano Banana 2', poster: 'Nano Banana 2' };
+    var typeLabels = { photo: 'GPT Image high', infographic_data: 'GPT Image high', infographic_flow: 'Nano Banana 2', poster: 'Nano Banana 2' };
     var modelLabels = { flux2: 'FLUX.2 pro', gpth: 'GPT Image high', nb2: 'Nano Banana 2' };
     var itemType = item.type || 'photo';
     var itemModel = item.model || 'flux2';

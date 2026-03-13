@@ -141,7 +141,7 @@ async function generateByModel(model, prompt) {
     case 'nb2':
       return await callNanoBanana2(prompt);
     default:
-      return await callFlux2Pro(prompt);
+      return await callGptImageHigh(prompt);
   }
 }
 
@@ -165,10 +165,11 @@ Your job: classify each marker into ONE of 4 types, select the best AI model, an
 
 ## 4 IMAGE TYPES & MODEL ROUTING
 
-### 1. photo → model: "flux2"
+### 1. photo → model: "gpth"
 For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 사물
 - Purely visual scenes, no text/labels needed
 - The FIRST marker MUST always be "photo" (대표이미지)
+- GPT Image 1 high quality for best photo results
 
 ### 2. infographic_data → model: "gpth"
 For: 차트, 그래프, 통계, 수치, KPI, 비교표, 데이터 시각화
@@ -243,7 +244,7 @@ ${markerContext}
 
   // 후처리: 안전장치
   const validTypes = ['photo', 'infographic_data', 'infographic_flow', 'poster'];
-  const modelMap = { photo: 'flux2', infographic_data: 'gpth', infographic_flow: 'nb2', poster: 'nb2' };
+  const modelMap = { photo: 'gpth', infographic_data: 'gpth', infographic_flow: 'nb2', poster: 'nb2' };
 
   for (const item of result) {
     // 잘못된 type 보정
@@ -411,7 +412,7 @@ export default async function handler(req, res) {
             analysisResult = fallbackPrompts.map((prompt, i) => ({
               marker: markers[i].text,
               type: 'photo',
-              model: 'flux2',
+              model: 'gpth',
               reason: 'Haiku 분석 실패 → 기본 사진 모드',
               prompt,
             }));
@@ -429,7 +430,7 @@ export default async function handler(req, res) {
         const found = analysisResult[i] || analysisResult.find(a => a.marker === mk.text);
         if (!found) {
           return {
-            type: 'photo', model: 'flux2',
+            type: 'photo', model: 'gpth',
             prompt: 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, no text, no letters, photography style',
             marker: mk.text, reason: '매핑 실패 → 기본값', originalIndex: i,
           };
@@ -454,20 +455,20 @@ export default async function handler(req, res) {
             };
           } catch (err) {
             console.error(`[IMAGE-PRO] ✗ "${item.marker}" → ${modelLabel} FAILED:`, err.message);
-            // fallback: FLUX.2 pro로 재시도
-            if (modelName !== 'flux2') {
+            // fallback: GPT Image high로 재시도
+            if (modelName !== 'gpth') {
               try {
                 const fallbackPrompt = item.prompt.replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
                   ', no text, no letters, photography style';
-                const url = await callFlux2Pro(fallbackPrompt);
-                console.log(`[IMAGE-PRO] ↩ "${item.marker}" fallback to FLUX.2 pro`);
+                const url = await callGptImageHigh(fallbackPrompt);
+                console.log(`[IMAGE-PRO] ↩ "${item.marker}" fallback to GPT Image high`);
                 return {
                   url, marker: item.marker, prompt: fallbackPrompt,
-                  type: 'photo', model: 'flux2', reason: `${modelLabel} 실패 → FLUX.2 pro 대체`,
+                  type: 'photo', model: 'gpth', reason: `${modelLabel} 실패 → GPT Image high 대체`,
                   originalIndex: item.originalIndex,
                 };
               } catch (fallbackErr) {
-                console.error(`[IMAGE-PRO] ✗ "${item.marker}" FLUX.2 fallback also FAILED`);
+                console.error(`[IMAGE-PRO] ✗ "${item.marker}" GPT Image high fallback also FAILED`);
               }
             }
             return { url: null, marker: item.marker, type: item.type, model: modelName, originalIndex: item.originalIndex };
@@ -511,18 +512,18 @@ export default async function handler(req, res) {
     const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
     const fullPrompt = `${englishTopic}, ${moodStyle}, high quality editorial still-life photography, inanimate objects only, uninhabited empty scene, overhead or macro camera angle, clean Korean aesthetic, no text, no letters, photography style`;
 
-    // 8장 FLUX.2 pro 생성 (2장씩 배치)
+    // 8장 GPT Image high 생성 (2장씩 배치)
     const images = [];
     for (let i = 0; i < DIRECT_IMAGES; i += 2) {
       const batchSize = Math.min(2, DIRECT_IMAGES - i);
       const batchResults = await Promise.all(
         Array.from({ length: batchSize }, async (_, j) => {
           try {
-            const url = await callFlux2Pro(fullPrompt);
-            return { url, prompt: fullPrompt, type: 'photo', model: 'flux2' };
+            const url = await callGptImageHigh(fullPrompt);
+            return { url, prompt: fullPrompt, type: 'photo', model: 'gpth' };
           } catch (err) {
-            console.error(`[IMAGE-PRO] FLUX.2 pro error (direct ${i + j}):`, err);
-            return { url: null, prompt: fullPrompt, type: 'photo', model: 'flux2' };
+            console.error(`[IMAGE-PRO] GPT Image high error (direct ${i + j}):`, err);
+            return { url: null, prompt: fullPrompt, type: 'photo', model: 'gpth' };
           }
         })
       );
