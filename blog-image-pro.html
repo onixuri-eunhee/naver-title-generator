@@ -13,7 +13,7 @@
 </script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4973804132466200" crossorigin="anonymous"></script>
 <title>프리미엄 이미지 생성기 | AI 고품질 이미지 — 뚝딱툴</title>
-<meta name="description" content="AI가 이미지 유형을 자동 판단해 최적 모델로 고품질 블로그 이미지를 생성합니다. 사진, 차트, 흐름도, 포스터까지 한 번에." />
+<meta name="description" content="AI가 이미지 유형을 자동 판단해 고품질 블로그 이미지를 생성합니다. 사진, 차트, 흐름도, 포스터까지 한 번에." />
 <link rel="canonical" href="https://ddukddaktool.co.kr/blog-image-pro.html" />
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
@@ -348,7 +348,7 @@ footer a:hover { text-decoration: underline; }
 <div class="hero">
   <div class="hero-badge">PREMIUM · 프리미엄 이미지</div>
   <h1>AI 자동 라우팅으로 만드는<br><em>고품질 블로그 이미지</em></h1>
-  <p>AI가 이미지 유형을 판단해 최적 모델을 자동 선택합니다<br>사진/데이터 차트/흐름도/포스터까지 한 번에</p>
+  <p>AI가 이미지 유형을 자동 판단해 고품질 이미지를 생성합니다<br>사진/데이터 차트/흐름도/포스터까지 한 번에</p>
 </div>
 
 <div class="container">
@@ -419,14 +419,14 @@ footer a:hover { text-decoration: underline; }
   <!-- 로딩 -->
   <div class="loading" id="loadingArea">
     <div class="loading-spinner"></div>
-    <div class="loading-text" id="loadingText">AI가 최적 모델을 선택하여 이미지를 생성하고 있습니다...</div>
+    <div class="loading-text" id="loadingText">AI가 고품질 이미지를 생성하고 있습니다...</div>
     <div class="loading-progress" id="loadingProgress"></div>
   </div>
 
   <!-- 결과 -->
   <div class="result-area" id="resultArea">
     <div class="card">
-      <h2 style="font-size:16px; font-weight:700; margin-bottom:16px;">생성된 이미지 (자동 모델 라우팅)</h2>
+      <h2 style="font-size:16px; font-weight:700; margin-bottom:16px;">생성된 이미지</h2>
       <div class="image-grid" id="imageGrid"></div>
       <button class="generate-btn" id="regenAllBtn" onclick="regenerateAll()" style="margin-top:20px; background:linear-gradient(135deg,#D97706,#B45309);">전체 재생성</button>
       <p style="text-align:center; font-size:12px; color:#9CA3AF; margin-top:8px;">개별 이미지는 "다시 생성" 버튼으로 1회 무료 재생성할 수 있습니다.</p>
@@ -708,7 +708,7 @@ async function generateDirect() {
   btn.textContent = '이미지 생성 중...';
 
   document.getElementById('loadingArea').classList.add('show');
-  document.getElementById('loadingText').textContent = 'FLUX Realism이 이미지 8장을 생성하고 있습니다...';
+  document.getElementById('loadingText').textContent = 'AI가 이미지 8장을 생성하고 있습니다...';
   document.getElementById('loadingProgress').textContent = '주제 분석 → 프롬프트 변환 → 이미지 생성 (약 1~2분)';
   document.getElementById('resultArea').classList.remove('show');
 
@@ -767,8 +767,7 @@ function renderResults(images, thumbnailText) {
     card.id = 'image-card-' + i;
 
     var typeIcons = { photo: '\ud83d\udcf7', infographic_data: '\ud83d\udcca', infographic_flow: '\ud83d\udd04', poster: '\ud83c\udfad' };
-    var typeLabels = { photo: 'FLUX Realism', infographic_data: 'GPT Image high', infographic_flow: 'Nano Banana 2', poster: 'Nano Banana 2' };
-    var modelLabels = { fluxr: 'FLUX Realism', gpth: 'GPT Image high', nb2: 'Nano Banana 2' };
+    var typeLabels = { photo: '사진', infographic_data: '데이터 차트', infographic_flow: '흐름도', poster: '포스터' };
     var itemType = item.type || 'photo';
     var itemModel = item.model || 'fluxr';
     var isInfographic = itemType !== 'photo';
@@ -777,17 +776,7 @@ function renderResults(images, thumbnailText) {
       var markerEl = document.createElement('div');
       markerEl.className = 'image-card-marker';
       var icon = typeIcons[itemType] || '\ud83d\udcf7';
-      var modelLabel = modelLabels[itemModel] || typeLabels[itemType] || '';
       markerEl.textContent = icon + ' ' + item.marker;
-      if (modelLabel) {
-        var badge = document.createElement('span');
-        badge.style.cssText = 'margin-left:8px; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:700;';
-        if (itemModel === 'fluxr') { badge.style.background = '#EBF5FF'; badge.style.color = '#1D4ED8'; }
-        else if (itemModel === 'gpth') { badge.style.background = '#F0FDF4'; badge.style.color = '#166534'; }
-        else if (itemModel === 'nb2') { badge.style.background = '#FFF7ED'; badge.style.color = '#C2410C'; }
-        badge.textContent = modelLabel;
-        markerEl.appendChild(badge);
-      }
       if (isInfographic) {
         markerEl.style.background = '#F0FFF4';
         markerEl.style.borderBottomColor = '#C6F6D5';
