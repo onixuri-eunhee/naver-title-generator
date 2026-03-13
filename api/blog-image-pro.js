@@ -171,9 +171,14 @@ For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 사물
 - Purely visual scenes, no text/labels needed
 - The FIRST marker MUST always be "photo" (대표이미지)
 - FLUX Realism LoRA for photorealistic results
+- **CRITICAL: Korean text (한글) is ABSOLUTELY FORBIDDEN in photo prompts — it will break rendering**
+- English text is allowed if contextually needed
+- Always end with: ", no text, no Korean letters, photography style"
 
 ### 2. infographic_data → model: "gpth"
-For: 차트, 그래프, 통계, 수치, KPI, 비교표, 데이터 시각화
+**COST GUARD: Only use this type when the marker text or surrounding context contains DATA KEYWORDS:**
+통계, 데이터, 데이타, 수치, 확률, 퍼센트, %, 그래프, 차트, KPI, 증감, 추이, 비율, 전년대비
+- If none of these keywords appear in the marker or its before/after context → use infographic_flow (nb2) instead
 - Data-heavy visuals with numbers, percentages, charts
 - GPT Image 1 high excels at structured data visualization
 
@@ -276,27 +281,44 @@ ${markerContext}
   const validTypes = ['photo', 'infographic_data', 'infographic_flow', 'poster'];
   const modelMap = { photo: 'fluxr', infographic_data: 'gpth', infographic_flow: 'nb2', poster: 'nb2' };
 
-  for (const item of result) {
+  // infographic_data 허용 키워드 (이 키워드가 마커+문맥에 없으면 nb2로 다운그레이드)
+  const dataKeywords = /통계|데이터|데이타|수치|확률|퍼센트|%|그래프|차트|KPI|증감|추이|비율|전년대비/;
+
+  for (let idx = 0; idx < result.length; idx++) {
+    const item = result[idx];
+
     // 잘못된 type 보정
     if (!validTypes.includes(item.type)) {
       item.type = 'photo';
     }
+
+    // infographic_data 키워드 검증: 마커 텍스트 + 앞뒤 문맥에 데이터 키워드 없으면 → infographic_flow로 다운그레이드
+    if (item.type === 'infographic_data' && idx < markers.length) {
+      const mk = markers[idx];
+      const searchText = `${mk.text} ${mk.before} ${mk.after}`;
+      if (!dataKeywords.test(searchText)) {
+        console.log(`[IMAGE-PRO] ↓ "${mk.text}" infographic_data → infographic_flow (데이터 키워드 미검출)`);
+        item.type = 'infographic_flow';
+      }
+    }
+
     // model이 type과 불일치하면 강제 보정
     item.model = modelMap[item.type];
+
     // prompt 누락 시 기본값
     if (!item.prompt) {
-      item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, no text, no letters, photography style';
+      item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, no text, no Korean letters, photography style';
       item.type = 'photo';
-      item.model = 'flux2';
+      item.model = 'fluxr';
     }
   }
 
   // 첫 마커가 photo가 아니면 강제 변환
   if (result[0].type !== 'photo') {
     result[0].type = 'photo';
-    result[0].model = 'flux2';
+    result[0].model = 'fluxr';
     if (!result[0].prompt.includes('no text')) {
-      result[0].prompt += ', no text, no letters, photography style';
+      result[0].prompt += ', no text, no Korean letters, photography style';
     }
   }
 
