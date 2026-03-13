@@ -3,8 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="robots" content="noindex, nofollow" />
-<title>프리미엄 이미지 생성기 | 뚝딱툴 (비공개)</title>
+<meta name="robots" content="index, follow" />
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-C61VWMGQ8R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-C61VWMGQ8R');
+</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4973804132466200" crossorigin="anonymous"></script>
+<title>프리미엄 이미지 생성기 | AI 고품질 이미지 — 뚝딱툴</title>
+<meta name="description" content="AI가 이미지 유형을 자동 판단해 최적 모델로 고품질 블로그 이미지를 생성합니다. 사진, 차트, 흐름도, 포스터까지 한 번에." />
+<link rel="canonical" href="https://ddukddaktool.co.kr/blog-image-pro.html" />
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -206,6 +216,8 @@ select:focus, input:focus, textarea:focus {
 .generate-btn:disabled { background: #9CA3AF; cursor: not-allowed; transform: none; box-shadow: none; }
 
 .remaining { font-size: 13px; color: #D97706; text-align: center; margin-top: 12px; padding: 8px; background: #FFFBEB; border-radius: 8px; }
+.remaining.admin { color: #3b82f6; background: #EFF6FF; }
+.remaining.blocked { color: #DC2626; background: #FFF0F1; }
 
 /* 로딩 */
 .loading { display: none; text-align: center; padding: 40px 20px; }
@@ -268,8 +280,22 @@ footer a:hover { text-decoration: underline; }
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   min-height: 60vh; text-align: center; padding: 40px 20px;
 }
-.access-denied h2 { font-size: 24px; color: #DC2626; margin-bottom: 12px; }
+.access-denied h2 { font-size: 24px; color: #F59E0B; margin-bottom: 12px; }
 .access-denied p { font-size: 14px; color: #6B7280; }
+.navbar-links a.new-badge { position: relative; margin-right: 12px; }
+.navbar-links a.new-badge::after {
+  content: 'NEW';
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  font-size: 8px;
+  font-weight: 800;
+  color: #fff;
+  background: #FF4757;
+  border-radius: 4px;
+  padding: 1px 3px;
+  line-height: 1.4;
+}
 </style>
 <link rel="stylesheet" href="/navbar-mobile.css">
 </head>
@@ -284,15 +310,21 @@ footer a:hover { text-decoration: underline; }
     <a href="threads.html">스레드</a>
     <a href="blog-writer.html" class="pro-badge">블로그 글</a>
     <a href="blog-image.html" class="pro-badge">이미지</a>
-    <a href="column.html">칼럼</a>
+    <a href="blog-image-pro.html" class="active pro-badge">프리미엄</a>
+    <a href="column.html" class="new-badge">칼럼</a>
   </div>
   <div class="navbar-auth" id="navbarAuth"></div>
 </nav>
 
-<!-- 접근 차단 화면 -->
+<!-- 접근 차단 화면 (비로그인) -->
 <div class="access-denied" id="accessDenied" style="display:none;">
-  <h2>관리자 전용 페이지</h2>
-  <p>접근 권한이 없습니다.</p>
+  <h2>회원 전용 도구</h2>
+  <p>프리미엄 이미지 생성기는 회원만 사용할 수 있습니다.</p>
+  <p style="margin-top:8px; font-size:13px; color:#6B7280;">3/24까지 가입하면 1일 1회 무료 체험 가능</p>
+  <div style="margin-top:20px; display:flex; gap:10px;">
+    <a href="signup.html" style="padding:10px 24px; border-radius:8px; font-size:14px; font-weight:600; background:#00C73C; color:#fff; text-decoration:none; transition:all 0.15s;">회원가입</a>
+    <a href="login.html" style="padding:10px 24px; border-radius:8px; font-size:14px; font-weight:600; border:1px solid #E5E7EB; color:#6B7280; text-decoration:none; transition:all 0.15s;">로그인</a>
+  </div>
 </div>
 
 <!-- 메인 콘텐츠 -->
@@ -301,13 +333,13 @@ footer a:hover { text-decoration: underline; }
 <div class="hero">
   <div class="hero-badge">PREMIUM · 프리미엄 이미지</div>
   <h1>AI 자동 라우팅으로 만드는<br><em>고품질 블로그 이미지</em></h1>
-  <p>Haiku가 이미지 유형을 판단해 최적 모델을 자동 선택합니다<br>사진→FLUX Realism | 데이터→GPT Image high | 흐름도/포스터→Nano Banana 2</p>
+  <p>AI가 이미지 유형을 판단해 최적 모델을 자동 선택합니다<br>사진/데이터 차트/흐름도/포스터까지 한 번에</p>
 </div>
 
 <div class="container">
 
   <!-- 상태 표시 -->
-  <div class="remaining" id="remainingBar">관리자 모드 (무제한)</div>
+  <div class="remaining" id="remainingBar">남은 횟수 확인 중...</div>
 
   <!-- 입력 카드 -->
   <div class="card" style="margin-top:16px;">
@@ -331,7 +363,8 @@ footer a:hover { text-decoration: underline; }
       </div>
 
       <div style="margin-top:12px;">
-        <label>썸네일 텍스트 <span style="font-weight:400; color:#EF4444;">(필수, 대표이미지에 합성)</span></label>
+        <label>썸네일 텍스트 <span style="font-weight:400; color:#9CA3AF;">(선택, 대표이미지에 합성)</span></label>
+        <p style="font-size:11.5px; color:#9CA3AF; margin:-2px 0 6px;">💡 인테리어·음식 등 비주얼이 중요한 썸네일은 텍스트 없이 이미지만 쓰는 게 더 효과적이에요</p>
         <input type="text" id="thumbText1" placeholder="예: 카페 창업 비용 총정리" maxlength="30">
       </div>
 
@@ -358,7 +391,8 @@ footer a:hover { text-decoration: underline; }
       </div>
 
       <div style="margin-bottom:12px;">
-        <label>썸네일 텍스트 <span style="font-weight:400; color:#EF4444;">(필수, 대표이미지에 합성)</span></label>
+        <label>썸네일 텍스트 <span style="font-weight:400; color:#9CA3AF;">(선택, 대표이미지에 합성)</span></label>
+        <p style="font-size:11.5px; color:#9CA3AF; margin:-2px 0 6px;">💡 인테리어·음식 등 비주얼이 중요한 썸네일은 텍스트 없이 이미지만 쓰는 게 더 효과적이에요</p>
         <input type="text" id="thumbText2" placeholder="예: 카페 창업 비용 총정리" maxlength="30">
       </div>
 
@@ -396,13 +430,19 @@ footer a:hover { text-decoration: underline; }
   <div>&copy; 2026 어나더핸즈. All rights reserved.</div>
 </footer>
 
+<script src="admin-mode.js"></script>
 <script>
-// ─── 관리자키 검증 ───
-var ADMIN_KEY = '8524';
+// ─── 접근 제어: 로그인 OR admin ───
 var urlParams = new URLSearchParams(window.location.search);
-var adminKey = urlParams.get('key');
+var isAdmin = urlParams.get('key') === '8524' || urlParams.get('admin') === '8524';
+if (!isAdmin) {
+  try { isAdmin = sessionStorage.getItem('ddukddak_admin') === '8524'; } catch(e) {}
+}
+var token = localStorage.getItem('ddukddak_token');
+var user = null;
+try { user = JSON.parse(localStorage.getItem('ddukddak_user')); } catch(e) {}
 
-if (adminKey !== ADMIN_KEY) {
+if (!isAdmin && !token) {
   document.getElementById('accessDenied').style.display = 'flex';
 } else {
   document.getElementById('mainContent').style.display = 'block';
@@ -413,9 +453,57 @@ var generatedImages = [];
 var currentMode = '';
 
 // ─── API 호출 헬퍼 ───
-function apiUrl(path) {
-  return path + (path.includes('?') ? '&' : '?') + 'key=' + ADMIN_KEY;
+function getAuthBody() {
+  if (isAdmin) return { adminKey: '8524' };
+  return { token: token };
 }
+
+// ─── 남은 횟수 ───
+async function loadRemaining() {
+  try {
+    var url = '/api/blog-image-pro';
+    if (isAdmin) url += '?key=8524';
+    else if (token) url += '?token=' + encodeURIComponent(token);
+    var res = await fetch(url, { headers: token ? { 'Authorization': 'Bearer ' + token } : {} });
+    var data = await res.json();
+    var el = document.getElementById('remainingBar');
+    if (data.admin) {
+      el.textContent = '관리자 모드 (무제한)';
+      el.className = 'remaining admin';
+    } else if (data.remaining <= 0) {
+      el.textContent = '오늘 무료 체험 ' + data.limit + '회를 모두 사용했어요. 내일 다시 오세요!';
+      el.className = 'remaining blocked';
+      disableAllButtons();
+    } else {
+      el.textContent = '오늘 무료 체험 ' + (data.limit - data.remaining) + '/' + data.limit + '회 사용';
+      el.className = 'remaining';
+    }
+  } catch(e) {}
+}
+
+function disableAllButtons() {
+  document.getElementById('genBtn1').disabled = true;
+  document.getElementById('genBtn1').textContent = '사용 한도 초과';
+  document.getElementById('genBtn2').disabled = true;
+  document.getElementById('genBtn2').textContent = '사용 한도 초과';
+}
+
+function updateRemaining(remaining, limit) {
+  var el = document.getElementById('remainingBar');
+  if (remaining >= 999) {
+    el.textContent = '관리자 모드 (무제한)';
+    el.className = 'remaining admin';
+  } else if (remaining <= 0) {
+    el.textContent = '오늘 무료 체험 ' + limit + '회를 모두 사용했어요. 내일 다시 오세요!';
+    el.className = 'remaining blocked';
+    disableAllButtons();
+  } else {
+    el.textContent = '오늘 무료 체험 ' + (limit - remaining) + '/' + limit + '회 사용';
+    el.className = 'remaining';
+  }
+}
+
+if (token || isAdmin) loadRemaining();
 
 // ─── 탭 전환 ───
 function switchTab(tab) {
@@ -518,6 +606,7 @@ function deleteMarker(i) {
 
 function updateGenBtnText() {
   var btn = document.getElementById('genBtn1');
+  if (btn.disabled && btn.textContent === '사용 한도 초과') return;
   if (btn.textContent === '이미지 생성 중...') return;
   var count = editableMarkers.length;
   if (count === 0) {
@@ -551,13 +640,6 @@ async function generateParse() {
     return;
   }
 
-  var thumbnailCheck = document.getElementById('thumbText1').value.trim();
-  if (!thumbnailCheck) {
-    showError('errorBox1', '썸네일 텍스트를 입력해주세요. 대표이미지에 텍스트가 합성됩니다.');
-    document.getElementById('thumbText1').focus();
-    return;
-  }
-
   hideErrors();
   var btn = document.getElementById('genBtn1');
   btn.disabled = true;
@@ -570,14 +652,15 @@ async function generateParse() {
 
   try {
     var thumbnailText = document.getElementById('thumbText1').value.trim();
-    var res = await fetch(apiUrl('/api/blog-image-pro'), {
+    var body = Object.assign({ mode: 'parse', blogText: blogText, thumbnailText: thumbnailText, markers: markersToSend }, getAuthBody());
+    var res = await fetch('/api/blog-image-pro', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'parse', blogText: blogText, thumbnailText: thumbnailText, markers: markersToSend, adminKey: ADMIN_KEY }),
+      body: JSON.stringify(body),
     });
     var data = await res.json();
 
-    if (res.status === 403) { showError('errorBox1', '관리자 인증에 실패했습니다.'); resetBtn(btn, 'parse'); return; }
+    if (res.status === 401 || res.status === 403) { showError('errorBox1', data.error || '인증에 실패했습니다.'); resetBtn(btn, 'parse'); return; }
     if (res.status === 429) { showError('errorBox1', data.error); resetBtn(btn, 'parse'); return; }
     if (!res.ok || !data.images || data.images.length === 0) { showError('errorBox1', data.error || '이미지 생성에 실패했습니다.'); resetBtn(btn, 'parse'); return; }
 
@@ -587,6 +670,7 @@ async function generateParse() {
     });
 
     renderResults(generatedImages, thumbnailText);
+    if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
 
     document.getElementById('loadingArea').classList.remove('show');
     document.getElementById('resultArea').classList.add('show');
@@ -603,13 +687,6 @@ async function generateDirect() {
   var topic = document.getElementById('topicInput').value.trim();
   if (!topic) { showError('errorBox2', '블로그 주제를 입력해주세요.'); return; }
 
-  var thumbnailCheck = document.getElementById('thumbText2').value.trim();
-  if (!thumbnailCheck) {
-    showError('errorBox2', '썸네일 텍스트를 입력해주세요. 대표이미지에 텍스트가 합성됩니다.');
-    document.getElementById('thumbText2').focus();
-    return;
-  }
-
   hideErrors();
   var btn = document.getElementById('genBtn2');
   btn.disabled = true;
@@ -623,14 +700,15 @@ async function generateDirect() {
   try {
     var mood = document.getElementById('moodSelect').value;
     var thumbnailText = document.getElementById('thumbText2').value.trim();
-    var res = await fetch(apiUrl('/api/blog-image-pro'), {
+    var body = Object.assign({ mode: 'direct', topic: topic, mood: mood, thumbnailText: thumbnailText }, getAuthBody());
+    var res = await fetch('/api/blog-image-pro', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'direct', topic: topic, mood: mood, thumbnailText: thumbnailText, adminKey: ADMIN_KEY }),
+      body: JSON.stringify(body),
     });
     var data = await res.json();
 
-    if (res.status === 403) { showError('errorBox2', '관리자 인증에 실패했습니다.'); resetBtn(btn, 'direct'); return; }
+    if (res.status === 401 || res.status === 403) { showError('errorBox2', data.error || '인증에 실패했습니다.'); resetBtn(btn, 'direct'); return; }
     if (res.status === 429) { showError('errorBox2', data.error); resetBtn(btn, 'direct'); return; }
     if (!res.ok || !data.images || data.images.length === 0) { showError('errorBox2', data.error || '이미지 생성에 실패했습니다.'); resetBtn(btn, 'direct'); return; }
 
@@ -640,6 +718,7 @@ async function generateDirect() {
     });
 
     renderResults(generatedImages, thumbnailText);
+    if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
 
     document.getElementById('loadingArea').classList.remove('show');
     document.getElementById('resultArea').classList.add('show');
@@ -746,7 +825,6 @@ function renderResults(images, thumbnailText) {
 }
 
 // ─── 텍스트 줄바꿈 ───
-// 어절(띄어쓰기) 단위로만 줄바꿈 — 글자 단위 쪼개기 없음
 function wrapText(ctx, text, maxWidth) {
   var words = text.split(' ');
   var lines = [];
@@ -795,7 +873,6 @@ function renderThumbnailCanvas(canvas, imageUrl, text) {
       ctx.textBaseline = 'middle';
 
       var lines = wrapText(ctx, text, maxWidth);
-      // 어절이 넘치거나 줄이 3줄 초과면 폰트 축소
       var hasOverflow = lines.some(function(l) { return ctx.measureText(l).width > maxWidth; });
       while ((lines.length > 3 || hasOverflow) && fontSize > 36) {
         fontSize -= 4;
@@ -840,41 +917,30 @@ async function regenerateAll() {
     if (currentMode === 'parse') {
       var blogText = document.getElementById('blogTextInput').value.trim();
       thumbText = document.getElementById('thumbText1').value.trim();
-      if (!thumbText) {
-        showError('errorBox1', '썸네일 텍스트를 입력해주세요.');
-        document.getElementById('thumbText1').focus();
-        btn.disabled = false; btn.textContent = '전체 재생성';
-        document.getElementById('loadingArea').classList.remove('show');
-        return;
-      }
       var markersForRegen = editableMarkers.filter(function(m) { return m.trim() !== ''; });
-      body = { mode: 'parse', blogText: blogText, thumbnailText: thumbText, is_regenerate: true, markers: markersForRegen, adminKey: ADMIN_KEY };
+      body = Object.assign({ mode: 'parse', blogText: blogText, thumbnailText: thumbText, is_regenerate: true, markers: markersForRegen }, getAuthBody());
     } else {
       var topic = document.getElementById('topicInput').value.trim();
       var mood = document.getElementById('moodSelect').value;
       thumbText = document.getElementById('thumbText2').value.trim();
-      if (!thumbText) {
-        showError('errorBox2', '썸네일 텍스트를 입력해주세요.');
-        document.getElementById('thumbText2').focus();
-        btn.disabled = false; btn.textContent = '전체 재생성';
-        document.getElementById('loadingArea').classList.remove('show');
-        return;
-      }
-      body = { mode: 'direct', topic: topic, mood: mood, thumbnailText: thumbText, is_regenerate: true, adminKey: ADMIN_KEY };
+      body = Object.assign({ mode: 'direct', topic: topic, mood: mood, thumbnailText: thumbText, is_regenerate: true }, getAuthBody());
     }
 
-    var res = await fetch(apiUrl('/api/blog-image-pro'), {
+    var res = await fetch('/api/blog-image-pro', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
     var data = await res.json();
 
-    if (res.ok && data.images && data.images.length > 0) {
+    if (res.status === 429) {
+      showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', data.error);
+    } else if (res.ok && data.images && data.images.length > 0) {
       generatedImages = data.images.map(function(img, i) {
         return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', model: img.model || 'fluxr', reason: img.reason || '', layout: img.layout || null, index: i };
       });
       renderResults(generatedImages, thumbText);
+      if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
     } else {
       showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', data.error || '재생성에 실패했습니다.');
     }
@@ -905,13 +971,11 @@ function downloadImage(btn) {
       }, 'image/png');
     }
   } else if (url.startsWith('data:')) {
-    // data URL 직접 다운로드
     var a = document.createElement('a');
     a.href = url;
     a.download = 'blog-image-' + (index + 1) + '.webp';
     a.click();
   } else {
-    // 외부 URL (인포그래픽 등)
     var card = btn.closest('.image-card');
     var img = card ? card.querySelector('img') : null;
     if (img && img.complete && img.naturalWidth > 0) {

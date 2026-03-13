@@ -1,20 +1,21 @@
 import { Redis } from '@upstash/redis';
 
 /*
- * 프리미엄 이미지 생성 v2 (비공개 테스트)
+ * 프리미엄 이미지 생성 v2 (회원 전용 공개)
  * 자동 모델 라우팅: Haiku가 이미지 유형 판단 → 최적 모델 선택
  *
  * 모델 라우팅:
- *   photo → FLUX.2 pro (fal-ai/flux-2-pro)
+ *   photo → FLUX Realism LoRA
  *   infographic_data → GPT Image 1 high (gpt-image-1, quality: high)
  *   infographic_flow → Nano Banana 2 (fal-ai/nano-banana-2)
  *   poster → Nano Banana 2 (fal-ai/nano-banana-2)
  *
- * Canvas API: 썸네일 텍스트 오버레이 (프론트엔드)
- * Haiku: 마커 분석 + 4-type 분류 + 프롬프트 생성
+ * 인증: admin 키 OR 로그인 회원 (3/24까지 가입 시 1일 1회 무료)
  */
 
 const ADMIN_KEY = '8524';
+const FREE_DAILY_LIMIT = 1;
+const FREE_CUTOFF = '2026-03-24T23:59:59+09:00';
 const MAX_MARKERS = 8;
 const DIRECT_IMAGES = 8;
 
@@ -36,6 +37,27 @@ function getClientIp(req) {
     req.socket?.remoteAddress ||
     'unknown'
   );
+}
+
+function getKSTDate() {
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10);
+}
+
+function getTodayKeyPro(ip) {
+  return `ratelimit:blogimage-pro:${ip}:${getKSTDate()}`;
+}
+
+function getTTLUntilMidnightKST() {
+  const now = new Date();
+  const kstOffset = 9 * 60 * 60 * 1000;
+  const kstNow = new Date(now.getTime() + kstOffset);
+  const nextMidnight = new Date(kstNow);
+  nextMidnight.setUTCHours(0, 0, 0, 0);
+  nextMidnight.setUTCDate(nextMidnight.getUTCDate() + 1);
+  const seconds = Math.ceil((nextMidnight.getTime() - kstNow.getTime()) / 1000);
+  return Math.max(seconds, 60);
 }
 
 const moodPrompts = {
@@ -158,7 +180,7 @@ async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
   const markerContext = markers.map((mk, i) => {
     const before = mk.before.substring(0, 200);
     const after = mk.after.substring(0, 200);
-    return `마커 ${i + 1}: "${mk.text}"${mk.section ? `\n  소속 섹션: "${mk.section}"` : ''}\n  글 위치: ${mk.position}\n  앞 문맥 (200자): "${before}"\n  뒤 문맥 (200자): "${after}"`;
+    return `마커 ${i + 1}: "${mk.text}"${mk.altText ? ` (alt: "${mk.altText}")` : ''}${mk.section ? `\n  소속 섹션: "${mk.section}"` : ''}\n  글 위치: ${mk.position}\n  앞 문맥 (200자): "${before}"\n  뒤 문맥 (200자): "${after}"`;
   }).join('\n\n');
 
   const systemPrompt = `You are a blog image prompt engineer with automatic model routing.
@@ -169,32 +191,34 @@ Classify each marker into ONE of 4 types, select the best AI model, and generate
 ### 1. photo → model: "fluxr"
 For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 사물
 - FIRST marker MUST be "photo" (대표이미지)
-- Describe subjects, lighting, angle, mood. Use text-free styles (shallow DOF, bokeh, macro)
+- Describe subjects, lighting, angle, mood as cinematic/editorial photography
 - Signs/menus in scene → describe as blurred
-- End with: ", photorealistic, clean composition, shallow depth of field, no text, photography style"
+- Camera: overhead, macro, wide-angle, 45-degree, eye-level
+- End with: ", photorealistic, clean composition, no text, no letters, photography style"
 
 ### 2. infographic_data → model: "gpth"
-**COST GUARD: Only use when marker/context contains DATA KEYWORDS:**
-통계, 데이터, 데이타, 수치, 확률, 퍼센트, %, 그래프, 차트, KPI, 증감, 추이, 비율, 전년대비
-- No data keywords → use infographic_flow (nb2) instead
-- Data-heavy visuals: numbers, percentages, charts (GPT Image 1 high)
+For: data-heavy visuals with numbers, percentages, charts, tables, comparisons (GPT Image 1 high)
 
-**CHART RULES (infographic_data — MUST follow all):**
+**CHART RULES (infographic_data — MUST follow all, 2:3 vertical layout):**
 (A) DATA LABELS: Show numeric value on every data point (bar tips, pie segments, line nodes)
 (B) AXIS UNITS: Y-axis includes unit (e.g. "비용(만원)"), X-axis full Korean labels, subtle grid lines
 (C) COMPOSITION: Chart fills 70%+ of image, no floating empty space
 (D) SOURCE: Footer with data source/year (e.g. "Source: 한국소비자원 2024")
 (E) COLOR: Key data bold saturated, secondary muted gray. Legend at right or bottom
-(F) PADDING: 15% top + 10% bottom empty padding. Title/chart must not touch edges. Add "generous top and bottom padding" to prompt
+(F) PADDING: 15% top + 10% bottom padding. Title/chart must not touch edges
 (G) TITLE: Two-level — large bold Korean main title + smaller subtitle (year/scope)
 
 ### 3. infographic_flow → model: "nb2"
 For: 타임라인, 로드맵, 단계, 흐름도, 프로세스, 한글 텍스트 위주 설명
-- Sequential/flow with Korean text labels (Nano Banana 2)
+- Describe as top-to-bottom or left-to-right flow with numbered Korean labels
+- Use arrows/connectors between steps, soft gradient background, 3-5 step nodes
+- Include Korean text in quotes. Color: main step bold, sub-step muted
 
 ### 4. poster → model: "nb2"
 For: 한글 타이포그래피, 공지, 텍스트 위주 포스터, 배너
-- Korean text poster/banner (Nano Banana 2)
+- Large centered Korean headline in quotes, supporting subtitle below
+- Bold typography, high contrast background, minimal decoration
+- Specify font style (sans-serif, bold), 2-3 colors max
 
 ## PROMPT RULES (CRITICAL)
 
@@ -202,9 +226,9 @@ For: 한글 타이포그래피, 공지, 텍스트 위주 포스터, 배너
 - NO Korean except image-text in double quotes (e.g. "월별 매출 추이" as title)
 - ABSOLUTE PROHIBITION on Korean outside quotes
 
-### Rule 2: Photo suffix
-- photo type: ALWAYS end with ", no text, no letters, photography style"
-- Describe inanimate objects, still life, empty environments. Camera: overhead, macro, wide-angle, 45-degree
+### Rule 2: Photo prompts
+- photo type: suffix defined above — always include it
+- Do NOT add Korean text to photo prompts
 
 ### Rule 3: Infographic/poster types
 - Include Korean text in quotes within the prompt. Describe layout, structure, colors
@@ -231,10 +255,7 @@ Return ONLY a valid JSON array. Each element:
 마커 목록과 문맥:
 ${markerContext}
 
-규칙:
-- ${markers.length}개 마커 각각을 4가지 유형 중 하나로 분류
-- 첫 번째 마커는 반드시 photo (블로그 대표이미지)
-- 각 마커의 문맥을 읽고 가장 적합한 유형과 모델을 선택`;
+위 ${markers.length}개 마커 각각에 대해 JSON 배열을 출력하세요.`;
 
   const raw = await callClaude(systemPrompt, userPrompt, 4000);
   const jsonMatch = raw.match(/\[[\s\S]*?\](?=[^[\]]*$)/);
@@ -249,9 +270,6 @@ ${markerContext}
   const validTypes = ['photo', 'infographic_data', 'infographic_flow', 'poster'];
   const modelMap = { photo: 'fluxr', infographic_data: 'gpth', infographic_flow: 'nb2', poster: 'nb2' };
 
-  // infographic_data 허용 키워드 (이 키워드가 마커+문맥에 없으면 nb2로 다운그레이드)
-  const dataKeywords = /통계|데이터|데이타|수치|확률|퍼센트|%|그래프|차트|KPI|증감|추이|비율|전년대비/;
-
   for (let idx = 0; idx < result.length; idx++) {
     const item = result[idx];
 
@@ -260,15 +278,7 @@ ${markerContext}
       item.type = 'photo';
     }
 
-    // infographic_data 키워드 검증: 마커 텍스트 + 앞뒤 문맥에 데이터 키워드 없으면 → infographic_flow로 다운그레이드
-    if (item.type === 'infographic_data' && idx < markers.length) {
-      const mk = markers[idx];
-      const searchText = `${mk.text} ${mk.before} ${mk.after}`;
-      if (!dataKeywords.test(searchText)) {
-        console.log(`[IMAGE-PRO] ↓ "${mk.text}" infographic_data → infographic_flow (데이터 키워드 미검출)`);
-        item.type = 'infographic_flow';
-      }
-    }
+    // Haiku 분류 신뢰 — COST GUARD 제거 (퀄리티 우선)
 
     // model이 type과 불일치하면 강제 보정
     item.model = modelMap[item.type];
@@ -298,23 +308,73 @@ ${markerContext}
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // 관리자키 검증
-  const adminKey = req.query?.key || req.body?.adminKey;
-  if (adminKey !== ADMIN_KEY) {
-    return res.status(403).json({ error: '접근 권한이 없습니다.' });
+  // ─── 인증: admin OR 로그인 회원 ───
+  const adminKey = req.query?.key || req.query?.admin || req.body?.adminKey;
+  const isAdmin = adminKey === ADMIN_KEY;
+
+  let sessionEmail = null;
+
+  if (!isAdmin) {
+    const token = req.body?.token || req.headers?.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: '로그인이 필요합니다.' });
+    }
+    const session = await getRedis().get(`session:${token}`);
+    if (!session) {
+      return res.status(401).json({ error: '세션이 만료되었습니다. 다시 로그인해주세요.' });
+    }
+    const userData = await getRedis().get(`user:${session.email}`);
+    if (!userData) {
+      return res.status(401).json({ error: '회원 정보를 찾을 수 없습니다.' });
+    }
+    if (new Date(userData.createdAt) > new Date(FREE_CUTOFF)) {
+      return res.status(403).json({ error: '3/24까지 가입한 회원만 무료 체험이 가능합니다.' });
+    }
+    sessionEmail = session.email;
   }
 
-  // GET: 상태 확인
+  // ─── GET: 남은 횟수 조회 ───
   if (req.method === 'GET') {
-    return res.status(200).json({ remaining: 999, limit: 999, admin: true });
+    if (isAdmin) {
+      return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
+    }
+    try {
+      const ip = getClientIp(req);
+      const key = getTodayKeyPro(ip);
+      const count = (await getRedis().get(key)) || 0;
+      const remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
+      return res.status(200).json({ remaining, limit: FREE_DAILY_LIMIT });
+    } catch {
+      return res.status(200).json({ remaining: FREE_DAILY_LIMIT, limit: FREE_DAILY_LIMIT });
+    }
   }
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // ─── POST: 횟수 제한 ───
+  let remaining = isAdmin ? 999 : FREE_DAILY_LIMIT;
+  let rateLimitKey = null;
+
+  if (!isAdmin) {
+    const ip = getClientIp(req);
+    rateLimitKey = getTodayKeyPro(ip);
+    const newCount = await getRedis().incr(rateLimitKey);
+    await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
+
+    if (newCount > FREE_DAILY_LIMIT) {
+      await getRedis().decr(rateLimitKey);
+      return res.status(429).json({
+        error: `프리미엄 이미지 일일 무료 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
+        remaining: 0,
+      });
+    }
+    remaining = FREE_DAILY_LIMIT - newCount;
   }
 
   try {
@@ -396,6 +456,8 @@ export default async function handler(req, res) {
         }
       }
 
+      markers = markers.slice(0, MAX_MARKERS);
+
       if (markers.length === 0) {
         return res.status(400).json({ error: '블로그 글에서 (사진: ...) 또는 (이미지: ...) 마커를 찾을 수 없습니다.' });
       }
@@ -416,7 +478,7 @@ export default async function handler(req, res) {
         }
       } catch (err) {
         console.error('[IMAGE-PRO] Haiku analysis FAILED:', err.message);
-        // fallback: 전부 photo/flux2
+        // fallback: 전부 photo/fluxr
         try {
           const firstLine = blogText.split('\n').find(l => l.trim()) || '';
           const blogTitle = firstLine.trim().substring(0, 80);
@@ -463,8 +525,8 @@ export default async function handler(req, res) {
 
       const imageResults = await Promise.all(
         orderedItems.map(async (item) => {
-          const modelName = item.model || 'flux2';
-          const modelLabel = { flux2: 'FLUX.2 pro', gpth: 'GPT Image high', nb2: 'Nano Banana 2' }[modelName] || modelName;
+          const modelName = item.model || 'fluxr';
+          const modelLabel = { fluxr: 'FLUX Realism', gpth: 'GPT Image high', nb2: 'Nano Banana 2' }[modelName] || modelName;
           try {
             const url = await generateByModel(modelName, item.prompt);
             console.log(`[IMAGE-PRO] ✓ "${item.marker}" → ${modelLabel} (${item.type})`);
@@ -508,12 +570,12 @@ export default async function handler(req, res) {
         mode: 'parse',
         images: validImages,
         thumbnailText: thumbnailText || '',
-        remaining: 999,
-        limit: 999,
+        remaining,
+        limit: FREE_DAILY_LIMIT,
       });
     }
 
-    // ===== DIRECT 모드: 주제+분위기 → 8장 (FLUX.2 pro) =====
+    // ===== DIRECT 모드: 주제+분위기 → 8장 (FLUX Realism) =====
     const { topic, mood, thumbnailText } = req.body;
     if (!topic) {
       return res.status(400).json({ error: '블로그 주제를 입력해주세요.' });
@@ -559,8 +621,8 @@ export default async function handler(req, res) {
       mode: 'direct',
       images: validImages,
       thumbnailText: thumbnailText || '',
-      remaining: 999,
-      limit: 999,
+      remaining,
+      limit: FREE_DAILY_LIMIT,
     });
 
   } catch (error) {

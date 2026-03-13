@@ -302,6 +302,7 @@ footer a:hover { text-decoration: underline; }
     <a href="threads.html">스레드</a>
     <a href="blog-writer.html" class="pro-badge">블로그 글</a>
     <a href="blog-image.html" class="active pro-badge">이미지</a>
+    <a href="blog-image-pro.html" class="pro-badge">프리미엄</a>
     <a href="column.html" class="new-badge">칼럼</a>
   </div>
   <div class="navbar-auth" id="navbarAuth"></div>
@@ -314,6 +315,14 @@ footer a:hover { text-decoration: underline; }
 </div>
 
 <div class="container">
+
+  <!-- 비회원 안내 배너 -->
+  <div id="signupBanner" style="display:none; background:#FFFBEB; border:1px solid #FDE68A; border-radius:10px; padding:12px 16px; text-align:center; margin-bottom:12px;">
+    <span style="font-size:13px; color:#D97706; font-weight:600;">
+      회원가입하면 1일 3회 무료 체험 가능!
+      <a href="signup.html" style="color:#8B5CF6; text-decoration:underline; font-weight:700;">가입하기</a>
+    </span>
+  </div>
 
   <!-- 사용 현황 -->
   <div class="remaining" id="remainingBar">남은 횟수 확인 중...</div>
@@ -572,6 +581,15 @@ function updateRemaining(remaining, limit) {
 }
 
 loadRemaining();
+
+// ─── 비회원 안내 배너 ───
+(function() {
+  var t = localStorage.getItem('ddukddak_token');
+  if (!t) {
+    var banner = document.getElementById('signupBanner');
+    if (banner) banner.style.display = 'block';
+  }
+})();
 
 // ─── 에러 ───
 function showError(id, msg) {
