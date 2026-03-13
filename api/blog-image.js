@@ -515,10 +515,10 @@ ${markersList}`;
               const markerIndex = i + j;
               try {
                 const url = await callFlux(prompt);
-                return { url, marker: markers[markerIndex].text, prompt, type: 'flux' };
+                return { url, marker: markers[markerIndex].text, prompt, type: 'photo' };
               } catch (err) {
                 console.error(`FLUX error for marker ${markerIndex}:`, err);
-                return { url: null, marker: markers[markerIndex].text, prompt, type: 'flux' };
+                return { url: null, marker: markers[markerIndex].text, prompt, type: 'photo' };
               }
             })
           );
@@ -540,18 +540,14 @@ ${markersList}`;
         });
       }
 
-      // ===== 마커 8개: photo/infographic 혼합 파이프라인 =====
+      // ===== 마커 8개: Haiku 맥락 분석 → FLUX Schnell photo 전용 =====
       let analysisResult;
-      let allPhoto = false; // fallback 시 전부 photo
       try {
         analysisResult = await callHaikuMarkerAnalysis(blogText, markers, is_regenerate);
-        const photoCount = analysisResult.filter(r => r.type === 'photo').length;
-        const infraCount = analysisResult.filter(r => r.type === 'infographic').length;
-        console.log(`[IMAGE] Haiku analysis SUCCESS - photo:${photoCount} infographic:${infraCount}`, JSON.stringify(analysisResult.map(r => ({ marker: r.marker, type: r.type, layout: r.layout, prompt: r.prompt?.substring(0, 60) }))));
+        console.log(`[IMAGE] Haiku analysis SUCCESS - ${analysisResult.length} photos`, JSON.stringify(analysisResult.map(r => ({ marker: r.marker, prompt: r.prompt?.substring(0, 60) }))));
       } catch (err) {
         console.error('[IMAGE] Haiku marker analysis FAILED:', err.message);
-        // fallback: 간단한 Haiku 호출로 마커별 영어 번역 시도 (전부 photo)
-        allPhoto = true;
+        // fallback: 간단한 Haiku 호출로 마커별 영어 번역 시도
         try {
           const firstLine = blogText.split('\n').find(l => l.trim()) || '';
           const blogTitle = firstLine.trim().substring(0, 80);

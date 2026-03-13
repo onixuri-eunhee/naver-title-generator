@@ -1047,9 +1047,15 @@
         </div>
       </div>
 
-      <div class="input-group">
-        <label class="input-label">지역 <span style="color:#555; font-weight:400;">(선택)</span></label>
-        <input type="text" id="location" placeholder="예: 강남, 홍대, 부산 서면" maxlength="20" />
+      <div class="input-row">
+        <div class="input-group">
+          <label class="input-label">대상 <span class="req">*</span></label>
+          <input type="text" id="target" placeholder="예: 30대 직장맘, 자영업 초보, 다이어트 중인 여성" maxlength="30" />
+        </div>
+        <div class="input-group">
+          <label class="input-label">지역 <span style="color:#555; font-weight:400;">(선택)</span></label>
+          <input type="text" id="location" placeholder="예: 강남, 홍대, 부산 서면" maxlength="20" />
+        </div>
       </div>
 
       <div class="input-group" style="margin-top: 12px;">
@@ -2496,12 +2502,14 @@
 
     var industry = document.getElementById('industry').value.trim();
     var topic = document.getElementById('topic').value.trim();
+    var target = document.getElementById('target').value.trim();
     var location = document.getElementById('location').value.trim();
     var memo = document.getElementById('memo').value.trim();
 
     // 유효성 검사
     if (!industry) { showError('업종/입장을 입력해주세요. (예: 미용실 원장, 뷰티 블로거)'); return; }
     if (!topic) { showError('주제/키워드를 입력해주세요.'); return; }
+    if (!target) { showError('대상(예상 독자)을 입력해주세요. (예: 30대 직장맘, 자영업 초보)'); return; }
     if (!memo) { showError('추가 요청사항을 입력해주세요. 나만의 경험·느낌을 적으면 더 좋은 글이 됩니다.'); return; }
 
     // UI 상태 전환: 로딩
@@ -2524,6 +2532,7 @@
     // user 메시지 조립
     var userParts = [];
     userParts.push('업종/글쓴이 입장: ' + industry);
+    userParts.push('대상(예상 독자): ' + target);
     if (location) {
       userParts.push('지역: ' + location);
     }
