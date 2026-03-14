@@ -2842,7 +2842,7 @@
 
   // ─── 이미지 생성기로 글 전달 ───
   function goToImageGenerator() {
-    if (!generatedData) return;
+    if (!generatedData) { alert('먼저 글을 생성해주세요.'); return; }
     var parts = [];
     if (generatedData.title) parts.push(generatedData.title);
     if (generatedData.hook) parts.push(generatedData.hook);
@@ -2850,14 +2850,15 @@
     if (generatedData.faq) parts.push(generatedData.faq);
     if (generatedData.cta) parts.push(generatedData.cta);
     var fullText = parts.join('\n\n');
-    localStorage.setItem('blogTextForImage', fullText);
-    var adminParam = sessionStorage.getItem('ddukddak_admin') === '8524' ? '?admin=8524' : '';
+    try { localStorage.setItem('blogTextForImage', fullText); } catch(e) {}
+    var adminParam = '';
+    try { adminParam = sessionStorage.getItem('ddukddak_admin') === '8524' ? '?admin=8524' : ''; } catch(e) {}
     window.location.href = 'blog-image.html' + adminParam;
   }
 
   // ─── 프리미엄 이미지 생성기로 글 전달 ───
   function goToPremiumImageGenerator() {
-    if (!generatedData) return;
+    if (!generatedData) { alert('먼저 글을 생성해주세요.'); return; }
     var parts = [];
     if (generatedData.title) parts.push(generatedData.title);
     if (generatedData.hook) parts.push(generatedData.hook);
@@ -2865,8 +2866,9 @@
     if (generatedData.faq) parts.push(generatedData.faq);
     if (generatedData.cta) parts.push(generatedData.cta);
     var fullText = parts.join('\n\n');
-    localStorage.setItem('blogTextForImagePro', fullText);
-    var adminParam = sessionStorage.getItem('ddukddak_admin') === '8524' ? '?admin=8524' : '';
+    try { localStorage.setItem('blogTextForImagePro', fullText); } catch(e) {}
+    var adminParam = '';
+    try { adminParam = sessionStorage.getItem('ddukddak_admin') === '8524' ? '?admin=8524' : ''; } catch(e) {}
     window.location.href = 'blog-image-pro.html' + adminParam;
   }
 
