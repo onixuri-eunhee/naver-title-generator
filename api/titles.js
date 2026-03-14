@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis';
-import { resolveAdmin } from './_helpers.js';
+import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 
 const FREE_DAILY_LIMIT = 5;
 
@@ -158,9 +158,7 @@ function parseResponse(raw) {
 
 export default async function handler(req, res) {
   // CORS 헤더
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  setCorsHeaders(res, req);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();

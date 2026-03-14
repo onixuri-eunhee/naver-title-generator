@@ -52,4 +52,22 @@ async function resolveAdmin(req) {
   return false;
 }
 
-export { getRedis, getClientIp, extractToken, resolveSessionEmail, resolveAdmin, ADMIN_EMAILS };
+function setCorsHeaders(res, req) {
+  const allowedOrigins = [
+    'https://ddukddaktool.co.kr',
+    'https://www.ddukddaktool.co.kr',
+  ];
+  if (process.env.NODE_ENV !== 'production') {
+    allowedOrigins.push('http://localhost:3000', 'http://localhost:5173');
+  }
+  const origin = req?.headers?.origin || '';
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', 'https://ddukddaktool.co.kr');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+}
+
+export { getRedis, getClientIp, extractToken, resolveSessionEmail, resolveAdmin, setCorsHeaders, ADMIN_EMAILS };

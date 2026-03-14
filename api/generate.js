@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis';
-import { resolveAdmin } from './_helpers.js';
+import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 
 const GUEST_DAILY_LIMIT = 3;
 const MEMBER_DAILY_LIMIT = 5;
@@ -65,9 +65,7 @@ async function resolveSessionEmail(token) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  setCorsHeaders(res, req);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
