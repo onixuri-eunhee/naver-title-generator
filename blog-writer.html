@@ -539,6 +539,28 @@
     .option-chip .chip-label { color: #555; margin-right: 4px; }
     .option-chip .chip-value { color: var(--text); }
 
+    /* ===== PRESET CHIPS ===== */
+    .preset-section { margin-bottom: 14px; }
+    .preset-label { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+    .preset-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .preset-chip {
+      font-size: 12px; font-weight: 500; padding: 6px 12px; border-radius: 20px;
+      background: var(--surface); border: 1.5px solid var(--border); color: var(--text);
+      cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+    .preset-chip:hover { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,95,31,0.08); }
+    .preset-chip .preset-delete {
+      font-size: 13px; color: #aaa; cursor: pointer; margin-left: 2px; line-height: 1;
+    }
+    .preset-chip .preset-delete:hover { color: #e53e3e; }
+    .preset-save-btn {
+      font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px;
+      background: transparent; border: 1.5px dashed var(--accent); color: var(--accent);
+      cursor: pointer; transition: background 0.18s;
+    }
+    .preset-save-btn:hover { background: rgba(255,95,31,0.06); }
+
     /* ===== FOOTER ===== */
     footer {
       border-top: 1px solid var(--border);
@@ -1035,6 +1057,11 @@
     <!-- 카드 4: 내용 입력 -->
     <div class="card">
       <div class="card-label">내용 입력</div>
+
+      <div class="preset-section" id="preset-section">
+        <div class="preset-label">자주 쓰는 설정</div>
+        <div class="preset-chips" id="preset-chips"></div>
+      </div>
 
       <div class="input-row">
         <div class="input-group">
@@ -2871,6 +2898,54 @@
     try { adminParam = sessionStorage.getItem('ddukddak_admin') === '8524' ? '?admin=8524' : ''; } catch(e) {}
     window.location.href = 'blog-image-pro.html' + adminParam;
   }
+
+  // ─── 프리셋 저장/불러오기 ───
+  function getPresets() {
+    try { return JSON.parse(localStorage.getItem('ddukddak_presets') || '[]'); } catch(e) { return []; }
+  }
+  function savePresetsToStorage(presets) {
+    try { localStorage.setItem('ddukddak_presets', JSON.stringify(presets)); } catch(e) {}
+  }
+  function renderPresets() {
+    var container = document.getElementById('preset-chips');
+    var presets = getPresets();
+    var html = '';
+    presets.forEach(function(p, i) {
+      var label = escapeHtml(p.industry) + ' · ' + escapeHtml(p.target);
+      if (p.location) label += ' · ' + escapeHtml(p.location);
+      html += '<span class="preset-chip" onclick="applyPreset(' + i + ')" title="클릭하면 자동 입력">' +
+        label + '<span class="preset-delete" onclick="event.stopPropagation();deletePreset(' + i + ')">×</span></span>';
+    });
+    html += '<button class="preset-save-btn" onclick="savePreset()">+ 저장</button>';
+    container.innerHTML = html;
+  }
+  function savePreset() {
+    var industry = document.getElementById('industry').value.trim();
+    var target = document.getElementById('target').value.trim();
+    var location = document.getElementById('location').value.trim();
+    if (!industry || !target) { showError('업종/입장과 대상을 입력한 뒤 저장해주세요.'); return; }
+    var presets = getPresets();
+    var dup = presets.some(function(p) { return p.industry === industry && p.target === target && p.location === location; });
+    if (dup) { showError('이미 저장된 프리셋입니다.'); return; }
+    if (presets.length >= 5) { showError('프리셋은 최대 5개까지 저장할 수 있습니다.'); return; }
+    presets.push({ industry: industry, target: target, location: location });
+    savePresetsToStorage(presets);
+    renderPresets();
+  }
+  function applyPreset(i) {
+    var presets = getPresets();
+    if (!presets[i]) return;
+    document.getElementById('industry').value = presets[i].industry;
+    document.getElementById('target').value = presets[i].target;
+    document.getElementById('location').value = presets[i].location || '';
+  }
+  function deletePreset(i) {
+    var presets = getPresets();
+    presets.splice(i, 1);
+    savePresetsToStorage(presets);
+    renderPresets();
+  }
+  renderPresets();
 
   // ─── Ctrl+Enter / Cmd+Enter 단축키 ───
   document.addEventListener('keydown', function(e) {

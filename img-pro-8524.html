@@ -301,7 +301,7 @@ footer a:hover { text-decoration: underline; }
 <div class="hero">
   <div class="hero-badge">PREMIUM · 프리미엄 이미지</div>
   <h1>AI 자동 라우팅으로 만드는<br><em>고품질 블로그 이미지</em></h1>
-  <p>Haiku가 이미지 유형을 판단해 최적 모델을 자동 선택합니다<br>사진→FLUX Realism | 데이터→GPT Image high | 흐름도/포스터→Nano Banana 2</p>
+  <p>AI가 이미지 유형을 판단해 최적 모델을 자동 선택합니다<br>사진→FLUX Realism | 데이터→GPT Image high | 흐름도/포스터→Nano Banana 2</p>
 </div>
 
 <div class="container">
@@ -564,7 +564,7 @@ async function generateParse() {
   btn.textContent = '이미지 생성 중...';
 
   document.getElementById('loadingArea').classList.add('show');
-  document.getElementById('loadingText').textContent = 'Haiku가 유형 분석 중... ' + markersToSend.length + '개 이미지 자동 라우팅';
+  document.getElementById('loadingText').textContent = 'AI가 유형 분석 중... ' + markersToSend.length + '개 이미지 자동 라우팅';
   document.getElementById('loadingProgress').textContent = '마커 분석 → 프롬프트 변환 → 이미지 생성 (약 1~2분)';
   document.getElementById('resultArea').classList.remove('show');
 
