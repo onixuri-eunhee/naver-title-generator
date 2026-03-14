@@ -1077,7 +1077,7 @@
       <div class="input-row">
         <div class="input-group">
           <label class="input-label">대상 <span class="req">*</span></label>
-          <input type="text" id="target" placeholder="예: 30대 직장맘, 자영업 초보, 다이어트 중인 여성" maxlength="30" />
+          <textarea id="target" placeholder="예: 두피케어 받고 싶어서 검색 중인 30대 직장인 여성" maxlength="80" style="min-height: 44px; height: 44px; resize: none;"></textarea>
         </div>
         <div class="input-group">
           <label class="input-label">지역 <span style="color:#555; font-weight:400;">(선택)</span></label>
@@ -2936,7 +2936,10 @@
     var presets = getPresets();
     if (!presets[i]) return;
     document.getElementById('industry').value = presets[i].industry;
-    document.getElementById('target').value = presets[i].target;
+    var tEl = document.getElementById('target');
+    tEl.value = presets[i].target;
+    tEl.style.height = '44px';
+    tEl.style.height = Math.max(44, tEl.scrollHeight) + 'px';
     document.getElementById('location').value = presets[i].location || '';
   }
   function deletePreset(i) {
@@ -2946,6 +2949,13 @@
     renderPresets();
   }
   renderPresets();
+
+  // ─── 대상 textarea 자동 높이 조절 ───
+  var targetEl = document.getElementById('target');
+  targetEl.addEventListener('input', function() {
+    this.style.height = '44px';
+    this.style.height = Math.max(44, this.scrollHeight) + 'px';
+  });
 
   // ─── Ctrl+Enter / Cmd+Enter 단축키 ───
   document.addEventListener('keydown', function(e) {
