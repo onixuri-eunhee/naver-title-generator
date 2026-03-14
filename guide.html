@@ -394,6 +394,32 @@ footer a:hover { text-decoration: underline; }
       <tr><td><strong>간결 실용체</strong></td><td>핵심만, 수식어 제거</td><td>리스트형, 비교 리뷰</td></tr>
     </table>
 
+    <h3 class="sub-title">업종/입장과 대상(타겟 독자) 입력 가이드</h3>
+    <p style="font-size:14px; color:#6B7280; margin-bottom:16px; line-height:1.8;">이 두 필드가 글의 방향을 결정합니다. <strong>"누가(업종/입장) 누구에게(대상) 쓴 글인지"</strong>가 명확할수록 AI가 정확한 글을 만들어줍니다.</p>
+
+    <table class="guide-table">
+      <tr><th>필드</th><th>역할</th><th>입력 방법</th></tr>
+      <tr><td><strong>업종/입장</strong></td><td>글쓴이의 입장 설정</td><td>"미용실 원장", "카페 사장", "뷰티 블로거" 처럼 <strong>업종 + 역할</strong>을 함께 적으세요. "미용실"보다 "미용실 원장"이 훨씬 좋습니다.</td></tr>
+      <tr><td><strong>대상</strong></td><td>글을 읽을 독자 설정</td><td>"두피케어 받고 싶어서 검색 중인 30대 직장인 여성"처럼 <strong>욕구 + 연령대 + 상황</strong>을 구체적으로 적으세요.</td></tr>
+    </table>
+
+    <table class="guide-table">
+      <tr><th>구분</th><th>업종/입장</th><th>대상</th><th>결과</th></tr>
+      <tr><td class="good">좋은 예</td><td>"필라테스 강사"</td><td>"허리 통증으로 운동 시작하려는 40대 주부"</td><td>독자의 고민에 맞는 전문 글</td></tr>
+      <tr><td class="good">좋은 예</td><td>"인테리어 업체 대표"</td><td>"신혼집 꾸미는데 예산 걱정되는 30대 부부"</td><td>예산 중심의 실용 가이드</td></tr>
+      <tr><td class="bad">나쁜 예</td><td>"사장"</td><td>(빈칸)</td><td>방향 없는 일반적 글</td></tr>
+      <tr><td class="bad">나쁜 예</td><td>"블로거"</td><td>"모든 사람"</td><td>타겟 없는 글 = 아무도 안 읽는 글</td></tr>
+    </table>
+
+    <h3 class="sub-title">프리셋 저장 기능 (업종/입장 + 대상 저장)</h3>
+    <p style="font-size:14px; color:#6B7280; margin-bottom:16px; line-height:1.8;">자주 쓰는 업종/입장, 대상, 지역 조합을 <strong>최대 5개까지 저장</strong>해두고 원클릭으로 불러올 수 있습니다.</p>
+    <ul class="tip-list">
+      <li><span class="tip-num">1</span><span><strong>저장하기:</strong> 업종/입장과 대상을 입력한 뒤 <strong>[+ 저장]</strong> 버튼을 클릭하면 프리셋으로 저장됩니다.</span></li>
+      <li><span class="tip-num">2</span><span><strong>불러오기:</strong> 저장된 프리셋 칩을 클릭하면 업종/입장, 대상, 지역이 한 번에 자동 입력됩니다.</span></li>
+      <li><span class="tip-num">3</span><span><strong>삭제하기:</strong> 프리셋 칩 옆의 <strong>[×]</strong> 버튼으로 삭제할 수 있습니다.</span></li>
+    </ul>
+    <div class="scenario-card"><strong>활용 예시:</strong> "미용실 원장 · 두피케어 검색 중인 30대 직장인 여성 · 강남" 프리셋 저장 → 매번 키워드만 바꿔가며 빠르게 글 생성</div>
+
     <h3 class="sub-title">좋은 입력 vs 나쁜 입력</h3>
     <table class="guide-table">
       <tr><th>구분</th><th>업종/입장</th><th>추가 요청사항</th><th>이유</th></tr>
@@ -543,7 +569,8 @@ footer a:hover { text-decoration: underline; }
       <table class="guide-table">
         <tr><th>구분</th><th>도구</th><th>비용</th></tr>
         <tr><td>무료</td><td>블로그 제목, 후킹문구, 스레드 글</td><td><strong>1일 5회 완전 무료</strong></td></tr>
-        <tr><td>무료</td><td>블로그 글, 블로그 이미지</td><td><strong>1일 3회 한시 무료</strong></td></tr>
+        <tr><td>무료</td><td>블로그 글, 블로그 이미지</td><td><strong>회원 1일 5회 / 비회원 1일 3회</strong></td></tr>
+        <tr><td>무료</td><td>프리미엄 이미지</td><td><strong>회원 1일 1회 한시 무료</strong></td></tr>
       </table>
     </div>
 
@@ -553,7 +580,7 @@ footer a:hover { text-decoration: underline; }
         <tr><th>항목</th><th>내용</th></tr>
         <tr><td><strong>상품</strong></td><td>30크레딧 = 9,900원 (단일 상품)</td></tr>
         <tr><td><strong>구매 제한</strong></td><td>1회 최대 5세트까지 구매 가능 (최대 150크레딧)</td></tr>
-        <tr><td><strong>차감 기준</strong></td><td>블로그 글 생성 1회 = 1크레딧 / 블로그 이미지 생성 1회 = 1크레딧</td></tr>
+        <tr><td><strong>차감 기준</strong></td><td>블로그 글 1회 = 1크레딧 / 기본 이미지 1회 = 1크레딧 / 프리미엄 이미지 1회 = 5크레딧</td></tr>
         <tr><td><strong>무료 도구</strong></td><td>블로그 제목, 후킹문구, 스레드 글은 계속 무료</td></tr>
       </table>
     </div>
