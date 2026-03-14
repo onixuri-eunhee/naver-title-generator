@@ -347,8 +347,8 @@ footer a:hover { text-decoration: underline; }
 
 <div class="hero">
   <div class="hero-badge">PREMIUM · 프리미엄 이미지</div>
-  <h1>AI 자동 라우팅으로 만드는<br><em>고품질 블로그 이미지</em></h1>
-  <p>AI가 이미지 유형을 자동 판단해 고품질 이미지를 생성합니다<br>사진/데이터 차트/흐름도/포스터까지 한 번에</p>
+  <h1>내 블로그에 딱 맞는<br><em>고퀄리티 이미지 자동 생성</em></h1>
+  <p>사진, 차트, 인포그래픽 — AI가 알아서 골라줍니다</p>
 </div>
 
 <div class="container">
@@ -656,7 +656,7 @@ async function generateParse() {
   btn.textContent = '이미지 생성 중...';
 
   document.getElementById('loadingArea').classList.add('show');
-  document.getElementById('loadingText').textContent = 'AI가 유형 분석 중... ' + markersToSend.length + '개 이미지 자동 라우팅';
+  document.getElementById('loadingText').textContent = 'AI가 이미지 생성 중... ' + markersToSend.length + '개 이미지 준비 중';
   document.getElementById('loadingProgress').textContent = '마커 분석 → 프롬프트 변환 → 이미지 생성 (약 1~2분)';
   document.getElementById('resultArea').classList.remove('show');
 
