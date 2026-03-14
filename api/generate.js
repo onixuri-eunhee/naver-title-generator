@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 
-const FREE_DAILY_LIMIT = 5; // 임시 5회 (3/14 오류 보상) — 내일 3으로 복원
+const FREE_DAILY_LIMIT = 5; // 테스트 기간 5회
 
 let redis;
 function getRedis() {
