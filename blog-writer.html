@@ -548,6 +548,7 @@
       background: var(--surface); border: 1.5px solid var(--border); color: var(--text);
       cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
       transition: border-color 0.18s, box-shadow 0.18s;
+      max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .preset-chip:hover { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,95,31,0.08); }
     .preset-chip .preset-delete {
@@ -2913,7 +2914,7 @@
     presets.forEach(function(p, i) {
       var label = escapeHtml(p.industry) + ' · ' + escapeHtml(p.target);
       if (p.location) label += ' · ' + escapeHtml(p.location);
-      html += '<span class="preset-chip" onclick="applyPreset(' + i + ')" title="클릭하면 자동 입력">' +
+      html += '<span class="preset-chip" onclick="applyPreset(' + i + ')" title="' + label + '">' +
         label + '<span class="preset-delete" onclick="event.stopPropagation();deletePreset(' + i + ')">×</span></span>';
     });
     html += '<button class="preset-save-btn" onclick="savePreset()">+ 저장</button>';
