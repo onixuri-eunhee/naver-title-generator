@@ -396,13 +396,15 @@ footer a:hover { text-decoration: underline; }
   <div>&copy; 2026 어나더핸즈. All rights reserved.</div>
 </footer>
 
+<script src="admin-mode.js"></script>
 <script>
-// ─── 관리자키 검증 ───
-var ADMIN_KEY = '8524';
-var urlParams = new URLSearchParams(window.location.search);
-var adminKey = urlParams.get('key');
+// ─── 관리자 검증 (서버 기반) ───
+var token = localStorage.getItem('ddukddak_token');
+var user = null;
+try { user = JSON.parse(localStorage.getItem('ddukddak_user')); } catch(e) {}
+var isAdmin = !!(user && user.isAdmin);
 
-if (adminKey !== ADMIN_KEY) {
+if (!isAdmin) {
   document.getElementById('accessDenied').style.display = 'flex';
 } else {
   document.getElementById('mainContent').style.display = 'block';
@@ -414,7 +416,7 @@ var currentMode = '';
 
 // ─── API 호출 헬퍼 ───
 function apiUrl(path) {
-  return path + (path.includes('?') ? '&' : '?') + 'key=' + ADMIN_KEY;
+  return path;
 }
 
 // ─── 탭 전환 ───

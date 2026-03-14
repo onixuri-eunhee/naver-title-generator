@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis';
+import { resolveAdmin, getClientIp } from './_helpers.js';
 
 let redis;
 function getRedis() {
@@ -11,25 +12,15 @@ function getRedis() {
   return redis;
 }
 
-function getClientIp(req) {
-  return (
-    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-    req.headers['x-real-ip'] ||
-    req.socket?.remoteAddress ||
-    'unknown'
-  );
-}
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { adminKey } = req.method === 'GET' ? req.query : req.body || {};
-
-  if (adminKey !== process.env.ADMIN_KEY) {
+  const isAdmin = await resolveAdmin(req);
+  if (!isAdmin) {
     return res.status(403).json({ error: '관리자 인증 실패' });
   }
 

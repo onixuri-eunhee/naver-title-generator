@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis';
+import { resolveAdmin } from './_helpers.js';
 
 const FREE_DAILY_LIMIT = 5;
 
@@ -165,7 +166,7 @@ export default async function handler(req, res) {
   // CORS 헤더
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -174,8 +175,7 @@ export default async function handler(req, res) {
   // GET: 남은 횟수 조회
   if (req.method === 'GET') {
     try {
-      const ip = getClientIp(req);
-      const whitelisted = await getRedis().get(`admin:whitelist:${ip}`) || req.query?.admin === '8524';
+      const whitelisted = await resolveAdmin(req);
       if (whitelisted) {
         return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
       }
@@ -208,9 +208,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '키워드를 입력해주세요.' });
     }
 
-    // Rate limit (INCR-first, 화이트리스트 IP 또는 admin 키 스킵)
-    const ip = getClientIp(req);
-    const whitelisted = await getRedis().get(`admin:whitelist:${ip}`) || req.query?.admin === '8524';
+    // Rate limit (INCR-first, 관리자 스킵)
+    const whitelisted = await resolveAdmin(req);
 
     if (!whitelisted && FREE_DAILY_LIMIT <= 0) {
       return res.status(429).json({

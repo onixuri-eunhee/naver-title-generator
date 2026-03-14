@@ -825,7 +825,6 @@ document.addEventListener('keydown', function(e) {
 
 // --- Threads 발행 기능 (관리자 전용) ---
 var isAdmin = false;
-var adminKey = '';
 
 function showToast(msg, type) {
   var t = document.getElementById('toast');
@@ -843,11 +842,6 @@ loadRemaining = async function() {
     updateRemainingUI(data.remaining, data.limit);
     if (data.admin) {
       isAdmin = true;
-      adminKey = localStorage.getItem('adminKey') || '';
-      if (!adminKey) {
-        adminKey = prompt('관리자 키를 입력하세요 (발행 기능용):') || '';
-        if (adminKey) localStorage.setItem('adminKey', adminKey);
-      }
       showPublishButtons();
     }
   } catch(e) {
@@ -873,7 +867,7 @@ async function publishNow() {
     var res = await fetch('/api/threads-publish', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: text, adminKey: adminKey })
+      body: JSON.stringify({ text: text })
     });
     var data = await res.json();
     if (!res.ok || !data.success) {
@@ -915,7 +909,7 @@ async function confirmSchedule() {
     var res = await fetch('/api/threads-schedule', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: text, publishAt: publishAt, adminKey: adminKey })
+      body: JSON.stringify({ text: text, publishAt: publishAt })
     });
     var data = await res.json();
     if (!res.ok || !data.success) {

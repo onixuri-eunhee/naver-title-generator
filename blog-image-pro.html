@@ -447,15 +447,11 @@ footer a:hover { text-decoration: underline; }
 
 <script src="admin-mode.js"></script>
 <script>
-// ─── 접근 제어: 로그인 OR admin ───
-var urlParams = new URLSearchParams(window.location.search);
-var isAdmin = urlParams.get('key') === '8524' || urlParams.get('admin') === '8524';
-if (!isAdmin) {
-  try { isAdmin = sessionStorage.getItem('ddukddak_admin') === '8524'; } catch(e) {}
-}
+// ─── 접근 제어: 로그인 회원 (관리자는 서버에서 판별) ───
 var token = localStorage.getItem('ddukddak_token');
 var user = null;
 try { user = JSON.parse(localStorage.getItem('ddukddak_user')); } catch(e) {}
+var isAdmin = !!(user && user.isAdmin);
 
 if (!isAdmin && !token) {
   document.getElementById('accessDenied').style.display = 'flex';
@@ -469,7 +465,6 @@ var currentMode = '';
 
 // ─── API 호출 헬퍼 ───
 function getAuthBody() {
-  if (isAdmin) return { adminKey: '8524' };
   return { token: token };
 }
 
@@ -477,9 +472,9 @@ function getAuthBody() {
 async function loadRemaining() {
   try {
     var url = '/api/blog-image-pro';
-    if (isAdmin) url += '?key=8524';
-    else if (token) url += '?token=' + encodeURIComponent(token);
-    var res = await fetch(url, { headers: token ? { 'Authorization': 'Bearer ' + token } : {} });
+    var headers = {};
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    var res = await fetch(url, { headers: headers });
     var data = await res.json();
     var el = document.getElementById('remainingBar');
     if (data.admin) {

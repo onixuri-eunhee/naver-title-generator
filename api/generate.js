@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis';
+import { resolveAdmin } from './_helpers.js';
 
 const GUEST_DAILY_LIMIT = 3;
 const MEMBER_DAILY_LIMIT = 5;
@@ -75,8 +76,7 @@ export default async function handler(req, res) {
   // GET: 남은 횟수 조회
   if (req.method === 'GET') {
     try {
-      const ip = getClientIp(req);
-      const whitelisted = await getRedis().get(`admin:whitelist:${ip}`) || req.query?.admin === '8524';
+      const whitelisted = await resolveAdmin(req);
       if (whitelisted) {
         return res.status(200).json({ remaining: 999, limit: MEMBER_DAILY_LIMIT, admin: true });
       }
@@ -120,8 +120,7 @@ export default async function handler(req, res) {
     }
 
     // Rate limit
-    const ip = getClientIp(req);
-    const whitelisted = await getRedis().get(`admin:whitelist:${ip}`) || req.query?.admin === '8524';
+    const whitelisted = await resolveAdmin(req);
 
     // 로그인 유저 확인
     const token = extractToken(req);

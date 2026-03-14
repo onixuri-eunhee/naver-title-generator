@@ -182,12 +182,17 @@ async function handleMe(req, res) {
 
   const userData = typeof userRaw === 'string' ? JSON.parse(userRaw) : userRaw;
 
+  const adminEmails = (process.env.ADMIN_EMAILS || '')
+    .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+  const isAdmin = adminEmails.includes(session.email.toLowerCase());
+
   return res.status(200).json({
     name: userData.name,
     email: session.email,
     phone: userData.phone,
     credits: userData.credits,
     createdAt: userData.createdAt,
+    isAdmin,
   });
 }
 

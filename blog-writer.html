@@ -2888,9 +2888,7 @@
     if (generatedData.cta) parts.push(generatedData.cta);
     var fullText = parts.join('\n\n');
     try { localStorage.setItem('blogTextForImage', fullText); } catch(e) {}
-    var adminParam = '';
-    try { adminParam = sessionStorage.getItem('ddukddak_admin') === '8524' ? '?admin=8524' : ''; } catch(e) {}
-    window.location.href = 'blog-image.html' + adminParam;
+    window.location.href = 'blog-image.html';
   }
 
   // ─── 프리미엄 이미지 생성기로 글 전달 ───
@@ -2904,9 +2902,7 @@
     if (generatedData.cta) parts.push(generatedData.cta);
     var fullText = parts.join('\n\n');
     try { localStorage.setItem('blogTextForImagePro', fullText); } catch(e) {}
-    var adminParam = '';
-    try { adminParam = sessionStorage.getItem('ddukddak_admin') === '8524' ? '?admin=8524' : ''; } catch(e) {}
-    window.location.href = 'blog-image-pro.html' + adminParam;
+    window.location.href = 'blog-image-pro.html';
   }
 
   // ─── 프리셋 저장/불러오기 ───

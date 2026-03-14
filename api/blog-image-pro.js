@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis';
+import { resolveAdmin } from './_helpers.js';
 
 /*
  * 프리미엄 이미지 생성 v2 (회원 전용 공개)
@@ -10,10 +11,9 @@ import { Redis } from '@upstash/redis';
  *   infographic_flow → Nano Banana 2 (fal-ai/nano-banana-2)
  *   poster → Nano Banana 2 (fal-ai/nano-banana-2)
  *
- * 인증: admin 키 OR 로그인 회원 (3/24까지 가입 시 1일 1회 무료)
+ * 인증: 관리자(서버 판별) OR 로그인 회원 (3/24까지 가입 시 1일 1회 무료)
  */
 
-const ADMIN_KEY = '8524';
 const FREE_DAILY_LIMIT = 1;
 const FREE_CUTOFF = '2026-03-24T23:59:59+09:00';
 const MAX_MARKERS = 8;
@@ -372,11 +372,8 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // ─── 인증: admin OR IP 화이트리스트 OR 로그인 회원 ───
-  const ip = getClientIp(req);
-  const adminKey = req.query?.key || req.query?.admin || req.body?.adminKey;
-  const ipWhitelisted = await getRedis().get(`admin:whitelist:${ip}`);
-  const isAdmin = adminKey === ADMIN_KEY || !!ipWhitelisted;
+  // ─── 인증: 관리자(서버 판별) OR 로그인 회원 ───
+  const isAdmin = await resolveAdmin(req);
 
   let sessionEmail = null;
 

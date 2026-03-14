@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis';
+import { resolveAdmin } from './_helpers.js';
 
 /*
  * 이미지 생성 구조
@@ -265,8 +266,7 @@ export default async function handler(req, res) {
   // GET: 남은 크레딧 조회
   if (req.method === 'GET') {
     try {
-      const ip = getClientIp(req);
-      const whitelisted = await getRedis().get(`admin:whitelist:${ip}`) || req.query?.admin === '8524';
+      const whitelisted = await resolveAdmin(req);
       if (whitelisted) {
         return res.status(200).json({ remaining: 999, limit: MEMBER_DAILY_LIMIT, admin: true });
       }
@@ -308,8 +308,7 @@ export default async function handler(req, res) {
     creditCost = mode === 'regenerate_single' ? SINGLE_REGEN_COST : FULL_COST;
 
     // Rate limit
-    const ip = getClientIp(req);
-    const whitelisted = await getRedis().get(`admin:whitelist:${ip}`) || req.query?.admin === '8524';
+    const whitelisted = await resolveAdmin(req);
 
     // 로그인 유저 확인
     const token = extractToken(req);
