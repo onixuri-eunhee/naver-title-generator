@@ -7,7 +7,7 @@ import { Redis } from '@upstash/redis';
  * Haiku: 마커 분석 + 맥락 기반 영어 프롬프트 생성
  */
 
-const FREE_DAILY_LIMIT = 3;
+const FREE_DAILY_LIMIT = 5; // 임시 5회 (3/14 오류 보상) — 내일 3으로 복원
 const MAX_MARKERS = 10;
 const DIRECT_IMAGES = 8;
 const IMAGE_SIZE = 'square_hd'; // 1024×1024
