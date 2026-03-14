@@ -552,7 +552,10 @@ function updateGenBtnText() {
 // ─── 남은 횟수 ───
 async function loadRemaining() {
   try {
-    var res = await fetch('/api/blog-image');
+    var _hdr = {};
+    var _tk = localStorage.getItem('ddukddak_token');
+    if (_tk) _hdr['Authorization'] = 'Bearer ' + _tk;
+    var res = await fetch('/api/blog-image', { headers: _hdr });
     var data = await res.json();
     var el = document.getElementById('remainingBar');
     if (data.admin) {
@@ -641,9 +644,12 @@ async function generateParse() {
 
   try {
     var thumbnailText = document.getElementById('thumbText1').value.trim();
+    var _hdrP = { 'Content-Type': 'application/json' };
+    var _tkP = localStorage.getItem('ddukddak_token');
+    if (_tkP) _hdrP['Authorization'] = 'Bearer ' + _tkP;
     var res = await fetch('/api/blog-image', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: _hdrP,
       body: JSON.stringify({ mode: 'parse', blogText: blogText, thumbnailText: thumbnailText, markers: markersToSend }),
     });
     var data = await res.json();
@@ -687,9 +693,12 @@ async function generateDirect() {
   try {
     var mood = document.getElementById('moodSelect').value;
     var thumbnailText = document.getElementById('thumbText2').value.trim();
+    var _hdrD = { 'Content-Type': 'application/json' };
+    var _tkD = localStorage.getItem('ddukddak_token');
+    if (_tkD) _hdrD['Authorization'] = 'Bearer ' + _tkD;
     var res = await fetch('/api/blog-image', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: _hdrD,
       body: JSON.stringify({ mode: 'direct', topic: topic, mood: mood, thumbnailText: thumbnailText }),
     });
     var data = await res.json();
@@ -924,9 +933,12 @@ async function regenerateAll() {
       body = { mode: 'direct', topic: topic, mood: mood, thumbnailText: thumbText, is_regenerate: true };
     }
 
+    var _hdrR = { 'Content-Type': 'application/json' };
+    var _tkR = localStorage.getItem('ddukddak_token');
+    if (_tkR) _hdrR['Authorization'] = 'Bearer ' + _tkR;
     var res = await fetch('/api/blog-image', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: _hdrR,
       body: JSON.stringify(body),
     });
     var data = await res.json();
@@ -980,9 +992,12 @@ async function regenerateSingle(index) {
       body.originalPrompt = item.prompt;
     }
 
+    var _hdrS = { 'Content-Type': 'application/json' };
+    var _tkS = localStorage.getItem('ddukddak_token');
+    if (_tkS) _hdrS['Authorization'] = 'Bearer ' + _tkS;
     var res = await fetch('/api/blog-image', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: _hdrS,
       body: JSON.stringify(body),
     });
     var data = await res.json();

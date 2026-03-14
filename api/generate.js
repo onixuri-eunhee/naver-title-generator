@@ -1,6 +1,7 @@
 import { Redis } from '@upstash/redis';
 
-const FREE_DAILY_LIMIT = 5; // 테스트 기간 5회
+const GUEST_DAILY_LIMIT = 3;
+const MEMBER_DAILY_LIMIT = 5;
 
 let redis;
 function getRedis() {
@@ -25,11 +26,15 @@ function getClientIp(req) {
 function getKSTDate() {
   const now = new Date();
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  return kst.toISOString().slice(0, 10); // YYYY-MM-DD (KST 기준)
+  return kst.toISOString().slice(0, 10);
 }
 
 function getTodayKey(ip) {
   return `ratelimit:${ip}:${getKSTDate()}`;
+}
+
+function getTodayKeyByEmail(email) {
+  return `ratelimit:generate:${email}:${getKSTDate()}`;
 }
 
 function getTTLUntilMidnightKST() {
@@ -40,14 +45,28 @@ function getTTLUntilMidnightKST() {
   nextMidnight.setUTCHours(0, 0, 0, 0);
   nextMidnight.setUTCDate(nextMidnight.getUTCDate() + 1);
   const seconds = Math.ceil((nextMidnight.getTime() - kstNow.getTime()) / 1000);
-  return Math.max(seconds, 60); // 최소 60초
+  return Math.max(seconds, 60);
+}
+
+function extractToken(req) {
+  const auth = req.headers['authorization'] || req.headers['Authorization'] || '';
+  if (auth.startsWith('Bearer ')) return auth.slice(7);
+  return req.body?.token || req.query?.token || null;
+}
+
+async function resolveSessionEmail(token) {
+  if (!token) return null;
+  try {
+    const session = await getRedis().get(`session:${token}`);
+    if (session && session.email) return session.email;
+  } catch (e) {}
+  return null;
 }
 
 export default async function handler(req, res) {
-  // CORS 헤더
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -59,17 +78,29 @@ export default async function handler(req, res) {
       const ip = getClientIp(req);
       const whitelisted = await getRedis().get(`admin:whitelist:${ip}`) || req.query?.admin === '8524';
       if (whitelisted) {
-        return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
+        return res.status(200).json({ remaining: 999, limit: MEMBER_DAILY_LIMIT, admin: true });
       }
-      if (FREE_DAILY_LIMIT <= 0) {
+
+      // 로그인 유저: 이메일 기반 5회
+      const token = extractToken(req);
+      const email = await resolveSessionEmail(token);
+      if (email) {
+        const key = getTodayKeyByEmail(email);
+        const count = (await getRedis().get(key)) || 0;
+        const remaining = Math.max(MEMBER_DAILY_LIMIT - count, 0);
+        return res.status(200).json({ remaining, limit: MEMBER_DAILY_LIMIT });
+      }
+
+      // 비로그인: IP 기반 3회
+      if (GUEST_DAILY_LIMIT <= 0) {
         return res.status(200).json({ remaining: 0, limit: 0 });
       }
       const key = getTodayKey(ip);
       const count = (await getRedis().get(key)) || 0;
-      const remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
-      return res.status(200).json({ remaining, limit: FREE_DAILY_LIMIT });
+      const remaining = Math.max(GUEST_DAILY_LIMIT - count, 0);
+      return res.status(200).json({ remaining, limit: GUEST_DAILY_LIMIT });
     } catch {
-      return res.status(200).json({ remaining: FREE_DAILY_LIMIT, limit: FREE_DAILY_LIMIT });
+      return res.status(200).json({ remaining: GUEST_DAILY_LIMIT, limit: GUEST_DAILY_LIMIT });
     }
   }
 
@@ -77,41 +108,45 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  let rateLimitKey = null;
+
   try {
     const { prompt, system, messages, model, max_tokens, skipRateLimit } = req.body;
 
-    // prompt 방식 (기존 호환) 또는 messages 방식 (threads-writer 등)
     const apiMessages = messages || (prompt ? [{ role: 'user', content: prompt }] : null);
 
     if (!apiMessages) {
       return res.status(400).json({ error: 'prompt 또는 messages가 필요합니다.' });
     }
 
-    // Rate limit (화이트리스트 IP 스킵, INCR-first)
-    // skipRateLimit: 검수 기준 자동 수정(재생성)은 횟수 차감하지 않음
+    // Rate limit
     const ip = getClientIp(req);
     const whitelisted = await getRedis().get(`admin:whitelist:${ip}`) || req.query?.admin === '8524';
-    let remaining = whitelisted ? 999 : FREE_DAILY_LIMIT;
-    let rateLimitKey = null;
+
+    // 로그인 유저 확인
+    const token = extractToken(req);
+    const email = await resolveSessionEmail(token);
+    const dailyLimit = email ? MEMBER_DAILY_LIMIT : GUEST_DAILY_LIMIT;
+
+    let remaining = whitelisted ? 999 : dailyLimit;
 
     if (!whitelisted && !skipRateLimit) {
-      rateLimitKey = getTodayKey(ip);
+      rateLimitKey = email ? getTodayKeyByEmail(email) : getTodayKey(ip);
       const newCount = await getRedis().incr(rateLimitKey);
       await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
 
-      if (newCount > FREE_DAILY_LIMIT) {
+      if (newCount > dailyLimit) {
         await getRedis().decr(rateLimitKey);
         return res.status(429).json({
-          error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
+          error: `일일 무료 사용 한도(${dailyLimit}회)를 초과했습니다. 내일 다시 이용해주세요.`,
           remaining: 0,
         });
       }
-      remaining = FREE_DAILY_LIMIT - newCount;
+      remaining = dailyLimit - newCount;
     } else if (!whitelisted && skipRateLimit) {
-      // 재생성: 차감하지 않되, 현재 남은 횟수는 조회해서 반환
-      const key = getTodayKey(ip);
+      const key = email ? getTodayKeyByEmail(email) : getTodayKey(ip);
       const count = (await getRedis().get(key)) || 0;
-      remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
+      remaining = Math.max(dailyLimit - count, 0);
     }
 
     const apiBody = {
@@ -140,7 +175,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: '글 생성 중 오류가 발생했습니다.' });
     }
 
-    return res.status(200).json({ ...data, remaining, limit: FREE_DAILY_LIMIT });
+    return res.status(200).json({ ...data, remaining, limit: dailyLimit });
 
   } catch (error) {
     console.error('API Error:', error);

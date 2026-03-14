@@ -7,7 +7,8 @@ import { Redis } from '@upstash/redis';
  * Haiku: 마커 분석 + 맥락 기반 영어 프롬프트 생성
  */
 
-const FREE_DAILY_LIMIT = 5; // 테스트 기간 5회
+const GUEST_DAILY_LIMIT = 3;
+const MEMBER_DAILY_LIMIT = 5;
 const MAX_MARKERS = 10;
 const DIRECT_IMAGES = 8;
 const IMAGE_SIZE = 'square_hd'; // 1024×1024
@@ -16,7 +17,6 @@ const IMAGE_SIZE = 'square_hd'; // 1024×1024
 const CREDIT_SCALE = 10;
 const FULL_COST = 10;         // 전체 생성/재생성: 1 크레딧
 const SINGLE_REGEN_COST = 2;  // 개별 1장 재생성: 0.2 크레딧
-const DAILY_LIMIT_SCALED = FREE_DAILY_LIMIT * CREDIT_SCALE;
 
 // FLUX no-text suffix (단일 정의, 모든 모드에서 공유)
 const FLUX_NO_TEXT = ', no text, no writing, no signs, no letters, no characters, pure visual only';
@@ -49,6 +49,25 @@ function getKSTDate() {
 
 function getTodayKey(ip) {
   return `ratelimit:blogimage:v2:${ip}:${getKSTDate()}`;
+}
+
+function getTodayKeyByEmail(email) {
+  return `ratelimit:blogimage:${email}:${getKSTDate()}`;
+}
+
+function extractToken(req) {
+  const auth = req.headers['authorization'] || req.headers['Authorization'] || '';
+  if (auth.startsWith('Bearer ')) return auth.slice(7);
+  return req.body?.token || req.query?.token || null;
+}
+
+async function resolveSessionEmail(token) {
+  if (!token) return null;
+  try {
+    const session = await getRedis().get(`session:${token}`);
+    if (session && session.email) return session.email;
+  } catch (e) {}
+  return null;
 }
 
 function getTTLUntilMidnightKST() {
@@ -239,7 +258,7 @@ Return ONLY a JSON object: {"prompt": "English prompt 80-150 words..."}`;
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -249,17 +268,31 @@ export default async function handler(req, res) {
       const ip = getClientIp(req);
       const whitelisted = await getRedis().get(`admin:whitelist:${ip}`) || req.query?.admin === '8524';
       if (whitelisted) {
-        return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
+        return res.status(200).json({ remaining: 999, limit: MEMBER_DAILY_LIMIT, admin: true });
       }
-      if (FREE_DAILY_LIMIT <= 0) {
+
+      // 로그인 유저: 이메일 기반 5회
+      const token = extractToken(req);
+      const email = await resolveSessionEmail(token);
+      if (email) {
+        const dailyLimitScaled = MEMBER_DAILY_LIMIT * CREDIT_SCALE;
+        const key = getTodayKeyByEmail(email);
+        const count = Number((await getRedis().get(key)) || 0);
+        const remaining = Math.max(Math.round((dailyLimitScaled - count) / CREDIT_SCALE * 10) / 10, 0);
+        return res.status(200).json({ remaining, limit: MEMBER_DAILY_LIMIT });
+      }
+
+      // 비로그인: IP 기반 3회
+      if (GUEST_DAILY_LIMIT <= 0) {
         return res.status(200).json({ remaining: 0, limit: 0 });
       }
+      const guestLimitScaled = GUEST_DAILY_LIMIT * CREDIT_SCALE;
       const key = getTodayKey(ip);
       const count = Number((await getRedis().get(key)) || 0);
-      const remaining = Math.max(Math.round((DAILY_LIMIT_SCALED - count) / CREDIT_SCALE * 10) / 10, 0);
-      return res.status(200).json({ remaining, limit: FREE_DAILY_LIMIT });
+      const remaining = Math.max(Math.round((guestLimitScaled - count) / CREDIT_SCALE * 10) / 10, 0);
+      return res.status(200).json({ remaining, limit: GUEST_DAILY_LIMIT });
     } catch {
-      return res.status(200).json({ remaining: FREE_DAILY_LIMIT, limit: FREE_DAILY_LIMIT });
+      return res.status(200).json({ remaining: GUEST_DAILY_LIMIT, limit: GUEST_DAILY_LIMIT });
     }
   }
 
@@ -274,30 +307,36 @@ export default async function handler(req, res) {
     const { mode, is_regenerate } = req.body;
     creditCost = mode === 'regenerate_single' ? SINGLE_REGEN_COST : FULL_COST;
 
-    // Rate limit (화이트리스트 IP 또는 admin 키 스킵)
+    // Rate limit
     const ip = getClientIp(req);
     const whitelisted = await getRedis().get(`admin:whitelist:${ip}`) || req.query?.admin === '8524';
 
-    if (!whitelisted && FREE_DAILY_LIMIT <= 0) {
+    // 로그인 유저 확인
+    const token = extractToken(req);
+    const email = await resolveSessionEmail(token);
+    const dailyLimit = email ? MEMBER_DAILY_LIMIT : GUEST_DAILY_LIMIT;
+    const dailyLimitScaled = dailyLimit * CREDIT_SCALE;
+
+    if (!whitelisted && dailyLimit <= 0) {
       return res.status(429).json({ error: '현재 무료 사용이 제한되어 있습니다.', remaining: 0 });
     }
 
-    let remaining = whitelisted ? 999 : FREE_DAILY_LIMIT;
+    let remaining = whitelisted ? 999 : dailyLimit;
 
     // 개별 재생성은 테스트 기간 무료 (프론트에서 이미지당 1회 제한)
-    if (mode !== 'regenerate_single' && !whitelisted && FREE_DAILY_LIMIT > 0) {
-      rateLimitKey = getTodayKey(ip);
+    if (mode !== 'regenerate_single' && !whitelisted && dailyLimit > 0) {
+      rateLimitKey = email ? getTodayKeyByEmail(email) : getTodayKey(ip);
       const newCount = await getRedis().incrby(rateLimitKey, creditCost);
       await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
 
-      if (newCount > DAILY_LIMIT_SCALED) {
+      if (newCount > dailyLimitScaled) {
         await getRedis().decrby(rateLimitKey, creditCost);
         return res.status(429).json({
-          error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}크레딧)를 초과했습니다. 내일 다시 이용해주세요.`,
+          error: `일일 무료 사용 한도(${dailyLimit}크레딧)를 초과했습니다. 내일 다시 이용해주세요.`,
           remaining: 0,
         });
       }
-      remaining = Math.round((DAILY_LIMIT_SCALED - newCount) / CREDIT_SCALE * 10) / 10;
+      remaining = Math.round((dailyLimitScaled - newCount) / CREDIT_SCALE * 10) / 10;
     }
 
     // ===== REGENERATE_SINGLE 모드: 개별 1장 재생성 (테스트 기간 무료) =====
@@ -349,7 +388,7 @@ export default async function handler(req, res) {
           mode: 'regenerate_single',
           image: { url, marker: markerText || '', prompt: fullPrompt, type: 'photo' },
           remaining,
-          limit: FREE_DAILY_LIMIT,
+          limit: dailyLimit,
         });
       } catch (err) {
         console.error('[IMAGE] Single regen FLUX error:', err);
@@ -536,7 +575,7 @@ ${markersList}`;
           images: validImages,
           thumbnailText: thumbnailText || '',
           remaining,
-          limit: FREE_DAILY_LIMIT,
+          limit: dailyLimit,
         });
       }
 
@@ -618,7 +657,7 @@ ${markersList}`;
         images: validImages,
         thumbnailText: thumbnailText || '',
         remaining,
-        limit: FREE_DAILY_LIMIT,
+        limit: dailyLimit,
       });
     }
 
@@ -653,7 +692,7 @@ ${markersList}`;
       images: urls.map(url => ({ url, prompt: fullPrompt })),
       thumbnailText: thumbnailText || '',
       remaining,
-      limit: FREE_DAILY_LIMIT,
+      limit: dailyLimit,
     });
 
   } catch (error) {

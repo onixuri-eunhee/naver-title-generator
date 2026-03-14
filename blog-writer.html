@@ -2381,9 +2381,12 @@
       '★ PASS 항목은 현재 수준을 절대 떨어뜨리지 마세요.';
 
     try {
+      var _hdr = { 'Content-Type': 'application/json' };
+      var _tk = localStorage.getItem('ddukddak_token');
+      if (_tk) _hdr['Authorization'] = 'Bearer ' + _tk;
       var res = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _hdr,
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 8192,
@@ -2585,9 +2588,12 @@
     var userMessage = userParts.join('\n');
 
     try {
+      var _hdr2 = { 'Content-Type': 'application/json' };
+      var _tk2 = localStorage.getItem('ddukddak_token');
+      if (_tk2) _hdr2['Authorization'] = 'Bearer ' + _tk2;
       var res = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _hdr2,
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 8192,
@@ -2849,7 +2855,10 @@
   // ─── 남은 횟수 로드 ───
   async function loadRemaining() {
     try {
-      var res = await fetch('/api/generate');
+      var _hdr3 = {};
+      var _tk3 = localStorage.getItem('ddukddak_token');
+      if (_tk3) _hdr3['Authorization'] = 'Bearer ' + _tk3;
+      var res = await fetch('/api/generate', { headers: _hdr3 });
       var data = await res.json();
       updateRemainingUI(data.remaining, data.limit);
     } catch(e) {
