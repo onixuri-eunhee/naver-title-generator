@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-C61VWMGQ8R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-C61VWMGQ8R');
+</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4973804132466200" crossorigin="anonymous"></script>
+<title>영상 생성기 | AI 블로그 영상 뚝딱 — 뚝딱툴</title>
+<meta name="description" content="블로그 글을 붙여넣으면 AI가 이미지를 생성하고 자막까지 넣어 쇼츠 영상을 자동 제작합니다." />
+<meta name="keywords" content="블로그 영상, AI 영상 생성, 쇼츠 제작, 블로그 마케팅, 영상 자동 제작" />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://ddukddaktool.co.kr/video.html" />
+
+<meta property="og:type" content="website" />
+<meta property="og:title" content="영상 생성기 | AI 블로그 영상 뚝딱 — 뚝딱툴" />
+<meta property="og:description" content="블로그 글을 붙여넣으면 AI가 이미지+자막 영상을 자동 제작합니다." />
+<meta property="og:url" content="https://ddukddaktool.co.kr/video.html" />
+<meta property="og:site_name" content="뚝딱툴" />
+<meta property="og:locale" content="ko_KR" />
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1A2E; line-height: 1.7; }
+
+.navbar {
+  background: #fff; border-bottom: 1px solid #E5E7EB;
+  padding: 0 20px; display: flex; align-items: center;
+  justify-content: space-between; height: 52px;
+  position: sticky; top: 0; z-index: 100;
+}
+.navbar-logo { font-size: 18px; font-weight: 900; color: #1A1A2E; text-decoration: none; }
+.navbar-logo span { color: #00C73C; }
+.navbar-links { display: flex; gap: 4px; }
+.navbar-links a {
+  padding: 7px 14px; border-radius: 8px; font-size: 13px;
+  font-weight: 500; color: #9CA3AF; text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.navbar-links a:hover { background: #F3F4F6; color: #1A1A2E; }
+.navbar-links a.active { color: #10B981; font-weight: 700; }
+.navbar-links a.pro-badge { position: relative; }
+.navbar-links a.pro-badge::after {
+  content: 'PRO';
+  position: absolute;
+  top: 1px; right: 1px;
+  font-size: 8px; font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+  border-radius: 4px;
+  padding: 1px 3px;
+  line-height: 1.4;
+}
+.navbar-auth { display: flex; align-items: center; gap: 8px; }
+.navbar-login-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #6B7280; text-decoration: none; transition: all 0.15s; }
+.navbar-login-btn:hover { background: #F3F4F6; color: #1A1A2E; }
+.navbar-signup-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; background: #00C73C; color: #fff; text-decoration: none; transition: all 0.15s; }
+.navbar-signup-btn:hover { background: #00A830; }
+.navbar-user-name { font-size: 13px; font-weight: 600; color: #00C73C; text-decoration: none; }
+.navbar-credit { font-size: 12px; color: #8B5CF6; font-weight: 600; }
+.navbar-mypage-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #6B7280; text-decoration: none; border: 1px solid #E5E7EB; transition: all 0.15s; }
+.navbar-mypage-btn:hover { background: #F3F4F6; color: #1A1A2E; }
+.navbar-links a.new-badge { position: relative; margin-right: 12px; }
+.navbar-links a.new-badge::after {
+  content: 'NEW';
+  position: absolute; top: 1px; right: 1px;
+  font-size: 8px; font-weight: 800; color: #fff;
+  background: #FF4757; border-radius: 4px;
+  padding: 1px 3px; line-height: 1.4;
+}
+
+.hero {
+  background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+  padding: 48px 20px 40px; text-align: center;
+}
+.hero-badge {
+  display: inline-block;
+  background: rgba(16,185,129,0.15); color: #10B981;
+  border: 1px solid rgba(16,185,129,0.3);
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; margin-bottom: 18px; letter-spacing: 0.05em;
+}
+.hero h1 {
+  font-size: clamp(22px, 4.5vw, 34px); font-weight: 700;
+  color: #fff; line-height: 1.4; margin-bottom: 14px; letter-spacing: -0.5px;
+}
+.hero h1 em { color: #10B981; font-style: normal; }
+.hero p { color: rgba(255,255,255,0.6); font-size: 14px; max-width: 520px; margin: 0 auto; line-height: 1.8; }
+
+.container { max-width: 860px; margin: 0 auto; padding: 32px 20px 80px; }
+
+.card {
+  background: #fff; border-radius: 16px; padding: 28px;
+  border: 1px solid #E5E7EB; box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  margin-bottom: 20px;
+}
+
+label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+textarea {
+  width: 100%; padding: 12px 14px; border: 1.5px solid #E5E7EB; border-radius: 8px;
+  font-size: 14px; font-family: 'Noto Sans KR', sans-serif; color: #1A1A2E;
+  background: #fff; outline: none; transition: border-color 0.2s; resize: vertical; line-height: 1.7;
+}
+textarea:focus { border-color: #10B981; box-shadow: 0 0 0 3px rgba(16,185,129,0.1); }
+
+/* 라디오 그룹 */
+.radio-group { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.radio-group label {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 18px; border: 1.5px solid #E5E7EB; border-radius: 8px;
+  font-size: 14px; font-weight: 500; color: #6B7280; cursor: pointer;
+  transition: all 0.15s; margin-bottom: 0;
+}
+.radio-group label:hover { border-color: #10B981; }
+.radio-group input[type="radio"] { display: none; }
+.radio-group input[type="radio"]:checked + span { color: #10B981; font-weight: 700; }
+.radio-group label:has(input:checked) { border-color: #10B981; background: rgba(16,185,129,0.06); }
+
+/* BGM 선택 */
+.bgm-group { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.bgm-group label {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 14px; border: 1.5px solid #E5E7EB; border-radius: 8px;
+  font-size: 13px; font-weight: 500; color: #9CA3AF; cursor: not-allowed;
+  transition: all 0.15s; margin-bottom: 0; opacity: 0.6;
+}
+.bgm-group label:first-child { opacity: 1; color: #6B7280; cursor: pointer; }
+.bgm-group label:first-child:has(input:checked) { border-color: #10B981; background: rgba(16,185,129,0.06); }
+.bgm-group label:first-child:has(input:checked) span { color: #10B981; font-weight: 700; }
+.bgm-group input[type="radio"] { display: none; }
+
+.generate-btn {
+  width: 100%; padding: 15px; margin-top: 16px;
+  background: linear-gradient(135deg, #10B981, #059669); color: #fff;
+  border: none; border-radius: 10px; font-family: 'Noto Sans KR', sans-serif;
+  font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+}
+.generate-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.35); }
+.generate-btn:disabled { background: #9CA3AF; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.remaining { font-size: 13px; color: #6B7280; text-align: center; margin-top: 12px; padding: 8px; background: #F9FAFB; border-radius: 8px; }
+.remaining.admin { color: #3b82f6; background: #EFF6FF; }
+.remaining.blocked { color: #DC2626; background: #FFF0F1; }
+
+.cost-info {
+  text-align: center; margin-top: 10px; font-size: 12px; color: #9CA3AF;
+}
+
+/* 에러 */
+.error-box { display: none; background: #FFF0F1; border: 1px solid #FECACA; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; color: #DC2626; }
+.error-box.show { display: block; }
+
+/* 로딩 */
+.loading { display: none; text-align: center; padding: 40px 20px; }
+.loading.show { display: block; }
+.loading-spinner {
+  width: 40px; height: 40px; border: 3px solid #E5E7EB;
+  border-top: 3px solid #10B981; border-radius: 50%;
+  animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; color: #6B7280; }
+.loading-progress { font-size: 12px; color: #9CA3AF; margin-top: 8px; }
+
+/* 결과 */
+.result-area { display: none; }
+.result-area.show { display: block; animation: fadeUp 0.3s ease; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+/* 이미지 미리보기 */
+.preview-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px;
+}
+.preview-grid img {
+  width: 100%; border-radius: 8px; aspect-ratio: 9/16; object-fit: cover;
+}
+@media(max-width: 580px) { .preview-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* 비디오 */
+.video-result {
+  text-align: center;
+}
+.video-result video {
+  max-width: 320px; width: 100%; border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+.download-video-btn {
+  display: inline-block; margin-top: 16px;
+  padding: 12px 28px; border-radius: 10px;
+  font-size: 14px; font-weight: 700; border: none; cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif;
+  background: linear-gradient(135deg, #10B981, #059669); color: #fff;
+  transition: all 0.2s;
+}
+.download-video-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(16,185,129,0.3); }
+
+footer {
+  text-align: center; padding: 28px 20px; font-size: 13px;
+  color: #9CA3AF; border-top: 1px solid #E5E7EB; background: #fff;
+}
+footer a { color: #9CA3AF; text-decoration: none; margin: 0 8px; }
+footer a:hover { text-decoration: underline; }
+
+@media (max-width: 600px) {
+  .card { padding: 20px; }
+  .navbar-links { gap: 2px; }
+  .navbar-links a { padding: 7px 8px; font-size: 12px; }
+}
+</style>
+<link rel="stylesheet" href="/navbar-mobile.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
+  <div class="navbar-links">
+    <a href="guide.html">사용법</a>
+    <a href="/">제목</a>
+    <a href="hook-generator.html">후킹</a>
+    <a href="threads.html">스레드</a>
+    <a href="blog-writer.html" class="pro-badge">블로그 글</a>
+    <a href="blog-image.html" class="pro-badge">이미지</a>
+    <a href="blog-image-pro.html" class="pro-badge">프리미엄</a>
+    <a href="video.html" class="active pro-badge">영상</a>
+    <a href="column.html" class="new-badge">칼럼</a>
+  </div>
+  <div class="navbar-auth" id="navbarAuth"></div>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">PRO · 영상</div>
+  <h1>블로그 글을 <em>영상</em>으로<br>뚝딱 만들어드립니다</h1>
+  <p>글을 붙여넣으면 AI가 이미지를 생성하고<br>자막까지 넣어 쇼츠 영상을 자동 제작합니다</p>
+</div>
+
+<div class="container">
+
+  <!-- 사용 현황 -->
+  <div class="remaining" id="remainingBar">남은 횟수 확인 중...</div>
+
+  <!-- 입력 카드 -->
+  <div class="card" style="margin-top:16px;">
+    <div style="margin-bottom:16px;">
+      <label for="blogTextInput">블로그 글 붙여넣기</label>
+      <textarea id="blogTextInput" placeholder="블로그 글 전체를 붙여넣어주세요. AI가 핵심 장면을 추출해 이미지를 생성하고 자막과 함께 영상을 제작합니다." style="min-height:200px;"></textarea>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <label>이미지 장수</label>
+      <div class="radio-group">
+        <label><input type="radio" name="imageCount" value="4" checked><span>4장</span></label>
+        <label><input type="radio" name="imageCount" value="6"><span>6장</span></label>
+        <label><input type="radio" name="imageCount" value="8"><span>8장</span></label>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <label>배경음악 (BGM)</label>
+      <div class="bgm-group">
+        <label><input type="radio" name="bgm" value="" checked><span>없음</span></label>
+        <label><input type="radio" name="bgm" value="calm" disabled><span>잔잔한 (준비 중)</span></label>
+        <label><input type="radio" name="bgm" value="upbeat" disabled><span>경쾌한 (준비 중)</span></label>
+        <label><input type="radio" name="bgm" value="emotional" disabled><span>감성적 (준비 중)</span></label>
+        <label><input type="radio" name="bgm" value="epic" disabled><span>웅장한 (준비 중)</span></label>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+    <button class="generate-btn" id="generateBtn" onclick="generate()">영상 생성하기</button>
+    <div class="cost-info">이미지 생성 1크레딧 + 영상 제작 1크레딧 = 총 2크레딧</div>
+  </div>
+
+  <!-- 로딩 -->
+  <div class="loading" id="loadingArea">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loadingText">AI가 이미지를 생성하고 있습니다...</div>
+    <div class="loading-progress" id="loadingProgress"></div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="result-area" id="resultArea">
+    <div class="card">
+      <h2 style="font-size:16px; font-weight:700; margin-bottom:16px;">생성된 이미지</h2>
+      <div class="preview-grid" id="previewGrid"></div>
+
+      <div id="videoLoadingArea" style="display:none; text-align:center; padding:20px 0;">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">영상을 제작하고 있습니다... (약 30~60초)</div>
+      </div>
+
+      <div class="video-result" id="videoResult" style="display:none;">
+        <video id="videoPlayer" controls playsinline></video>
+        <div style="margin-top:12px;">
+          <button class="download-video-btn" onclick="downloadVideo()">영상 다운로드 (MP4)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div style="margin-bottom:4px;">상호명: 어나더핸즈 | 대표자명: 공은희 | 사업자등록번호: 561-01-02951</div>
+  <div style="margin-bottom:4px;">통신판매업 신고번호: 2023-서울강남-01379 | 유선번호: 010-4761-5951 | lboss.reboot@gmail.com</div>
+  <div style="margin-bottom:4px;">주소: 서울특별시 강남구 논현로2길 60, 2층 2147호 (개포동, 세화빌딩)</div>
+  <div style="margin-bottom:4px;"><a href="/terms.html" style="color:#9CA3AF; text-decoration:none;">이용약관</a> | <a href="/privacy.html" style="color:#9CA3AF; text-decoration:none;">개인정보처리방침</a> | <a href="/refund-policy.html" style="color:#9CA3AF; text-decoration:none;">환불규정</a></div>
+  <div>&copy; 2026 어나더핸즈. All rights reserved.</div>
+</footer>
+
+<script src="admin-mode.js"></script>
+<script>
+var imageUrls = [];
+var videoUrl = '';
+
+function getHeaders() {
+  var h = { 'Content-Type': 'application/json' };
+  var t = localStorage.getItem('ddukddak_token');
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+}
+
+function getAuthHeaders() {
+  var h = {};
+  var t = localStorage.getItem('ddukddak_token');
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+}
+
+function showError(msg) {
+  var box = document.getElementById('errorBox');
+  box.textContent = msg;
+  box.classList.add('show');
+}
+function hideError() {
+  document.getElementById('errorBox').classList.remove('show');
+}
+
+// ─── 남은 횟수 ───
+async function loadRemaining() {
+  try {
+    var res = await fetch('/api/blog-image', { headers: getAuthHeaders() });
+    var data = await res.json();
+    var el = document.getElementById('remainingBar');
+    if (data.admin) {
+      el.textContent = '관리자 모드 (무제한)';
+      el.className = 'remaining admin';
+    } else if (data.limit === 0) {
+      el.textContent = '현재 무료 사용이 제한되어 있습니다';
+      el.className = 'remaining blocked';
+      document.getElementById('generateBtn').disabled = true;
+    } else if (data.remaining <= 0) {
+      el.textContent = '오늘 ' + data.limit + '크레딧 모두 사용했어요. 내일 다시 오세요!';
+      el.className = 'remaining blocked';
+      document.getElementById('generateBtn').disabled = true;
+    } else {
+      el.textContent = '오늘 ' + (data.limit - data.remaining) + '/' + data.limit + '크레딧 사용 | 잔여 크레딧: ' + data.remaining;
+      el.className = 'remaining';
+    }
+  } catch(e) {}
+}
+
+function updateRemaining(remaining, limit) {
+  var el = document.getElementById('remainingBar');
+  if (remaining >= 999) {
+    el.textContent = '관리자 모드 (무제한)';
+    el.className = 'remaining admin';
+  } else if (remaining <= 0) {
+    el.textContent = '오늘 ' + limit + '크레딧 모두 사용했어요. 내일 다시 오세요!';
+    el.className = 'remaining blocked';
+    document.getElementById('generateBtn').disabled = true;
+  } else {
+    el.textContent = '오늘 ' + (limit - remaining) + '/' + limit + '크레딧 사용 | 잔여 크레딧: ' + remaining;
+    el.className = 'remaining';
+  }
+}
+
+loadRemaining();
+
+// ─── 생성 ───
+async function generate() {
+  var text = document.getElementById('blogTextInput').value.trim();
+  if (!text || text.length < 50) {
+    showError('블로그 글을 50자 이상 입력해주세요.');
+    return;
+  }
+
+  hideError();
+  var imageCount = parseInt(document.querySelector('input[name="imageCount"]:checked').value);
+  var bgmId = document.querySelector('input[name="bgm"]:checked').value || '';
+
+  var btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.textContent = '생성 중...';
+
+  var loadingArea = document.getElementById('loadingArea');
+  loadingArea.classList.add('show');
+  document.getElementById('loadingText').textContent = 'AI가 이미지 ' + imageCount + '장을 생성하고 있습니다...';
+  document.getElementById('loadingProgress').textContent = '텍스트 분석 → 프롬프트 변환 → 이미지 생성 (약 15~30초)';
+  document.getElementById('resultArea').classList.remove('show');
+
+  try {
+    // Step 1: 이미지 생성 (1크레딧)
+    var imgRes = await fetch('/api/blog-image-quick', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ text: text, imageCount: imageCount }),
+    });
+    var imgData = await imgRes.json();
+
+    if (imgRes.status === 429) {
+      showError(imgData.error);
+      resetBtn();
+      return;
+    }
+    if (!imgRes.ok || !imgData.images || imgData.images.length === 0) {
+      showError(imgData.error || '이미지 생성에 실패했습니다.');
+      resetBtn();
+      return;
+    }
+
+    imageUrls = imgData.images.map(function(img) { return img.url; });
+
+    // 이미지 미리보기 표시
+    var grid = document.getElementById('previewGrid');
+    grid.innerHTML = '';
+    imageUrls.forEach(function(url) {
+      var img = document.createElement('img');
+      img.src = url;
+      img.alt = '생성된 이미지';
+      img.loading = 'lazy';
+      grid.appendChild(img);
+    });
+
+    document.getElementById('resultArea').classList.add('show');
+    if (typeof imgData.remaining === 'number') updateRemaining(imgData.remaining, imgData.limit);
+
+    // Step 2: 영상 생성 (1크레딧)
+    document.getElementById('loadingText').textContent = '영상을 제작하고 있습니다...';
+    document.getElementById('loadingProgress').textContent = '자막 생성 → 렌더링 (약 30~60초)';
+    loadingArea.classList.remove('show');
+    document.getElementById('videoLoadingArea').style.display = 'block';
+
+    var vidRes = await fetch('/api/blog-video', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ imageUrls: imageUrls, text: text, bgmId: bgmId }),
+    });
+    var vidData = await vidRes.json();
+
+    if (!vidRes.ok) {
+      showError(vidData.error || '영상 생성에 실패했습니다.');
+      document.getElementById('videoLoadingArea').style.display = 'none';
+      resetBtn();
+      return;
+    }
+
+    if (typeof vidData.remaining === 'number') updateRemaining(vidData.remaining, vidData.limit);
+
+    // 폴링
+    var renderId = vidData.renderId;
+    var pollCount = 0;
+    var maxPolls = 40;
+    var pollTimer = setInterval(async function() {
+      pollCount++;
+      if (pollCount > maxPolls) {
+        clearInterval(pollTimer);
+        document.getElementById('videoLoadingArea').style.display = 'none';
+        showError('영상 생성 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
+        resetBtn();
+        return;
+      }
+
+      try {
+        var pollRes = await fetch('/api/blog-video?renderId=' + encodeURIComponent(renderId), {
+          headers: getAuthHeaders(),
+        });
+        var pollData = await pollRes.json();
+
+        if (pollData.status === 'succeeded' && pollData.url) {
+          clearInterval(pollTimer);
+          videoUrl = pollData.url;
+          document.getElementById('videoPlayer').src = videoUrl;
+          document.getElementById('videoLoadingArea').style.display = 'none';
+          document.getElementById('videoResult').style.display = 'block';
+          resetBtn();
+          document.getElementById('videoResult').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (pollData.status === 'failed') {
+          clearInterval(pollTimer);
+          document.getElementById('videoLoadingArea').style.display = 'none';
+          showError('영상 생성에 실패했습니다. 다시 시도해주세요.');
+          resetBtn();
+        }
+      } catch(e) {
+        console.error('[VIDEO] Poll error:', e);
+      }
+    }, 3000);
+
+  } catch(e) {
+    console.error('[VIDEO] Error:', e);
+    showError('서버 오류가 발생했습니다.');
+    resetBtn();
+  }
+}
+
+function resetBtn() {
+  var btn = document.getElementById('generateBtn');
+  btn.disabled = false;
+  btn.textContent = '영상 생성하기';
+  document.getElementById('loadingArea').classList.remove('show');
+}
+
+async function downloadVideo() {
+  if (!videoUrl) return;
+  try {
+    var resp = await fetch(videoUrl);
+    var blob = await resp.blob();
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'blog-video.mp4';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  } catch(e) {
+    window.open(videoUrl, '_blank');
+  }
+}
+</script>
+<script src="auth-ui.js"></script>
+</body>
+</html>
