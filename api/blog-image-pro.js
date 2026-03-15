@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 300 };
 
 /*
  * 프리미엄 이미지 생성 v2 (회원 전용 공개)
@@ -682,12 +682,12 @@ export default async function handler(req, res) {
       });
 
       // 2장씩 배치 생성 (rate limit 방지)
-      console.log(`[IMAGE-PRO] Generating ${orderedItems.length} images with auto-routing (batch=2)...`);
+      console.log(`[IMAGE-PRO] Generating ${orderedItems.length} images with auto-routing (batch=4)...`);
 
       const imageResults = [];
-      for (let batchStart = 0; batchStart < orderedItems.length; batchStart += 2) {
-        if (batchStart > 0) await new Promise(r => setTimeout(r, 500)); // rate limit 방지 딜레이
-        const batch = orderedItems.slice(batchStart, batchStart + 2);
+      for (let batchStart = 0; batchStart < orderedItems.length; batchStart += 4) {
+        if (batchStart > 0) await new Promise(r => setTimeout(r, 300));
+        const batch = orderedItems.slice(batchStart, batchStart + 4);
         const batchResults = await Promise.all(
           batch.map(async (item) => {
             const modelName = item.model || 'fluxr';
@@ -767,11 +767,11 @@ export default async function handler(req, res) {
     const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
     const fullPrompt = `${englishTopic}, ${moodStyle}, high quality editorial still-life photography, inanimate objects only, uninhabited empty scene, overhead or macro camera angle, clean Korean aesthetic, no text, no letters, photography style`;
 
-    // 8장 FLUX Realism 생성 (2장씩 배치, 딜레이 포함)
+    // 8장 FLUX Realism 생성 (4장씩 배치, 딜레이 포함)
     const images = [];
-    for (let i = 0; i < DIRECT_IMAGES; i += 2) {
-      if (i > 0) await new Promise(r => setTimeout(r, 500));
-      const batchSize = Math.min(2, DIRECT_IMAGES - i);
+    for (let i = 0; i < DIRECT_IMAGES; i += 4) {
+      if (i > 0) await new Promise(r => setTimeout(r, 300));
+      const batchSize = Math.min(4, DIRECT_IMAGES - i);
       const batchResults = await Promise.all(
         Array.from({ length: batchSize }, async (_, j) => {
           try {
