@@ -1,6 +1,8 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 
+export const config = { maxDuration: 60 };
+
 /*
  * 프리미엄 이미지 생성 v2 (회원 전용 공개)
  * 자동 모델 라우팅: Haiku가 이미지 유형 판단 → 최적 모델 선택
@@ -263,7 +265,8 @@ ${markerContext}
 
 위 ${markers.length}개 마커 각각에 대해 JSON 배열을 출력하세요.`;
 
-  const raw = await callClaude(systemPrompt, userPrompt, 4000);
+  const maxTokens = 2000 + markers.length * 500; // 마커당 ~500토큰 여유
+  const raw = await callClaude(systemPrompt, userPrompt, maxTokens);
   const jsonMatch = raw.match(/\[[\s\S]*?\](?=[^[\]]*$)/);
   if (!jsonMatch) throw new Error('Haiku marker analysis: no JSON array found');
   const result = JSON.parse(jsonMatch[0]);
@@ -652,43 +655,48 @@ export default async function handler(req, res) {
         return { ...found, marker: mk.text, originalIndex: i };
       });
 
-      // 모델별 그룹화 후 병렬 생성
-      console.log(`[IMAGE-PRO] Generating ${orderedItems.length} images with auto-routing...`);
+      // 2장씩 배치 생성 (rate limit 방지)
+      console.log(`[IMAGE-PRO] Generating ${orderedItems.length} images with auto-routing (batch=2)...`);
 
-      const imageResults = await Promise.all(
-        orderedItems.map(async (item) => {
-          const modelName = item.model || 'fluxr';
-          const modelLabel = { fluxr: 'FLUX Realism', gpth: 'GPT Image high', nb2: 'Nano Banana 2' }[modelName] || modelName;
-          try {
-            const url = await generateByModel(modelName, item.prompt);
-            console.log(`[IMAGE-PRO] ✓ "${item.marker}" → ${modelLabel} (${item.type})`);
-            return {
-              url, marker: item.marker, prompt: item.prompt,
-              type: item.type, model: modelName, reason: item.reason,
-              originalIndex: item.originalIndex,
-            };
-          } catch (err) {
-            console.error(`[IMAGE-PRO] ✗ "${item.marker}" → ${modelLabel} FAILED:`, err.message);
-            // fallback: FLUX Realism으로 재시도
-            if (modelName !== 'fluxr') {
-              try {
-                const fallbackPrompt = item.prompt.replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
-                  ', no text, no letters, photography style';
-                const url = await callFluxRealism(fallbackPrompt);
-                console.log(`[IMAGE-PRO] ↩ "${item.marker}" fallback to FLUX Realism`);
-                return {
-                  url, marker: item.marker, prompt: fallbackPrompt,
-                  type: 'photo', model: 'fluxr', reason: `${modelLabel} 실패 → FLUX Realism 대체`,
-                  originalIndex: item.originalIndex,
-                };
-              } catch (fallbackErr) {
-                console.error(`[IMAGE-PRO] ✗ "${item.marker}" FLUX Realism fallback also FAILED`);
+      const imageResults = [];
+      for (let batchStart = 0; batchStart < orderedItems.length; batchStart += 2) {
+        const batch = orderedItems.slice(batchStart, batchStart + 2);
+        const batchResults = await Promise.all(
+          batch.map(async (item) => {
+            const modelName = item.model || 'fluxr';
+            const modelLabel = { fluxr: 'FLUX Realism', gpth: 'GPT Image high', nb2: 'Nano Banana 2' }[modelName] || modelName;
+            try {
+              const url = await generateByModel(modelName, item.prompt);
+              console.log(`[IMAGE-PRO] ✓ "${item.marker}" → ${modelLabel} (${item.type})`);
+              return {
+                url, marker: item.marker, prompt: item.prompt,
+                type: item.type, model: modelName, reason: item.reason,
+                originalIndex: item.originalIndex,
+              };
+            } catch (err) {
+              console.error(`[IMAGE-PRO] ✗ "${item.marker}" → ${modelLabel} FAILED:`, err.message);
+              // fallback: FLUX Realism으로 재시도
+              if (modelName !== 'fluxr') {
+                try {
+                  const fallbackPrompt = item.prompt.replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
+                    ', no text, no letters, photography style';
+                  const url = await callFluxRealism(fallbackPrompt);
+                  console.log(`[IMAGE-PRO] ↩ "${item.marker}" fallback to FLUX Realism`);
+                  return {
+                    url, marker: item.marker, prompt: fallbackPrompt,
+                    type: 'photo', model: 'fluxr', reason: `${modelLabel} 실패 → FLUX Realism 대체`,
+                    originalIndex: item.originalIndex,
+                  };
+                } catch (fallbackErr) {
+                  console.error(`[IMAGE-PRO] ✗ "${item.marker}" FLUX Realism fallback also FAILED`);
+                }
               }
+              return { url: null, marker: item.marker, type: item.type, model: modelName, originalIndex: item.originalIndex };
             }
-            return { url: null, marker: item.marker, type: item.type, model: modelName, originalIndex: item.originalIndex };
-          }
-        })
-      );
+          })
+        );
+        imageResults.push(...batchResults);
+      }
 
       const validImages = imageResults
         .sort((a, b) => a.originalIndex - b.originalIndex)
