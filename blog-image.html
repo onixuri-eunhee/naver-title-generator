@@ -416,17 +416,6 @@ footer a:hover { text-decoration: underline; }
       <div class="image-grid" id="imageGrid"></div>
       <button class="generate-btn" id="regenAllBtn" onclick="regenerateAll()" style="margin-top:20px; background:linear-gradient(135deg,#6366F1,#4F46E5);">전체 재생성 (1크레딧)</button>
       <p style="text-align:center; font-size:12px; color:#9CA3AF; margin-top:8px;">개별 이미지는 "다시 생성" 버튼으로 1회 무료 재생성할 수 있습니다.</p>
-      <button class="generate-btn" id="makeVideoBtn" onclick="generateVideoFromImages()" style="display:none; margin-top:12px; background:linear-gradient(135deg,#10B981,#059669);">영상으로 만들기 (1크레딧)</button>
-      <div id="videoLoading" style="display:none; margin-top:16px; text-align:center;">
-        <div style="display:inline-block; width:28px; height:28px; border:3px solid #E5E7EB; border-top-color:#10B981; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
-        <p style="margin-top:8px; font-size:14px; color:#6B7280;">영상을 제작하고 있습니다... (약 30~60초)</p>
-      </div>
-      <div id="videoResult" style="display:none; margin-top:20px; text-align:center;">
-        <video id="videoPlayer" controls playsinline style="max-width:280px; width:100%; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.12);"></video>
-        <div style="margin-top:12px;">
-          <button onclick="downloadVideo()" style="display:inline-block; background:linear-gradient(135deg, #10B981, #059669); color:#fff; padding:12px 28px; border-radius:10px; font-size:14px; font-weight:700; border:none; cursor:pointer; font-family:'Noto Sans KR',sans-serif;">영상 다운로드 (MP4)</button>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -679,9 +668,6 @@ async function generateParse() {
     document.getElementById('loadingArea').classList.remove('show');
     document.getElementById('resultArea').classList.add('show');
     document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    showVideoBtn();
-    document.getElementById('videoResult').style.display = 'none';
-    document.getElementById('videoLoading').style.display = 'none';
 
   } catch(e) {
     showError('errorBox1', '서버 오류가 발생했습니다.');
@@ -731,9 +717,6 @@ async function generateDirect() {
     document.getElementById('loadingArea').classList.remove('show');
     document.getElementById('resultArea').classList.add('show');
     document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    showVideoBtn();
-    document.getElementById('videoResult').style.display = 'none';
-    document.getElementById('videoLoading').style.display = 'none';
 
   } catch(e) {
     showError('errorBox2', '서버 오류가 발생했습니다.');
@@ -1098,117 +1081,6 @@ function downloadImage(btn) {
 document.getElementById('topicInput').addEventListener('input', function() {
   document.getElementById('topicCount').textContent = this.value.length;
 });
-
-// ─── 영상 생성 ───
-var videoUrl = '';
-
-function showVideoBtn() {
-  if (generatedImages.length >= 1) {
-    var btn = document.getElementById('makeVideoBtn');
-    if (btn) btn.style.display = 'block';
-  }
-}
-
-async function generateVideoFromImages() {
-  if (!generatedImages || generatedImages.length === 0) return;
-
-  var text = document.getElementById('blogTextInput').value.trim() || document.getElementById('topicInput').value.trim();
-  if (!text || text.length < 50) {
-    showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', '영상 생성을 위해 블로그 글이 50자 이상 필요합니다.');
-    return;
-  }
-
-  var urls = generatedImages.map(function(img) { return img.url; }).filter(Boolean);
-  if (urls.length === 0) return;
-
-  var btn = document.getElementById('makeVideoBtn');
-  var loadingEl = document.getElementById('videoLoading');
-  var resultEl = document.getElementById('videoResult');
-
-  btn.disabled = true;
-  btn.textContent = '영상 제작 중...';
-  loadingEl.style.display = 'block';
-  resultEl.style.display = 'none';
-
-  try {
-    var _hdr = { 'Content-Type': 'application/json' };
-    var _tk = localStorage.getItem('ddukddak_token');
-    if (_tk) _hdr['Authorization'] = 'Bearer ' + _tk;
-
-    var resp = await fetch('/api/blog-video', {
-      method: 'POST',
-      headers: _hdr,
-      body: JSON.stringify({ imageUrls: urls, text: text }),
-    });
-    var data = await resp.json();
-
-    if (!resp.ok) {
-      showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', data.error || '영상 생성에 실패했습니다.');
-      btn.disabled = false;
-      btn.textContent = '영상으로 만들기 (1크레딧)';
-      loadingEl.style.display = 'none';
-      return;
-    }
-
-    if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
-
-    var renderId = data.renderId;
-    var pollCount = 0;
-    var maxPolls = 40;
-    var pollTimer = setInterval(async function() {
-      pollCount++;
-      if (pollCount > maxPolls) {
-        clearInterval(pollTimer);
-        loadingEl.style.display = 'none';
-        showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', '영상 생성 시간이 초과되었습니다.');
-        btn.disabled = false;
-        btn.textContent = '영상으로 만들기 (1크레딧)';
-        return;
-      }
-      try {
-        var pollResp = await fetch('/api/blog-video?renderId=' + encodeURIComponent(renderId), {
-          headers: _tk ? { 'Authorization': 'Bearer ' + _tk } : {},
-        });
-        var pollData = await pollResp.json();
-        if (pollData.status === 'succeeded' && pollData.url) {
-          clearInterval(pollTimer);
-          videoUrl = pollData.url;
-          document.getElementById('videoPlayer').src = videoUrl;
-          loadingEl.style.display = 'none';
-          resultEl.style.display = 'block';
-          btn.disabled = false;
-          btn.textContent = '영상으로 만들기 (1크레딧)';
-        } else if (pollData.status === 'failed') {
-          clearInterval(pollTimer);
-          loadingEl.style.display = 'none';
-          showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', '영상 생성에 실패했습니다.');
-          btn.disabled = false;
-          btn.textContent = '영상으로 만들기 (1크레딧)';
-        }
-      } catch(e) { console.error('[VIDEO] Poll error:', e); }
-    }, 3000);
-  } catch(e) {
-    showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', '서버 오류가 발생했습니다.');
-    btn.disabled = false;
-    btn.textContent = '영상으로 만들기 (1크레딧)';
-    loadingEl.style.display = 'none';
-  }
-}
-
-async function downloadVideo() {
-  if (!videoUrl) return;
-  try {
-    var resp = await fetch(videoUrl);
-    var blob = await resp.blob();
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'blog-video.mp4';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-  } catch(e) { window.open(videoUrl, '_blank'); }
-}
 
 // ─── localStorage 연동 (블로그 글 작성기에서 전달) ───
 (function() {
