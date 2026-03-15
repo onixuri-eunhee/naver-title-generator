@@ -194,17 +194,28 @@ async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
   const systemPrompt = `You are a blog image prompt engineer with automatic model routing.
 Classify each marker into ONE of 4 types, select the best AI model, and generate the prompt.
 
+## CRITICAL: PHOTO-FIRST RULE
+DEFAULT is ALWAYS "photo". These images will have text overlaid by the frontend — so images MUST be clean photos WITHOUT embedded text.
+
+Only use infographic_data/infographic_flow/poster when the marker text EXPLICITLY contains these EXACT trigger words:
+- infographic_data: 차트, 그래프, 통계표, 비교표, 수치 비교, 데이터 시각화
+- infographic_flow: 흐름도, 타임라인, 로드맵, 프로세스 도식, 단계도
+- poster: 포스터, 배너, 공지문
+
+If the marker describes a concept, product, scene, mood, activity, food, place, or anything visual → ALWAYS use "photo".
+Even if the blog discusses data/statistics, the IMAGE should be a photo unless the marker EXPLICITLY asks for a chart.
+
 ## 4 IMAGE TYPES & MODEL ROUTING
 
-### 1. photo → model: "fluxr"
-For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 사물
+### 1. photo → model: "fluxr" (DEFAULT — use this 90%+ of the time)
+For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 사물, 개념 시각화
 - FIRST marker MUST be "photo" (대표이미지)
 - Describe subjects, lighting, angle, mood as cinematic/editorial photography
 - Signs/menus in scene → describe as blurred
 - Camera: overhead, macro, wide-angle, 45-degree, eye-level
 - End with: ", photorealistic, clean composition, no text, no letters, photography style"
 
-### 2. infographic_data → model: "gpth"
+### 2. infographic_data → model: "gpth" (ONLY when marker explicitly says 차트/그래프/비교표)
 For: data-heavy visuals with numbers, percentages, charts, tables, comparisons (GPT Image 1 high)
 
 **CHART RULES (infographic_data — MUST follow all, 2:3 vertical layout):**
@@ -216,13 +227,13 @@ For: data-heavy visuals with numbers, percentages, charts, tables, comparisons (
 (F) PADDING: 15% top + 10% bottom padding. Title/chart must not touch edges
 (G) TITLE: Two-level — large bold Korean main title + smaller subtitle (year/scope)
 
-### 3. infographic_flow → model: "nb2"
+### 3. infographic_flow → model: "nb2" (ONLY when marker explicitly says 흐름도/타임라인/로드맵)
 For: 타임라인, 로드맵, 단계, 흐름도, 프로세스, 한글 텍스트 위주 설명
 - Describe as top-to-bottom or left-to-right flow with numbered Korean labels
 - Use arrows/connectors between steps, soft gradient background, 3-5 step nodes
 - Include Korean text in quotes. Color: main step bold, sub-step muted
 
-### 4. poster → model: "nb2"
+### 4. poster → model: "nb2" (ONLY when marker explicitly says 포스터/배너/공지문)
 For: 한글 타이포그래피, 공지, 텍스트 위주 포스터, 배너
 - Large centered Korean headline in quotes, supporting subtitle below
 - Bold typography, high contrast background, minimal decoration
