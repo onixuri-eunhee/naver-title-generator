@@ -687,7 +687,7 @@ async function generateParse() {
     document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   } catch(e) {
-    showError('errorBox1', '서버 오류가 발생했습니다.');
+    showError('errorBox1', '서버 오류가 발생했습니다. [' + (e.message || e) + ']');
   }
   resetBtn(btn, 'parse');
 }
