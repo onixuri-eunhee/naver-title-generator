@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 
-export const config = { maxDuration: 120 };
+export const config = { maxDuration: 60 };
 
 /*
  * 프리미엄 이미지 생성 v2 (회원 전용 공개)
