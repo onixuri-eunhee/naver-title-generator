@@ -9,7 +9,7 @@ export const config = { maxDuration: 60 };
  *
  * 모델 라우팅:
  *   photo → FLUX Realism (fal-ai/flux-realism)
- *   infographic_data → GPT Image 1 high (gpt-image-1, quality: high)
+ *   infographic_data → GPT Image 1.5 high (gpt-image-1.5, quality: high)
  *   infographic_flow → Nano Banana 2 (fal-ai/nano-banana-2)
  *   poster → Nano Banana 2 (fal-ai/nano-banana-2)
  *
@@ -118,7 +118,7 @@ async function callFluxRealism(prompt) {
   return data.images?.[0]?.url || null;
 }
 
-// GPT Image 1 high — 차트/그래프/통계/수치 인포그래픽
+// GPT Image 1.5 high — 차트/그래프/통계/수치 인포그래픽
 async function callGptImageHigh(prompt) {
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
@@ -127,7 +127,7 @@ async function callGptImageHigh(prompt) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-image-1',
+      model: 'gpt-image-1.5',
       prompt,
       n: 1,
       size: '1024x1536',
@@ -229,7 +229,7 @@ For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 사물, 개�
 - End with: ", photorealistic, clean composition, no text, no letters, photography style"
 
 ### 2. infographic_data → model: "gpth" (ONLY when marker explicitly says 차트/그래프/비교표)
-For: data-heavy visuals with numbers, percentages, charts, tables, comparisons (GPT Image 1 high)
+For: data-heavy visuals with numbers, percentages, charts, tables, comparisons (GPT Image 1.5 high)
 
 **CHART RULES (infographic_data — MUST follow all, 2:3 vertical layout):**
 (A) DATA LABELS: Show numeric value on every data point (bar tips, pie segments, line nodes)
