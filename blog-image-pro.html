@@ -672,7 +672,7 @@ async function generateParse() {
 
     if (res.status === 401 || res.status === 403) { showError('errorBox1', data.error || '인증에 실패했습니다.'); resetBtn(btn, 'parse'); return; }
     if (res.status === 429) { showError('errorBox1', data.error); resetBtn(btn, 'parse'); return; }
-    if (!res.ok || !data.images || data.images.length === 0) { showError('errorBox1', (data.error || '이미지 생성에 실패했습니다.') + (data.debug ? '\n[DEBUG: ' + data.debug + ']' : '')); resetBtn(btn, 'parse'); return; }
+    if (!res.ok || !data.images || data.images.length === 0) { showError('errorBox1', data.error || '이미지 생성에 실패했습니다.'); resetBtn(btn, 'parse'); return; }
 
     currentMode = 'parse';
     generatedImages = data.images.map(function(img, i) {
@@ -687,7 +687,7 @@ async function generateParse() {
     document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   } catch(e) {
-    showError('errorBox1', '서버 오류가 발생했습니다. [' + (e.message || e) + ']');
+    showError('errorBox1', '서버 오류가 발생했습니다.');
   }
   resetBtn(btn, 'parse');
 }
