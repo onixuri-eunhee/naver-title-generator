@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 120 };
 
 /*
  * 프리미엄 이미지 생성 v2 (회원 전용 공개)
@@ -162,6 +162,19 @@ async function callNanoBanana2(prompt) {
   return data.images?.[0]?.url || null;
 }
 
+// 안전한 JSON 배열 추출 (균형 잡힌 대괄호 매칭)
+function extractJsonArray(raw) {
+  const start = raw.indexOf('[');
+  if (start === -1) return null;
+  let depth = 0;
+  for (let i = start; i < raw.length; i++) {
+    if (raw[i] === '[') depth++;
+    else if (raw[i] === ']') depth--;
+    if (depth === 0) return raw.substring(start, i + 1);
+  }
+  return null;
+}
+
 // 모델 라우팅: type → API 호출
 async function generateByModel(model, prompt) {
   switch (model) {
@@ -278,9 +291,9 @@ ${markerContext}
 
   const maxTokens = 2000 + markers.length * 500; // 마커당 ~500토큰 여유
   const raw = await callClaude(systemPrompt, userPrompt, maxTokens);
-  const jsonMatch = raw.match(/\[[\s\S]*?\](?=[^[\]]*$)/);
-  if (!jsonMatch) throw new Error('Haiku marker analysis: no JSON array found');
-  const result = JSON.parse(jsonMatch[0]);
+  const jsonStr = extractJsonArray(raw);
+  if (!jsonStr) throw new Error('Haiku marker analysis: no JSON array found');
+  const result = JSON.parse(jsonStr);
 
   if (result.length !== markers.length) {
     throw new Error(`Haiku returned ${result.length} items, expected ${markers.length}`);
@@ -414,6 +427,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
     }
     try {
+      const ip = getClientIp(req);
       const key = getTodayKeyPro(ip);
       const count = Number((await getRedis().get(key)) || 0);
       const remaining = Math.max(Math.round((DAILY_LIMIT_SCALED - count) / CREDIT_SCALE * 10) / 10, 0);
@@ -435,6 +449,7 @@ export default async function handler(req, res) {
 
   // 개별 재생성은 테스트 기간 무료 (프론트에서 이미지당 1회 제한)
   if (reqMode !== 'regenerate_single' && !isAdmin) {
+    const ip = getClientIp(req);
     rateLimitKey = getTodayKeyPro(ip);
     const newCount = await getRedis().incrby(rateLimitKey, creditCost);
     await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
@@ -634,8 +649,8 @@ export default async function handler(req, res) {
             `Blog topic: "${blogTitle}"\n\nTranslate these image descriptions:\n${markerTexts.map((t, i) => `${i + 1}. ${t}`).join('\n')}`,
             1500
           );
-          const fallbackMatch = fallbackRaw.match(/\[[\s\S]*?\](?=[^[\]]*$)/);
-          const fallbackPrompts = fallbackMatch ? JSON.parse(fallbackMatch[0]) : null;
+          const fallbackJsonStr = extractJsonArray(fallbackRaw);
+          const fallbackPrompts = fallbackJsonStr ? JSON.parse(fallbackJsonStr) : null;
           if (fallbackPrompts && fallbackPrompts.length === markers.length) {
             analysisResult = fallbackPrompts.map((prompt, i) => ({
               marker: markers[i].text,
@@ -671,6 +686,7 @@ export default async function handler(req, res) {
 
       const imageResults = [];
       for (let batchStart = 0; batchStart < orderedItems.length; batchStart += 2) {
+        if (batchStart > 0) await new Promise(r => setTimeout(r, 500)); // rate limit 방지 딜레이
         const batch = orderedItems.slice(batchStart, batchStart + 2);
         const batchResults = await Promise.all(
           batch.map(async (item) => {
@@ -686,21 +702,27 @@ export default async function handler(req, res) {
               };
             } catch (err) {
               console.error(`[IMAGE-PRO] ✗ "${item.marker}" → ${modelLabel} FAILED:`, err.message);
-              // fallback: FLUX Realism으로 재시도
-              if (modelName !== 'fluxr') {
-                try {
-                  const fallbackPrompt = item.prompt.replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
+              // 1회 재시도 (모든 모델)
+              await new Promise(r => setTimeout(r, 1000));
+              try {
+                let retryPrompt = item.prompt;
+                let retryModel = modelName;
+                if (modelName !== 'fluxr') {
+                  retryPrompt = item.prompt.replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
                     ', no text, no letters, photography style';
-                  const url = await callFluxRealism(fallbackPrompt);
-                  console.log(`[IMAGE-PRO] ↩ "${item.marker}" fallback to FLUX Realism`);
-                  return {
-                    url, marker: item.marker, prompt: fallbackPrompt,
-                    type: 'photo', model: 'fluxr', reason: `${modelLabel} 실패 → FLUX Realism 대체`,
-                    originalIndex: item.originalIndex,
-                  };
-                } catch (fallbackErr) {
-                  console.error(`[IMAGE-PRO] ✗ "${item.marker}" FLUX Realism fallback also FAILED`);
+                  retryModel = 'fluxr';
                 }
+                const url = await generateByModel(retryModel, retryPrompt);
+                console.log(`[IMAGE-PRO] ↩ "${item.marker}" retry ${retryModel === modelName ? 'same model' : 'FLUX Realism'} OK`);
+                return {
+                  url, marker: item.marker, prompt: retryPrompt,
+                  type: retryModel === 'fluxr' ? 'photo' : item.type,
+                  model: retryModel,
+                  reason: retryModel !== modelName ? `${modelLabel} 실패 → FLUX Realism 대체` : item.reason,
+                  originalIndex: item.originalIndex,
+                };
+              } catch (retryErr) {
+                console.error(`[IMAGE-PRO] ✗ "${item.marker}" retry also FAILED`);
               }
               return { url: null, marker: item.marker, type: item.type, model: modelName, originalIndex: item.originalIndex };
             }
@@ -745,9 +767,10 @@ export default async function handler(req, res) {
     const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
     const fullPrompt = `${englishTopic}, ${moodStyle}, high quality editorial still-life photography, inanimate objects only, uninhabited empty scene, overhead or macro camera angle, clean Korean aesthetic, no text, no letters, photography style`;
 
-    // 8장 FLUX Realism 생성 (2장씩 배치)
+    // 8장 FLUX Realism 생성 (2장씩 배치, 딜레이 포함)
     const images = [];
     for (let i = 0; i < DIRECT_IMAGES; i += 2) {
+      if (i > 0) await new Promise(r => setTimeout(r, 500));
       const batchSize = Math.min(2, DIRECT_IMAGES - i);
       const batchResults = await Promise.all(
         Array.from({ length: batchSize }, async (_, j) => {
