@@ -8,7 +8,7 @@ export const config = { maxDuration: 60 };
  * 자동 모델 라우팅: Haiku가 이미지 유형 판단 → 최적 모델 선택
  *
  * 모델 라우팅:
- *   photo → FLUX Realism LoRA
+ *   photo → FLUX Realism (fal-ai/flux-realism)
  *   infographic_data → GPT Image 1 high (gpt-image-1, quality: high)
  *   infographic_flow → Nano Banana 2 (fal-ai/nano-banana-2)
  *   poster → Nano Banana 2 (fal-ai/nano-banana-2)
@@ -97,9 +97,9 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 200) {
   return (data.content?.[0]?.text || '').trim();
 }
 
-// FLUX Realism LoRA — 사실적 사진/배경/풍경/음식/인물/제품
+// FLUX Realism — 사실적 사진/배경/풍경/음식/인물/제품
 async function callFluxRealism(prompt) {
-  const response = await fetch('https://fal.run/fal-ai/flux-lora', {
+  const response = await fetch('https://fal.run/fal-ai/flux-realism', {
     method: 'POST',
     headers: {
       Authorization: `Key ${process.env.FAL_KEY}`,
@@ -111,13 +111,10 @@ async function callFluxRealism(prompt) {
       num_images: 1,
       num_inference_steps: 28,
       guidance_scale: 3.5,
-      loras: [{ path: 'XLabs-AI/flux-RealismLora', scale: 1 }],
     }),
   });
-  const raw = await response.text();
-  console.log(`[IMAGE-PRO] FLUX status=${response.status} body=${raw.substring(0, 500)}`);
-  if (!response.ok) throw new Error(raw.substring(0, 500));
-  const data = JSON.parse(raw);
+  const data = await response.json();
+  if (!response.ok) throw new Error(JSON.stringify(data));
   return data.images?.[0]?.url || null;
 }
 
@@ -739,8 +736,7 @@ export default async function handler(req, res) {
         .filter(img => img.url);
 
       if (validImages.length === 0) {
-        const failedModels = imageResults.map(r => `${r.model}:${r.url === null ? 'FAIL' : 'OK'}`).join(',');
-        return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.', debug: failedModels });
+        return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
       }
 
       return res.status(200).json({
@@ -805,6 +801,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('[IMAGE-PRO] API Error:', error);
-    return res.status(500).json({ error: '서버 오류가 발생했습니다.', debug: String(error?.message || error).substring(0, 300) });
+    return res.status(500).json({ error: '서버 오류가 발생했습니다.' });
   }
 }
