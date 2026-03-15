@@ -114,12 +114,11 @@ async function callFluxRealism(prompt) {
       loras: [{ path: 'XLabs-AI/flux-RealismLora', scale: 1 }],
     }),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(JSON.stringify(data));
-  if (data.detail) console.warn('[IMAGE-PRO] FLUX Realism warning:', data.detail);
-  const url = data.images?.[0]?.url || null;
-  if (!url) console.error('[IMAGE-PRO] FLUX Realism: no URL in response:', JSON.stringify(data).substring(0, 300));
-  return url;
+  const raw = await response.text();
+  console.log(`[IMAGE-PRO] FLUX status=${response.status} body=${raw.substring(0, 500)}`);
+  if (!response.ok) throw new Error(raw.substring(0, 500));
+  const data = JSON.parse(raw);
+  return data.images?.[0]?.url || null;
 }
 
 // GPT Image 1 high — 차트/그래프/통계/수치 인포그래픽
@@ -740,7 +739,8 @@ export default async function handler(req, res) {
         .filter(img => img.url);
 
       if (validImages.length === 0) {
-        return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+        const failedModels = imageResults.map(r => `${r.model}:${r.url === null ? 'FAIL' : 'OK'}`).join(',');
+        return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.', debug: failedModels });
       }
 
       return res.status(200).json({
