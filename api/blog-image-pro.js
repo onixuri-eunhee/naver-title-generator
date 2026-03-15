@@ -57,6 +57,10 @@ function getTodayKeyPro(ip) {
   return `ratelimit:blogimage-pro:v2:${ip}:${getKSTDate()}`;
 }
 
+function getSuggestMarkersKey(ip) {
+  return `ratelimit:suggest-markers:${ip}:${getKSTDate()}`;
+}
+
 function getTTLUntilMidnightKST() {
   const now = new Date();
   const kstOffset = 9 * 60 * 60 * 1000;
@@ -173,6 +177,72 @@ function extractJsonArray(raw) {
     if (depth === 0) return raw.substring(start, i + 1);
   }
   return null;
+}
+
+// ─── Haiku 마커 자동 추천 (suggest_markers) ───
+
+async function callHaikuSuggestMarkers(blogText) {
+  const blogSummary = blogText.substring(0, 500).trim();
+  const firstLine = blogText.split('\n').find(l => l.trim()) || '';
+  const blogTitle = firstLine.trim().substring(0, 80);
+  const headings = blogText.match(/【\d+\.?】[^\n]*/g) || [];
+  const blogStructure = headings.map(h => h.trim()).join(' | ');
+  const paragraphs = blogText.split(/\n\s*\n/).filter(p => p.trim().length > 30);
+
+  const systemPrompt = `You are a Korean blog image placement expert. Analyze the blog post and suggest 4-8 optimal positions to insert images.
+
+## YOUR TASK
+1. Read the entire blog post carefully
+2. Identify the heading/section structure (【1】, 【2】, etc.)
+3. Find 4-8 locations where an image would enhance the reading experience
+4. For each location, generate a descriptive Korean marker text that describes what image should go there
+
+## PLACEMENT RULES
+- First marker: representative image for the blog (대표이미지), placed near the beginning
+- Place images after key paragraphs, not in the middle of sentences
+- Space images evenly throughout the post (don't cluster them)
+- Each section (【】) should have at least 1 image if possible
+- Prefer placing images after emotional/descriptive paragraphs or topic transitions
+- 4 markers minimum, 8 markers maximum
+
+## MARKER TEXT RULES
+- Write in Korean, 5-15 characters
+- Describe the visual subject clearly (e.g., "커피 원두를 볶는 과정", "아늑한 카페 인테리어")
+- Must be specific to the blog content, not generic
+- Should describe a photo-friendly scene or subject
+
+## POSITION DESCRIPTION
+- Describe where in the post this marker should be inserted
+- Reference the nearest heading or paragraph content
+- Be specific enough that a human can find the exact location
+
+## OUTPUT FORMAT
+Return ONLY a valid JSON array. Each element:
+{"text":"한국어 마커 텍스트","position":"이 마커가 들어갈 위치 설명 (한국어)"}`;
+
+  const userPrompt = `블로그 제목: "${blogTitle}"
+${blogStructure ? `글 구조: ${blogStructure}` : ''}
+총 문단 수: ${paragraphs.length}개
+글 길이: ${blogText.length}자
+
+블로그 글 전문:
+${blogText.substring(0, 6000)}`;
+
+  const raw = await callClaude(systemPrompt, userPrompt, 2000);
+  const jsonStr = extractJsonArray(raw);
+  if (!jsonStr) throw new Error('Haiku suggest markers: no JSON array found');
+  const result = JSON.parse(jsonStr);
+
+  // 후처리: 4~8개로 제한, 필수 필드 검증
+  const validated = result
+    .filter(item => item.text && item.position)
+    .slice(0, 8);
+
+  if (validated.length < 1) {
+    throw new Error('Haiku suggest markers: no valid markers returned');
+  }
+
+  return validated;
 }
 
 // 모델 라우팅: type → API 호출
@@ -396,6 +466,48 @@ export default async function handler(req, res) {
   setCorsHeaders(res, req);
 
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // ─── suggest_markers 모드: 인증 불필요, 별도 rate limit ───
+  if (req.method === 'POST' && req.body?.mode === 'suggest_markers') {
+    let smKey = null; // catch에서 롤백 가능하도록 스코프를 바깥에 선언
+    try {
+      const { blogText } = req.body;
+      if (!blogText || blogText.trim().length < 100) {
+        return res.status(400).json({ error: '블로그 글을 100자 이상 입력해주세요.' });
+      }
+
+      const isAdmin = await resolveAdmin(req);
+      const ip = getClientIp(req);
+
+      // IP당 일 10회 rate limit (관리자 면제)
+      if (!isAdmin) {
+        smKey = getSuggestMarkersKey(ip);
+        const count = await getRedis().incr(smKey);
+        await getRedis().expire(smKey, getTTLUntilMidnightKST());
+        if (count > 10) {
+          // 한도 초과 시 롤백 (429는 실제 사용이 아님)
+          try { await getRedis().decr(smKey); } catch (_) {}
+          smKey = null; // catch에서 중복 롤백 방지
+          return res.status(429).json({
+            error: '마커 추천 일일 한도(10회)를 초과했습니다. 내일 다시 이용해주세요.',
+          });
+        }
+      }
+
+      console.log(`[IMAGE-PRO] Mode: suggest_markers | blogText: ${blogText.length} chars | ip: ${ip}`);
+
+      const markers = await callHaikuSuggestMarkers(blogText);
+
+      console.log(`[IMAGE-PRO] Suggested ${markers.length} markers`);
+
+      return res.status(200).json({ markers });
+    } catch (error) {
+      console.error('[IMAGE-PRO] suggest_markers error:', error.message);
+      // AI 호출 실패 시 rate limit 롤백 (사용자 귀책 아님)
+      if (smKey) try { await getRedis().decr(smKey); } catch (_) {}
+      return res.status(500).json({ error: 'AI 마커 추천에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+    }
+  }
 
   // ─── 인증: 관리자(서버 판별) OR 로그인 회원 ───
   const isAdmin = await resolveAdmin(req);

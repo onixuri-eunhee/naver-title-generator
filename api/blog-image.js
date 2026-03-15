@@ -285,6 +285,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ remaining: 0, limit: 0 });
       }
       const guestLimitScaled = GUEST_DAILY_LIMIT * CREDIT_SCALE;
+      const ip = getClientIp(req);
       const key = getTodayKey(ip);
       const count = Number((await getRedis().get(key)) || 0);
       const remaining = Math.max(Math.round((guestLimitScaled - count) / CREDIT_SCALE * 10) / 10, 0);
@@ -311,6 +312,7 @@ export default async function handler(req, res) {
     // 로그인 유저 확인
     const token = extractToken(req);
     const email = await resolveSessionEmail(token);
+    const ip = getClientIp(req);
     const dailyLimit = email ? MEMBER_DAILY_LIMIT : GUEST_DAILY_LIMIT;
     const dailyLimitScaled = dailyLimit * CREDIT_SCALE;
 

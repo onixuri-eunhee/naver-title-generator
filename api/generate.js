@@ -93,7 +93,7 @@ export default async function handler(req, res) {
       if (GUEST_DAILY_LIMIT <= 0) {
         return res.status(200).json({ remaining: 0, limit: 0 });
       }
-      const key = getTodayKey(ip);
+      const key = getTodayKey(getClientIp(req));
       const count = (await getRedis().get(key)) || 0;
       const remaining = Math.max(GUEST_DAILY_LIMIT - count, 0);
       return res.status(200).json({ remaining, limit: GUEST_DAILY_LIMIT });
@@ -126,6 +126,8 @@ export default async function handler(req, res) {
     const dailyLimit = email ? MEMBER_DAILY_LIMIT : GUEST_DAILY_LIMIT;
 
     let remaining = whitelisted ? 999 : dailyLimit;
+
+    const ip = getClientIp(req);
 
     if (!whitelisted && !skipRateLimit) {
       rateLimitKey = email ? getTodayKeyByEmail(email) : getTodayKey(ip);
