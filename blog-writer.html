@@ -2414,17 +2414,7 @@
 
       rawText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
 
-      var parsed;
-      try {
-        parsed = JSON.parse(rawText);
-      } catch (e) {
-        var jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          parsed = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error('AI 응답을 파싱할 수 없습니다.');
-        }
-      }
+      var parsed = safeParseJson(rawText);
 
       replaceAIVocabulary(parsed);
       renderResult(parsed);
@@ -2642,18 +2632,7 @@
       rawText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
 
       // JSON 파싱
-      var parsed;
-      try {
-        parsed = JSON.parse(rawText);
-      } catch (parseErr) {
-        // JSON 블록만 추출 시도
-        var jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          parsed = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error('AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.');
-        }
-      }
+      var parsed = safeParseJson(rawText);
 
       // 자체 검수 corrections 적용
       if (parsed.corrections && Array.isArray(parsed.corrections) && parsed.corrections.length > 0) {
@@ -2903,6 +2882,26 @@
     var fullText = parts.join('\n\n');
     try { localStorage.setItem('blogTextForImagePro', fullText); } catch(e) {}
     window.location.href = 'blog-image-pro.html';
+  }
+
+  // ─── JSON 안전 파싱 (Claude 응답용) ───
+  function safeParseJson(rawText) {
+    // 1차: 그대로 파싱
+    try { return JSON.parse(rawText); } catch (_) {}
+    // 2차: 균형 잡힌 중괄호 매칭 (문자열 내 {} 무시)
+    var start = rawText.indexOf('{');
+    if (start === -1) throw new Error('AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.');
+    var depth = 0, inStr = false, esc = false;
+    for (var i = start; i < rawText.length; i++) {
+      var c = rawText[i];
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { esc = true; continue; }
+      if (c === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (c === '{') depth++;
+      else if (c === '}') { depth--; if (depth === 0) { return JSON.parse(rawText.substring(start, i + 1)); } }
+    }
+    throw new Error('AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.');
   }
 
   // ─── 프리셋 저장/불러오기 ───
