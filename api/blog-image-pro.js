@@ -115,8 +115,11 @@ async function callFluxRealism(prompt) {
     }),
   });
   const data = await response.json();
-  if (!response.ok || data.detail) throw new Error(JSON.stringify(data));
-  return data.images?.[0]?.url || null;
+  if (!response.ok) throw new Error(JSON.stringify(data));
+  if (data.detail) console.warn('[IMAGE-PRO] FLUX Realism warning:', data.detail);
+  const url = data.images?.[0]?.url || null;
+  if (!url) console.error('[IMAGE-PRO] FLUX Realism: no URL in response:', JSON.stringify(data).substring(0, 300));
+  return url;
 }
 
 // GPT Image 1 high — 차트/그래프/통계/수치 인포그래픽
@@ -158,7 +161,8 @@ async function callNanoBanana2(prompt) {
     }),
   });
   const data = await response.json();
-  if (!response.ok || data.detail) throw new Error(JSON.stringify(data));
+  if (!response.ok) throw new Error(JSON.stringify(data));
+  if (data.detail) console.warn('[IMAGE-PRO] Nano Banana 2 warning:', data.detail);
   return data.images?.[0]?.url || null;
 }
 
