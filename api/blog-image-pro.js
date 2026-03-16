@@ -475,6 +475,9 @@ export default async function handler(req, res) {
       if (!blogText || blogText.trim().length < 100) {
         return res.status(400).json({ error: '블로그 글을 100자 이상 입력해주세요.' });
       }
+      if (blogText.length > 30000) {
+        return res.status(400).json({ error: '블로그 글이 너무 깁니다. 30,000자 이내로 입력해주세요.' });
+      }
 
       const isAdmin = await resolveAdmin(req);
       const ip = getClientIp(req);
