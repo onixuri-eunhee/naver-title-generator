@@ -239,7 +239,12 @@ async function callHaikuSuggestMarkers(blogText) {
 - Write in Korean, 5-15 characters
 - Describe the visual subject clearly (e.g., "커피 원두를 볶는 과정", "아늑한 카페 인테리어")
 - Must be specific to the blog content, not generic
-- Should describe a photo-friendly scene or subject
+- Most markers should describe photo-friendly scenes
+- BUT if the blog content discusses data/statistics/comparisons, include trigger words for special rendering:
+  - Data/charts: include "차트", "그래프", "비교표", "통계표" (e.g., "월별 매출 비교 차트")
+  - Flows/timelines: include "흐름도", "타임라인", "로드맵", "프로세스" (e.g., "창업 준비 타임라인")
+  - Posters/banners: include "포스터", "배너" (e.g., "이벤트 안내 포스터")
+- Only use these special types when the blog content clearly warrants them (max 1-2 per post)
 
 ## POSITION DESCRIPTION
 - Describe where in the post this marker should be inserted
@@ -784,28 +789,58 @@ export default async function handler(req, res) {
       // ===== Haiku 4-type 분석 (마커 수 무관) =====
       let analysisResult;
 
-      // AI 추천 마커는 Haiku 분석 건너뛰고 전부 photo/fluxr (빠르고 안정적)
+      // AI 추천 마커: Haiku 4-type 분석 건너뛰고 마커 텍스트 기반 라우팅
+      // 트리거 단어로 모델 결정 → Haiku에 번역만 요청 (빠르고 안정적)
       if (isSuggestedMarkers) {
+        const TRIGGER_GPTH = /차트|그래프|통계표|비교표|수치\s*비교|데이터\s*시각화/;
+        const TRIGGER_NB2 = /흐름도|타임라인|로드맵|프로세스|단계도|포스터|배너|공지문/;
+
+        function detectModelFromMarker(text) {
+          if (TRIGGER_GPTH.test(text)) return { type: 'infographic_data', model: 'gpth' };
+          if (TRIGGER_NB2.test(text)) return { type: 'infographic_flow', model: 'nb2' };
+          return { type: 'photo', model: 'fluxr' };
+        }
+
+        const routingInfo = markers.map(mk => ({ ...detectModelFromMarker(mk.text), marker: mk.text }));
+        const photoMarkers = routingInfo.filter(r => r.model === 'fluxr');
+        const nonPhotoMarkers = routingInfo.filter(r => r.model !== 'fluxr');
+
+        console.log(`[IMAGE-PRO] AI 추천 마커 라우팅: photo=${photoMarkers.length}, gpth=${nonPhotoMarkers.filter(r=>r.model==='gpth').length}, nb2=${nonPhotoMarkers.filter(r=>r.model==='nb2').length}`);
+
         const firstLine = blogText.split('\n').find(l => l.trim()) || '';
         const blogTitle = firstLine.trim().substring(0, 80);
         const markerTexts = markers.map(mk => mk.text);
-        const photoRaw = await callClaude(
-          'You are a Korean-to-English translator for image generation. Translate each Korean image description into a specific, detailed English visual prompt (1-2 sentences). The prompts must describe the EXACT subject mentioned. Focus on realistic photography: describe lighting, angle, composition, mood. Always end with: ", photorealistic, clean composition, no text, no letters, photography style". Output ONLY a JSON array of English prompt strings.',
-          `Blog topic: "${blogTitle}"\n\nTranslate these image descriptions:\n${markerTexts.map((t, i) => `${i + 1}. ${t}`).join('\n')}`,
-          1500
-        );
-        const photoJsonStr = extractJsonArray(photoRaw);
-        const photoPrompts = photoJsonStr ? JSON.parse(photoJsonStr) : null;
-        if (photoPrompts && photoPrompts.length === markers.length) {
-          analysisResult = photoPrompts.map((prompt, i) => ({
-            marker: markers[i].text, type: 'photo', model: 'fluxr',
-            reason: 'AI 추천 마커 → photo 전용', prompt,
-          }));
-        } else {
-          // 번역 실패 시 기본 프롬프트
+
+        // photo 마커: 사진 프롬프트 생성
+        // non-photo 마커: 인포그래픽/차트/포스터 프롬프트 생성
+        const promptInstruction = markerTexts.map((t, i) => {
+          const r = routingInfo[i];
+          if (r.model === 'fluxr') return `${i + 1}. ${t} [PHOTO: describe as realistic photography with lighting, angle, composition. End with ", photorealistic, clean composition, no text, no letters, photography style"]`;
+          if (r.model === 'gpth') return `${i + 1}. ${t} [CHART: describe as data visualization with Korean labels in quotes, chart type, colors, layout. Include data source footer]`;
+          return `${i + 1}. ${t} [INFOGRAPHIC: describe as flow/timeline/poster with Korean text in quotes, layout direction, step nodes, colors]`;
+        }).join('\n');
+
+        try {
+          const translateRaw = await callClaude(
+            'You are a Korean-to-English translator for image generation. For each item, follow the instruction in brackets [PHOTO/CHART/INFOGRAPHIC] to generate the appropriate English prompt (1-2 sentences). Output ONLY a valid JSON array of English prompt strings.',
+            `Blog topic: "${blogTitle}"\n\nTranslate these image descriptions:\n${promptInstruction}`,
+            2000
+          );
+          const translateJsonStr = extractJsonArray(translateRaw);
+          const translatedPrompts = translateJsonStr ? JSON.parse(translateJsonStr) : null;
+          if (translatedPrompts && translatedPrompts.length === markers.length) {
+            analysisResult = translatedPrompts.map((prompt, i) => ({
+              marker: markers[i].text, type: routingInfo[i].type, model: routingInfo[i].model,
+              reason: `AI 추천 마커 → ${routingInfo[i].type}`, prompt,
+            }));
+          } else {
+            throw new Error('Translation count mismatch');
+          }
+        } catch (translateErr) {
+          console.warn('[IMAGE-PRO] AI 추천 마커 번역 실패, 기본 photo:', translateErr.message);
           analysisResult = markers.map((mk, i) => ({
             marker: mk.text, type: 'photo', model: 'fluxr',
-            reason: 'AI 추천 마커 → 기본 사진',
+            reason: 'AI 추천 마커 → 번역 실패 → 기본 사진',
             prompt: 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, photorealistic, clean composition, no text, no letters, photography style',
           }));
         }
