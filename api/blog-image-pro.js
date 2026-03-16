@@ -770,9 +770,48 @@ export default async function handler(req, res) {
 
       console.log(`[IMAGE-PRO] Markers found: ${markers.length}`);
 
+      // AI 추천 마커 감지: 글 본문에 (사진:...) 형태로 존재하지 않는 마커가 과반수이면 AI 추천 마커
+      const markersNotInText = markers.filter(mk => {
+        const escaped = mk.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return !blogText.match(new RegExp(`\\((사진|이미지):\\s*${escaped}`));
+      }).length;
+      const isSuggestedMarkers = markersNotInText > markers.length / 2;
+
+      if (isSuggestedMarkers) {
+        console.log(`[IMAGE-PRO] AI 추천 마커 감지 (${markersNotInText}/${markers.length} not in text) → photo 전용 모드`);
+      }
+
       // ===== Haiku 4-type 분석 (마커 수 무관) =====
       let analysisResult;
-      try {
+
+      // AI 추천 마커는 Haiku 분석 건너뛰고 전부 photo/fluxr (빠르고 안정적)
+      if (isSuggestedMarkers) {
+        const firstLine = blogText.split('\n').find(l => l.trim()) || '';
+        const blogTitle = firstLine.trim().substring(0, 80);
+        const markerTexts = markers.map(mk => mk.text);
+        const photoRaw = await callClaude(
+          'You are a Korean-to-English translator for image generation. Translate each Korean image description into a specific, detailed English visual prompt (1-2 sentences). The prompts must describe the EXACT subject mentioned. Focus on realistic photography: describe lighting, angle, composition, mood. Always end with: ", photorealistic, clean composition, no text, no letters, photography style". Output ONLY a JSON array of English prompt strings.',
+          `Blog topic: "${blogTitle}"\n\nTranslate these image descriptions:\n${markerTexts.map((t, i) => `${i + 1}. ${t}`).join('\n')}`,
+          1500
+        );
+        const photoJsonStr = extractJsonArray(photoRaw);
+        const photoPrompts = photoJsonStr ? JSON.parse(photoJsonStr) : null;
+        if (photoPrompts && photoPrompts.length === markers.length) {
+          analysisResult = photoPrompts.map((prompt, i) => ({
+            marker: markers[i].text, type: 'photo', model: 'fluxr',
+            reason: 'AI 추천 마커 → photo 전용', prompt,
+          }));
+        } else {
+          // 번역 실패 시 기본 프롬프트
+          analysisResult = markers.map((mk, i) => ({
+            marker: mk.text, type: 'photo', model: 'fluxr',
+            reason: 'AI 추천 마커 → 기본 사진',
+            prompt: 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, photorealistic, clean composition, no text, no letters, photography style',
+          }));
+        }
+      }
+
+      if (!analysisResult) try {
         analysisResult = await callHaikuMarkerAnalysis(blogText, markers, is_regenerate);
         const typeCounts = {};
         for (const r of analysisResult) {
