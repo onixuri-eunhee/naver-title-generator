@@ -101,69 +101,99 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 200) {
   return (data.content?.[0]?.text || '').trim();
 }
 
-// FLUX Realism — 사실적 사진/배경/풍경/음식/인물/제품
+// FLUX Realism — 사실적 사진/배경/풍경/음식/인물/제품 (30초 타임아웃)
 async function callFluxRealism(prompt) {
-  const response = await fetch('https://fal.run/fal-ai/flux-realism', {
-    method: 'POST',
-    headers: {
-      Authorization: `Key ${process.env.FAL_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      prompt,
-      image_size: { width: 1024, height: 1024 },
-      num_images: 1,
-      num_inference_steps: 28,
-      guidance_scale: 3.5,
-    }),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(JSON.stringify(data));
-  return data.images?.[0]?.url || null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch('https://fal.run/fal-ai/flux-realism', {
+      method: 'POST',
+      headers: {
+        Authorization: `Key ${process.env.FAL_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt,
+        image_size: { width: 1024, height: 1024 },
+        num_images: 1,
+        num_inference_steps: 28,
+        guidance_scale: 3.5,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    const data = await response.json();
+    if (!response.ok) throw new Error(JSON.stringify(data));
+    return data.images?.[0]?.url || null;
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === 'AbortError') throw new Error('FLUX Realism 30s timeout');
+    throw err;
+  }
 }
 
-// GPT Image 1.5 high — 차트/그래프/통계/수치 인포그래픽
+// GPT Image 1.5 high — 차트/그래프/통계/수치 인포그래픽 (60초 타임아웃)
 async function callGptImageHigh(prompt) {
-  const response = await fetch('https://api.openai.com/v1/images/generations', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-image-1.5',
-      prompt,
-      n: 1,
-      size: '1024x1536',
-      quality: 'high',
-      output_format: 'webp',
-    }),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(JSON.stringify(data));
-  const b64 = data.data?.[0]?.b64_json;
-  if (!b64) return null;
-  return `data:image/webp;base64,${b64}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+  try {
+    const response = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-image-1.5',
+        prompt,
+        n: 1,
+        size: '1024x1536',
+        quality: 'high',
+        output_format: 'webp',
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    const data = await response.json();
+    if (!response.ok) throw new Error(JSON.stringify(data));
+    const b64 = data.data?.[0]?.b64_json;
+    if (!b64) return null;
+    return `data:image/webp;base64,${b64}`;
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === 'AbortError') throw new Error('GPT Image 60s timeout');
+    throw err;
+  }
 }
 
-// Nano Banana 2 — 타임라인/로드맵/한글 텍스트/포스터
+// Nano Banana 2 — 타임라인/로드맵/한글 텍스트/포스터 (30초 타임아웃)
 async function callNanoBanana2(prompt) {
-  const response = await fetch('https://fal.run/fal-ai/nano-banana-2', {
-    method: 'POST',
-    headers: {
-      Authorization: `Key ${process.env.FAL_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      prompt,
-      image_size: { width: 1024, height: 1024 },
-      num_images: 1,
-    }),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(JSON.stringify(data));
-  if (data.detail) console.warn('[IMAGE-PRO] Nano Banana 2 warning:', data.detail);
-  return data.images?.[0]?.url || null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch('https://fal.run/fal-ai/nano-banana-2', {
+      method: 'POST',
+      headers: {
+        Authorization: `Key ${process.env.FAL_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt,
+        image_size: { width: 1024, height: 1024 },
+        num_images: 1,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    const data = await response.json();
+    if (!response.ok) throw new Error(JSON.stringify(data));
+    if (data.detail) console.warn('[IMAGE-PRO] Nano Banana 2 warning:', data.detail);
+    return data.images?.[0]?.url || null;
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === 'AbortError') throw new Error('Nano Banana 2 30s timeout');
+    throw err;
+  }
 }
 
 // 안전한 JSON 배열 추출 (균형 잡힌 대괄호 매칭)
