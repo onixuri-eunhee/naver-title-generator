@@ -88,6 +88,7 @@ export default async function handler(req, res) {
       if (FREE_DAILY_LIMIT <= 0) {
         return res.status(200).json({ remaining: 0, limit: 0 });
       }
+      const ip = getClientIp(req);
       const key = getTodayKey(ip);
       const count = (await getRedis().get(key)) || 0;
       const remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
@@ -122,6 +123,7 @@ export default async function handler(req, res) {
     let rateLimitKey = null;
 
     if (!whitelisted) {
+      const ip = getClientIp(req);
       rateLimitKey = getTodayKey(ip);
       const newCount = await getRedis().incr(rateLimitKey);
       await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());

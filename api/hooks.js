@@ -180,6 +180,7 @@ export default async function handler(req, res) {
       if (FREE_DAILY_LIMIT <= 0) {
         return res.status(200).json({ remaining: 0, limit: 0 });
       }
+      const ip = getClientIp(req);
       const key = getTodayKey(ip);
       const count = (await getRedis().get(key)) || 0;
       const remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
@@ -219,6 +220,7 @@ export default async function handler(req, res) {
     let remaining = whitelisted ? 999 : FREE_DAILY_LIMIT;
 
     if (!whitelisted) {
+      const ip = getClientIp(req);
       rateLimitKey = getTodayKey(ip); // catch에서 참조 가능하도록 외부 변수에 할당
       const newCount = await getRedis().incr(rateLimitKey);
       await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
