@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="index, follow" />
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-C61VWMGQ8R"></script>
@@ -384,7 +385,7 @@ footer a:hover { text-decoration: underline; }
     <div class="tab-content active" id="tab-parse">
       <div style="margin-bottom:12px;">
         <label>블로그 글 붙여넣기</label>
-        <textarea id="blogTextInput" placeholder="블로그 글 생성기에서 작성한 글을 붙여넣으세요. (사진: ...) 마커가 포함된 글을 넣으면 각 위치에 맞는 이미지를 생성합니다." style="min-height:200px;" oninput="detectMarkers()"></textarea>
+        <textarea id="blogTextInput" placeholder="블로그 글을 붙여넣으세요.&#10;&#10;• (사진: ...) 마커가 있는 글 → 각 위치에 맞는 이미지 자동 생성&#10;• 마커가 없는 글 → AI가 이미지 위치를 추천해드립니다" style="min-height:200px;" oninput="detectMarkers()"></textarea>
       </div>
 
       <div class="suggest-markers-wrap" id="suggestMarkersWrap">
