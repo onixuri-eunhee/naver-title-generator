@@ -13,11 +13,11 @@ export const config = { maxDuration: 300 };
  *   infographic_flow → Nano Banana 2 (fal-ai/nano-banana-2)
  *   poster → Nano Banana 2 (fal-ai/nano-banana-2)
  *
- * 인증: 관리자(서버 판별) OR 로그인 회원 (3/24까지 가입 시 1일 1회 무료)
+ * 인증: 관리자(서버 판별) OR 로그인 회원 (4/24까지 가입 시 1일 1회 무료)
  */
 
 const FREE_DAILY_LIMIT = 1;
-const FREE_CUTOFF = '2026-03-24T23:59:59+09:00';
+const FREE_CUTOFF = '2026-04-24T23:59:59+09:00';
 const MAX_MARKERS = 8;
 const DIRECT_IMAGES = 8;
 
@@ -566,7 +566,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: '회원 정보를 찾을 수 없습니다.' });
     }
     if (new Date(userData.createdAt) > new Date(FREE_CUTOFF)) {
-      return res.status(403).json({ error: '3/24까지 가입한 회원만 무료 체험이 가능합니다.' });
+      return res.status(403).json({ error: '4/24까지 가입한 회원만 무료 체험이 가능합니다.' });
     }
     sessionEmail = session.email;
   }
