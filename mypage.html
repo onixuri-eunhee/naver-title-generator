@@ -294,7 +294,7 @@ footer a:hover { text-decoration: underline; }
 
       // Update hero title
       var heroTitle = document.getElementById('heroTitle');
-      heroTitle.innerHTML = (data.name || '') + '님의 <em>마이페이지</em>';
+      heroTitle.innerHTML = escapeHtml(data.name || '') + '님의 <em>마이페이지</em>';
 
       // Render content
       var container = document.getElementById('mainContent');

@@ -34,8 +34,8 @@ export default async function handler(req, res) {
 
   // POST: 화이트리스트 등록
   if (req.method === 'POST') {
-    await getRedis().set(key, '1');
-    return res.status(200).json({ ip, whitelisted: true, message: `${ip} 화이트리스트 등록 완료` });
+    await getRedis().set(key, '1', { ex: 86400 }); // 24시간 TTL
+    return res.status(200).json({ ip, whitelisted: true, message: `${ip} 화이트리스트 등록 완료 (24시간)` });
   }
 
   // DELETE: 화이트리스트 해제

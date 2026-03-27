@@ -37,12 +37,13 @@ function setCorsHeaders(res, req) {
 }
 
 function validateEmail(email) {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // 기본 이메일 형식 + Redis 키 안전 문자만 허용 (영문, 숫자, .@_+- 만)
+  const re = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
   return re.test(email);
 }
 
 async function checkRateLimit(req, action) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.headers['x-real-ip'] || 'unknown';
+  const ip = req.headers['x-real-ip'] || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
   const key = `ratelimit:${action}:${ip}`;
   const current = await getRedis().incr(key);
   if (current === 1) {
@@ -72,12 +73,16 @@ async function handleSignup(req, res) {
   if (!password || password.length < 8 || password.length > 128) {
     return res.status(400).json({ error: '비밀번호는 8자 이상 128자 이하여야 합니다.' });
   }
-  if (!name) {
-    return res.status(400).json({ error: '이름을 입력해주세요.' });
+  if (!name || typeof name !== 'string' || name.length > 50) {
+    return res.status(400).json({ error: '이름을 입력해주세요. (50자 이내)' });
   }
-  if (!phone) {
-    return res.status(400).json({ error: '전화번호를 입력해주세요.' });
+  if (!phone || typeof phone !== 'string' || phone.length > 20 || !/^[\d\-+() ]+$/.test(phone)) {
+    return res.status(400).json({ error: '올바른 전화번호를 입력해주세요.' });
   }
+
+  // 이름/전화번호 HTML 태그 제거 (XSS 방지)
+  const safeName = name.trim().replace(/<[^>]*>/g, '');
+  const safePhone = phone.trim();
 
   // 비밀번호 해싱
   const salt = crypto.randomBytes(16);
@@ -85,8 +90,8 @@ async function handleSignup(req, res) {
 
   // 사용자 저장 (atomic: SET NX prevents race condition on duplicate signup)
   const userData = {
-    name,
-    phone,
+    name: safeName,
+    phone: safePhone,
     passwordHash,
     salt: salt.toString('hex'),
     credits: 5,
@@ -104,12 +109,13 @@ async function handleSignup(req, res) {
     email,
     createdAt: new Date().toISOString(),
   }), { ex: 2592000 });
+  await getRedis().set(`user_session:${email}`, token, { ex: 2592000 });
 
   return res.status(201).json({
     success: true,
     message: '회원가입이 완료되었습니다.',
     token,
-    user: { name, email, credits: 5 },
+    user: { name: safeName, email, credits: 5 },
   });
 }
 
@@ -140,6 +146,12 @@ async function handleLogin(req, res) {
     return res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
   }
 
+  // 이전 세션 무효화
+  const prevToken = await getRedis().get(`user_session:${email}`);
+  if (prevToken) {
+    await getRedis().del(`session:${prevToken}`);
+  }
+
   // 세션 토큰 생성
   const token = crypto.randomBytes(32).toString('hex');
   const sessionData = {
@@ -148,6 +160,7 @@ async function handleLogin(req, res) {
   };
 
   await getRedis().set(`session:${token}`, JSON.stringify(sessionData), { ex: 2592000 });
+  await getRedis().set(`user_session:${email}`, token, { ex: 2592000 });
 
   return res.status(200).json({
     success: true,
@@ -199,6 +212,14 @@ async function handleMe(req, res) {
 async function handleLogout(req, res) {
   const token = extractToken(req);
   if (token) {
+    // 세션에서 이메일 조회 후 user_session 매핑도 삭제
+    const sessionRaw = await getRedis().get(`session:${token}`);
+    if (sessionRaw) {
+      const session = typeof sessionRaw === 'string' ? JSON.parse(sessionRaw) : sessionRaw;
+      if (session.email) {
+        await getRedis().del(`user_session:${session.email}`);
+      }
+    }
     await getRedis().del(`session:${token}`);
   }
 

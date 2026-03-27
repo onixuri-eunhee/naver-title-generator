@@ -17,8 +17,8 @@ function getRedis() {
 
 function getClientIp(req) {
   return (
-    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
     req.headers['x-real-ip'] ||
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
     req.socket?.remoteAddress ||
     'unknown'
   );
@@ -109,13 +109,21 @@ export default async function handler(req, res) {
   let rateLimitKey = null;
 
   try {
-    const { prompt, system, messages, model, max_tokens, skipRateLimit } = req.body;
+    const { prompt, system, messages, model, max_tokens, isAutoCorrect } = req.body;
 
     const apiMessages = messages || (prompt ? [{ role: 'user', content: prompt }] : null);
 
     if (!apiMessages) {
       return res.status(400).json({ error: 'prompt 또는 messages가 필요합니다.' });
     }
+
+    // 모델 화이트리스트 (허용된 모델만 사용 가능)
+    const ALLOWED_MODELS = ['claude-sonnet-4-20250514', 'claude-haiku-4-5-20251001'];
+    const safeModel = ALLOWED_MODELS.includes(model) ? model : 'claude-sonnet-4-20250514';
+
+    // max_tokens 상한 (클라이언트 요청을 서버가 제한)
+    const MAX_TOKENS_LIMIT = 8192;
+    const safeMaxTokens = Math.min(Math.max(parseInt(max_tokens, 10) || 2000, 1), MAX_TOKENS_LIMIT);
 
     // Rate limit
     const whitelisted = await resolveAdmin(req);
@@ -128,6 +136,20 @@ export default async function handler(req, res) {
     let remaining = whitelisted ? 999 : dailyLimit;
 
     const ip = getClientIp(req);
+
+    // 자동수정 1회 무료 처리: 서버에서 Redis 플래그로 검증
+    let skipRateLimit = false;
+    if (isAutoCorrect && !whitelisted) {
+      const identity = email || ip;
+      const acKey = `autocorrect:${identity}:${getKSTDate()}`;
+      const used = await getRedis().get(acKey);
+      if (!used) {
+        // 미사용 → 이번 요청은 rate limit 스킵, 플래그 소비
+        await getRedis().set(acKey, '1', { ex: getTTLUntilMidnightKST() });
+        skipRateLimit = true;
+      }
+      // 이미 사용했으면 일반 rate limit 적용
+    }
 
     if (!whitelisted && !skipRateLimit) {
       rateLimitKey = email ? getTodayKeyByEmail(email) : getTodayKey(ip);
@@ -142,15 +164,16 @@ export default async function handler(req, res) {
         });
       }
       remaining = dailyLimit - newCount;
-    } else if (!whitelisted && skipRateLimit) {
+    } else if (skipRateLimit) {
+      // 자동수정 무료: 현재 남은 횟수만 조회
       const key = email ? getTodayKeyByEmail(email) : getTodayKey(ip);
       const count = (await getRedis().get(key)) || 0;
       remaining = Math.max(dailyLimit - count, 0);
     }
 
     const apiBody = {
-      model: model || 'claude-sonnet-4-20250514',
-      max_tokens: max_tokens || 2000,
+      model: safeModel,
+      max_tokens: safeMaxTokens,
       temperature: 0.5,
       messages: apiMessages,
     };

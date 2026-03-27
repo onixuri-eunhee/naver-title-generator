@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, threadId });
   } catch (err) {
     console.error('Threads Publish Error:', err);
-    return res.status(500).json({ error: err.message || 'Threads 발행 중 오류가 발생했습니다.' });
+    return res.status(500).json({ error: 'Threads 발행 중 오류가 발생했습니다.' });
   }
 }
 

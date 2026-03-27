@@ -40,8 +40,8 @@ function getRedis() {
 
 function getClientIp(req) {
   return (
-    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
     req.headers['x-real-ip'] ||
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
     req.socket?.remoteAddress ||
     'unknown'
   );

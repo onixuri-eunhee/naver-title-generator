@@ -81,6 +81,6 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('Threads Schedule Error:', err);
-    return res.status(500).json({ error: err.message || '예약 발행 등록 중 오류가 발생했습니다.' });
+    return res.status(500).json({ error: '예약 발행 등록 중 오류가 발생했습니다.' });
   }
 }
