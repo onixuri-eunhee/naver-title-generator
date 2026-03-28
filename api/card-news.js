@@ -3,8 +3,7 @@ import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 import satori from 'satori';
 import { Resvg, initWasm } from '@resvg/resvg-wasm';
 import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 
 export const config = { maxDuration: 120 };
 
@@ -62,12 +61,11 @@ function getTTLUntilMidnightKST() {
 }
 
 // ─── WASM + 폰트 로딩 (콜드 스타트 시 1회) ───
-const __dirname = dirname(fileURLToPath(import.meta.url));
 let fontRegular, fontBold, wasmInited = false;
 
 async function initResvgWasm() {
   if (wasmInited) return;
-  const wasmPath = join(__dirname, '..', 'node_modules', '@resvg', 'resvg-wasm', 'index_bg.wasm');
+  const wasmPath = join(process.cwd(), 'node_modules', '@resvg', 'resvg-wasm', 'index_bg.wasm');
   const wasmBuf = readFileSync(wasmPath);
   await initWasm(wasmBuf);
   wasmInited = true;
@@ -75,7 +73,7 @@ async function initResvgWasm() {
 
 function loadFonts() {
   if (!fontRegular) {
-    const dir = join(__dirname, '..', 'fonts');
+    const dir = join(process.cwd(), 'fonts');
     fontRegular = readFileSync(join(dir, 'NotoSansKR-Regular.subset.ttf'));
     fontBold = readFileSync(join(dir, 'NotoSansKR-Bold.subset.ttf'));
   }
@@ -350,7 +348,7 @@ async function renderSlides(slidesData, theme) {
 
     // Resvg → PNG
     const resvg = new Resvg(svg, {
-      fitTo: { mode: 'width', value: CANVAS },
+      fitTo: { mode: 'width', value: CANVAS_W },
     });
     const rendered = resvg.render();
     const pngBuffer = rendered.asPng();
