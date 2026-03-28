@@ -1,0 +1,40 @@
+# 뚝딱툴 (ddukddaktool.co.kr)
+
+> 자영업자를 위한 AI 블로그 마케팅 도구 모음 SaaS
+
+## 서비스 소개
+
+뚝딱툴은 자영업자, 소상공인, 1인 사업자를 위한 AI 기반 블로그 마케팅 도구입니다. 네이버 블로그, 인스타그램, 스레드(Threads) 등 주요 SNS 채널에 필요한 콘텐츠를 AI로 빠르게 생성할 수 있습니다.
+
+## 제공 도구
+
+### 무료 도구
+- [블로그 제목 생성기](https://ddukddaktool.co.kr/): 네이버 블로그 상위노출을 위한 클릭율 높은 제목 자동 생성. 긍정형, 위협형, 호기심형 등 12가지 패턴 지원.
+- [후킹문구 생성기](https://ddukddaktool.co.kr/hook-generator.html): 업종과 키워드를 입력하면 SNS, 블로그에 사용할 수 있는 후킹문구 15개 즉시 생성.
+- [스레드 글 생성기](https://ddukddaktool.co.kr/threads.html): 소재만 입력하면 정보형, 공감형, 반전형, 궁금증형 4가지 유형의 Threads 글 자동 작성.
+
+### PRO 도구 (크레딧 차감)
+- [블로그 글 작성기](https://ddukddaktool.co.kr/blog-writer.html): 네이버 홈피드, 네이버 SEO, 구글 SEO에 최적화된 블로그 글 AI 자동 생성. AI 검수기(7개 기준 90점 만점)와 자동수정 기능 포함. 1크레딧/회.
+- [블로그 이미지 생성기](https://ddukddaktool.co.kr/blog-image.html): 블로그 글을 붙여넣으면 AI가 문맥에 맞는 이미지 자동 생성. 썸네일 텍스트 합성 기능 포함. 1크레딧/회.
+- [프리미엄 이미지 생성기](https://ddukddaktool.co.kr/blog-image-pro.html): AI가 이미지 유형(사진, 차트, 흐름도, 포스터)을 자동 판단해 고품질 이미지 생성. 5크레딧/회.
+- [카드뉴스 제작기](https://ddukddaktool.co.kr/card-news.html): 글을 붙여넣으면 AI가 인스타그램용 카드뉴스 자동 제작. 테마 선택, 브랜드 컬러, ZIP 다운로드 지원.
+
+## 가격 정책
+- 회원가입 무료, 블로그 글 3회 + 일반이미지 3회 무료 제공
+- 크레딧 충전: 30크레딧 = 9,900원 (1회 최대 150크레딧)
+- 글 생성 1크레딧, 기본이미지 1크레딧, 프리미엄이미지 5크레딧
+
+## 칼럼
+- [블로그 마케팅 실전 칼럼](https://ddukddaktool.co.kr/column.html): 19년 경력 마케터가 직접 쓰는 블로그 마케팅 노하우 32편
+
+## 가이드
+- [사용법 가이드](https://ddukddaktool.co.kr/guide.html): 뚝딱툴 도구별 200% 활용법
+
+## 기술 정보
+- AI 모델: Claude Sonnet 4 (블로그 글), FLUX Schnell (기본 이미지), GPT Image 1.5 / FLUX Realism / Nano Banana 2 (프리미엄 이미지)
+- 플랫폼: 웹 기반 SaaS (데스크톱, 모바일 반응형)
+- 결제: 크레딧 충전 방식
+
+## 연락처
+- 이메일: lboss.reboot@gmail.com
+- 웹사이트: https://ddukddaktool.co.kr
