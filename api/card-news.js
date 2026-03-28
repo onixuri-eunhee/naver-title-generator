@@ -5,8 +5,6 @@ import { Resvg } from '@resvg/resvg-js';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { themes } from './_card-news-themes.js';
-import { layouts } from './_card-news-layouts.js';
 
 export const config = { maxDuration: 120 };
 
@@ -78,7 +76,69 @@ function loadFonts() {
   ];
 }
 
-// ─── 테마 & 레이아웃 (ESM import, 파일 상단에서 import) ───
+// ─── 테마 프리셋 9종 (인라인) ───
+const themes = {
+  cafe: { name: '카페·베이커리', primary: '#8B6914', secondary: '#F5F0E8', accent: '#D4A843', text: '#3D2B00', textLight: '#8B7355', bg: '#FFFCF5', bgDark: '#3D2B00', radius: 16 },
+  beauty: { name: '뷰티·살롱', primary: '#C2185B', secondary: '#FFF0F5', accent: '#E91E90', text: '#4A0028', textLight: '#A0607A', bg: '#FFFAFC', bgDark: '#4A0028', radius: 20 },
+  fitness: { name: '피트니스·헬스', primary: '#1B1B1B', secondary: '#F0F0F0', accent: '#AAFF00', text: '#FFFFFF', textLight: '#B0B0B0', bg: '#F5F5F5', bgDark: '#111111', radius: 12 },
+  food: { name: '요식업·맛집', primary: '#D32F2F', secondary: '#FFF8F0', accent: '#FF6D3A', text: '#3E1008', textLight: '#9C6B5E', bg: '#FFFBF7', bgDark: '#3E1008', radius: 16 },
+  edu: { name: '교육·강의', primary: '#1A3A6B', secondary: '#EEF2F9', accent: '#3B7DDD', text: '#0D1F3C', textLight: '#6B82A6', bg: '#F7F9FC', bgDark: '#0D1F3C', radius: 14 },
+  realty: { name: '부동산·인테리어', primary: '#2E7D5B', secondary: '#EFF6F2', accent: '#43B88C', text: '#1A3D2E', textLight: '#6E9A88', bg: '#F7FBF9', bgDark: '#1A3D2E', radius: 14 },
+  clean: { name: '클린·미니멀', primary: '#0D9488', secondary: '#F0FDFA', accent: '#2DD4BF', text: '#134E4A', textLight: '#6B9E99', bg: '#F8FFFE', bgDark: '#134E4A', radius: 18 },
+  dark: { name: '다크·프리미엄', primary: '#C9A84C', secondary: '#2A2A2A', accent: '#E8C65A', text: '#F5F0E0', textLight: '#A89E88', bg: '#1E1E1E', bgDark: '#111111', radius: 12 },
+  vivid: { name: '비비드·활기', primary: '#7C3AED', secondary: '#FFF9E6', accent: '#FACC15', text: '#2D1065', textLight: '#8B6FC0', bg: '#FDFBFF', bgDark: '#2D1065', radius: 20 },
+};
+
+// ─── 레이아웃 (인라인) ───
+const _F = 'Noto Sans KR';
+const _W = 1080, _H = 1350, _P = 100;
+function h(type, props, ...children) {
+  const flat = children.flat().filter(Boolean);
+  return { type, props: { ...props, children: flat.length === 1 ? flat[0] : flat.length === 0 ? undefined : flat } };
+}
+const layouts = {
+  cover: (s, t) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.bgDark, padding: _P } },
+    h('div', { style: { display: 'flex', width: 100, height: 8, background: t.accent, borderRadius: 4, marginBottom: 56 } }),
+    h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: s.title && s.title.length > 16 ? 80 : 96, color: '#FFFFFF', textAlign: 'center', lineHeight: 1.35, maxWidth: _W - _P * 2, justifyContent: 'center' } }, s.title || ''),
+    s.subtitle ? h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 400, fontSize: 36, color: t.accent, marginTop: 44, textAlign: 'center', lineHeight: 1.5, maxWidth: _W - _P * 2, justifyContent: 'center' } }, s.subtitle) : null,
+    s.brand ? h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 400, fontSize: 28, color: 'rgba(255,255,255,0.45)', marginTop: 72, letterSpacing: 2 } }, s.brand) : null,
+  ),
+  summary: (s, t) => h('div', { style: { display: 'flex', flexDirection: 'column', width: _W, height: _H, background: t.bg, padding: _P } },
+    h('div', { style: { display: 'flex', width: '100%', height: 8, background: t.accent, borderRadius: 4, marginBottom: 56 } }),
+    s.label ? h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 32, color: t.accent, marginBottom: 24, letterSpacing: 1 } }, s.label) : null,
+    h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 56, color: t.text, lineHeight: 1.4, marginBottom: 44 } }, s.title || ''),
+    h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 400, fontSize: 40, color: t.textLight, lineHeight: 1.7, maxWidth: _W - _P * 2 } }, s.body || ''),
+  ),
+  content: (s, t) => { const num = s.number ? String(s.number).padStart(2, '0') : '01'; return h('div', { style: { display: 'flex', flexDirection: 'column', width: _W, height: _H, background: t.bg, padding: _P } },
+    h('div', { style: { display: 'flex', flexDirection: 'row', alignItems: 'flex-start', marginBottom: 48 } },
+      h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 96, color: t.primary, marginRight: 32, lineHeight: 1 } }, num),
+      h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 56, color: t.text, lineHeight: 1.35, paddingTop: 12, maxWidth: _W - _P * 2 - 140 } }, s.title || ''),
+    ),
+    h('div', { style: { display: 'flex', width: 80, height: 5, background: t.accent, borderRadius: 3, marginBottom: 44 } }),
+    h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 400, fontSize: 40, color: t.textLight, lineHeight: 1.75, maxWidth: _W - _P * 2 } }, s.body || ''),
+  ); },
+  quote: (s, t) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.secondary, padding: _P } },
+    h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 200, color: t.accent, lineHeight: 0.6, marginBottom: 32 } }, '\u201C'),
+    h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 52, color: t.text, textAlign: 'center', lineHeight: 1.55, maxWidth: _W - _P * 2 - 40, justifyContent: 'center' } }, s.body || ''),
+    s.source ? h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 400, fontSize: 32, color: t.textLight, marginTop: 48, textAlign: 'center', justifyContent: 'center' } }, s.source) : null,
+  ),
+  data: (s, t) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.bg, padding: _P } },
+    s.label ? h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 34, color: t.textLight, marginBottom: 32, letterSpacing: 2 } }, s.label) : null,
+    h('div', { style: { display: 'flex', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', marginBottom: 20 } },
+      h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 152, color: t.primary, lineHeight: 1 } }, s.value || '0'),
+      s.unit ? h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 60, color: t.primary, marginLeft: 10, paddingBottom: 18 } }, s.unit) : null,
+    ),
+    h('div', { style: { display: 'flex', width: 80, height: 5, background: t.accent, borderRadius: 3, marginTop: 24, marginBottom: 40 } }),
+    h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 400, fontSize: 40, color: t.textLight, textAlign: 'center', lineHeight: 1.65, maxWidth: _W - _P * 2, justifyContent: 'center' } }, s.body || ''),
+  ),
+  cta: (s, t) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.bgDark, padding: _P } },
+    h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 64, color: '#FFFFFF', textAlign: 'center', lineHeight: 1.45, maxWidth: _W - _P * 2, justifyContent: 'center', marginBottom: 48 } }, s.title || ''),
+    s.buttonText ? h('div', { style: { display: 'flex', justifyContent: 'center', alignItems: 'center', background: t.accent, borderRadius: t.radius, padding: '24px 64px', marginBottom: 44 } },
+      h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 36, color: t.bgDark } }, s.buttonText),
+    ) : null,
+    s.body ? h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 400, fontSize: 34, color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 1.6, maxWidth: _W - _P * 2, justifyContent: 'center' } }, s.body) : null,
+  ),
+};
 
 // ─── safeParseJson (balanced bracket parser, blog-writer.html 패턴) ───
 function safeParseJson(rawText) {
