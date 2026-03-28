@@ -5,7 +5,8 @@ import { Resvg } from '@resvg/resvg-js';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
+import { themes } from './_card-news-themes.js';
+import { layouts } from './_card-news-layouts.js';
 
 export const config = { maxDuration: 120 };
 
@@ -76,10 +77,7 @@ function loadFonts() {
   ];
 }
 
-// ─── 테마 & 레이아웃 (ui-dev 제공, CommonJS) ───
-const _require = createRequire(import.meta.url);
-const { themes } = _require('./_card-news-themes.js');
-const { layouts } = _require('./_card-news-layouts.js');
+// ─── 테마 & 레이아웃 (ESM import, 파일 상단에서 import) ───
 
 // ─── safeParseJson (balanced bracket parser, blog-writer.html 패턴) ───
 function safeParseJson(rawText) {

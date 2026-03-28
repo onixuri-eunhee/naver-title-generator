@@ -442,4 +442,4 @@ function cta(slide, theme) {
 // ─── 레이아웃 맵 ───
 const layouts = { cover, summary, content, quote, data, cta };
 
-module.exports = { layouts, h };
+export { layouts, h };

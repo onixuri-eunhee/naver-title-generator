@@ -105,4 +105,4 @@ const themes = {
   },
 };
 
-module.exports = { themes };
+export { themes };
