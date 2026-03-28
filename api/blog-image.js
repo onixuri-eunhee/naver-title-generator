@@ -8,7 +8,6 @@ import { resolveAdmin, setCorsHeaders } from './_helpers.js';
  * Haiku: 마커 분석 + 맥락 기반 영어 프롬프트 생성
  */
 
-const GUEST_DAILY_LIMIT = 3;
 const MEMBER_DAILY_LIMIT = 5;
 const MAX_MARKERS = 10;
 const DIRECT_IMAGES = 8;
@@ -269,29 +268,18 @@ export default async function handler(req, res) {
         return res.status(200).json({ remaining: 999, limit: MEMBER_DAILY_LIMIT, admin: true });
       }
 
-      // 로그인 유저: 이메일 기반 5회
       const token = extractToken(req);
       const email = await resolveSessionEmail(token);
-      if (email) {
-        const dailyLimitScaled = MEMBER_DAILY_LIMIT * CREDIT_SCALE;
-        const key = getTodayKeyByEmail(email);
-        const count = Number((await getRedis().get(key)) || 0);
-        const remaining = Math.max(Math.round((dailyLimitScaled - count) / CREDIT_SCALE * 10) / 10, 0);
-        return res.status(200).json({ remaining, limit: MEMBER_DAILY_LIMIT });
+      if (!email) {
+        return res.status(200).json({ remaining: 0, limit: MEMBER_DAILY_LIMIT, loginRequired: true });
       }
-
-      // 비로그인: IP 기반 3회
-      if (GUEST_DAILY_LIMIT <= 0) {
-        return res.status(200).json({ remaining: 0, limit: 0 });
-      }
-      const guestLimitScaled = GUEST_DAILY_LIMIT * CREDIT_SCALE;
-      const ip = getClientIp(req);
-      const key = getTodayKey(ip);
+      const dailyLimitScaled = MEMBER_DAILY_LIMIT * CREDIT_SCALE;
+      const key = getTodayKeyByEmail(email);
       const count = Number((await getRedis().get(key)) || 0);
-      const remaining = Math.max(Math.round((guestLimitScaled - count) / CREDIT_SCALE * 10) / 10, 0);
-      return res.status(200).json({ remaining, limit: GUEST_DAILY_LIMIT });
+      const remaining = Math.max(Math.round((dailyLimitScaled - count) / CREDIT_SCALE * 10) / 10, 0);
+      return res.status(200).json({ remaining, limit: MEMBER_DAILY_LIMIT });
     } catch {
-      return res.status(200).json({ remaining: GUEST_DAILY_LIMIT, limit: GUEST_DAILY_LIMIT });
+      return res.status(200).json({ remaining: 0, limit: MEMBER_DAILY_LIMIT });
     }
   }
 
@@ -312,8 +300,13 @@ export default async function handler(req, res) {
     // 로그인 유저 확인
     const token = extractToken(req);
     const email = await resolveSessionEmail(token);
+
+    if (!whitelisted && !email) {
+      return res.status(401).json({ error: '로그인이 필요합니다.' });
+    }
+
     const ip = getClientIp(req);
-    const dailyLimit = email ? MEMBER_DAILY_LIMIT : GUEST_DAILY_LIMIT;
+    const dailyLimit = MEMBER_DAILY_LIMIT;
     const dailyLimitScaled = dailyLimit * CREDIT_SCALE;
 
     if (!whitelisted && dailyLimit <= 0) {

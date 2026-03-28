@@ -1,7 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 
-const GUEST_DAILY_LIMIT = 3;
 const MEMBER_DAILY_LIMIT = 5;
 
 let redis;
@@ -79,26 +78,17 @@ export default async function handler(req, res) {
         return res.status(200).json({ remaining: 999, limit: MEMBER_DAILY_LIMIT, admin: true });
       }
 
-      // 로그인 유저: 이메일 기반 5회
       const token = extractToken(req);
       const email = await resolveSessionEmail(token);
-      if (email) {
-        const key = getTodayKeyByEmail(email);
-        const count = (await getRedis().get(key)) || 0;
-        const remaining = Math.max(MEMBER_DAILY_LIMIT - count, 0);
-        return res.status(200).json({ remaining, limit: MEMBER_DAILY_LIMIT });
+      if (!email) {
+        return res.status(200).json({ remaining: 0, limit: MEMBER_DAILY_LIMIT, loginRequired: true });
       }
-
-      // 비로그인: IP 기반 3회
-      if (GUEST_DAILY_LIMIT <= 0) {
-        return res.status(200).json({ remaining: 0, limit: 0 });
-      }
-      const key = getTodayKey(getClientIp(req));
+      const key = getTodayKeyByEmail(email);
       const count = (await getRedis().get(key)) || 0;
-      const remaining = Math.max(GUEST_DAILY_LIMIT - count, 0);
-      return res.status(200).json({ remaining, limit: GUEST_DAILY_LIMIT });
+      const remaining = Math.max(MEMBER_DAILY_LIMIT - count, 0);
+      return res.status(200).json({ remaining, limit: MEMBER_DAILY_LIMIT });
     } catch {
-      return res.status(200).json({ remaining: GUEST_DAILY_LIMIT, limit: GUEST_DAILY_LIMIT });
+      return res.status(200).json({ remaining: 0, limit: MEMBER_DAILY_LIMIT });
     }
   }
 
@@ -125,23 +115,22 @@ export default async function handler(req, res) {
     const MAX_TOKENS_LIMIT = 8192;
     const safeMaxTokens = Math.min(Math.max(parseInt(max_tokens, 10) || 2000, 1), MAX_TOKENS_LIMIT);
 
-    // Rate limit
+    // 로그인 필수
     const whitelisted = await resolveAdmin(req);
-
-    // 로그인 유저 확인
     const token = extractToken(req);
     const email = await resolveSessionEmail(token);
-    const dailyLimit = email ? MEMBER_DAILY_LIMIT : GUEST_DAILY_LIMIT;
 
+    if (!whitelisted && !email) {
+      return res.status(401).json({ error: '로그인이 필요합니다.' });
+    }
+
+    const dailyLimit = MEMBER_DAILY_LIMIT;
     let remaining = whitelisted ? 999 : dailyLimit;
-
-    const ip = getClientIp(req);
 
     // 자동수정 1회 무료 처리: 서버에서 Redis 플래그로 검증
     let skipRateLimit = false;
     if (isAutoCorrect && !whitelisted) {
-      const identity = email || ip;
-      const acKey = `autocorrect:${identity}:${getKSTDate()}`;
+      const acKey = `autocorrect:${email}:${getKSTDate()}`;
       const used = await getRedis().get(acKey);
       if (!used) {
         // 미사용 → 이번 요청은 rate limit 스킵, 플래그 소비
@@ -152,7 +141,7 @@ export default async function handler(req, res) {
     }
 
     if (!whitelisted && !skipRateLimit) {
-      rateLimitKey = email ? getTodayKeyByEmail(email) : getTodayKey(ip);
+      rateLimitKey = getTodayKeyByEmail(email);
       const newCount = await getRedis().incr(rateLimitKey);
       await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
 
@@ -166,7 +155,7 @@ export default async function handler(req, res) {
       remaining = dailyLimit - newCount;
     } else if (skipRateLimit) {
       // 자동수정 무료: 현재 남은 횟수만 조회
-      const key = email ? getTodayKeyByEmail(email) : getTodayKey(ip);
+      const key = getTodayKeyByEmail(email);
       const count = (await getRedis().get(key)) || 0;
       remaining = Math.max(dailyLimit - count, 0);
     }

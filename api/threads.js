@@ -3,6 +3,12 @@ import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 
 const FREE_DAILY_LIMIT = 5;
 
+function extractToken(req) {
+  const auth = req.headers['authorization'] || req.headers['Authorization'] || '';
+  if (auth.startsWith('Bearer ')) return auth.slice(7);
+  return req.body?.token || req.query?.token || null;
+}
+
 let redis;
 function getRedis() {
   if (!redis) {
@@ -29,8 +35,17 @@ function getKSTDate() {
   return kst.toISOString().slice(0, 10);
 }
 
-function getTodayKey(ip) {
-  return `ratelimit:threads:${ip}:${getKSTDate()}`;
+function getTodayKey(email) {
+  return `ratelimit:threads:${email}:${getKSTDate()}`;
+}
+
+async function resolveSessionEmail(token) {
+  if (!token) return null;
+  try {
+    const session = await getRedis().get(`session:${token}`);
+    if (session && session.email) return session.email;
+  } catch (e) {}
+  return null;
 }
 
 function getTTLUntilMidnightKST() {
@@ -85,16 +100,17 @@ export default async function handler(req, res) {
       if (whitelisted) {
         return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
       }
-      if (FREE_DAILY_LIMIT <= 0) {
-        return res.status(200).json({ remaining: 0, limit: 0 });
+      const token = extractToken(req);
+      const email = await resolveSessionEmail(token);
+      if (!email) {
+        return res.status(200).json({ remaining: 0, limit: FREE_DAILY_LIMIT, loginRequired: true });
       }
-      const ip = getClientIp(req);
-      const key = getTodayKey(ip);
+      const key = getTodayKey(email);
       const count = (await getRedis().get(key)) || 0;
       const remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
       return res.status(200).json({ remaining, limit: FREE_DAILY_LIMIT });
     } catch {
-      return res.status(200).json({ remaining: FREE_DAILY_LIMIT, limit: FREE_DAILY_LIMIT });
+      return res.status(200).json({ remaining: 0, limit: FREE_DAILY_LIMIT });
     }
   }
 
@@ -109,22 +125,20 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '주제/소재를 입력해주세요.' });
     }
 
-    // Rate limit (INCR-first, 관리자 스킵)
+    // 로그인 필수
     const whitelisted = await resolveAdmin(req);
+    const token = extractToken(req);
+    const email = await resolveSessionEmail(token);
 
-    if (!whitelisted && FREE_DAILY_LIMIT <= 0) {
-      return res.status(429).json({
-        error: '현재 테스트 기간으로 무료 사용이 제한되어 있습니다.',
-        remaining: 0,
-      });
+    if (!whitelisted && !email) {
+      return res.status(401).json({ error: '로그인이 필요합니다.' });
     }
 
     let remaining = whitelisted ? 999 : FREE_DAILY_LIMIT;
     let rateLimitKey = null;
 
     if (!whitelisted) {
-      const ip = getClientIp(req);
-      rateLimitKey = getTodayKey(ip);
+      rateLimitKey = getTodayKey(email);
       const newCount = await getRedis().incr(rateLimitKey);
       await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
 
