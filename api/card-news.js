@@ -18,7 +18,8 @@ export const config = { maxDuration: 120 };
 
 const FREE_DAILY_LIMIT = 3;
 const FREE_CUTOFF = '2026-04-24T23:59:59+09:00';
-const CANVAS = 1080;
+const CANVAS_W = 1080;
+const CANVAS_H = 1350; // 4:5 비율
 
 // ─── Redis ───
 let redis;
@@ -272,8 +273,8 @@ async function renderSlides(slidesData, theme) {
 
     // Satori → SVG
     const svg = await satori(vnode, {
-      width: CANVAS,
-      height: CANVAS,
+      width: CANVAS_W,
+      height: CANVAS_H,
       fonts,
     });
 
