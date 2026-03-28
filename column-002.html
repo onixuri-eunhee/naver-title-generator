@@ -193,14 +193,27 @@ footer a:hover { text-decoration: underline; }
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "Article",
-  "headline": "스레드 팔로워 늘리는 글쓰기 패턴 5가지",
-  "description": "스레드에서 팔로워가 늘어나는 글에는 공통된 패턴이 있습니다. 직접 운영하며 찾아낸 5가지 패턴을 공개합니다.",
-  "author": { "@type": "Organization", "name": "뚝딱툴" },
-  "publisher": { "@type": "Organization", "name": "뚝딱툴" },
-  "datePublished": "2026-03-07",
-  "dateModified": "2026-03-07",
-  "mainEntityOfPage": "https://ddukddaktool.co.kr/column-002.html"
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "스레드 팔로워 늘리는 글쓰기 패턴 5가지",
+      "description": "스레드에서 팔로워가 늘어나는 글에는 공통된 패턴이 있습니다. 직접 운영하며 찾아낸 스레드 글쓰기 패턴 5가지를 공개합니다.",
+      "author": { "@type": "Organization", "name": "뚝딱툴", "url": "https://ddukddaktool.co.kr" },
+      "publisher": { "@type": "Organization", "name": "뚝딱툴", "url": "https://ddukddaktool.co.kr", "logo": { "@type": "ImageObject", "url": "https://ddukddaktool.co.kr/assets/og-default.jpg" } },
+      "datePublished": "2026-03-07",
+      "dateModified": "2026-03-07",
+      "mainEntityOfPage": "https://ddukddaktool.co.kr/column-002.html",
+      "image": "https://ddukddaktool.co.kr/assets/og-default.jpg"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "홈", "item": "https://ddukddaktool.co.kr/" },
+        { "@type": "ListItem", "position": 2, "name": "칼럼", "item": "https://ddukddaktool.co.kr/column.html" },
+        { "@type": "ListItem", "position": 3, "name": "스레드 팔로워 늘리는 글쓰기 패턴 5가지", "item": "https://ddukddaktool.co.kr/column-002.html" }
+      ]
+    }
+  ]
 }
 </script>
 </head>
