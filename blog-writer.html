@@ -1140,7 +1140,7 @@
     .cn-preview-item img {
       width: 100%;
       display: block;
-      aspect-ratio: 1 / 1;
+      aspect-ratio: 4 / 5;
       object-fit: cover;
     }
     .cn-preview-num {
@@ -1170,6 +1170,78 @@
     }
     .cn-preview-dl:hover { background: rgba(0,0,0,0.75); }
     /* 다운로드 버튼 */
+    /* 미리보기 모달 */
+    .cn-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .cn-modal-overlay.show { display: flex; }
+    .cn-modal-content {
+      position: relative;
+      max-width: 480px;
+      max-height: 90vh;
+      width: 100%;
+    }
+    .cn-modal-content img {
+      width: 100%;
+      border-radius: 12px;
+      display: block;
+    }
+    .cn-modal-close {
+      position: absolute;
+      top: -16px;
+      right: -16px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #fff;
+      border: none;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #333;
+    }
+    .cn-modal-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.9);
+      border: none;
+      font-size: 22px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #333;
+    }
+    .cn-modal-prev { left: -56px; }
+    .cn-modal-next { right: -56px; }
+    .cn-modal-counter {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      font-weight: 500;
+      margin-top: 16px;
+      font-family: inherit;
+    }
+    @media (max-width: 600px) {
+      .cn-modal-prev { left: 8px; }
+      .cn-modal-next { right: 8px; }
+      .cn-modal-close { top: -12px; right: -4px; }
+    }
     .cn-download-all-btn {
       display: none;
       width: 100%;
@@ -1579,6 +1651,17 @@
     <button class="cn-download-all-btn" id="cnDownloadAllBtn" onclick="downloadAllCardNews()">전체 다운로드 (ZIP)</button>
   </div>
 
+</div>
+
+<!-- 카드뉴스 미리보기 모달 -->
+<div class="cn-modal-overlay" id="cnModal" onclick="closeCnModal(event)">
+  <div class="cn-modal-content" onclick="event.stopPropagation()">
+    <button class="cn-modal-close" onclick="closeCnModal()">&times;</button>
+    <button class="cn-modal-nav cn-modal-prev" onclick="navCnModal(-1)">&#8249;</button>
+    <button class="cn-modal-nav cn-modal-next" onclick="navCnModal(1)">&#8250;</button>
+    <img id="cnModalImg" src="" alt="미리보기" />
+    <div class="cn-modal-counter" id="cnModalCounter"></div>
+  </div>
 </div>
 
 <footer>
@@ -3514,10 +3597,10 @@
       // 미리보기 렌더
       var gridHtml = '';
       cnImageDataArr.forEach(function(base64, i) {
-        gridHtml += '<div class="cn-preview-item">';
+        gridHtml += '<div class="cn-preview-item" onclick="openCnModal(' + i + ')">';
         gridHtml += '<img src="data:image/png;base64,' + base64 + '" alt="슬라이드 ' + (i+1) + '" />';
         gridHtml += '<span class="cn-preview-num">' + (i+1) + '</span>';
-        gridHtml += '<button class="cn-preview-dl" onclick="downloadSingleSlide(' + i + ')">저장</button>';
+        gridHtml += '<button class="cn-preview-dl" onclick="event.stopPropagation(); downloadSingleSlide(' + i + ')">저장</button>';
         gridHtml += '</div>';
       });
       grid.innerHTML = gridHtml;
@@ -3540,6 +3623,36 @@
     link.download = 'card-news-' + (index + 1) + '.png';
     link.click();
   }
+
+  // 미리보기 모달
+  var cnModalIndex = 0;
+  function openCnModal(index) {
+    cnModalIndex = index;
+    var modal = document.getElementById('cnModal');
+    var img = document.getElementById('cnModalImg');
+    var counter = document.getElementById('cnModalCounter');
+    img.src = 'data:image/png;base64,' + cnImageDataArr[index];
+    counter.textContent = (index + 1) + ' / ' + cnImageDataArr.length;
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeCnModal(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('cnModal').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+  function navCnModal(dir) {
+    cnModalIndex = (cnModalIndex + dir + cnImageDataArr.length) % cnImageDataArr.length;
+    document.getElementById('cnModalImg').src = 'data:image/png;base64,' + cnImageDataArr[cnModalIndex];
+    document.getElementById('cnModalCounter').textContent = (cnModalIndex + 1) + ' / ' + cnImageDataArr.length;
+  }
+  // 키보드 네비게이션
+  document.addEventListener('keydown', function(e) {
+    if (!document.getElementById('cnModal').classList.contains('show')) return;
+    if (e.key === 'Escape') closeCnModal();
+    if (e.key === 'ArrowLeft') navCnModal(-1);
+    if (e.key === 'ArrowRight') navCnModal(1);
+  });
 
   // 전체 ZIP 다운로드 (JSZip CDN)
   async function downloadAllCardNews() {
