@@ -128,11 +128,11 @@ function h(type, props, ...children) {
 function lines(text, style) {
   if (!text) return null;
   const parts = String(text).split('\n').filter(Boolean);
-  if (parts.length <= 1) return h('div', { style: { display: 'flex', ...style } }, text || '');
-  // 부모의 textAlign/justifyContent/alignItems를 줄별 div에도 전달
-  const lineAlign = style.textAlign === 'center' ? 'center' : 'flex-start';
-  return h('div', { style: { ...style, display: 'flex', flexDirection: 'column', alignItems: lineAlign } },
-    ...parts.map(line => h('div', { style: { display: 'flex' } }, line))
+  const isCentered = style.textAlign === 'center';
+  const baseStyle = { display: 'flex', ...style };
+  if (parts.length <= 1) return h('div', { style: baseStyle }, text || '');
+  return h('div', { style: { ...baseStyle, flexDirection: 'column', alignItems: isCentered ? 'center' : 'flex-start' } },
+    ...parts.map(line => h('div', { style: { display: 'flex', justifyContent: isCentered ? 'center' : 'flex-start' } }, line))
   );
 }
 const layouts = {
@@ -145,8 +145,8 @@ const layouts = {
   summary: (s, t) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.bgDark, padding: 60 } },
     h('div', { style: { display: 'flex', flexDirection: 'column', width: _W - 120, background: '#FFFFFF', borderRadius: t.radius + 8, padding: 72, borderLeft: `8px solid ${t.accent}` } },
       s.label ? h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 32, color: t.accent, marginBottom: 28, letterSpacing: 2 } }, s.label) : null,
-      lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: 56, color: '#1A1A1A', lineHeight: 1.4, marginBottom: 40 }),
-      lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: 40, color: '#444444', lineHeight: 1.75 }),
+      lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: 56, color: '#1A1A1A', lineHeight: 1.4, marginBottom: 40, textAlign: 'left' }),
+      lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: 40, color: '#444444', lineHeight: 1.75, textAlign: 'left' }),
     ),
   ),
   content: (s, t) => { const num = s.number ? String(s.number).padStart(2, '0') : '01'; return h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.secondary, padding: 60 } },
@@ -155,8 +155,8 @@ const layouts = {
         h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 80, color: t.primary, lineHeight: 1, marginRight: 24 } }, num),
         h('div', { style: { display: 'flex', width: 60, height: 5, background: t.accent, borderRadius: 3 } }),
       ),
-      lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: 52, color: '#1A1A1A', lineHeight: 1.4, marginBottom: 36 }),
-      lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: 40, color: '#333333', lineHeight: 1.75 }),
+      lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: 52, color: '#1A1A1A', lineHeight: 1.4, marginBottom: 36, textAlign: 'left' }),
+      lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: 40, color: '#333333', lineHeight: 1.75, textAlign: 'left' }),
     ),
   ); },
   quote: (s, t) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.bgDark, padding: 60 } },
@@ -287,7 +287,7 @@ const SLIDE_SYSTEM_PROMPT = `당신은 블로그 글을 인스타그램 카드�
 - cover.subtitle: 최대 30자
 - summary.title: 최대 20자
 - summary.body: 최대 80자
-- content.title: 최대 15자
+- content.title: 최대 20자
 - content.body: 최대 80자
 - cta.title: 최대 20자
 
@@ -328,7 +328,7 @@ function validateSlides(parsed, requestedCount) {
   const LIMITS = {
     cover: { title: 20, subtitle: 30 },
     summary: { title: 20, body: 80 },
-    content: { title: 15, body: 80 },
+    content: { title: 20, body: 80 },
     quote: { body: 80, source: 30 },
     data: { label: 20, value: 10, unit: 10, body: 80 },
     cta: { title: 20, buttonText: 15, body: 60 },
