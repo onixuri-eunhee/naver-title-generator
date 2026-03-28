@@ -2,9 +2,6 @@ import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 import satori from 'satori';
 import { Resvg, initWasm } from '@resvg/resvg-wasm';
-import { readFileSync } from 'fs';
-import { join } from 'path';
-import { readFile } from 'fs/promises';
 
 export const config = { maxDuration: 120 };
 
@@ -64,21 +61,26 @@ function getTTLUntilMidnightKST() {
 // ─── WASM + 폰트 로딩 (콜드 스타트 시 1회) ───
 let fontRegular, fontBold, wasmInited = false;
 
+const BASE_URL = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : 'https://ddukddaktool.co.kr';
+
 async function initResvgWasm() {
   if (wasmInited) return;
-  // api/_resvg.wasm — api/ 디렉토리 안에 있으므로 Vercel 번들에 자동 포함
-  const wasmPath = join(process.cwd(), 'api', '_resvg.wasm');
-  const wasmBuf = readFileSync(wasmPath);
+  const resp = await fetch(`${BASE_URL}/assets/resvg.wasm`);
+  const wasmBuf = await resp.arrayBuffer();
   await initWasm(wasmBuf);
   wasmInited = true;
 }
 
-function loadFonts() {
+async function loadFonts() {
   if (!fontRegular) {
-    // api/_fonts/ — api/ 디렉토리 안에 있으므로 Vercel 번들에 자동 포함
-    const dir = join(process.cwd(), 'api', '_fonts');
-    fontRegular = readFileSync(join(dir, 'NotoSansKR-Regular.subset.ttf'));
-    fontBold = readFileSync(join(dir, 'NotoSansKR-Bold.subset.ttf'));
+    const [rResp, bResp] = await Promise.all([
+      fetch(`${BASE_URL}/assets/NotoSansKR-Regular.subset.ttf`),
+      fetch(`${BASE_URL}/assets/NotoSansKR-Bold.subset.ttf`),
+    ]);
+    fontRegular = Buffer.from(await rResp.arrayBuffer());
+    fontBold = Buffer.from(await bResp.arrayBuffer());
   }
   return [
     { name: 'Noto Sans KR', data: fontRegular, weight: 400, style: 'normal' },
@@ -324,7 +326,7 @@ function validateSlides(parsed, requestedCount) {
 // ─── Satori + Resvg 렌더링 (직렬) ───
 async function renderSlides(slidesData, theme) {
   await initResvgWasm();
-  const fonts = loadFonts();
+  const fonts = await loadFonts();
   const pngs = [];
 
   // 레이아웃 함수 매핑
