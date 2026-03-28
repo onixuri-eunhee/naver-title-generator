@@ -15,7 +15,7 @@ export const config = { maxDuration: 120 };
  * GET: 남은 횟수 조회
  */
 
-const FREE_DAILY_LIMIT = 1;
+const FREE_DAILY_LIMIT = 3;
 const FREE_CUTOFF = '2026-04-24T23:59:59+09:00';
 const CANVAS = 1080;
 
