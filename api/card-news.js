@@ -4,6 +4,7 @@ import satori from 'satori';
 import { Resvg, initWasm } from '@resvg/resvg-wasm';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { readFile } from 'fs/promises';
 
 export const config = { maxDuration: 120 };
 
@@ -65,8 +66,23 @@ let fontRegular, fontBold, wasmInited = false;
 
 async function initResvgWasm() {
   if (wasmInited) return;
-  const wasmPath = join(process.cwd(), 'node_modules', '@resvg', 'resvg-wasm', 'index_bg.wasm');
-  const wasmBuf = readFileSync(wasmPath);
+  // WASM 파일을 여러 경로에서 시도
+  const candidates = [
+    join(process.cwd(), 'node_modules', '@resvg', 'resvg-wasm', 'index_bg.wasm'),
+    join('/var/task', 'node_modules', '@resvg', 'resvg-wasm', 'index_bg.wasm'),
+  ];
+  let wasmBuf;
+  for (const p of candidates) {
+    try { wasmBuf = readFileSync(p); break; } catch (_) {}
+  }
+  if (!wasmBuf) {
+    // fallback: require.resolve로 찾기
+    try {
+      const resolved = require.resolve('@resvg/resvg-wasm/index_bg.wasm');
+      wasmBuf = readFileSync(resolved);
+    } catch (_) {}
+  }
+  if (!wasmBuf) throw new Error('resvg WASM 파일을 찾을 수 없습니다.');
   await initWasm(wasmBuf);
   wasmInited = true;
 }

@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/card-news.js": {
+      "includeFiles": "fonts/**"
+    }
+  },
   "rewrites": [
     { "source": "/api/blog-image", "destination": "/api/blog-image" },
     { "source": "/api/threads", "destination": "/api/threads" },
