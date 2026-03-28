@@ -1,8 +1,6 @@
 export default async function handler(req, res) {
   const results = {};
-  const BASE = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'https://ddukddaktool.co.kr';
+  const BASE = 'https://ddukddaktool.co.kr';
 
   try { await import('satori'); results.satori = 'OK'; } catch (e) { results.satori = e.message; }
   try { await import('@resvg/resvg-wasm'); results.resvg = 'OK'; } catch (e) { results.resvg = e.message; }

@@ -61,9 +61,7 @@ function getTTLUntilMidnightKST() {
 // ─── WASM + 폰트 로딩 (콜드 스타트 시 1회) ───
 let fontRegular, fontBold, wasmInited = false;
 
-const BASE_URL = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : 'https://ddukddaktool.co.kr';
+const BASE_URL = 'https://ddukddaktool.co.kr';
 
 async function initResvgWasm() {
   if (wasmInited) return;
