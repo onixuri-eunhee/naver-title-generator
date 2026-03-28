@@ -1,7 +1,24 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
-import satori from 'satori';
-import { Resvg, initWasm } from '@resvg/resvg-wasm';
+
+// satori, @resvg/resvg-wasm → 동적 import로 지연 로딩
+// (top-level static import는 Vercel Serverless에서 FUNCTION_INVOCATION_FAILED 유발)
+let _satori, _Resvg, _initWasm;
+async function getSatori() {
+  if (!_satori) {
+    const mod = await import('satori');
+    _satori = mod.default || mod;
+  }
+  return _satori;
+}
+async function getResvg() {
+  if (!_Resvg || !_initWasm) {
+    const mod = await import('@resvg/resvg-wasm');
+    _Resvg = mod.Resvg;
+    _initWasm = mod.initWasm;
+  }
+  return { Resvg: _Resvg, initWasm: _initWasm };
+}
 
 export const config = { maxDuration: 120 };
 
@@ -65,6 +82,7 @@ const BASE_URL = 'https://ddukddaktool.co.kr';
 
 async function initResvgWasm() {
   if (wasmInited) return;
+  const { initWasm } = await getResvg();
   const resp = await fetch(`${BASE_URL}/assets/resvg.wasm`);
   const wasmBuf = await resp.arrayBuffer();
   await initWasm(wasmBuf);
@@ -324,6 +342,8 @@ function validateSlides(parsed, requestedCount) {
 // ─── Satori + Resvg 렌더링 (직렬) ───
 async function renderSlides(slidesData, theme) {
   await initResvgWasm();
+  const satoriRender = await getSatori();
+  const { Resvg } = await getResvg();
   const fonts = await loadFonts();
   const pngs = [];
 
@@ -343,7 +363,7 @@ async function renderSlides(slidesData, theme) {
     const vnode = layoutFn(slide, theme);
 
     // Satori → SVG
-    const svg = await satori(vnode, {
+    const svg = await satoriRender(vnode, {
       width: CANVAS_W,
       height: CANVAS_H,
       fonts,
