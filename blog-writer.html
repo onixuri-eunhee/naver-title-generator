@@ -921,6 +921,278 @@
   padding: 1px 3px;
   line-height: 1.4;
 }
+
+    /* ===== CARD NEWS SECTION ===== */
+    .cardnews-section {
+      display: none;
+      margin-top: 36px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+    }
+    .cardnews-section.show { display: block; }
+    .cardnews-section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cardnews-section-title .cn-badge {
+      font-size: 10px;
+      font-weight: 800;
+      color: #fff;
+      background: linear-gradient(135deg, #ff5f1f, #ff8c42);
+      border-radius: 4px;
+      padding: 2px 6px;
+      letter-spacing: 0.5px;
+    }
+    /* 슬라이드 수 선택 */
+    .cn-option-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: block;
+    }
+    .cn-slide-btns {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .cn-slide-btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .cn-slide-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .cn-slide-btn.active {
+      border-color: var(--accent);
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+    /* 테마 선택 */
+    .cn-theme-scroll {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 18px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .cn-theme-scroll::-webkit-scrollbar { height: 4px; }
+    .cn-theme-scroll::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+    .cn-theme-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      transition: all 0.15s;
+      flex-shrink: 0;
+      min-width: 80px;
+    }
+    .cn-theme-chip:hover { border-color: var(--accent); }
+    .cn-theme-chip.active { border-color: var(--accent); background: var(--accent-light); }
+    .cn-theme-colors {
+      display: flex;
+      gap: 3px;
+    }
+    .cn-theme-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+    .cn-theme-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    /* 브랜드 컬러 */
+    .cn-brand-toggle-row {
+      margin-bottom: 12px;
+    }
+    .cn-brand-toggle-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cn-brand-toggle-label input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #ff5f1f;
+    }
+    .cn-brand-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 20px;
+      padding: 12px 16px;
+      background: #F9FAFB;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .cn-brand-pair {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cn-brand-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .cn-brand-color-input {
+      width: 40px;
+      height: 32px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      padding: 2px;
+      background: #fff;
+    }
+    .cn-brand-hex {
+      width: 80px;
+      padding: 6px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--text);
+      background: #FAFAFA;
+    }
+    /* 생성 버튼 */
+    .cn-generate-btn {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #ff5f1f, #ff8c42);
+      color: #fff;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      margin-bottom: 20px;
+    }
+    .cn-generate-btn:hover { opacity: 0.9; }
+    .cn-generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    /* 로딩 */
+    .cn-loading {
+      display: none;
+      text-align: center;
+      padding: 32px 0;
+    }
+    .cn-loading.show { display: block; }
+    .cn-loading-spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: cn-spin 0.8s linear infinite;
+      margin: 0 auto 14px;
+    }
+    @keyframes cn-spin { to { transform: rotate(360deg); } }
+    .cn-loading-text {
+      font-size: 14px;
+      color: var(--muted);
+    }
+    /* 미리보기 그리드 */
+    .cn-preview-grid {
+      display: none;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .cn-preview-grid.show { display: grid; }
+    .cn-preview-item {
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .cn-preview-item img {
+      width: 100%;
+      display: block;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+    }
+    .cn-preview-num {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+    .cn-preview-dl {
+      position: absolute;
+      bottom: 6px;
+      right: 6px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      font-size: 10px;
+      padding: 3px 7px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    .cn-preview-dl:hover { background: rgba(0,0,0,0.75); }
+    /* 다운로드 버튼 */
+    .cn-download-all-btn {
+      display: none;
+      width: 100%;
+      padding: 14px;
+      border: 2px solid var(--accent);
+      border-radius: 10px;
+      background: transparent;
+      color: var(--accent);
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .cn-download-all-btn.show { display: block; }
+    .cn-download-all-btn:hover {
+      background: var(--accent-light);
+    }
+    @media (max-width: 600px) {
+      .cn-preview-grid { grid-template-columns: repeat(2, 1fr); }
+      .cn-slide-btns { gap: 4px; }
+      .cn-slide-btn { padding: 7px 14px; font-size: 13px; }
+    }
   </style>
 <link rel="stylesheet" href="/navbar-mobile.css">
 </head>
@@ -1249,6 +1521,62 @@
     <button onclick="goToImageGenerator()" style="display:inline-block; background:linear-gradient(135deg, #8B5CF6, #6D28D9); color:#fff; padding:16px 36px; border-radius:12px; font-size:16px; font-weight:700; border:none; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(139,92,246,0.25); font-family:'Noto Sans KR',sans-serif;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(139,92,246,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 16px rgba(139,92,246,0.25)'">📷 이 글에 맞는 이미지 생성하기 →</button>
     <p style="margin-top:10px; font-size:13px; color:#888;">글 내용이 자동으로 전달되어 문맥에 맞는 이미지를 생성합니다</p>
     <button id="premiumImageBtn" onclick="goToPremiumImageGenerator()" style="display:inline-block; margin-top:12px; background:linear-gradient(135deg, #F59E0B, #D97706); color:#fff; padding:14px 32px; border-radius:12px; font-size:15px; font-weight:700; border:none; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(245,158,11,0.25); font-family:'Noto Sans KR',sans-serif;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(245,158,11,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 16px rgba(245,158,11,0.25)'">PREMIUM 프리미엄 이미지 생성하기</button>
+  </div>
+
+  <!-- 카드뉴스 변환 섹션 -->
+  <div class="cardnews-section" id="cardnewsSection">
+    <div class="cardnews-section-title">
+      카드뉴스로 변환 <span class="cn-badge">NEW</span>
+    </div>
+
+    <!-- 슬라이드 수 -->
+    <span class="cn-option-label">슬라이드 수</span>
+    <div class="cn-slide-btns" id="cnSlideBtns">
+      <button class="cn-slide-btn" data-count="5" onclick="selectCnSlides(this)">5</button>
+      <button class="cn-slide-btn active" data-count="6" onclick="selectCnSlides(this)">6</button>
+      <button class="cn-slide-btn" data-count="7" onclick="selectCnSlides(this)">7</button>
+      <button class="cn-slide-btn" data-count="8" onclick="selectCnSlides(this)">8</button>
+      <button class="cn-slide-btn" data-count="9" onclick="selectCnSlides(this)">9</button>
+      <button class="cn-slide-btn" data-count="10" onclick="selectCnSlides(this)">10</button>
+    </div>
+
+    <!-- 테마 선택 -->
+    <span class="cn-option-label">테마</span>
+    <div class="cn-theme-scroll" id="cnThemeScroll"></div>
+
+    <!-- 브랜드 컬러 (선택) -->
+    <div class="cn-brand-toggle-row">
+      <label class="cn-brand-toggle-label">
+        <input type="checkbox" id="cnBrandToggle"> 내 브랜드 컬러 사용
+      </label>
+    </div>
+    <div class="cn-brand-row" id="cnBrandRow" style="display:none;">
+      <div class="cn-brand-pair">
+        <span class="cn-brand-label">메인</span>
+        <input type="color" class="cn-brand-color-input" id="cnBrandPrimary" value="#ff5f1f">
+        <input type="text" class="cn-brand-hex" id="cnBrandPrimaryHex" value="#ff5f1f" maxlength="7">
+      </div>
+      <div class="cn-brand-pair">
+        <span class="cn-brand-label">보조</span>
+        <input type="color" class="cn-brand-color-input" id="cnBrandSecondary" value="#1A1A2E">
+        <input type="text" class="cn-brand-hex" id="cnBrandSecondaryHex" value="#1A1A2E" maxlength="7">
+      </div>
+    </div>
+
+    <!-- 생성 버튼 -->
+    <button class="cn-generate-btn" id="cnGenerateBtn" onclick="generateCardNews()">카드뉴스 생성하기</button>
+
+    <!-- 로딩 -->
+    <div class="cn-loading" id="cnLoading">
+      <div class="cn-loading-spinner"></div>
+      <div class="cn-loading-text" id="cnLoadingText">AI가 카드뉴스를 만들고 있습니다...</div>
+    </div>
+
+    <!-- 미리보기 그리드 -->
+    <div class="cn-preview-grid" id="cnPreviewGrid"></div>
+
+    <!-- 전체 다운로드 -->
+    <button class="cn-download-all-btn" id="cnDownloadAllBtn" onclick="downloadAllCardNews()">전체 다운로드 (ZIP)</button>
   </div>
 
 </div>
@@ -3021,6 +3349,235 @@
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) generate();
   });
+
+  // ═══════════════════════════════════════
+  // ─── 카드뉴스 변환 ───
+  // ═══════════════════════════════════════
+  var cnSlideCount = 6;
+  var cnSelectedTheme = 'cafe';
+  var cnImageDataArr = [];
+
+  // 테마 데이터 (프론트용 미리보기)
+  var CN_THEMES = {
+    cafe:    { name: '카페·베이커리', colors: ['#8B6914','#F5F0E8','#D4A843'] },
+    beauty:  { name: '뷰티·살롱',     colors: ['#C2185B','#FFF0F5','#E91E90'] },
+    fitness: { name: '피트니스·헬스', colors: ['#1B1B1B','#F0F0F0','#AAFF00'] },
+    food:    { name: '요식업·맛집',   colors: ['#D32F2F','#FFF8F0','#FF6D3A'] },
+    edu:     { name: '교육·강의',     colors: ['#1A3A6B','#EEF2F9','#3B7DDD'] },
+    realty:  { name: '부동산·인테리어', colors: ['#2E7D5B','#EFF6F2','#43B88C'] },
+    clean:   { name: '클린·미니멀',   colors: ['#0D9488','#F0FDFA','#2DD4BF'] },
+    dark:    { name: '다크·프리미엄', colors: ['#C9A84C','#2A2A2A','#E8C65A'] },
+    vivid:   { name: '비비드·활기',   colors: ['#7C3AED','#FFF9E6','#FACC15'] },
+  };
+
+  // 테마 칩 렌더
+  (function renderCnThemes() {
+    var wrap = document.getElementById('cnThemeScroll');
+    var html = '';
+    Object.keys(CN_THEMES).forEach(function(key) {
+      var t = CN_THEMES[key];
+      var active = key === cnSelectedTheme ? ' active' : '';
+      html += '<div class="cn-theme-chip' + active + '" data-theme="' + key + '" onclick="selectCnTheme(this)">';
+      html += '<div class="cn-theme-colors">';
+      t.colors.forEach(function(c) {
+        html += '<span class="cn-theme-dot" style="background:' + c + '"></span>';
+      });
+      html += '</div>';
+      html += '<span class="cn-theme-name">' + t.name + '</span>';
+      html += '</div>';
+    });
+    wrap.innerHTML = html;
+  })();
+
+  function selectCnSlides(btn) {
+    document.querySelectorAll('.cn-slide-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    cnSlideCount = parseInt(btn.dataset.count, 10);
+  }
+
+  function selectCnTheme(chip) {
+    document.querySelectorAll('.cn-theme-chip').forEach(function(c) { c.classList.remove('active'); });
+    chip.classList.add('active');
+    cnSelectedTheme = chip.dataset.theme;
+  }
+
+  // 브랜드 컬러 토글
+  document.getElementById('cnBrandToggle').addEventListener('change', function() {
+    document.getElementById('cnBrandRow').style.display = this.checked ? 'flex' : 'none';
+  });
+
+  // 브랜드 컬러 동기화 (메인)
+  document.getElementById('cnBrandPrimary').addEventListener('input', function() {
+    document.getElementById('cnBrandPrimaryHex').value = this.value;
+  });
+  document.getElementById('cnBrandPrimaryHex').addEventListener('input', function() {
+    var v = this.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) document.getElementById('cnBrandPrimary').value = v;
+  });
+
+  // 브랜드 컬러 동기화 (보조)
+  document.getElementById('cnBrandSecondary').addEventListener('input', function() {
+    document.getElementById('cnBrandSecondaryHex').value = this.value;
+  });
+  document.getElementById('cnBrandSecondaryHex').addEventListener('input', function() {
+    var v = this.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) document.getElementById('cnBrandSecondary').value = v;
+  });
+
+  // 글 생성 후 카드뉴스 섹션 표시
+  function showCardNewsSection() {
+    var sec = document.getElementById('cardnewsSection');
+    if (generatedData) sec.classList.add('show');
+    else sec.classList.remove('show');
+  }
+
+  // renderResult 후크: 기존 renderResult 끝에 카드뉴스 섹션 표시 추가
+  var _origRenderResult = renderResult;
+  renderResult = function(data) {
+    _origRenderResult(data);
+    showCardNewsSection();
+  };
+
+  // resetForm 후크
+  var _origResetForm = resetForm;
+  resetForm = function() {
+    _origResetForm();
+    document.getElementById('cardnewsSection').classList.remove('show');
+    document.getElementById('cnPreviewGrid').classList.remove('show');
+    document.getElementById('cnPreviewGrid').innerHTML = '';
+    document.getElementById('cnDownloadAllBtn').classList.remove('show');
+    cnImageDataArr = [];
+  };
+
+  // 카드뉴스 생성
+  async function generateCardNews() {
+    if (!generatedData) { alert('먼저 글을 생성해주세요.'); return; }
+
+    var btn = document.getElementById('cnGenerateBtn');
+    var loading = document.getElementById('cnLoading');
+    var grid = document.getElementById('cnPreviewGrid');
+    var dlBtn = document.getElementById('cnDownloadAllBtn');
+
+    btn.disabled = true;
+    loading.classList.add('show');
+    grid.classList.remove('show');
+    grid.innerHTML = '';
+    dlBtn.classList.remove('show');
+    cnImageDataArr = [];
+
+    // 글 전문 조합
+    var parts = [];
+    if (generatedData.title) parts.push(generatedData.title);
+    if (generatedData.hook) parts.push(generatedData.hook);
+    if (generatedData.body) parts.push(generatedData.body);
+    if (generatedData.faq) parts.push(generatedData.faq);
+    if (generatedData.cta) parts.push(generatedData.cta);
+    var fullText = parts.join('\n\n');
+
+    var useBrand = document.getElementById('cnBrandToggle').checked;
+    var brandPrimary = '';
+    var brandSecondary = '';
+    if (useBrand) {
+      brandPrimary = document.getElementById('cnBrandPrimaryHex').value.trim();
+      brandSecondary = document.getElementById('cnBrandSecondaryHex').value.trim();
+      if (!/^#[0-9a-fA-F]{6}$/.test(brandPrimary)) brandPrimary = '';
+      if (!/^#[0-9a-fA-F]{6}$/.test(brandSecondary)) brandSecondary = '';
+    }
+
+    try {
+      var token = localStorage.getItem('ddukddak_token') || '';
+      var resp = await fetch('/api/card-news', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? 'Bearer ' + token : '',
+        },
+        body: JSON.stringify({
+          text: fullText,
+          title: generatedData.title || '',
+          slideCount: cnSlideCount,
+          theme: cnSelectedTheme,
+          brandPrimary: brandPrimary || undefined,
+          brandSecondary: brandSecondary || undefined,
+        }),
+      });
+
+      if (!resp.ok) {
+        var errData = {};
+        try { errData = await resp.json(); } catch(_) {}
+        throw new Error(errData.error || '카드뉴스 생성에 실패했습니다. (' + resp.status + ')');
+      }
+
+      var result = await resp.json();
+      cnImageDataArr = result.images || [];
+
+      // 미리보기 렌더
+      var gridHtml = '';
+      cnImageDataArr.forEach(function(base64, i) {
+        gridHtml += '<div class="cn-preview-item">';
+        gridHtml += '<img src="data:image/png;base64,' + base64 + '" alt="슬라이드 ' + (i+1) + '" />';
+        gridHtml += '<span class="cn-preview-num">' + (i+1) + '</span>';
+        gridHtml += '<button class="cn-preview-dl" onclick="downloadSingleSlide(' + i + ')">저장</button>';
+        gridHtml += '</div>';
+      });
+      grid.innerHTML = gridHtml;
+      grid.classList.add('show');
+      dlBtn.classList.add('show');
+
+    } catch(e) {
+      alert(e.message);
+    } finally {
+      btn.disabled = false;
+      loading.classList.remove('show');
+    }
+  }
+
+  // 개별 슬라이드 다운로드
+  function downloadSingleSlide(index) {
+    if (!cnImageDataArr[index]) return;
+    var link = document.createElement('a');
+    link.href = 'data:image/png;base64,' + cnImageDataArr[index];
+    link.download = 'card-news-' + (index + 1) + '.png';
+    link.click();
+  }
+
+  // 전체 ZIP 다운로드 (JSZip CDN)
+  async function downloadAllCardNews() {
+    if (!cnImageDataArr.length) return;
+    var btn = document.getElementById('cnDownloadAllBtn');
+    btn.disabled = true;
+    btn.textContent = 'ZIP 생성 중...';
+
+    try {
+      // JSZip 동적 로드
+      if (typeof JSZip === 'undefined') {
+        await new Promise(function(resolve, reject) {
+          var s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js';
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+
+      var zip = new JSZip();
+      cnImageDataArr.forEach(function(b64, i) {
+        zip.file('card-news-' + (i + 1) + '.png', b64, { base64: true });
+      });
+      var blob = await zip.generateAsync({ type: 'blob' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'card-news.zip';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch(e) {
+      alert('ZIP 생성 실패: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '전체 다운로드 (ZIP)';
+    }
+  }
 </script>
 <script src="auth-ui.js"></script>
 

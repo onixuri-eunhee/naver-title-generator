@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/card-news.js": {
+      "includeFiles": "fonts/**"
+    }
+  },
   "rewrites": [
     { "source": "/api/blog-image", "destination": "/api/blog-image" },
     { "source": "/api/threads", "destination": "/api/threads" },
@@ -9,6 +14,7 @@
     { "source": "/api/hooks", "destination": "/api/hooks" },
     { "source": "/api/generate", "destination": "/api/generate" },
     { "source": "/api/admin", "destination": "/api/admin" },
-    { "source": "/api/auth", "destination": "/api/auth" }
+    { "source": "/api/auth", "destination": "/api/auth" },
+    { "source": "/api/card-news", "destination": "/api/card-news" }
   ]
 }
