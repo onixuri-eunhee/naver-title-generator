@@ -15,6 +15,7 @@
     { "source": "/api/generate", "destination": "/api/generate" },
     { "source": "/api/admin", "destination": "/api/admin" },
     { "source": "/api/auth", "destination": "/api/auth" },
-    { "source": "/api/card-news", "destination": "/api/card-news" }
+    { "source": "/api/card-news", "destination": "/api/card-news" },
+    { "source": "/api/card-news-test", "destination": "/api/card-news-test" }
   ]
 }
