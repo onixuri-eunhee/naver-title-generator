@@ -66,30 +66,17 @@ let fontRegular, fontBold, wasmInited = false;
 
 async function initResvgWasm() {
   if (wasmInited) return;
-  // WASM 파일을 여러 경로에서 시도
-  const candidates = [
-    join(process.cwd(), 'node_modules', '@resvg', 'resvg-wasm', 'index_bg.wasm'),
-    join('/var/task', 'node_modules', '@resvg', 'resvg-wasm', 'index_bg.wasm'),
-  ];
-  let wasmBuf;
-  for (const p of candidates) {
-    try { wasmBuf = readFileSync(p); break; } catch (_) {}
-  }
-  if (!wasmBuf) {
-    // fallback: require.resolve로 찾기
-    try {
-      const resolved = require.resolve('@resvg/resvg-wasm/index_bg.wasm');
-      wasmBuf = readFileSync(resolved);
-    } catch (_) {}
-  }
-  if (!wasmBuf) throw new Error('resvg WASM 파일을 찾을 수 없습니다.');
+  // api/_resvg.wasm — api/ 디렉토리 안에 있으므로 Vercel 번들에 자동 포함
+  const wasmPath = join(process.cwd(), 'api', '_resvg.wasm');
+  const wasmBuf = readFileSync(wasmPath);
   await initWasm(wasmBuf);
   wasmInited = true;
 }
 
 function loadFonts() {
   if (!fontRegular) {
-    const dir = join(process.cwd(), 'fonts');
+    // api/_fonts/ — api/ 디렉토리 안에 있으므로 Vercel 번들에 자동 포함
+    const dir = join(process.cwd(), 'api', '_fonts');
     fontRegular = readFileSync(join(dir, 'NotoSansKR-Regular.subset.ttf'));
     fontBold = readFileSync(join(dir, 'NotoSansKR-Bold.subset.ttf'));
   }
