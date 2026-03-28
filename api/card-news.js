@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 import satori from 'satori';
-import { Resvg } from '@resvg/resvg-js';
+import { Resvg, initWasm } from '@resvg/resvg-wasm';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -61,9 +61,18 @@ function getTTLUntilMidnightKST() {
   return Math.max(seconds, 60);
 }
 
-// ─── 폰트 로딩 (콜드 스타트 시 1회) ───
+// ─── WASM + 폰트 로딩 (콜드 스타트 시 1회) ───
 const __dirname = dirname(fileURLToPath(import.meta.url));
-let fontRegular, fontBold;
+let fontRegular, fontBold, wasmInited = false;
+
+async function initResvgWasm() {
+  if (wasmInited) return;
+  const wasmPath = join(__dirname, '..', 'node_modules', '@resvg', 'resvg-wasm', 'index_bg.wasm');
+  const wasmBuf = readFileSync(wasmPath);
+  await initWasm(wasmBuf);
+  wasmInited = true;
+}
+
 function loadFonts() {
   if (!fontRegular) {
     const dir = join(__dirname, '..', 'fonts');
@@ -313,6 +322,7 @@ function validateSlides(parsed, requestedCount) {
 
 // ─── Satori + Resvg 렌더링 (직렬) ───
 async function renderSlides(slidesData, theme) {
+  await initResvgWasm();
   const fonts = loadFonts();
   const pngs = [];
 
