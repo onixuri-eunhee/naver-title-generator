@@ -585,7 +585,7 @@ ${blogText.substring(0, 8000)}`;
         },
       });
       const bucket = process.env.R2_BUCKET_NAME;
-      const userId = (email || ip).replace(/[^a-zA-Z0-9]/g, '_');
+      const userId = (sessionEmail || getClientIp(req) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
       const date = new Date().toISOString().slice(0, 10);
       const uuid = Math.random().toString(36).substring(2, 10);
 
