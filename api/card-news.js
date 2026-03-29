@@ -565,13 +565,33 @@ ${blogText.substring(0, 8000)}`;
     const pngs = await renderSlides(validated, theme);
     console.log(`[CARD-NEWS] Rendered ${pngs.length} PNGs`);
 
-    // 5) R2 업로드 (백그라운드 — 실패해도 base64는 반환)
+    // 5) R2 업로드 (실패해도 base64는 반환)
     let r2Urls = [];
     try {
-      const { uploadCardNewsToR2 } = await import('./_r2.js');
+      const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+      const r2Client = new S3Client({
+        region: 'auto',
+        endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        credentials: {
+          accessKeyId: process.env.R2_ACCESS_KEY_ID,
+          secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+        },
+      });
+      const bucket = process.env.R2_BUCKET_NAME;
       const userId = (email || ip).replace(/[^a-zA-Z0-9]/g, '_');
-      const pngBuffers = pngs.map(b64 => Buffer.from(b64, 'base64'));
-      r2Urls = await uploadCardNewsToR2(userId, pngBuffers);
+      const date = new Date().toISOString().slice(0, 10);
+      const uuid = Math.random().toString(36).substring(2, 10);
+
+      for (let i = 0; i < pngs.length; i++) {
+        const key = `card-news/${userId}/${date}/${uuid}-${i + 1}.png`;
+        await r2Client.send(new PutObjectCommand({
+          Bucket: bucket,
+          Key: key,
+          Body: Buffer.from(pngs[i], 'base64'),
+          ContentType: 'image/png',
+        }));
+        r2Urls.push(`https://pub-cac85a1d3b8d486082bd1bff2fadcaed.r2.dev/${key}`);
+      }
       console.log(`[CARD-NEWS] R2 uploaded: ${r2Urls.length} files`);
     } catch (r2Err) {
       console.error('[CARD-NEWS] R2 upload failed (non-fatal):', r2Err.message);
