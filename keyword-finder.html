@@ -186,12 +186,17 @@ tr:hover { background:#FFF7ED; }
       <input type="text" id="targetInput" placeholder="예: 예비 신부, 초보 엄마, 예비 창업자, 맛집 탐방러" maxlength="50">
     </div>
     <div style="margin-bottom:14px;">
-      <label>자주 받는 질문 <span style="font-weight:400; color:#9CA3AF;">(선택, 최대 10개)</span></label>
-      <textarea id="questionsInput" placeholder="예: 스드메 비용이 얼마예요?&#10;본식 드레스 어떻게 고르나요?&#10;웨딩홀 어떻게 골라요?&#10;&#10;한 줄에 하나씩, 많이 쓸수록 시드키워드가 풍부해집니다" style="min-height:120px;" oninput="updateQuestionCount()"></textarea>
+      <label>자주 받는 질문 <span style="font-weight:400; color:#9CA3AF;">(선택)</span></label>
+      <textarea id="questionsInput" placeholder="예: 스드메 비용이 얼마예요?&#10;본식 드레스 어떻게 고르나요?&#10;웨딩홀 어떻게 골라요?&#10;셀프웨딩 가능한가요?&#10;&#10;한 줄에 하나씩, 많이 쓸수록 황금키워드가 풍부해집니다" style="min-height:120px;" oninput="updateQuestionCount()"></textarea>
       <div style="display:flex; justify-content:space-between; margin-top:4px;">
         <div class="hint">질문을 많이 쓸수록 더 다양한 황금키워드를 찾아냅니다</div>
-        <div class="hint" id="questionCount">0/10</div>
+        <div class="hint" id="questionCount">0개</div>
       </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label>직접 추가할 키워드 <span style="font-weight:400; color:#9CA3AF;">(선택)</span></label>
+      <textarea id="seedInput" placeholder="예: 스드메, 본식드레스, 웨딩박람회, 신혼여행&#10;&#10;업계 용어나 AI가 모를 수 있는 키워드를 직접 넣으세요" style="min-height:60px;"></textarea>
+      <div class="hint">쉼표 또는 줄바꿈으로 구분. AI 시드에 합쳐져서 더 정밀한 분석이 됩니다</div>
     </div>
 
     <div class="error-box" id="errorBox"></div>
@@ -264,13 +269,7 @@ var currentSort = { key: 'score', asc: false };
 
 function updateQuestionCount() {
   var lines = document.getElementById('questionsInput').value.split('\n').filter(function(l) { return l.trim().length > 0; });
-  var count = Math.min(lines.length, 10);
-  document.getElementById('questionCount').textContent = count + '/10';
-  if (lines.length > 10) {
-    document.getElementById('questionCount').style.color = '#DC2626';
-  } else {
-    document.getElementById('questionCount').style.color = '#9CA3AF';
-  }
+  document.getElementById('questionCount').textContent = lines.length + '개';
 }
 
 function showError(msg) {
@@ -292,14 +291,7 @@ async function findKeywords() {
   var role = document.getElementById('roleInput').value.trim();
   var target = document.getElementById('targetInput').value.trim();
   var questions = document.getElementById('questionsInput').value.trim();
-
-  // 질문 10개 제한
-  if (questions) {
-    var lines = questions.split('\n').filter(function(l) { return l.trim().length > 0; });
-    if (lines.length > 10) {
-      questions = lines.slice(0, 10).join('\n');
-    }
-  }
+  var userSeeds = document.getElementById('seedInput').value.trim();
 
   hideError();
   if (!field) { showError('내 분야를 입력해주세요.'); return; }
@@ -334,7 +326,7 @@ async function findKeywords() {
     var res = await fetch('/api/keywords', {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify({ field: field, role: role, target: target, questions: questions }),
+      body: JSON.stringify({ field: field, role: role, target: target, questions: questions, userSeeds: userSeeds }),
     });
     var data = await res.json();
 

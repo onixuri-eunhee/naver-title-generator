@@ -91,6 +91,40 @@ ${questions ? `자주 받는 질문:\n${questions}` : ''}
   return JSON.parse(match[0]);
 }
 
+// ─── 네이버 검색 API: 자동완성 키워드 확장 ───
+async function fetchAutoComplete(keyword) {
+  try {
+    const res = await fetch(`https://ac.search.naver.com/nx/ac?q=${encodeURIComponent(keyword)}&con=1&frm=nv&ans=2&r_format=json&r_enc=UTF-8&r_unicode=0&t_koreng=1&run=2&rev=4&q_enc=UTF-8`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    // 자동완성 제안어 추출
+    const items = data.items || [];
+    const suggestions = [];
+    for (const group of items) {
+      if (Array.isArray(group)) {
+        for (const item of group) {
+          if (Array.isArray(item) && item[0]) suggestions.push(item[0]);
+          else if (typeof item === 'string') suggestions.push(item);
+        }
+      }
+    }
+    return suggestions.slice(0, 5);
+  } catch (_) {
+    return [];
+  }
+}
+
+async function expandWithAutoComplete(seedKeywords) {
+  const expanded = new Set(seedKeywords);
+  // 상위 15개 시드에 대해 자동완성 조회 (병렬)
+  const top15 = seedKeywords.slice(0, 15);
+  const results = await Promise.all(top15.map(kw => fetchAutoComplete(kw)));
+  for (const suggestions of results) {
+    for (const s of suggestions) expanded.add(s);
+  }
+  return Array.from(expanded);
+}
+
 // ─── 검색광고 API: 연관키워드 + 검색량 + 경쟁도 ───
 async function fetchSearchAdKeywords(seedKeywords) {
   const API_KEY = process.env.NAVER_AD_API_KEY;
@@ -324,7 +358,7 @@ export default async function handler(req, res) {
     }
   }
 
-  const { field, role, target, questions } = req.body;
+  const { field, role, target, questions, userSeeds } = req.body;
 
   if (!field || !role || !target) {
     if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
@@ -334,8 +368,21 @@ export default async function handler(req, res) {
   try {
     // Phase 1: AI 시드키워드
     console.log(`[KEYWORDS] Phase 1: Generating seed keywords for "${field}"`);
-    const seedKeywords = await generateSeedKeywords(field, role, target, questions);
-    console.log(`[KEYWORDS] Seeds: ${seedKeywords.length}`);
+    let seedKeywords = await generateSeedKeywords(field, role, target, questions);
+
+    // 사용자 직접 시드키워드 병합
+    if (userSeeds) {
+      const manual = userSeeds.split(/[,\n]/).map(s => s.trim()).filter(s => s.length > 0);
+      for (const kw of manual) {
+        if (!seedKeywords.includes(kw)) seedKeywords.push(kw);
+      }
+    }
+    console.log(`[KEYWORDS] Seeds (AI+manual): ${seedKeywords.length}`);
+
+    // Phase 1.5: 자동완성으로 시드 확장
+    console.log(`[KEYWORDS] Phase 1.5: Expanding with autocomplete`);
+    seedKeywords = await expandWithAutoComplete(seedKeywords);
+    console.log(`[KEYWORDS] Seeds (expanded): ${seedKeywords.length}`);
 
     // Phase 2: 검색광고 API — 연관키워드 + 검색량 + 경쟁도
     console.log(`[KEYWORDS] Phase 2: Fetching search volumes`);
