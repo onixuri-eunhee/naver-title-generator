@@ -85,7 +85,7 @@ export async function replaceUrlsWithR2(images, prefix, userId) {
       const ext = img.url.includes('.webp') ? 'webp' : img.url.includes('.jpg') || img.url.includes('.jpeg') ? 'jpg' : 'png';
       const key = `${prefix}/${userId}/${date}/${uuid}-${i + 1}.${ext}`;
       const r2Url = await uploadImageUrlToR2(img.url, key);
-      return { ...img, url: r2Url || img.url, r2Url: r2Url || null, originalUrl: img.url };
+      return { ...img, r2Url: r2Url || null };
     })
   );
 

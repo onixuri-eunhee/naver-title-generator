@@ -668,7 +668,7 @@ export default async function handler(req, res) {
         const r2Url = await uploadImageUrlToR2(url, `images-pro/${userId}/${getKSTDate()}/${Math.random().toString(36).substring(2, 10)}.png`);
         return res.status(200).json({
           mode: 'regenerate_single',
-          image: { url: r2Url || url, marker: markerText || '', prompt: finalPrompt, type: targetType, model: targetModel, originalUrl: url },
+          image: { url, marker: markerText || '', prompt: finalPrompt, type: targetType, model: targetModel, r2Url },
           remaining,
           limit: FREE_DAILY_LIMIT,
         });
@@ -685,7 +685,7 @@ export default async function handler(req, res) {
               const r2Url = await uploadImageUrlToR2(url, `images-pro/${userId}/${getKSTDate()}/${Math.random().toString(36).substring(2, 10)}.png`);
               return res.status(200).json({
                 mode: 'regenerate_single',
-                image: { url: r2Url || url, marker: markerText || '', prompt: fbPrompt, type: 'photo', model: 'fluxr', originalUrl: url },
+                image: { url, marker: markerText || '', prompt: fbPrompt, type: 'photo', model: 'fluxr', r2Url },
                 remaining,
                 limit: FREE_DAILY_LIMIT,
               });

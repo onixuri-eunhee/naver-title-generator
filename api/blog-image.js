@@ -504,7 +504,7 @@ export default async function handler(req, res) {
         const r2Result = await uploadImageUrlToR2(url, `images/${userId}/${getKSTDate()}/${Math.random().toString(36).substring(2, 10)}.png`);
         return res.status(200).json({
           mode: 'regenerate_single',
-          image: { url: r2Result || url, marker: markerText || '', prompt: fullPrompt, type: 'photo', originalUrl: url },
+          image: { url, marker: markerText || '', prompt: fullPrompt, type: 'photo', r2Url: r2Result },
           remaining,
           limit: dailyLimit,
         });
