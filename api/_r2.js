@@ -39,8 +39,8 @@ export async function uploadToR2(key, body, contentType = 'image/png') {
     ContentType: contentType,
   }));
 
-  // R2 공개 URL (커스텀 도메인 없으면 버킷 공개 URL 사용)
-  return `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${bucket}/${key}`;
+  // R2 Public Development URL
+  return `https://pub-cac85a1d3b8d486082bd1bff2fadcaed.r2.dev/${key}`;
 }
 
 /**
