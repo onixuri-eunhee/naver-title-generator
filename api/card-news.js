@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
+import { logUsage } from './_db.js';
 
 // satori, @resvg/resvg-wasm → 동적 import로 지연 로딩
 // (top-level static import는 Vercel Serverless에서 FUNCTION_INVOCATION_FAILED 유발)
@@ -610,6 +611,7 @@ ${blogText.substring(0, 8000)}`;
       });
     }
 
+    logUsage(sessionEmail, 'card-news', null, getClientIp(req));
     return res.status(200).json({
       slides: validated.slides,
       images: pngs,

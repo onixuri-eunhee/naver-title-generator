@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
+import { getDb } from './_db.js';
 
 let redis;
 function getRedis() {
@@ -101,6 +102,18 @@ async function handleSignup(req, res) {
   const wasSet = await getRedis().set(`user:${email}`, JSON.stringify(userData), { nx: true });
   if (!wasSet) {
     return res.status(409).json({ error: '이미 가입된 이메일입니다.' });
+  }
+
+  // Neon 이중 기록 (non-fatal)
+  try {
+    const sql = getDb();
+    await sql`INSERT INTO users (email, name, phone, password_hash, salt, credits, created_at)
+      VALUES (${email}, ${safeName}, ${safePhone}, ${passwordHash}, ${salt.toString('hex')}, ${5}, ${userData.createdAt})
+      ON CONFLICT (email) DO NOTHING`;
+    await sql`INSERT INTO credit_ledger (user_email, amount, type, reason, created_at)
+      VALUES (${email}, ${5}, 'grant', '가입 지급', ${userData.createdAt})`;
+  } catch (dbErr) {
+    console.error('[AUTH] Neon signup write failed (non-fatal):', dbErr.message);
   }
 
   // 가입 즉시 로그인: 세션 토큰 발급

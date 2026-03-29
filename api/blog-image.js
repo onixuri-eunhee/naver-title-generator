@@ -1,6 +1,7 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 import { replaceUrlsWithR2, uploadImageUrlToR2 } from './_r2.js';
+import { logUsage } from './_db.js';
 
 /*
  * 이미지 생성 구조
@@ -692,6 +693,7 @@ ${markersList}`;
         const userId = (email || ip || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
         const r2Images = await replaceUrlsWithR2(validImages, 'images', userId);
 
+        logUsage(email, 'image', 'parse', ip);
         return res.status(200).json({
           mode: 'parse',
           images: r2Images,
@@ -778,6 +780,7 @@ ${markersList}`;
       const userId2 = (email || ip || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
       const r2Images2 = await replaceUrlsWithR2(validImages, 'images', userId2);
 
+      logUsage(email, 'image', 'parse', ip);
       return res.status(200).json({
         mode: 'parse',
         images: r2Images2,
@@ -818,6 +821,7 @@ ${markersList}`;
     const directImages = urls.map(url => ({ url, prompt: fullPrompt }));
     const r2DirectImages = await replaceUrlsWithR2(directImages, 'images', directUserId);
 
+    logUsage(email, 'image', 'direct', ip);
     return res.status(200).json({
       mode: 'direct',
       images: r2DirectImages,

@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
+import { logUsage } from './_db.js';
 
 const FREE_DAILY_LIMIT = 5;
 
@@ -289,6 +290,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ results: [], remaining, limit: FREE_DAILY_LIMIT, fallback: true });
     }
 
+    logUsage(email, 'hook', null, getClientIp(req));
     return res.status(200).json({ results, remaining, limit: FREE_DAILY_LIMIT });
 
   } catch (error) {

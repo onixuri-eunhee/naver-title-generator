@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
+import { logUsage } from './_db.js';
 
 const FREE_DAILY_LIMIT = 5;
 
@@ -262,6 +263,7 @@ ${typeGuide[type] || typeGuide['정보형']}
       });
     }
 
+    logUsage(email, 'thread', null, getClientIp(req));
     return res.status(200).json({ results, remaining, limit: FREE_DAILY_LIMIT });
 
   } catch (error) {

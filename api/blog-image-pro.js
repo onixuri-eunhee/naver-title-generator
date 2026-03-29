@@ -1,6 +1,7 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 import { replaceUrlsWithR2, uploadImageUrlToR2 } from './_r2.js';
+import { logUsage } from './_db.js';
 
 export const config = { maxDuration: 300 };
 
@@ -968,6 +969,7 @@ export default async function handler(req, res) {
       const userId = (sessionEmail || getClientIp(req) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
       const r2Images = await replaceUrlsWithR2(validImages, 'images-pro', userId);
 
+      logUsage(sessionEmail, 'image-pro', 'parse', getClientIp(req));
       return res.status(200).json({
         mode: 'parse',
         images: r2Images,
@@ -1024,6 +1026,7 @@ export default async function handler(req, res) {
     const directUserId = (sessionEmail || getClientIp(req) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
     const r2DirectImages = await replaceUrlsWithR2(validImages, 'images-pro', directUserId);
 
+    logUsage(sessionEmail, 'image-pro', 'direct', getClientIp(req));
     return res.status(200).json({
       mode: 'direct',
       images: r2DirectImages,

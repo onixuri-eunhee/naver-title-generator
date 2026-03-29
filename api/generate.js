@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
+import { logUsage } from './_db.js';
 
 const MEMBER_DAILY_LIMIT = 5;
 
@@ -186,6 +187,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: '글 생성 중 오류가 발생했습니다.' });
     }
 
+    logUsage(email, 'blog', isAutoCorrect ? 'auto_correct' : null, getClientIp(req));
     return res.status(200).json({ ...data, remaining, limit: dailyLimit });
 
   } catch (error) {

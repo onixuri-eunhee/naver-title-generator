@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관리자 대시보드 - 뚝딱툴</title>
+<meta name="robots" content="noindex, nofollow">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,sans-serif; background:#0f172a; color:#e2e8f0; min-height:100vh; }
+.header { background:#1e293b; border-bottom:1px solid #334155; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; }
+.header h1 { font-size:18px; }
+.header .badge { font-size:11px; background:#3b82f6; color:#fff; padding:2px 8px; border-radius:4px; margin-left:8px; }
+.container { max-width:1200px; margin:0 auto; padding:24px; }
+
+/* 인증 */
+.auth-card { background:#1e293b; border-radius:12px; padding:32px; max-width:400px; margin:80px auto; }
+.auth-card input { width:100%; padding:10px 14px; border:1px solid #334155; border-radius:8px; background:#0f172a; color:#e2e8f0; font-size:14px; margin-top:8px; }
+.auth-card button { width:100%; padding:12px; border:none; border-radius:8px; background:#3b82f6; color:#fff; font-size:14px; font-weight:600; cursor:pointer; margin-top:12px; }
+.auth-card .error { color:#f87171; font-size:13px; margin-top:8px; }
+
+/* 요약 카드 */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:24px; }
+.stat-card { background:#1e293b; border-radius:12px; padding:20px; }
+.stat-card .label { font-size:12px; color:#94a3b8; margin-bottom:4px; }
+.stat-card .value { font-size:28px; font-weight:700; }
+.stat-card .value.blue { color:#60a5fa; }
+.stat-card .value.green { color:#4ade80; }
+.stat-card .value.amber { color:#fbbf24; }
+.stat-card .value.purple { color:#a78bfa; }
+
+/* 차트 */
+.charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+@media (max-width:768px) { .charts-grid { grid-template-columns:1fr; } }
+.chart-card { background:#1e293b; border-radius:12px; padding:20px; }
+.chart-card h3 { font-size:14px; color:#94a3b8; margin-bottom:12px; }
+
+/* 테이블 */
+.table-card { background:#1e293b; border-radius:12px; padding:20px; margin-bottom:24px; }
+.table-card h3 { font-size:14px; color:#94a3b8; margin-bottom:12px; }
+.search-bar { display:flex; gap:8px; margin-bottom:12px; }
+.search-bar input { flex:1; padding:8px 12px; border:1px solid #334155; border-radius:8px; background:#0f172a; color:#e2e8f0; font-size:13px; }
+.search-bar button { padding:8px 16px; border:none; border-radius:8px; background:#3b82f6; color:#fff; font-size:13px; cursor:pointer; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { text-align:left; padding:8px 12px; border-bottom:1px solid #334155; color:#94a3b8; font-weight:600; }
+td { padding:8px 12px; border-bottom:1px solid #1e293b; }
+tr:hover { background:#1e293b80; }
+.pagination { display:flex; gap:8px; justify-content:center; margin-top:12px; }
+.pagination button { padding:6px 12px; border:1px solid #334155; border-radius:6px; background:transparent; color:#e2e8f0; cursor:pointer; font-size:12px; }
+.pagination button.active { background:#3b82f6; border-color:#3b82f6; }
+.pagination button:disabled { opacity:0.3; cursor:not-allowed; }
+
+/* 로그 */
+.log-row { display:flex; gap:12px; padding:6px 0; border-bottom:1px solid #1e293b20; font-size:12px; }
+.log-time { color:#64748b; min-width:140px; }
+.log-tool { padding:2px 6px; border-radius:4px; font-size:11px; font-weight:600; }
+.log-tool.title { background:#3b82f620; color:#60a5fa; }
+.log-tool.hook { background:#f59e0b20; color:#fbbf24; }
+.log-tool.thread { background:#8b5cf620; color:#a78bfa; }
+.log-tool.blog { background:#10b98120; color:#34d399; }
+.log-tool.image { background:#ec489920; color:#f472b6; }
+.log-tool.image-pro { background:#f4389920; color:#fb7185; }
+.log-tool.card-news { background:#06b6d420; color:#22d3ee; }
+.log-email { color:#94a3b8; }
+
+.hidden { display:none; }
+.loading { text-align:center; padding:40px; color:#64748b; }
+</style>
+</head>
+<body>
+
+<!-- 인증 화면 -->
+<div id="authScreen" class="auth-card">
+  <h2 style="text-align:center; margin-bottom:16px;">관리자 대시보드</h2>
+  <p style="font-size:13px; color:#94a3b8; text-align:center; margin-bottom:16px;">관리자 계정으로 로그인하세요</p>
+  <input type="email" id="authEmail" placeholder="이메일">
+  <input type="password" id="authPassword" placeholder="비밀번호" style="margin-top:8px;">
+  <button onclick="login()">로그인</button>
+  <div class="error hidden" id="authError"></div>
+</div>
+
+<!-- 대시보드 -->
+<div id="dashboard" class="hidden">
+  <div class="header">
+    <div style="display:flex;align-items:center;">
+      <h1>뚝딱툴 관리자</h1>
+      <span class="badge">ADMIN</span>
+    </div>
+    <button onclick="logout()" style="padding:6px 12px; border:1px solid #475569; border-radius:6px; background:transparent; color:#94a3b8; cursor:pointer; font-size:12px;">로그아웃</button>
+  </div>
+
+  <div class="container">
+    <!-- 요약 -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card"><div class="label">총 가입자</div><div class="value blue" id="statTotal">-</div></div>
+      <div class="stat-card"><div class="label">오늘 가입</div><div class="value green" id="statToday">-</div></div>
+      <div class="stat-card"><div class="label">오늘 생성</div><div class="value amber" id="statUsage">-</div></div>
+      <div class="stat-card"><div class="label">주간 활성 (7일)</div><div class="value purple" id="statActive">-</div></div>
+    </div>
+
+    <!-- 차트 -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>일별 가입 추이 (30일)</h3>
+        <canvas id="signupChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>도구별 사용량 (30일)</h3>
+        <canvas id="toolChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>일별 사용량 추이 (30일)</h3>
+        <canvas id="usageChart"></canvas>
+      </div>
+    </div>
+
+    <!-- 사용자 목록 -->
+    <div class="table-card">
+      <h3>사용자 목록</h3>
+      <div class="search-bar">
+        <input type="text" id="userSearch" placeholder="이메일 또는 이름 검색..." onkeyup="if(event.key==='Enter')searchUsers()">
+        <button onclick="searchUsers()">검색</button>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>이메일</th><th>이름</th><th>전화번호</th><th>크레딧</th><th>가입일</th></tr></thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+      <div class="pagination" id="usersPagination"></div>
+    </div>
+
+    <!-- 최근 사용 로그 -->
+    <div class="table-card">
+      <h3>최근 사용 로그 (50건)</h3>
+      <div id="logsContainer"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+var token = localStorage.getItem('ddukddak_token');
+var currentPage = 1;
+
+// 토큰이 있으면 관리자 확인 후 대시보드 표시
+if (token) checkAdmin();
+
+async function login() {
+  var email = document.getElementById('authEmail').value;
+  var pw = document.getElementById('authPassword').value;
+  var errEl = document.getElementById('authError');
+  errEl.classList.add('hidden');
+
+  try {
+    var res = await fetch('/api/auth?action=login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: pw }),
+    });
+    var data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.classList.remove('hidden'); return; }
+    token = data.token;
+    localStorage.setItem('ddukddak_token', token);
+    checkAdmin();
+  } catch (e) {
+    errEl.textContent = '서버 오류'; errEl.classList.remove('hidden');
+  }
+}
+
+async function checkAdmin() {
+  try {
+    var res = await fetch('/api/auth?action=me', { headers: { 'Authorization': 'Bearer ' + token } });
+    var data = await res.json();
+    if (!res.ok || !data.isAdmin) {
+      document.getElementById('authError').textContent = '관리자 권한이 없습니다.';
+      document.getElementById('authError').classList.remove('hidden');
+      document.getElementById('authScreen').classList.remove('hidden');
+      return;
+    }
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    loadDashboard();
+  } catch (e) {
+    document.getElementById('authScreen').classList.remove('hidden');
+  }
+}
+
+function logout() {
+  localStorage.removeItem('ddukddak_token');
+  token = null;
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('authScreen').classList.remove('hidden');
+}
+
+function apiHeaders() {
+  return { 'Authorization': 'Bearer ' + token };
+}
+
+async function loadDashboard() {
+  loadStats();
+  loadUsers(1);
+  loadLogs();
+}
+
+async function loadStats() {
+  try {
+    var res = await fetch('/api/admin-dashboard?action=stats', { headers: apiHeaders() });
+    var data = await res.json();
+    if (!res.ok) return;
+
+    document.getElementById('statTotal').textContent = data.summary.totalUsers.toLocaleString();
+    document.getElementById('statToday').textContent = data.summary.todaySignups.toLocaleString();
+    document.getElementById('statUsage').textContent = data.summary.todayUsage.toLocaleString();
+    document.getElementById('statActive').textContent = data.summary.weeklyActive.toLocaleString();
+
+    // 가입 추이 차트
+    new Chart(document.getElementById('signupChart'), {
+      type: 'line',
+      data: {
+        labels: data.signupTrend.map(function(r) { return r.date.slice(5); }),
+        datasets: [{ label: '가입', data: data.signupTrend.map(function(r) { return r.count; }), borderColor: '#60a5fa', backgroundColor: '#60a5fa20', fill: true, tension: 0.3 }]
+      },
+      options: chartOpts()
+    });
+
+    // 도구별 차트
+    var toolColors = { title:'#60a5fa', hook:'#fbbf24', thread:'#a78bfa', blog:'#34d399', image:'#f472b6', 'image-pro':'#fb7185', 'card-news':'#22d3ee' };
+    new Chart(document.getElementById('toolChart'), {
+      type: 'doughnut',
+      data: {
+        labels: data.toolUsage.map(function(r) { return r.tool; }),
+        datasets: [{ data: data.toolUsage.map(function(r) { return r.count; }), backgroundColor: data.toolUsage.map(function(r) { return toolColors[r.tool] || '#64748b'; }) }]
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 } } } } }
+    });
+
+    // 사용량 추이 차트
+    new Chart(document.getElementById('usageChart'), {
+      type: 'bar',
+      data: {
+        labels: data.usageTrend.map(function(r) { return r.date.slice(5); }),
+        datasets: [{ label: '생성', data: data.usageTrend.map(function(r) { return r.count; }), backgroundColor: '#fbbf2480', borderColor: '#fbbf24', borderWidth: 1 }]
+      },
+      options: chartOpts()
+    });
+  } catch (e) { console.error('Stats load error:', e); }
+}
+
+function chartOpts() {
+  return {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } },
+      y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' }, beginAtZero: true }
+    }
+  };
+}
+
+async function loadUsers(page) {
+  currentPage = page;
+  var search = document.getElementById('userSearch').value;
+  var url = '/api/admin-dashboard?action=users&page=' + page + '&limit=20';
+  if (search) url += '&search=' + encodeURIComponent(search);
+
+  try {
+    var res = await fetch(url, { headers: apiHeaders() });
+    var data = await res.json();
+    if (!res.ok) return;
+
+    var tbody = document.getElementById('usersBody');
+    tbody.innerHTML = data.users.map(function(u, i) {
+      var num = (data.pagination.page - 1) * data.pagination.limit + i + 1;
+      var date = new Date(u.created_at).toLocaleDateString('ko-KR');
+      return '<tr><td>' + num + '</td><td>' + u.email + '</td><td>' + (u.name || '-') + '</td><td>' + (u.phone || '-') + '</td><td>' + u.credits + '</td><td>' + date + '</td></tr>';
+    }).join('');
+
+    // 페이지네이션
+    var pg = data.pagination;
+    var pgEl = document.getElementById('usersPagination');
+    var html = '';
+    html += '<button ' + (pg.page <= 1 ? 'disabled' : 'onclick="loadUsers(' + (pg.page - 1) + ')"') + '>&lt;</button>';
+    for (var p = 1; p <= pg.pages; p++) {
+      html += '<button class="' + (p === pg.page ? 'active' : '') + '" onclick="loadUsers(' + p + ')">' + p + '</button>';
+    }
+    html += '<button ' + (pg.page >= pg.pages ? 'disabled' : 'onclick="loadUsers(' + (pg.page + 1) + ')"') + '>&gt;</button>';
+    pgEl.innerHTML = html;
+  } catch (e) { console.error('Users load error:', e); }
+}
+
+function searchUsers() { loadUsers(1); }
+
+async function loadLogs() {
+  try {
+    var res = await fetch('/api/admin-dashboard?action=logs&limit=50', { headers: apiHeaders() });
+    var data = await res.json();
+    if (!res.ok) return;
+
+    var container = document.getElementById('logsContainer');
+    container.innerHTML = data.logs.map(function(log) {
+      var time = new Date(log.created_at).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+      var tool = log.tool || 'unknown';
+      return '<div class="log-row">' +
+        '<span class="log-time">' + time + '</span>' +
+        '<span class="log-tool ' + tool + '">' + tool + (log.mode ? ':' + log.mode : '') + '</span>' +
+        '<span class="log-email">' + (log.user_email || log.ip || '-') + '</span>' +
+        '</div>';
+    }).join('');
+  } catch (e) { console.error('Logs load error:', e); }
+}
+</script>
+</body>
+</html>
