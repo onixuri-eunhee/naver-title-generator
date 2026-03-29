@@ -565,9 +565,22 @@ ${blogText.substring(0, 8000)}`;
     const pngs = await renderSlides(validated, theme);
     console.log(`[CARD-NEWS] Rendered ${pngs.length} PNGs`);
 
+    // 5) R2 업로드 (백그라운드 — 실패해도 base64는 반환)
+    let r2Urls = [];
+    try {
+      const { uploadCardNewsToR2 } = await import('./_r2.js');
+      const userId = (email || ip).replace(/[^a-zA-Z0-9]/g, '_');
+      const pngBuffers = pngs.map(b64 => Buffer.from(b64, 'base64'));
+      r2Urls = await uploadCardNewsToR2(userId, pngBuffers);
+      console.log(`[CARD-NEWS] R2 uploaded: ${r2Urls.length} files`);
+    } catch (r2Err) {
+      console.error('[CARD-NEWS] R2 upload failed (non-fatal):', r2Err.message);
+    }
+
     return res.status(200).json({
       slides: validated.slides,
       images: pngs,
+      r2Urls,
       remaining,
       limit: FREE_DAILY_LIMIT,
     });
