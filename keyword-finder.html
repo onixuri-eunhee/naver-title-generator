@@ -171,8 +171,22 @@ tr:hover { background:#FFF7ED; }
   <!-- 사용 현황 -->
   <div class="remaining" id="remainingBar">남은 횟수 확인 중...</div>
 
-  <!-- 입력 카드 -->
+  <!-- 프로필 저장/불러오기 -->
   <div class="card" style="margin-top:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <label style="margin-bottom:0;">내 프로필</label>
+      <div style="display:flex; gap:6px;">
+        <select id="profileSelect" onchange="loadProfile()" style="padding:6px 10px; border:1.5px solid #E5E7EB; border-radius:8px; font-size:12px; font-family:'Noto Sans KR',sans-serif; color:#374151; background:#fff; cursor:pointer;">
+          <option value="">저장된 프로필 선택...</option>
+        </select>
+        <button onclick="saveProfile()" style="padding:6px 12px; border:1.5px solid #ff5f1f; border-radius:8px; background:#fff; color:#ff5f1f; font-size:12px; font-weight:600; cursor:pointer; font-family:'Noto Sans KR',sans-serif;">저장</button>
+        <button onclick="deleteProfile()" style="padding:6px 10px; border:1.5px solid #E5E7EB; border-radius:8px; background:#fff; color:#9CA3AF; font-size:12px; cursor:pointer;">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 입력 카드 -->
+  <div class="card">
     <div style="margin-bottom:14px;">
       <label>내 분야</label>
       <input type="text" id="fieldInput" placeholder="예: 웨딩컨설팅, 육아/리빙, 카페 창업, 맛집 블로그" maxlength="50">
@@ -182,8 +196,9 @@ tr:hover { background:#FFF7ED; }
       <input type="text" id="roleInput" placeholder="예: 웨딩플래너, 육아 블로거, 카페 사장, 맛집 리뷰어" maxlength="50">
     </div>
     <div style="margin-bottom:14px;">
-      <label>타겟 독자</label>
-      <input type="text" id="targetInput" placeholder="예: 예비 신부, 초보 엄마, 예비 창업자, 맛집 탐방러" maxlength="50">
+      <label>타겟 독자 <span style="font-weight:400; color:#9CA3AF;">(<span id="targetCount">0</span>/200)</span></label>
+      <textarea id="targetInput" placeholder="예: 30대 초반 예비 신부. 결혼 준비가 처음이라 뭐부터 해야 할지 모르는 상태. 스드메, 웨딩홀, 예식 비용에 관심이 많고 합리적인 가격을 찾고 있다." maxlength="200" style="min-height:80px;" oninput="document.getElementById('targetCount').textContent=this.value.length"></textarea>
+      <div class="hint">타겟 페르소나를 구체적으로 쓸수록 정확한 키워드가 나옵니다</div>
     </div>
     <div style="margin-bottom:14px;">
       <label>자주 받는 질문 <span style="font-weight:400; color:#9CA3AF;">(선택)</span></label>
@@ -266,6 +281,86 @@ var currentSort = { key: 'score', asc: false };
     document.getElementById('remainingBar').className = 'remaining';
   }
 })();
+
+// ─── 프로필 저장/불러오기 ───
+function getProfiles() {
+  try { return JSON.parse(localStorage.getItem('kw_profiles') || '[]'); } catch (_) { return []; }
+}
+
+function renderProfileSelect() {
+  var profiles = getProfiles();
+  var sel = document.getElementById('profileSelect');
+  sel.innerHTML = '<option value="">저장된 프로필 선택...</option>';
+  profiles.forEach(function(p, i) {
+    var opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+}
+
+function saveProfile() {
+  var field = document.getElementById('fieldInput').value.trim();
+  var role = document.getElementById('roleInput').value.trim();
+  var target = document.getElementById('targetInput').value.trim();
+  if (!field && !role && !target) { showError('저장할 내용을 입력해주세요.'); return; }
+
+  var name = prompt('프로필 이름을 입력하세요:', field || role || '내 프로필');
+  if (!name) return;
+
+  var profiles = getProfiles();
+  // 같은 이름이 있으면 덮어쓰기
+  var existing = profiles.findIndex(function(p) { return p.name === name; });
+  var profile = { name: name, field: field, role: role, target: target };
+
+  if (existing >= 0) {
+    profiles[existing] = profile;
+  } else {
+    profiles.push(profile);
+  }
+
+  localStorage.setItem('kw_profiles', JSON.stringify(profiles));
+  renderProfileSelect();
+  // 방금 저장한 프로필 선택
+  var sel = document.getElementById('profileSelect');
+  for (var i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].textContent === name) { sel.selectedIndex = i; break; }
+  }
+  hideError();
+}
+
+function loadProfile() {
+  var sel = document.getElementById('profileSelect');
+  var idx = sel.value;
+  if (idx === '') return;
+
+  var profiles = getProfiles();
+  var p = profiles[parseInt(idx)];
+  if (!p) return;
+
+  document.getElementById('fieldInput').value = p.field || '';
+  document.getElementById('roleInput').value = p.role || '';
+  document.getElementById('targetInput').value = p.target || '';
+  document.getElementById('targetCount').textContent = (p.target || '').length;
+}
+
+function deleteProfile() {
+  var sel = document.getElementById('profileSelect');
+  var idx = sel.value;
+  if (idx === '') { showError('삭제할 프로필을 선택해주세요.'); return; }
+
+  var profiles = getProfiles();
+  var name = profiles[parseInt(idx)]?.name;
+  if (!confirm('"' + name + '" 프로필을 삭제할까요?')) return;
+
+  profiles.splice(parseInt(idx), 1);
+  localStorage.setItem('kw_profiles', JSON.stringify(profiles));
+  renderProfileSelect();
+  hideError();
+}
+
+// 페이지 로드 시 프로필 목록 표시
+renderProfileSelect();
 
 function updateQuestionCount() {
   var lines = document.getElementById('questionsInput').value.split('\n').filter(function(l) { return l.trim().length > 0; });
