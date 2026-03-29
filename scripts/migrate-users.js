@@ -24,14 +24,14 @@ async function main() {
   console.log(isDryRun ? '=== DRY RUN MODE ===' : '=== MIGRATION START ===');
 
   // 1) Redis에서 user:* 키 전체 조회
-  let cursor = 0;
+  let cursor = '0';
   const allKeys = [];
   do {
     const [nextCursor, keys] = await redis.scan(cursor, { match: 'user:*', count: 100 });
-    cursor = nextCursor;
+    cursor = String(nextCursor);
     // user_session:* 제외
     allKeys.push(...keys.filter(k => !k.startsWith('user_session:')));
-  } while (cursor !== 0);
+  } while (cursor !== '0');
 
   console.log(`Found ${allKeys.length} user keys in Redis`);
 
