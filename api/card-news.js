@@ -20,7 +20,7 @@ async function getResvg() {
   return { Resvg: _Resvg, initWasm: _initWasm };
 }
 
-export const config = { maxDuration: 120 };
+export const config = { maxDuration: 180 };
 
 /**
  * 카드뉴스 생성 API
@@ -601,7 +601,13 @@ ${blogText.substring(0, 8000)}`;
       }
       console.log(`[CARD-NEWS] R2 uploaded: ${r2Urls.length} files`);
     } catch (r2Err) {
-      console.error('[CARD-NEWS] R2 upload failed (non-fatal):', r2Err.message);
+      console.error('[CARD-NEWS] R2 upload failed (non-fatal):', r2Err.message, r2Err.stack);
+      console.error('[CARD-NEWS] R2 env check:', {
+        hasAccountId: !!process.env.R2_ACCOUNT_ID,
+        hasAccessKey: !!process.env.R2_ACCESS_KEY_ID,
+        hasSecret: !!process.env.R2_SECRET_ACCESS_KEY,
+        hasBucket: !!process.env.R2_BUCKET_NAME,
+      });
     }
 
     return res.status(200).json({
