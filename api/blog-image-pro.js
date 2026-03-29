@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
+import { replaceUrlsWithR2, uploadImageUrlToR2 } from './_r2.js';
 
 export const config = { maxDuration: 300 };
 
@@ -662,9 +663,12 @@ export default async function handler(req, res) {
       try {
         const url = await generateByModel(targetModel, finalPrompt);
         if (!url) throw new Error('No image URL');
+        // R2 업로드 (non-fatal)
+        const userId = (sessionEmail || getClientIp(req) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
+        const r2Url = await uploadImageUrlToR2(url, `images-pro/${userId}/${getKSTDate()}/${Math.random().toString(36).substring(2, 10)}.png`);
         return res.status(200).json({
           mode: 'regenerate_single',
-          image: { url, marker: markerText || '', prompt: finalPrompt, type: targetType, model: targetModel },
+          image: { url: r2Url || url, marker: markerText || '', prompt: finalPrompt, type: targetType, model: targetModel, originalUrl: url },
           remaining,
           limit: FREE_DAILY_LIMIT,
         });
@@ -677,9 +681,11 @@ export default async function handler(req, res) {
               ', no text, no letters, photography style';
             const url = await callFluxRealism(fbPrompt);
             if (url) {
+              const userId = (sessionEmail || getClientIp(req) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
+              const r2Url = await uploadImageUrlToR2(url, `images-pro/${userId}/${getKSTDate()}/${Math.random().toString(36).substring(2, 10)}.png`);
               return res.status(200).json({
                 mode: 'regenerate_single',
-                image: { url, marker: markerText || '', prompt: fbPrompt, type: 'photo', model: 'fluxr' },
+                image: { url: r2Url || url, marker: markerText || '', prompt: fbPrompt, type: 'photo', model: 'fluxr', originalUrl: url },
                 remaining,
                 limit: FREE_DAILY_LIMIT,
               });
@@ -958,9 +964,13 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
       }
 
+      // R2 업로드 (non-fatal)
+      const userId = (sessionEmail || getClientIp(req) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
+      const r2Images = await replaceUrlsWithR2(validImages, 'images-pro', userId);
+
       return res.status(200).json({
         mode: 'parse',
-        images: validImages,
+        images: r2Images,
         thumbnailText: thumbnailText || '',
         remaining,
         limit: FREE_DAILY_LIMIT,
@@ -1010,9 +1020,13 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: '이미지 생성에 실패했습니다.' });
     }
 
+    // R2 업로드 (non-fatal)
+    const directUserId = (sessionEmail || getClientIp(req) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
+    const r2DirectImages = await replaceUrlsWithR2(validImages, 'images-pro', directUserId);
+
     return res.status(200).json({
       mode: 'direct',
-      images: validImages,
+      images: r2DirectImages,
       thumbnailText: thumbnailText || '',
       remaining,
       limit: FREE_DAILY_LIMIT,
