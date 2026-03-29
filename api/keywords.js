@@ -66,7 +66,7 @@ async function generateSeedKeywords(field, role, target, questions) {
 타겟 독자: ${target}
 ${questions ? `자주 받는 질문:\n${questions}` : ''}
 
-위 정보를 바탕으로 타겟 독자가 네이버에서 검색할 법한 키워드 20~30개를 JSON 배열로 출력하세요.`;
+위 정보를 바탕으로 타겟 독자가 네이버에서 검색할 법한 키워드 ${questions ? '30~40' : '20~30'}개를 JSON 배열로 출력하세요.`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
