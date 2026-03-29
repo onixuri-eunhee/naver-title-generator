@@ -243,6 +243,22 @@ select:focus, input:focus, textarea:focus {
 .marker-add-btn:hover { background: #F0F4FF; border-color: #8B5CF6; }
 .marker-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* AI 마커 추천 버튼 */
+.suggest-markers-wrap { display: none; margin-top: 12px; text-align: center; }
+.suggest-markers-wrap.show { display: block; }
+.suggest-markers-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 20px; border: 1.5px solid #8B5CF6; border-radius: 10px;
+  background: #fff; color: #7C3AED;
+  font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.suggest-markers-btn:hover { background: #F5F3FF; border-color: #7C3AED; }
+.suggest-markers-btn:disabled { opacity: 0.5; cursor: not-allowed; border-color: #E5E7EB; color: #9CA3AF; background: #F9FAFB; }
+.suggest-markers-hint {
+  font-size: 12px; color: #9CA3AF; margin-top: 6px;
+}
+
 .generate-btn {
   width: 100%; padding: 15px; margin-top: 16px;
   background: linear-gradient(135deg, #8B5CF6, #6D28D9); color: #fff;
@@ -392,7 +408,14 @@ footer a:hover { text-decoration: underline; }
     <div class="tab-content active" id="tab-parse">
       <div style="margin-bottom:12px;">
         <label>블로그 글 붙여넣기</label>
-        <textarea id="blogTextInput" placeholder="블로그 글 생성기에서 작성한 글을 붙여넣으세요. (사진: ...) 마커가 포함된 글을 넣으면 각 위치에 맞는 이미지를 생성합니다." style="min-height:200px;" oninput="detectMarkers()"></textarea>
+        <textarea id="blogTextInput" placeholder="블로그 글을 붙여넣으세요.&#10;&#10;• (사진: ...) 마커가 있는 글 → 각 위치에 맞는 이미지 자동 생성&#10;• 마커가 없는 글 → AI가 이미지 위치를 추천해드립니다" style="min-height:200px;" oninput="detectMarkers()"></textarea>
+      </div>
+
+      <div class="suggest-markers-wrap" id="suggestMarkersWrap">
+        <button class="suggest-markers-btn" id="suggestMarkersBtn" onclick="suggestMarkers()">
+          <span>&#x2728;</span> AI 마커 추천
+        </button>
+        <div class="suggest-markers-hint">글에 (사진: ...) 마커가 없으면 AI가 이미지 위치를 추천합니다</div>
       </div>
 
       <div class="marker-preview" id="markerPreview">
@@ -500,9 +523,15 @@ function detectMarkers() {
   if (markers.length === 0) {
     editableMarkers = [];
     document.getElementById('markerPreview').classList.remove('show');
+    // 글이 있으면 AI 마커 추천 버튼 표시
+    var hasText = text.trim().length > 0;
+    document.getElementById('suggestMarkersWrap').classList.toggle('show', hasText);
     updateGenBtnText();
     return;
   }
+
+  // 마커가 있으면 추천 버튼 숨김
+  document.getElementById('suggestMarkersWrap').classList.remove('show');
 
   editableMarkers = markers.slice();
   renderMarkerEditor();
@@ -515,9 +544,14 @@ function renderMarkerEditor() {
 
   if (editableMarkers.length === 0) {
     preview.classList.remove('show');
+    // 마커 전부 삭제 시 글이 있으면 AI 추천 버튼 다시 표시
+    var hasText = document.getElementById('blogTextInput').value.trim().length > 0;
+    document.getElementById('suggestMarkersWrap').classList.toggle('show', hasText);
     updateGenBtnText();
     return;
   }
+  // 마커가 있으면 추천 버튼 숨김
+  document.getElementById('suggestMarkersWrap').classList.remove('show');
 
   preview.classList.add('show');
   title.textContent = '이미지 마커 ' + editableMarkers.length + '개 (수정/삭제 가능)';
@@ -584,6 +618,59 @@ function updateGenBtnText() {
   } else {
     btn.textContent = '이미지 ' + count + '장 생성하기';
     btn.disabled = false;
+  }
+}
+
+// ─── AI 마커 추천 ───
+async function suggestMarkers() {
+  var blogText = document.getElementById('blogTextInput').value.trim();
+  if (!blogText) return;
+
+  var btn = document.getElementById('suggestMarkersBtn');
+  var hint = document.querySelector('.suggest-markers-hint');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-spinner" style="width:16px;height:16px;border-width:2px;margin:0;display:inline-block;vertical-align:middle;"></span> AI가 이미지 위치를 분석하고 있습니다...';
+  hint.style.display = 'none';
+  hideErrors();
+
+  try {
+    var headers = { 'Content-Type': 'application/json' };
+    var _tk = localStorage.getItem('ddukddak_token');
+    if (_tk) headers['Authorization'] = 'Bearer ' + _tk;
+    var res = await fetch('/api/blog-image', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ mode: 'suggest_markers', blogText: blogText }),
+    });
+    var data = await res.json();
+
+    if (!res.ok) {
+      showError('errorBox1', data.error || 'AI 마커 추천에 실패했습니다.');
+      btn.disabled = false;
+      btn.innerHTML = '<span>&#x2728;</span> AI 마커 추천';
+      hint.style.display = '';
+      return;
+    }
+
+    if (!data.markers || data.markers.length === 0) {
+      showError('errorBox1', 'AI가 마커를 추천하지 못했습니다. 다시 시도해주세요.');
+      btn.disabled = false;
+      btn.innerHTML = '<span>&#x2728;</span> AI 마커 추천';
+      hint.style.display = '';
+      return;
+    }
+
+    // 추천된 마커를 editableMarkers에 설정
+    editableMarkers = data.markers.map(function(m) { return m.text; }).slice(0, 10);
+    // 추천 버튼 숨기고 마커 편집 UI 표시
+    document.getElementById('suggestMarkersWrap').classList.remove('show');
+    renderMarkerEditor();
+
+  } catch(e) {
+    showError('errorBox1', '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    btn.disabled = false;
+    btn.innerHTML = '<span>&#x2728;</span> AI 마커 추천';
+    hint.style.display = '';
   }
 }
 
