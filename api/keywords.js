@@ -225,7 +225,10 @@ async function fetchSearchAdKeywords(seedKeywords) {
       });
 
       if (!res.ok) {
-        console.error(`[KEYWORDS] SearchAd API error: ${res.status}`);
+        const errBody = await res.text().catch(() => '');
+        console.error(`[KEYWORDS] SearchAd batch ${i/5} error: ${res.status} ${errBody.slice(0, 200)}`);
+        // 첫 배치 에러를 디버그에 저장
+        if (i === 0) allResults._firstError = { status: res.status, body: errBody.slice(0, 150), url: `${uri}?hintKeywords=${hintKeywords.slice(0, 60)}&showDetail=1` };
         continue;
       }
 
@@ -510,7 +513,10 @@ export default async function handler(req, res) {
 
     // 진단 정보 (디버깅용, 관리자에게만)
     const _debug = isAdmin ? {
-      _v: 'v10-manual-url-trim',
+      _v: 'v11-url-debug',
+      firstBatchUrl: searchData._firstError?.url || 'no_error',
+      firstBatchError: searchData._firstError || null,
+      apiKeyLen: (process.env.NAVER_AD_API_KEY || '').length,
       seedCount: seedKeywords.length,
       seedSample: seedKeywords.slice(0, 3),
       searchAdTotal: searchData.size,
