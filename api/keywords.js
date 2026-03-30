@@ -211,6 +211,10 @@ async function fetchSearchAdKeywords(seedKeywords) {
     .map(kw => kw.replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim())
     .filter(kw => kw.length >= 2);
 
+  console.log(`[KEYWORDS] Cleaned seeds: ${cleanKeywords.length} (from ${seedKeywords.length}). Sample: ${cleanKeywords.slice(0, 3).join(', ')}`);
+  allResults._cleanedCount = cleanKeywords.length;
+  allResults._cleanedSample = cleanKeywords.slice(0, 5);
+
   // 시드키워드를 5개씩 배치 호출 (API 제한)
   for (let i = 0; i < cleanKeywords.length; i += 5) {
     const batch = cleanKeywords.slice(i, i + 5);
@@ -524,7 +528,11 @@ export default async function handler(req, res) {
 
     // 진단 정보 (디버깅용, 관리자에게만)
     const _debug = isAdmin ? {
+      _v: 'v3-sanitize',
       seedCount: seedKeywords.length,
+      seedSample: seedKeywords.slice(0, 3),
+      cleanedCount: searchData._cleanedCount || 0,
+      cleanedSample: searchData._cleanedSample || [],
       searchAdTotal: searchData.size,
       searchAdErrors: searchData._apiErrors || [],
       allCandidates: allCandidates.length,
