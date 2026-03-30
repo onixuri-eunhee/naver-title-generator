@@ -508,6 +508,17 @@ export default async function handler(req, res) {
     if (candidates.length > 0) console.log(`[KEYWORDS] First candidate: "${candidates[0].keyword}" (${candidates[0].monthlySearch})`);
     if (relevantCandidates.length === 0 && allCandidates.length > 0) console.log(`[KEYWORDS] WARNING: 0 relevant from ${allCandidates.length} candidates. First all: "${allCandidates[0].keyword}"`);
 
+    // 진단 정보 (디버깅용, 관리자에게만)
+    const _debug = isAdmin ? {
+      seedCount: seedKeywords.length,
+      searchAdTotal: searchData.size,
+      allCandidates: allCandidates.length,
+      relevantCandidates: relevantCandidates.length,
+      finalCandidates: candidates.length,
+      coreWordsTop10: coreWords.slice(0, 10),
+      sampleAllKeywords: allCandidates.slice(0, 5).map(k => k.keyword),
+    } : undefined;
+
     if (candidates.length === 0) {
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
       return res.status(200).json({
@@ -515,6 +526,7 @@ export default async function handler(req, res) {
         totalFound: 0,
         seedKeywords,
         message: '검색량이 있는 키워드를 찾지 못했습니다. 다른 분야나 타겟으로 시도해보세요.',
+        _debug,
       });
     }
 
@@ -572,6 +584,7 @@ export default async function handler(req, res) {
       seedKeywords,
       remaining: Math.max(0, remaining),
       limit: FREE_DAILY_LIMIT,
+      _debug,
     });
 
   } catch (error) {

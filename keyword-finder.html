@@ -490,6 +490,9 @@ async function findKeywords() {
     setProgress(100, '완료!');
     setTimeout(function() { document.getElementById('progressWrap').classList.remove('show'); }, 800);
 
+    // 디버그 정보 (관리자용)
+    if (data._debug) console.log('[황금키워드 디버그]', JSON.stringify(data._debug, null, 2));
+
     // 결과 표시
     allKeywords = data.keywords || [];
     renderTopKeywords(allKeywords.slice(0, 10));
