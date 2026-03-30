@@ -209,12 +209,13 @@ async function fetchSearchAdKeywords(seedKeywords) {
     .map(kw => kw.replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim())
     .filter(kw => kw.length >= 2);
 
+  console.log(`[KEYWORDS] SafeSeeds: ${safeSeeds.length} from ${seedKeywords.length}. Sample: [${safeSeeds.slice(0,3).join(', ')}]`);
+
   for (let i = 0; i < safeSeeds.length; i += 5) {
     const batch = safeSeeds.slice(i, i + 5);
-    const params = new URLSearchParams({
-      hintKeywords: batch.join(','),
-      showDetail: '1',
-    });
+    const hintValue = batch.join(',');
+    // URLSearchParams 대신 수동 URL 구성 (쉼표 %2C 인코딩 방지)
+    const queryString = `hintKeywords=${encodeURIComponent(hintValue).replace(/%2C/gi, ',')}&showDetail=1`;
 
     try {
       const ts = String(Date.now());
@@ -222,7 +223,7 @@ async function fetchSearchAdKeywords(seedKeywords) {
       h.update(`${ts}.${method}.${uri}`);
       const sig = h.digest('base64');
 
-      const res = await fetch(`https://api.searchad.naver.com${uri}?${params}`, {
+      const res = await fetch(`https://api.searchad.naver.com${uri}?${queryString}`, {
         headers: {
           'X-Timestamp': ts,
           'X-API-KEY': API_KEY,
@@ -262,6 +263,7 @@ async function fetchSearchAdKeywords(seedKeywords) {
   }
 
   allResults._apiErrors = _apiErrors;
+  allResults._safeSeedsSample = safeSeeds.slice(0, 5);
   return allResults;
 }
 
@@ -521,7 +523,8 @@ export default async function handler(req, res) {
 
     // 진단 정보 (디버깅용, 관리자에게만)
     const _debug = isAdmin ? {
-      _v: 'v5-prompt-revert-sanitize',
+      _v: 'v6-manual-url',
+      safeSeedsSample: searchData._safeSeedsSample || [],
       seedCount: seedKeywords.length,
       searchAdTotal: searchData.size,
       searchAdErrors: searchData._apiErrors || [],
