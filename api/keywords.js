@@ -189,9 +189,9 @@ function isRelevantKeyword(keyword, coreWords) {
 // ─── 검색광고 API: 연관키워드 + 검색량 + 경쟁도 ───
 // ★ 원래 작동하던 코드 그대로 복원 (디버그/테스트 전부 제거)
 async function fetchSearchAdKeywords(seedKeywords) {
-  const API_KEY = process.env.NAVER_AD_API_KEY;
-  const SECRET = process.env.NAVER_AD_SECRET_KEY;
-  const CUSTOMER_ID = process.env.NAVER_AD_CUSTOMER_ID;
+  const API_KEY = (process.env.NAVER_AD_API_KEY || '').replace(/\\n|\n/g, '').trim();
+  const SECRET = (process.env.NAVER_AD_SECRET_KEY || '').trim();
+  const CUSTOMER_ID = (process.env.NAVER_AD_CUSTOMER_ID || '').trim();
 
   const timestamp = String(Date.now());
   const method = 'GET';
@@ -203,12 +203,11 @@ async function fetchSearchAdKeywords(seedKeywords) {
   const allResults = new Map();
 
   // 시드키워드를 5개씩 배치 호출 (API 제한)
+  // URLSearchParams 대신 수동 URL: Vercel 런타임 호환성 보장
   for (let i = 0; i < seedKeywords.length; i += 5) {
     const batch = seedKeywords.slice(i, i + 5);
-    const params = new URLSearchParams({
-      hintKeywords: batch.join(','),
-      showDetail: '1',
-    });
+    const hintKeywords = batch.map(kw => encodeURIComponent(kw.replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim()).replace(/%20/g, '+')).join(',');
+    if (!hintKeywords) continue;
 
     try {
       const ts = String(Date.now());
@@ -216,7 +215,7 @@ async function fetchSearchAdKeywords(seedKeywords) {
       h.update(`${ts}.${method}.${uri}`);
       const sig = h.digest('base64');
 
-      const res = await fetch(`https://api.searchad.naver.com${uri}?${params}`, {
+      const res = await fetch(`https://api.searchad.naver.com${uri}?hintKeywords=${hintKeywords}&showDetail=1`, {
         headers: {
           'X-Timestamp': ts,
           'X-API-KEY': API_KEY,
@@ -511,7 +510,7 @@ export default async function handler(req, res) {
 
     // 진단 정보 (디버깅용, 관리자에게만)
     const _debug = isAdmin ? {
-      _v: 'v9-clean-restore',
+      _v: 'v10-manual-url-trim',
       seedCount: seedKeywords.length,
       seedSample: seedKeywords.slice(0, 3),
       searchAdTotal: searchData.size,
