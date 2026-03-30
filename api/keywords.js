@@ -212,10 +212,10 @@ async function fetchSearchAdKeywords(seedKeywords) {
   console.log(`[KEYWORDS] SafeSeeds: ${safeSeeds.length} from ${seedKeywords.length}. Sample: [${safeSeeds.slice(0,3).join(', ')}]`);
 
   for (let i = 0; i < safeSeeds.length; i += 5) {
-    const batch = safeSeeds.slice(i, i + 5);
-    const hintValue = batch.join(',');
-    // URLSearchParams 대신 수동 URL 구성 (쉼표 %2C 인코딩 방지)
-    const queryString = `hintKeywords=${encodeURIComponent(hintValue).replace(/%2C/gi, ',')}&showDetail=1`;
+    const batch = safeSeeds.slice(i, i + 5).map(kw => kw.slice(0, 50)); // 키워드당 50자 제한
+    // 각 키워드를 개별 인코딩, 쉼표는 리터럴로 유지 (URLSearchParams 사용 금지)
+    const hintKeywords = batch.map(kw => encodeURIComponent(kw)).join(',');
+    const queryString = `hintKeywords=${hintKeywords}&showDetail=1`;
 
     try {
       const ts = String(Date.now());
