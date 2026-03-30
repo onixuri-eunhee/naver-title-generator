@@ -51,14 +51,18 @@ async function resolveSessionEmail(token) {
 
 // ─── Claude Haiku: 시드키워드 생성 ───
 async function generateSeedKeywords(field, role, target, questions) {
-  const systemPrompt = `You are a Korean SEO keyword expert. Generate 20-30 seed keywords that the target audience would search on Naver.
+  const systemPrompt = `You are a Korean SEO keyword expert. Generate seed keywords that the target audience would search on Naver.
 
 ## RULES
 - Keywords must be in Korean
+- STRICTLY related to the given field/industry. Do NOT include unrelated topics.
 - Mix of short-tail (2 words) and long-tail (3-5 words) keywords
 - Include informational keywords (방법, 추천, 비용, 후기, 비교, 차이)
 - Include question-type keywords (~하는 법, ~하는 방법, ~어디서)
-- Be specific to the field and target audience
+- Extract key characteristics from the target audience description and create keywords combining those characteristics with the field
+  Example: field="웨딩컨설팅", target mentions "해외거주" → include "해외거주 한국 결혼식", "해외에서 한국 웨딩 준비" etc.
+  Example: field="카페 창업", target mentions "30대 직장인" → include "직장인 카페 창업", "30대 창업" etc.
+- Also include the field's core short-tail keywords (e.g., "웨딩", "결혼", "스드메")
 - Output ONLY a JSON array of strings, nothing else`;
 
   const userPrompt = `분야: ${field}
