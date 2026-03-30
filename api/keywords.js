@@ -218,7 +218,8 @@ async function fetchSearchAdKeywords(seedKeywords) {
     const testH = crypto.createHmac('sha256', SECRET);
     testH.update(`${testTs}.${method}.${uri}`);
     const testSig = testH.digest('base64');
-    const testRes = await fetch(`https://api.searchad.naver.com${uri}?hintKeywords=${encodeURIComponent(field)}&showDetail=1`, {
+    const testWord = safeSeeds[0] || '웨딩';
+    const testRes = await fetch(`https://api.searchad.naver.com${uri}?hintKeywords=${encodeURIComponent(testWord)}&showDetail=1`, {
       headers: { 'X-Timestamp': testTs, 'X-API-KEY': API_KEY, 'X-Customer': CUSTOMER_ID, 'X-Signature': testSig },
     });
     if (testRes.ok) {
