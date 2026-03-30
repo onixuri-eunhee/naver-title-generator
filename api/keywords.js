@@ -457,12 +457,26 @@ export default async function handler(req, res) {
     const allCandidates = Array.from(searchData.values()).filter(k => k.monthlySearch >= 50);
     const relevantCandidates = allCandidates.filter(k => isRelevantKeyword(k.keyword, coreWords));
 
-    // 필터를 항상 적용 (fallback 없음 — 엉뚱한 키워드가 나오는 것보다 적은 결과가 나음)
-    const candidates = relevantCandidates
+    // 적합 키워드 우선, 최소 5개 보장 (부족분만 비적합에서 채움)
+    const MIN_RESULTS = 5;
+    let candidates;
+    if (relevantCandidates.length >= MIN_RESULTS) {
+      // 적합 키워드만 사용
+      candidates = relevantCandidates;
+    } else {
+      // 적합 키워드 + 부족분을 비적합에서 보충
+      const relevantSet = new Set(relevantCandidates.map(k => k.keyword));
+      const filler = allCandidates
+        .filter(k => !relevantSet.has(k.keyword))
+        .sort((a, b) => b.monthlySearch - a.monthlySearch)
+        .slice(0, MIN_RESULTS - relevantCandidates.length);
+      candidates = [...relevantCandidates, ...filler];
+    }
+    candidates = candidates
       .sort((a, b) => b.monthlySearch - a.monthlySearch)
       .slice(0, 80);
 
-    console.log(`[KEYWORDS] Filtered: ${allCandidates.length} → ${relevantCandidates.length} relevant (using ${candidates.length})`);
+    console.log(`[KEYWORDS] Filtered: ${allCandidates.length} → ${relevantCandidates.length} relevant, ${candidates.length} total`);
 
     if (candidates.length === 0) {
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
