@@ -120,8 +120,8 @@ async function fetchAutoComplete(keyword) {
 
 async function expandWithAutoComplete(seedKeywords) {
   const expanded = new Set(seedKeywords);
-  // 상위 5개 시드에 대해 자동완성 조회 (발산 방지: 15→5)
-  const top5 = seedKeywords.slice(0, 5);
+  // 상위 15개 시드에 대해 자동완성 조회 (병렬)
+  const top5 = seedKeywords.slice(0, 15);
   const results = await Promise.all(top5.map(kw => fetchAutoComplete(kw)));
   for (const suggestions of results) {
     for (const s of suggestions) expanded.add(s);
@@ -206,18 +206,9 @@ async function fetchSearchAdKeywords(seedKeywords) {
   const allResults = new Map();
   const _apiErrors = []; // 진단용
 
-  // 시드키워드 정제 (특수문자 제거 — 네이버 검색광고 API는 한글/영문/숫자/공백만 허용)
-  const cleanKeywords = seedKeywords
-    .map(kw => kw.replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim())
-    .filter(kw => kw.length >= 2);
-
-  console.log(`[KEYWORDS] Cleaned seeds: ${cleanKeywords.length} (from ${seedKeywords.length}). Sample: ${cleanKeywords.slice(0, 3).join(', ')}`);
-  allResults._cleanedCount = cleanKeywords.length;
-  allResults._cleanedSample = cleanKeywords.slice(0, 5);
-
   // 시드키워드를 5개씩 배치 호출 (API 제한)
-  for (let i = 0; i < cleanKeywords.length; i += 5) {
-    const batch = cleanKeywords.slice(i, i + 5);
+  for (let i = 0; i < seedKeywords.length; i += 5) {
+    const batch = seedKeywords.slice(i, i + 5);
     const params = new URLSearchParams({
       hintKeywords: batch.join(','),
       showDetail: '1',
@@ -265,7 +256,7 @@ async function fetchSearchAdKeywords(seedKeywords) {
     }
 
     // API rate limit 보호
-    if (i + 5 < cleanKeywords.length) await new Promise(r => setTimeout(r, 200));
+    if (i + 5 < seedKeywords.length) await new Promise(r => setTimeout(r, 200));
   }
 
   allResults._apiErrors = _apiErrors;
@@ -528,11 +519,8 @@ export default async function handler(req, res) {
 
     // 진단 정보 (디버깅용, 관리자에게만)
     const _debug = isAdmin ? {
-      _v: 'v3-sanitize',
+      _v: 'v4-revert-api',
       seedCount: seedKeywords.length,
-      seedSample: seedKeywords.slice(0, 3),
-      cleanedCount: searchData._cleanedCount || 0,
-      cleanedSample: searchData._cleanedSample || [],
       searchAdTotal: searchData.size,
       searchAdErrors: searchData._apiErrors || [],
       allCandidates: allCandidates.length,
