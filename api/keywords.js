@@ -195,19 +195,21 @@ function normalizeSearchAdSeedKeywords(seedKeywords) {
   const seen = new Set();
 
   for (const rawKeyword of seedKeywords) {
-    const cleaned = String(rawKeyword || '')
+    const raw = String(rawKeyword || '');
+    const cleaned = raw
       .replace(/[^가-힣a-zA-Z0-9\s]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 50);
+    const query = cleaned.replace(/\s+/g, '').slice(0, 50);
 
-    if (cleaned.length < 2) {
-      if (rawKeyword) droppedSeeds.push({ raw: rawKeyword, cleaned });
+    if (query.length < 2) {
+      if (rawKeyword) droppedSeeds.push({ raw, cleaned, query });
       continue;
     }
-    if (seen.has(cleaned)) continue;
-    seen.add(cleaned);
-    safeSeeds.push(cleaned);
+    if (seen.has(query)) continue;
+    seen.add(query);
+    safeSeeds.push({ raw, cleaned, query });
   }
 
   return { safeSeeds, droppedSeeds };
@@ -233,13 +235,22 @@ async function fetchSearchAdKeywords(seedKeywords) {
   allResults._safeSeedsSample = safeSeeds.slice(0, 5);
   allResults._droppedSeedsSample = droppedSeeds.slice(0, 5);
 
-  // 시드키워드를 5개씩 배치 호출 (API 제한)
-  // URLSearchParams 대신 수동 URL: Vercel 런타임 호환성 보장
-  for (let i = 0; i < safeSeeds.length; i += 5) {
-    const batch = safeSeeds.slice(i, i + 5);
-    const hintKeywords = batch.map(kw => encodeURIComponent(kw).replace(/%20/g, '+')).join(',');
+  // 한 시드씩 호출해 유효하지 않은 시드가 전체 배치를 깨지 않도록 격리
+  for (let i = 0; i < safeSeeds.length; i += 1) {
+    const seed = safeSeeds[i];
+    const hintKeywords = encodeURIComponent(seed.query);
     if (!hintKeywords) continue;
-    if (i === 0) allResults._firstBatch = { batch, lengths: batch.map(kw => kw.length) };
+    if (i === 0) {
+      allResults._firstBatch = {
+        raw: seed.raw,
+        cleaned: seed.cleaned,
+        query: seed.query,
+        lengths: {
+          cleaned: seed.cleaned.length,
+          query: seed.query.length,
+        },
+      };
+    }
 
     try {
       const ts = String(Date.now());
@@ -287,7 +298,7 @@ async function fetchSearchAdKeywords(seedKeywords) {
     }
 
     // API rate limit 보호
-    if (i + 5 < safeSeeds.length) await new Promise(r => setTimeout(r, 200));
+    if (i + 1 < safeSeeds.length) await new Promise(r => setTimeout(r, 120));
   }
 
   return allResults;

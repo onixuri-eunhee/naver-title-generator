@@ -1,10 +1,18 @@
 # 진행 상황
 
-- [backend-dev] 2026-03-16 작업 시작: api/blog-image-pro.js에 suggest_markers 모드 구현
-- [backend-dev] 2026-03-16 작업 완료: suggest_markers 모드 구현 완료
-- [frontend-dev] 2026-03-16 작업 시작: blog-image-pro.html에 마커 추천 UI 구현
-- [frontend-dev] 2026-03-16 작업 완료: 마커 추천 UI 구현 완료 (CSS + HTML + JS)
-- [tester] 2026-03-16 리뷰 완료: 버그 3건 발견 및 직접 수정 완료
-  - [백엔드] suggest_markers rate limit 롤백 누락 (smKey 스코프 버그 포함) → api/blog-image-pro.js 수정
-  - [프론트] deleteMarker 마지막 1개 삭제 불가 → blog-image-pro.html 수정
-  - [프론트] 마커 0개 시 AI 추천 버튼 재표시 누락 → blog-image-pro.html 수정
+## 2026-03-30 — 메인세션
+- 상태: 팀 구성 완료
+- 작업: 공유 메모리 초기화, 팀원 스폰 시작
+- 다음: 팀장 스폰 → 태스크 배분
+
+## 2026-03-30 — keyword-strategist (키워드 전략가)
+- 상태: **완료**
+- 담당: 태스크 1(시드 키워드 프롬프트), 태스크 3(점수 알고리즘), 태스크 4(경쟁 도구 비교)
+- 결과: TEAM_FINDINGS.md에 상세 분석 기록 완료
+  - 태스크1: 엉뚱한 키워드 원인 4가지 진단 + 프롬프트 개선안 3가지(A/B/C)
+  - 태스크3: 점수 알고리즘 문제점 5가지 진단 + 100점 재배분안 제시
+  - 태스크4: 경쟁 도구(키워드마스터/블랙키위) 비교표 + 누락 지표 3가지 + 추가 권장사항 4가지
+
+## 2026-03-30 — code-analyst (코드 분석가)
+- 상태: 분석 시작
+- 담당: 태스크 2(포화도 0 원인), 태스크 5(글쓰기 버튼 버그), API 최적화
