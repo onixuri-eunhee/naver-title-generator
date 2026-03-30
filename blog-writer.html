@@ -1732,6 +1732,23 @@
 
 <script src="admin-mode.js"></script>
 <script>
+  // ─── 황금키워드에서 넘어온 키워드 자동 입력 ───
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    var topicFromUrl = params.get('topic');
+    if (topicFromUrl) {
+      window.addEventListener('DOMContentLoaded', function() {
+        var topicInput = document.getElementById('topic');
+        if (topicInput) topicInput.value = topicFromUrl;
+      });
+      // DOMContentLoaded가 이미 지난 경우 대비
+      if (document.readyState !== 'loading') {
+        var topicInput = document.getElementById('topic');
+        if (topicInput) topicInput.value = topicFromUrl;
+      }
+    }
+  })();
+
   // ─── 상태 변수 ───
   let selectedType = 'homefeed';
   let selectedTone = '친근한 구어체';

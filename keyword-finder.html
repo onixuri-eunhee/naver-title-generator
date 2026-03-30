@@ -103,9 +103,15 @@ input:focus, textarea:focus { border-color:#ff5f1f; }
 .kw-card:hover { border-color:#ff5f1f; }
 .kw-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
 .kw-rank { width:28px; height:28px; border-radius:50%; background:#ff5f1f; color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
-.kw-score { font-size:24px; font-weight:900; color:#ff5f1f; }
-.kw-score span { font-size:12px; color:#9CA3AF; font-weight:400; }
-.kw-name { font-size:16px; font-weight:700; margin-bottom:8px; }
+.kw-grade { display:flex; align-items:center; gap:6px; }
+.kw-grade-badge { display:inline-block; padding:4px 12px; border-radius:20px; font-size:13px; font-weight:700; }
+.kw-grade-badge.blue { background:#DBEAFE; color:#1E40AF; }
+.kw-grade-badge.green { background:#D1FAE5; color:#065F46; }
+.kw-grade-badge.yellow { background:#FEF3C7; color:#92400E; }
+.kw-grade-badge.red { background:#FEE2E2; color:#991B1B; }
+.kw-score-small { font-size:12px; color:#9CA3AF; font-weight:400; }
+.kw-name { font-size:16px; font-weight:700; margin-bottom:4px; }
+.kw-grade-desc { font-size:12px; color:#6B7280; margin-bottom:8px; }
 .kw-stats { display:flex; gap:12px; flex-wrap:wrap; }
 .kw-stat { font-size:12px; color:#6B7280; }
 .kw-stat b { color:#374151; }
@@ -116,6 +122,14 @@ input:focus, textarea:focus { border-color:#ff5f1f; }
 .badge.rising { background:#DBEAFE; color:#1E40AF; }
 .badge.stable { background:#F3F4F6; color:#6B7280; }
 .badge.falling { background:#FEE2E2; color:#991B1B; }
+.badge.unknown { background:#F3F4F6; color:#9CA3AF; }
+
+/* 테이블 등급 뱃지 */
+td .grade-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; }
+td .grade-dot.blue { background:#3B82F6; }
+td .grade-dot.green { background:#10B981; }
+td .grade-dot.yellow { background:#F59E0B; }
+td .grade-dot.red { background:#EF4444; }
 
 /* 전체 테이블 */
 .table-wrap { overflow-x:auto; }
@@ -195,8 +209,9 @@ tr:hover { background:#FFF7ED; }
 
         <p style="font-weight:700; color:#ff5f1f; margin-bottom:8px;">결과 활용법</p>
         <ul style="padding-left:20px; margin-bottom:8px;">
-          <li><strong>황금점수 80점 이상:</strong> 즉시 블로그 글을 쓸 가치가 있는 키워드</li>
-          <li><strong>포화도 5 이하:</strong> 경쟁 글이 적은 블루오션 — 빠르게 선점하세요</li>
+          <li><strong style="color:#1E40AF;">&#128309; 블루오션:</strong> 즉시 블로그 글을 쓸 가치가 있는 키워드</li>
+          <li><strong style="color:#065F46;">&#128994; 틈새 공략:</strong> 충분히 도전할 만한 키워드</li>
+          <li><strong>포화도 3 이하:</strong> 경쟁 글이 적은 블루오션 — 빠르게 선점하세요</li>
           <li><strong>트렌드 상승:</strong> 지금 쓰면 검색량이 더 올라갈 키워드</li>
           <li><strong>[글쓰기] 버튼:</strong> 클릭하면 해당 키워드로 블로그 글 생성기로 바로 이동</li>
           <li><strong>CSV 다운로드:</strong> 전체 키워드 목록을 엑셀에서 분석할 수 있습니다</li>
@@ -282,7 +297,7 @@ tr:hover { background:#FFF7ED; }
         <table id="keywordTable">
           <thead>
             <tr>
-              <th onclick="sortTable('score')">점수</th>
+              <th onclick="sortTable('score')">등급</th>
               <th onclick="sortTable('keyword')">키워드</th>
               <th onclick="sortTable('monthlySearch')">월간 검색수</th>
               <th onclick="sortTable('competition')">경쟁도</th>
@@ -519,20 +534,39 @@ function trendBadge(trend, change) {
   return '<span class="badge ' + trend + '">' + arrow + ' ' + label + changeStr + '</span>';
 }
 
+function gradeIcon(grade) {
+  var icons = { blue: '&#128309;', green: '&#128994;', yellow: '&#128992;', red: '&#128308;' };
+  return icons[grade] || '';
+}
+
+function saturationDisplay(kw) {
+  if (kw.saturation < 0 || !kw.blogCountAvailable) return '<span style="color:#9CA3AF;">미수집</span>';
+  return '<b>' + kw.saturation + '</b>';
+}
+
+function trendBadgeV2(kw) {
+  if (kw.trend === 'unknown') return '<span class="badge unknown">— 미수집</span>';
+  return trendBadge(kw.trend, kw.trendChange);
+}
+
 function renderTopKeywords(keywords) {
   var container = document.getElementById('topKeywords');
   container.innerHTML = keywords.map(function(kw, i) {
     return '<div class="kw-card">' +
       '<div class="kw-card-header">' +
         '<div class="kw-rank">' + (i + 1) + '</div>' +
-        '<div class="kw-score">' + kw.score + '<span>/100</span></div>' +
+        '<div class="kw-grade">' +
+          '<span class="kw-grade-badge ' + kw.grade + '">' + gradeIcon(kw.grade) + ' ' + kw.label + '</span>' +
+          '<span class="kw-score-small">' + kw.score + '점</span>' +
+        '</div>' +
       '</div>' +
       '<div class="kw-name">' + kw.keyword + '</div>' +
+      '<div class="kw-grade-desc">' + kw.gradeDescription + '</div>' +
       '<div class="kw-stats">' +
         '<div class="kw-stat">검색수 <b>' + kw.monthlySearch.toLocaleString() + '</b></div>' +
         '<div class="kw-stat">경쟁도 ' + competitionBadge(kw.competition) + '</div>' +
-        '<div class="kw-stat">포화도 <b>' + kw.saturation + '</b></div>' +
-        '<div class="kw-stat">트렌드 ' + trendBadge(kw.trend, kw.trendChange) + '</div>' +
+        '<div class="kw-stat">포화도 ' + saturationDisplay(kw) + '</div>' +
+        '<div class="kw-stat">트렌드 ' + trendBadgeV2(kw) + '</div>' +
       '</div>' +
       '<a class="blog-link-btn" href="blog-writer.html?topic=' + encodeURIComponent(kw.keyword) + '">이 키워드로 블로그 글 쓰기</a>' +
     '</div>';
@@ -543,12 +577,12 @@ function renderTable(keywords) {
   var tbody = document.getElementById('tableBody');
   tbody.innerHTML = keywords.map(function(kw) {
     return '<tr>' +
-      '<td><b style="color:#ff5f1f;">' + kw.score + '</b></td>' +
+      '<td><span class="grade-dot ' + kw.grade + '"></span><b style="font-size:12px;">' + kw.label + '</b> <span style="color:#9CA3AF; font-size:11px;">' + kw.score + '</span></td>' +
       '<td>' + kw.keyword + '</td>' +
       '<td>' + kw.monthlySearch.toLocaleString() + '</td>' +
       '<td>' + competitionBadge(kw.competition) + '</td>' +
-      '<td>' + kw.saturation + '</td>' +
-      '<td>' + trendBadge(kw.trend, kw.trendChange) + '</td>' +
+      '<td>' + (kw.blogCountAvailable ? kw.saturation : '<span style="color:#9CA3AF;">-</span>') + '</td>' +
+      '<td>' + trendBadgeV2(kw) + '</td>' +
       '<td><a href="blog-writer.html?topic=' + encodeURIComponent(kw.keyword) + '" style="color:#ff5f1f; font-size:12px; font-weight:600; text-decoration:none;">글쓰기</a></td>' +
     '</tr>';
   }).join('');
@@ -575,9 +609,9 @@ function sortTable(key) {
 
 function downloadCSV() {
   if (allKeywords.length === 0) return;
-  var headers = ['키워드', '점수', '월간검색수', 'PC검색수', '모바일검색수', '경쟁도', '블로그발행량', '포화도', '트렌드', '트렌드변화율'];
+  var headers = ['키워드', '등급', '점수', '월간검색수', 'PC검색수', '모바일검색수', '경쟁도', '블로그발행량', '포화도', '트렌드', '트렌드변화율'];
   var rows = allKeywords.map(function(kw) {
-    return [kw.keyword, kw.score, kw.monthlySearch, kw.pcSearch, kw.mobileSearch, kw.competition, kw.blogCount, kw.saturation, kw.trend, kw.trendChange];
+    return [kw.keyword, kw.label, kw.score, kw.monthlySearch, kw.pcSearch, kw.mobileSearch, kw.competition, kw.blogCountAvailable ? kw.blogCount : '미수집', kw.blogCountAvailable ? kw.saturation : '미수집', kw.trend === 'unknown' ? '미수집' : kw.trend, kw.trendChange];
   });
   var csv = '\uFEFF' + headers.join(',') + '\n' + rows.map(function(r) { return r.join(','); }).join('\n');
   var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

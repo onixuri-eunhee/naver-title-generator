@@ -116,13 +116,36 @@ async function fetchAutoComplete(keyword) {
 
 async function expandWithAutoComplete(seedKeywords) {
   const expanded = new Set(seedKeywords);
-  // 상위 15개 시드에 대해 자동완성 조회 (병렬)
-  const top15 = seedKeywords.slice(0, 15);
-  const results = await Promise.all(top15.map(kw => fetchAutoComplete(kw)));
+  // 상위 5개 시드에 대해 자동완성 조회 (발산 방지: 15→5)
+  const top5 = seedKeywords.slice(0, 5);
+  const results = await Promise.all(top5.map(kw => fetchAutoComplete(kw)));
   for (const suggestions of results) {
     for (const s of suggestions) expanded.add(s);
   }
   return Array.from(expanded);
+}
+
+// ─── 분야 적합도 필터: 엉뚱한 키워드 제거 ───
+function extractCoreWords(field, seedKeywords) {
+  // 분야명 + 시드키워드에서 2글자 이상 핵심 단어 추출
+  const allText = [field, ...seedKeywords].join(' ');
+  const words = allText.split(/[\s,/·]+/).filter(w => w.length >= 2);
+  // 중복 제거 + 빈도 높은 단어 우선
+  const freq = new Map();
+  for (const w of words) {
+    freq.set(w, (freq.get(w) || 0) + 1);
+  }
+  // 빈도 순 정렬 후 상위 30개
+  return Array.from(freq.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 30)
+    .map(([w]) => w);
+}
+
+function isRelevantKeyword(keyword, coreWords) {
+  // 키워드가 핵심 단어 중 하나라도 포함하면 통과
+  const kw = keyword.toLowerCase();
+  return coreWords.some(w => kw.includes(w.toLowerCase()));
 }
 
 // ─── 검색광고 API: 연관키워드 + 검색량 + 경쟁도 ───
@@ -203,11 +226,11 @@ async function fetchBlogCount(keyword) {
         'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET,
       },
     });
-    if (!res.ok) return 0;
+    if (!res.ok) return -1; // API 실패 시 -1 (미수집 표시)
     const data = await res.json();
     return data.total || 0;
   } catch (_) {
-    return 0;
+    return -1; // 네트워크 에러 시 -1 (미수집 표시)
   }
 }
 
@@ -283,46 +306,73 @@ async function fetchTrends(keywords) {
   return results;
 }
 
-// ─── 황금점수 산출 ───
-function calculateGoldenScore(keyword, monthlySearch, competition, blogCount, trendInfo) {
-  let score = 0;
+// ─── 등급 판정 ───
+function getGrade(score) {
+  if (score >= 70) return { grade: 'blue', label: '블루오션', description: '지금 바로 글 쓰세요!' };
+  if (score >= 55) return { grade: 'green', label: '틈새 공략', description: '충분히 도전할 만해요' };
+  if (score >= 40) return { grade: 'yellow', label: '경쟁 있음', description: '글 품질이 좋아야 해요' };
+  return { grade: 'red', label: '레드오션', description: '상위 노출 어려워요' };
+}
+
+// ─── 황금점수 산출 (v2: 등급 라벨 기반) ───
+function calculateGoldenScore(keyword, monthlySearch, pcSearch, mobileSearch, competition, blogCount, trendInfo) {
   const breakdown = {};
+  const blogCountAvailable = blogCount >= 0; // -1이면 미수집
 
-  // 1. 검색량 (30점)
-  if (monthlySearch < 100) breakdown.search = 8;
-  else if (monthlySearch < 1000) breakdown.search = 22;
-  else if (monthlySearch < 5000) breakdown.search = 30;
-  else if (monthlySearch < 10000) breakdown.search = 25;
-  else breakdown.search = 18;
+  // 1. 검색량 (25점) — 6단계 세분화
+  if (monthlySearch < 200) breakdown.search = 15;
+  else if (monthlySearch < 500) breakdown.search = 22;
+  else if (monthlySearch < 2000) breakdown.search = 25;
+  else if (monthlySearch < 5000) breakdown.search = 20;
+  else if (monthlySearch < 10000) breakdown.search = 15;
+  else breakdown.search = 10;
 
-  // 2. 경쟁도 (20점)
-  const compMap = { low: 20, medium: 10, high: 3 };
-  breakdown.competition = compMap[competition] || 10;
-
-  // 3. 포화도 (20점) — 블로그 발행량 / 월간 검색수
-  const saturation = monthlySearch > 0 ? blogCount / monthlySearch : 999;
-  if (saturation <= 5) breakdown.saturation = 20;
-  else if (saturation <= 15) breakdown.saturation = 15;
+  // 2. 포화도 (30점) — 가장 중요한 지표
+  const actualBlogCount = blogCountAvailable ? blogCount : 0;
+  const saturation = monthlySearch > 0 ? actualBlogCount / monthlySearch : 999;
+  if (!blogCountAvailable) {
+    breakdown.saturation = 10; // 미수집: 중립값
+  } else if (saturation <= 3) breakdown.saturation = 30;
+  else if (saturation <= 8) breakdown.saturation = 25;
+  else if (saturation <= 15) breakdown.saturation = 18;
   else if (saturation <= 30) breakdown.saturation = 10;
   else if (saturation <= 50) breakdown.saturation = 5;
   else breakdown.saturation = 0;
 
-  // 4. 트렌드 (20점)
-  const trend = trendInfo?.trend || 'stable';
-  breakdown.trend = trend === 'rising' ? 20 : trend === 'stable' ? 10 : 0;
+  // 3. 경쟁도 (15점)
+  const compMap = { low: 15, medium: 8, high: 2 };
+  breakdown.competition = compMap[competition] || 8;
 
-  // 5. 보너스 (10점)
+  // 4. 트렌드 (15점) — 5단계 세분화
+  const trend = trendInfo?.trend || 'unknown';
+  const trendChange = trendInfo?.trendChange || 0;
+  if (trend === 'unknown') {
+    breakdown.trend = 7; // 미수집: 중립값
+  } else if (trendChange >= 20) breakdown.trend = 15;
+  else if (trendChange >= 10) breakdown.trend = 12;
+  else if (trendChange >= -10) breakdown.trend = 7;
+  else if (trendChange >= -20) breakdown.trend = 3;
+  else breakdown.trend = 0;
+
+  // 5. 보너스 (15점)
   breakdown.bonus = 0;
-  // 질문형
-  if (/하는\s*법|하는\s*방법|차이|비교|추천|어떻게|언제|얼마/.test(keyword)) breakdown.bonus += 3;
-  // 롱테일 (3어절 이상)
-  if (keyword.split(/\s+/).length >= 3) breakdown.bonus += 2;
-  // 쇼핑 연관은 별도 체크 불필요 (이미 검색량에 반영)
-  breakdown.bonus = Math.min(breakdown.bonus, 10);
+  if (/하는\s*법|하는\s*방법|차이|비교|추천|어떻게|언제|얼마/.test(keyword)) breakdown.bonus += 4;
+  if (keyword.split(/\s+/).length >= 3) breakdown.bonus += 3;
+  // 모바일 비율 70% 이상이면 블로그 노출에 유리
+  const totalSearch = (pcSearch || 0) + (mobileSearch || 0);
+  if (totalSearch > 0 && (mobileSearch || 0) / totalSearch >= 0.7) breakdown.bonus += 4;
+  breakdown.bonus = Math.min(breakdown.bonus, 15);
 
-  score = breakdown.search + breakdown.competition + breakdown.saturation + breakdown.trend + breakdown.bonus;
+  const score = breakdown.search + breakdown.saturation + breakdown.competition + breakdown.trend + breakdown.bonus;
+  const gradeInfo = getGrade(score);
 
-  return { score, breakdown, saturation: Math.round(saturation * 10) / 10 };
+  return {
+    score,
+    breakdown,
+    saturation: blogCountAvailable ? Math.round(saturation * 10) / 10 : -1,
+    blogCountAvailable,
+    ...gradeInfo,
+  };
 }
 
 // ─── 메인 핸들러 ───
@@ -389,11 +439,19 @@ export default async function handler(req, res) {
     const searchData = await fetchSearchAdKeywords(seedKeywords);
     console.log(`[KEYWORDS] SearchAd: ${searchData.size} keywords found`);
 
-    // 검색량 100 이상만 필터 (상위 80개)
-    const candidates = Array.from(searchData.values())
-      .filter(k => k.monthlySearch >= 50)
+    // Phase 2.5: 분야 적합도 필터 (엉뚱한 키워드 제거)
+    const coreWords = extractCoreWords(field, seedKeywords);
+    console.log(`[KEYWORDS] Core words: ${coreWords.slice(0, 10).join(', ')}...`);
+
+    const allCandidates = Array.from(searchData.values()).filter(k => k.monthlySearch >= 50);
+    const relevantCandidates = allCandidates.filter(k => isRelevantKeyword(k.keyword, coreWords));
+
+    // 적합한 키워드가 너무 적으면 필터 완화 (최소 20개 보장)
+    const candidates = (relevantCandidates.length >= 20 ? relevantCandidates : allCandidates)
       .sort((a, b) => b.monthlySearch - a.monthlySearch)
       .slice(0, 80);
+
+    console.log(`[KEYWORDS] Filtered: ${allCandidates.length} → ${relevantCandidates.length} relevant (using ${candidates.length})`);
 
     if (candidates.length === 0) {
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
@@ -405,33 +463,39 @@ export default async function handler(req, res) {
       });
     }
 
-    // Phase 3: 블로그 발행량 (상위 40개만 — API 호출 절약)
-    console.log(`[KEYWORDS] Phase 3: Fetching blog counts`);
-    const top40 = candidates.slice(0, 40).map(k => k.keyword);
-    const blogCounts = await fetchBlogCounts(top40);
+    // Phase 3: 블로그 발행량 (전체 후보 — 포화도 데이터 완전 커버)
+    console.log(`[KEYWORDS] Phase 3: Fetching blog counts (${candidates.length} keywords)`);
+    const blogKeywords = candidates.map(k => k.keyword);
+    const blogCounts = await fetchBlogCounts(blogKeywords);
 
-    // Phase 4: DataLab 트렌드 (상위 25개만)
+    // Phase 4: DataLab 트렌드 (상위 40개)
     console.log(`[KEYWORDS] Phase 4: Fetching trends`);
-    const top25 = candidates.slice(0, 25).map(k => k.keyword);
-    const trends = await fetchTrends(top25);
+    const top40 = candidates.slice(0, 40).map(k => k.keyword);
+    const trends = await fetchTrends(top40);
 
-    // Phase 5: 점수 산출
+    // Phase 5: 점수 산출 (v2: 등급 라벨 기반)
     console.log(`[KEYWORDS] Phase 5: Scoring`);
     const results = candidates.map(k => {
-      const blogCount = blogCounts.get(k.keyword) || 0;
-      const trendInfo = trends.get(k.keyword) || { trend: 'stable', trendChange: 0, trendData: [] };
-      const { score, breakdown, saturation } = calculateGoldenScore(
-        k.keyword, k.monthlySearch, k.competition, blogCount, trendInfo
+      const blogCount = blogCounts.has(k.keyword) ? blogCounts.get(k.keyword) : -1;
+      const trendInfo = trends.has(k.keyword)
+        ? trends.get(k.keyword)
+        : { trend: 'unknown', trendChange: 0, trendData: [] };
+      const { score, breakdown, saturation, blogCountAvailable, grade, label, description } = calculateGoldenScore(
+        k.keyword, k.monthlySearch, k.pcSearch, k.mobileSearch, k.competition, blogCount, trendInfo
       );
 
       return {
         keyword: k.keyword,
         score,
+        grade,
+        label,
+        gradeDescription: description,
         monthlySearch: k.monthlySearch,
         pcSearch: k.pcSearch,
         mobileSearch: k.mobileSearch,
         competition: k.competition,
-        blogCount,
+        blogCount: blogCountAvailable ? blogCount : -1,
+        blogCountAvailable,
         saturation,
         trend: trendInfo.trend,
         trendChange: trendInfo.trendChange,
