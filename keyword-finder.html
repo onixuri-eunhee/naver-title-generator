@@ -356,8 +356,14 @@ tr:hover { background:#FFF7ED; }
 var token = localStorage.getItem('ddukddak_token');
 var allKeywords = [];
 var allSections = [];
-var featuredGroups = null;
 var currentSort = { key: 'grade', asc: false };
+
+function getDefaultFeaturedGroups(keywords) {
+  return {
+    base: { keywords: keywords.slice(0, 10) },
+    niche: { enabled: false, keywords: [] }
+  };
+}
 
 function getGradeRank(grade) {
   var rank = { blue: 4, green: 3, yellow: 2, red: 1 };
@@ -419,6 +425,12 @@ function updateSortHeaders() {
   if (activeArrow) activeArrow.textContent = currentSort.asc ? '↑' : '↓';
 }
 
+function applyCurrentSort() {
+  allKeywords.sort(function(a, b) {
+    return compareKeywords(a, b, currentSort.key, currentSort.asc);
+  });
+}
+
 function renderNotice(message) {
   var el = document.getElementById('noticeBox');
   if (!message) {
@@ -461,7 +473,6 @@ function renderSections(sections) {
 }
 
 function renderFeaturedGroups(groups) {
-  featuredGroups = groups || null;
   var baseKeywords = groups && groups.base && Array.isArray(groups.base.keywords) ? groups.base.keywords : [];
   var nicheEnabled = Boolean(groups && groups.niche && groups.niche.enabled);
   var nicheKeywords = nicheEnabled && groups.niche && Array.isArray(groups.niche.keywords) ? groups.niche.keywords : [];
@@ -656,7 +667,8 @@ async function findKeywords() {
     // 결과 표시
     allKeywords = data.keywords || [];
     allSections = data.sections || [];
-    renderFeaturedGroups(data.featuredGroups || { base: { keywords: allKeywords.slice(0, 10) }, niche: { enabled: false, keywords: [] } });
+    applyCurrentSort();
+    renderFeaturedGroups(data.featuredGroups || getDefaultFeaturedGroups(allKeywords));
     renderSections(allSections);
     renderTable(allKeywords);
     document.getElementById('totalCount').textContent = allKeywords.length;
@@ -765,9 +777,7 @@ function sortTable(key) {
     currentSort.asc = false;
   }
 
-  allKeywords.sort(function(a, b) {
-    return compareKeywords(a, b, key, currentSort.asc);
-  });
+  applyCurrentSort();
 
   renderTable(allKeywords);
 }

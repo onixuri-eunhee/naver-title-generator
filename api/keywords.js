@@ -12,7 +12,7 @@ import crypto from 'crypto';
 export const config = { maxDuration: 60 };
 
 const FREE_DAILY_LIMIT = 3;
-const DEBUG_VERSION = 'v25-blog-retry-no-debug-ui';
+const DEBUG_VERSION = 'v26-performance-tidy';
 const DISPLAY_MIN_MONTHLY_SEARCH = 300;
 
 let redis;
@@ -121,8 +121,8 @@ async function fetchAutoComplete(keyword) {
 async function expandWithAutoComplete(seedKeywords) {
   const expanded = new Set(seedKeywords);
   // 상위 15개 시드에 대해 자동완성 조회 (병렬)
-  const top5 = seedKeywords.slice(0, 15);
-  const results = await Promise.all(top5.map(kw => fetchAutoComplete(kw)));
+  const top15 = seedKeywords.slice(0, 15);
+  const results = await Promise.all(top15.map(kw => fetchAutoComplete(kw)));
   for (const suggestions of results) {
     for (const s of suggestions) expanded.add(s);
   }
@@ -204,9 +204,24 @@ function uniqLimit(items, limit = 30) {
   return Array.from(new Set(items.filter(Boolean))).slice(0, limit);
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function containsLocationToken(text) {
   const tokens = splitTokens(text, { keepStopWords: true });
   return tokens.some(token => LOCATION_WORDS.has(token));
+}
+
+function buildIntentMeta(intent = {}) {
+  return {
+    score: intent.score || 0,
+    specificHits: intent.specificHits || [],
+    contextHits: intent.contextHits || [],
+    targetHits: intent.targetHits || [],
+    phraseHits: intent.phraseHits || [],
+    journeyHits: intent.journeyHits || [],
+  };
 }
 
 function extractIntentSignals(field, role, target, questions, userSeeds, seedKeywords) {
@@ -256,6 +271,7 @@ function extractIntentSignals(field, role, target, questions, userSeeds, seedKey
     splitTokens(target).filter(token => !BROAD_THEME_WORDS.has(token) && !PROVIDER_BIAS_WORDS.has(token)),
     20
   );
+  const targetPriorityTokenSet = new Set(targetPriorityTokens);
 
   const phraseVariants = uniqLimit(
     [
@@ -273,6 +289,7 @@ function extractIntentSignals(field, role, target, questions, userSeeds, seedKey
     ),
     12
   );
+  const journeyTokenSet = new Set(journeyTokens);
 
   const industryTokens = uniqLimit(
     [...themeTexts, ...aiSeedTexts, userSeeds].flatMap(text =>
@@ -280,21 +297,25 @@ function extractIntentSignals(field, role, target, questions, userSeeds, seedKey
         !BROAD_THEME_WORDS.has(token) &&
         !PROVIDER_BIAS_WORDS.has(token) &&
         !LOCATION_WORDS.has(token) &&
-        !targetPriorityTokens.includes(token) &&
-        !journeyTokens.includes(token)
+        !targetPriorityTokenSet.has(token) &&
+        !journeyTokenSet.has(token)
       )
     ),
     20
   );
+  const industryTokenSet = new Set(industryTokens);
 
   return {
     broadTokens,
     specificTokens,
     contextTokens,
     targetPriorityTokens,
+    targetPriorityTokenSet,
     phraseVariants,
     journeyTokens,
+    journeyTokenSet,
     industryTokens,
+    industryTokenSet,
     allowLocationIntent,
     hasSpecificIntent: specificTokens.length > 0 || contextTokens.length > 0,
   };
@@ -383,9 +404,10 @@ function buildKeywordSections(results, signals) {
       title: '업계 워딩 황금키워드',
       description: '현업에서 쓰는 표현과 고객 검색어가 겹치는 실전형 키워드입니다.',
       scoreKeyword(result) {
-        const industryHits = (signals.industryTokens || []).filter(token => normalizeKoreanText(result.keyword).includes(token));
+        const normalizedKeyword = result._normalizedKeyword || normalizeKoreanText(result.keyword);
+        const industryHits = (signals.industryTokens || []).filter(token => normalizedKeyword.includes(token));
         const intentMeta = result.intentMeta || {};
-        return industryHits.length * 6 + (intentMeta.specificHits?.filter(hit => (signals.industryTokens || []).includes(hit)).length || 0) * 3;
+        return industryHits.length * 6 + (intentMeta.specificHits?.filter(hit => signals.industryTokenSet?.has(hit)).length || 0) * 3;
       },
     },
   ];
@@ -400,7 +422,7 @@ function buildKeywordSections(results, signals) {
         .filter(result => result._sectionScore > 0)
         .sort((a, b) => b._sectionScore - a._sectionScore || b.score - a.score || b.monthlySearch - a.monthlySearch)
         .slice(0, 6)
-        .map(({ _sectionScore, ...result }) => result);
+        .map(({ _sectionScore, _normalizedKeyword, ...result }) => result);
 
       return { ...section, keywords };
     })
@@ -628,7 +650,7 @@ async function fetchSearchAdKeywords(seedKeywords) {
     }
 
     // API rate limit 보호
-    if (i + 1 < safeSeeds.length) await new Promise(r => setTimeout(r, 120));
+    if (i + 1 < safeSeeds.length) await sleep(120);
   }
 
   return allResults;
@@ -658,14 +680,14 @@ async function fetchBlogCount(keyword) {
 
       // 429/5xx는 짧게 재시도
       if ((res.status === 429 || res.status >= 500) && attempt < 2) {
-        await new Promise(r => setTimeout(r, 180 * (attempt + 1)));
+        await sleep(180 * (attempt + 1));
         continue;
       }
       break;
     } catch (error) {
       lastFailure = { keyword, error: error.message, attempt: attempt + 1 };
       if (attempt < 2) {
-        await new Promise(r => setTimeout(r, 180 * (attempt + 1)));
+        await sleep(180 * (attempt + 1));
         continue;
       }
       break;
@@ -686,7 +708,7 @@ async function fetchBlogCounts(keywords) {
       results.set(kw, counts[j].count);
       if (!counts[j].ok) failures.push(counts[j].failure || { keyword: kw, status: 'unknown' });
     });
-    if (i + 5 < keywords.length) await new Promise(r => setTimeout(r, 180));
+    if (i + 5 < keywords.length) await sleep(180);
   }
 
   return {
@@ -750,7 +772,7 @@ async function fetchTrends(keywords) {
       console.error(`[KEYWORDS] DataLab batch error:`, err.message);
     }
 
-    if (i + 5 < keywords.length) await new Promise(r => setTimeout(r, 200));
+    if (i + 5 < keywords.length) await sleep(200);
   }
   return results;
 }
@@ -1012,6 +1034,8 @@ export default async function handler(req, res) {
     console.log(`[KEYWORDS] Phase 5: Scoring`);
     const results = candidates.map(k => {
       const blogCount = blogCounts.has(k.keyword) ? blogCounts.get(k.keyword) : -1;
+      const intentMeta = buildIntentMeta(k._intent);
+      const normalizedKeyword = normalizeKoreanText(k.keyword);
       const trendInfo = trends.has(k.keyword)
         ? trends.get(k.keyword)
         : { trend: 'unknown', trendChange: 0, trendData: [] };
@@ -1019,9 +1043,10 @@ export default async function handler(req, res) {
         k.keyword, k.monthlySearch, k.pcSearch, k.mobileSearch, k.competition, blogCount, trendInfo
       );
 
-      const intentBonus = Math.min(12, Math.max(0, Math.floor((k._intent?.score || 0) / 3)));
+      const intentBonus = Math.min(12, Math.max(0, Math.floor(intentMeta.score / 3)));
       const baseResult = {
         keyword: k.keyword,
+        _normalizedKeyword: normalizedKeyword,
         rawScore: score,
         intentBonus,
         monthlySearch: k.monthlySearch,
@@ -1035,20 +1060,14 @@ export default async function handler(req, res) {
         trendChange: trendInfo.trendChange,
         trendData: trendInfo.trendData,
         breakdown,
-        intentMeta: {
-          score: k._intent?.score || 0,
-          specificHits: k._intent?.specificHits || [],
-          contextHits: k._intent?.contextHits || [],
-          targetHits: k._intent?.targetHits || [],
-          phraseHits: k._intent?.phraseHits || [],
-          journeyHits: k._intent?.journeyHits || [],
-        },
+        intentMeta,
       };
       const rankingAdjustment = calculateRankingAdjustments(baseResult);
       const boostedScore = score + intentBonus + rankingAdjustment.adjustment;
       const boostedGrade = getGrade(boostedScore);
       return {
         keyword: k.keyword,
+        _normalizedKeyword: normalizedKeyword,
         score: boostedScore,
         rawScore: score,
         intentBonus,
@@ -1073,9 +1092,10 @@ export default async function handler(req, res) {
     })
     .sort((a, b) => b.score - a.score);
 
-    const filteredResults = results.filter(result => result.monthlySearch >= DISPLAY_MIN_MONTHLY_SEARCH);
+    const publicResults = results.map(({ _normalizedKeyword, ...result }) => result);
+    const filteredResults = publicResults.filter(result => result.monthlySearch >= DISPLAY_MIN_MONTHLY_SEARCH);
     const sections = buildKeywordSections(results, intentSignals);
-    const featuredGroups = buildFeaturedGroups(results, filteredResults, intentSignals, { hasQuestionDetail });
+    const featuredGroups = buildFeaturedGroups(publicResults, filteredResults, intentSignals, { hasQuestionDetail });
     if (_debug) {
       _debug.displayMinMonthlySearch = DISPLAY_MIN_MONTHLY_SEARCH;
       _debug.preDisplayCount = results.length;
