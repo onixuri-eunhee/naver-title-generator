@@ -189,6 +189,7 @@ function isRelevantKeyword(keyword, coreWords) {
 }
 
 // ─── 검색광고 API: 연관키워드 + 검색량 + 경쟁도 ───
+// ★ 원래 작동하던 코드 그대로 복원 (디버그/테스트 전부 제거)
 async function fetchSearchAdKeywords(seedKeywords) {
   const API_KEY = process.env.NAVER_AD_API_KEY;
   const SECRET = process.env.NAVER_AD_SECRET_KEY;
@@ -202,49 +203,14 @@ async function fetchSearchAdKeywords(seedKeywords) {
   const signature = hmac.digest('base64');
 
   const allResults = new Map();
-  const _apiErrors = []; // 진단용
 
-  // 시드키워드 정제 후 배치 호출 (특수문자 → API 400 에러 방지)
-  const safeSeeds = seedKeywords
-    .map(kw => kw.replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim())
-    .filter(kw => kw.length >= 2);
-
-  console.log(`[KEYWORDS] SafeSeeds: ${safeSeeds.length} from ${seedKeywords.length}. Sample: [${safeSeeds.slice(0,3).join(', ')}]`);
-
-  // API 테스트: "웨딩" 한 단어로 먼저 확인
-  let _apiTestResult = 'not_run';
-  try {
-    const testTs = String(Date.now());
-    const testH = crypto.createHmac('sha256', SECRET);
-    testH.update(`${testTs}.${method}.${uri}`);
-    const testSig = testH.digest('base64');
-    const testWord = safeSeeds[0] || '웨딩';
-    const testRes = await fetch(`https://api.searchad.naver.com${uri}?hintKeywords=${encodeURIComponent(testWord)}&showDetail=1`, {
-      headers: { 'X-Timestamp': testTs, 'X-API-KEY': API_KEY, 'X-Customer': CUSTOMER_ID, 'X-Signature': testSig },
+  // 시드키워드를 5개씩 배치 호출 (API 제한)
+  for (let i = 0; i < seedKeywords.length; i += 5) {
+    const batch = seedKeywords.slice(i, i + 5);
+    const params = new URLSearchParams({
+      hintKeywords: batch.join(','),
+      showDetail: '1',
     });
-    if (testRes.ok) {
-      const testData = await testRes.json();
-      _apiTestResult = `ok_${(testData.keywordList||[]).length}`;
-      // API 작동하면 테스트 결과도 allResults에 추가
-      for (const item of (testData.keywordList || [])) {
-        if (!allResults.has(item.relKeyword)) {
-          const pcSearch = item.monthlyPcQcCnt === '< 10' ? 5 : Number(item.monthlyPcQcCnt) || 0;
-          const mobileSearch = item.monthlyMobileQcCnt === '< 10' ? 5 : Number(item.monthlyMobileQcCnt) || 0;
-          allResults.set(item.relKeyword, { keyword: item.relKeyword, monthlySearch: pcSearch + mobileSearch, pcSearch, mobileSearch, competition: item.compIdx || 'low' });
-        }
-      }
-    } else {
-      const errText = await testRes.text().catch(() => '');
-      _apiTestResult = `err_${testRes.status}_${errText.slice(0, 80)}`;
-    }
-  } catch (e) { _apiTestResult = `catch_${e.message}`; }
-  console.log(`[KEYWORDS] API test with "${field}": ${_apiTestResult}`);
-  allResults._apiTestResult = _apiTestResult;
-
-  for (let i = 0; i < safeSeeds.length; i += 5) {
-    const batch = safeSeeds.slice(i, i + 5).map(kw => kw.slice(0, 50));
-    const hintKeywords = batch.map(kw => encodeURIComponent(kw)).join(',');
-    const queryString = `hintKeywords=${hintKeywords}&showDetail=1`;
 
     try {
       const ts = String(Date.now());
@@ -252,7 +218,7 @@ async function fetchSearchAdKeywords(seedKeywords) {
       h.update(`${ts}.${method}.${uri}`);
       const sig = h.digest('base64');
 
-      const res = await fetch(`https://api.searchad.naver.com${uri}?${queryString}`, {
+      const res = await fetch(`https://api.searchad.naver.com${uri}?${params}`, {
         headers: {
           'X-Timestamp': ts,
           'X-API-KEY': API_KEY,
@@ -262,9 +228,7 @@ async function fetchSearchAdKeywords(seedKeywords) {
       });
 
       if (!res.ok) {
-        const errBody = await res.text().catch(() => '');
-        console.error(`[KEYWORDS] SearchAd API error: ${res.status} ${errBody.slice(0, 200)}`);
-        _apiErrors.push({ batch: i/5, status: res.status, body: errBody.slice(0, 100) });
+        console.error(`[KEYWORDS] SearchAd API error: ${res.status}`);
         continue;
       }
 
@@ -284,15 +248,12 @@ async function fetchSearchAdKeywords(seedKeywords) {
       }
     } catch (err) {
       console.error(`[KEYWORDS] SearchAd batch error:`, err.message);
-      _apiErrors.push({ batch: i/5, error: err.message });
     }
 
     // API rate limit 보호
-    if (i + 5 < safeSeeds.length) await new Promise(r => setTimeout(r, 200));
+    if (i + 5 < seedKeywords.length) await new Promise(r => setTimeout(r, 200));
   }
 
-  allResults._apiErrors = _apiErrors;
-  allResults._safeSeedsSample = safeSeeds.slice(0, 5);
   return allResults;
 }
 
@@ -552,17 +513,13 @@ export default async function handler(req, res) {
 
     // 진단 정보 (디버깅용, 관리자에게만)
     const _debug = isAdmin ? {
-      _v: 'v8-api-test',
-      apiTestResult: searchData._apiTestResult || 'unknown',
-      safeSeedsSample: searchData._safeSeedsSample || [],
+      _v: 'v9-clean-restore',
       seedCount: seedKeywords.length,
+      seedSample: seedKeywords.slice(0, 3),
       searchAdTotal: searchData.size,
-      searchAdErrors: searchData._apiErrors || [],
       allCandidates: allCandidates.length,
       relevantCandidates: relevantCandidates.length,
       finalCandidates: candidates.length,
-      coreWordsTop10: coreWords.slice(0, 10),
-      sampleAllKeywords: allCandidates.slice(0, 5).map(k => k.keyword),
     } : undefined;
 
     if (candidates.length === 0) {
