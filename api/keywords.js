@@ -57,10 +57,8 @@ async function generateSeedKeywords(field, role, target, questions) {
 - Keywords must be in Korean
 - Mix of short-tail (2 words) and long-tail (3-5 words) keywords
 - Include informational keywords (방법, 추천, 비용, 후기, 비교, 차이)
-- Include question-type keywords (하는 법, 하는 방법, 어디서)
+- Include question-type keywords (~하는 법, ~하는 방법, ~어디서)
 - Be specific to the field and target audience
-- Extract key traits from target description and combine with the field (e.g. if target is overseas Korean, include keywords like 해외 한국 결혼식)
-- IMPORTANT: Output keywords as plain Korean text only. No special characters like ~, ?, !, /, quotes, or arrows.
 - Output ONLY a JSON array of strings, nothing else`;
 
   const userPrompt = `분야: ${field}
