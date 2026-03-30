@@ -135,22 +135,49 @@ const GENERIC_WORDS = new Set([
 ]);
 
 function extractCoreWords(field, seedKeywords) {
-  // 분야명은 최우선 핵심 단어 (반드시 포함)
-  const fieldWords = field.split(/[\s,/·]+/).filter(w => w.length >= 2);
+  // 분야명 + 시드키워드를 합쳐서 핵심 단어 추출
+  const allText = [field, ...seedKeywords].join(' ');
+  // 공백/구분자로 1차 분리
+  const rawWords = allText.split(/[\s,/·]+/).filter(w => w.length >= 2);
 
-  // 시드키워드에서 2글자 이상 단어 추출 (범용 단어 제외)
-  const allText = seedKeywords.join(' ');
-  const words = allText.split(/[\s,/·]+/).filter(w => w.length >= 2 && !GENERIC_WORDS.has(w));
+  // 2글자 이상 서브스트링도 추출 (복합어 대응: "웨딩컨설팅" → "웨딩", "컨설팅")
+  const subWords = [];
+  for (const w of rawWords) {
+    if (w.length >= 4) {
+      // 2글자씩 슬라이딩 윈도우로 서브스트링 추출
+      for (let i = 0; i <= w.length - 2; i++) {
+        const sub = w.substring(i, i + 2);
+        if (!GENERIC_WORDS.has(sub)) subWords.push(sub);
+      }
+      // 3글자 서브스트링도
+      for (let i = 0; i <= w.length - 3; i++) {
+        const sub = w.substring(i, i + 3);
+        if (!GENERIC_WORDS.has(sub)) subWords.push(sub);
+      }
+    }
+  }
 
   const freq = new Map();
   // 분야명 단어에 높은 가중치
-  for (const w of fieldWords) freq.set(w, (freq.get(w) || 0) + 10);
-  for (const w of words) freq.set(w, (freq.get(w) || 0) + 1);
+  const fieldWords = field.split(/[\s,/·]+/).filter(w => w.length >= 2);
+  for (const w of fieldWords) freq.set(w, (freq.get(w) || 0) + 20);
+  // 분야명 서브스트링도 높은 가중치
+  for (const w of fieldWords) {
+    if (w.length >= 4) {
+      for (let i = 0; i <= w.length - 2; i++) freq.set(w.substring(i, i + 2), (freq.get(w.substring(i, i + 2)) || 0) + 15);
+    }
+  }
+  // 원본 단어 (범용 제외)
+  for (const w of rawWords) {
+    if (!GENERIC_WORDS.has(w)) freq.set(w, (freq.get(w) || 0) + 3);
+  }
+  // 서브스트링 (낮은 가중치)
+  for (const w of subWords) freq.set(w, (freq.get(w) || 0) + 1);
 
-  // 빈도 순 정렬 후 상위 40개
+  // 빈도 순 정렬 후 상위 50개
   return Array.from(freq.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 40)
+    .slice(0, 50)
     .map(([w]) => w);
 }
 
@@ -477,6 +504,9 @@ export default async function handler(req, res) {
       .slice(0, 80);
 
     console.log(`[KEYWORDS] Filtered: ${allCandidates.length} → ${relevantCandidates.length} relevant, ${candidates.length} total`);
+    console.log(`[KEYWORDS] Core words sample: ${coreWords.slice(0, 5).join(', ')}`);
+    if (candidates.length > 0) console.log(`[KEYWORDS] First candidate: "${candidates[0].keyword}" (${candidates[0].monthlySearch})`);
+    if (relevantCandidates.length === 0 && allCandidates.length > 0) console.log(`[KEYWORDS] WARNING: 0 relevant from ${allCandidates.length} candidates. First all: "${allCandidates[0].keyword}"`);
 
     if (candidates.length === 0) {
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
