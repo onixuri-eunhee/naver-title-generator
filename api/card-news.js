@@ -116,6 +116,12 @@ const themes = {
   clean: { name: '클린·미니멀', primary: '#0D9488', secondary: '#F0FDFA', accent: '#2DD4BF', text: '#134E4A', textLight: '#6B9E99', bg: '#F8FFFE', bgDark: '#134E4A', radius: 18 },
   dark: { name: '다크·프리미엄', primary: '#C9A84C', secondary: '#2A2A2A', accent: '#E8C65A', text: '#F5F0E0', textLight: '#A89E88', bg: '#1E1E1E', bgDark: '#111111', radius: 12 },
   vivid: { name: '비비드·활기', primary: '#7C3AED', secondary: '#FFF9E6', accent: '#FACC15', text: '#2D1065', textLight: '#8B6FC0', bg: '#FDFBFF', bgDark: '#2D1065', radius: 20 },
+  // ─── 트렌드 테마 5종 (v2) ───
+  sage: { name: '소프트 세이지', primary: '#7C9A8E', secondary: '#F4F7F5', accent: '#D4B896', text: '#2C3E35', textLight: '#6B8578', bg: '#F9FBF9', bgDark: '#2C3E35', radius: 16 },
+  indigo: { name: '인디고 나이트', primary: '#2C3E6B', secondary: '#F0F2F8', accent: '#E8A87C', text: '#1A2540', textLight: '#5A6B8A', bg: '#F7F8FC', bgDark: '#1A2540', radius: 14 },
+  coral: { name: '코랄 블러시', primary: '#E8836B', secondary: '#FFF5F2', accent: '#F5C6AA', text: '#5C2A1E', textLight: '#B07060', bg: '#FFFAF8', bgDark: '#5C2A1E', radius: 18 },
+  teal: { name: '미드나잇 티얼', primary: '#1A535C', secondary: '#F0F8F9', accent: '#4ECDC4', text: '#0E2F33', textLight: '#4A7A80', bg: '#F5FBFC', bgDark: '#0E2F33', radius: 14 },
+  lavender: { name: '라벤더 드림', primary: '#9B8EC4', secondary: '#F8F5FF', accent: '#C4B3E8', text: '#3D2E5C', textLight: '#8478A0', bg: '#FDFBFF', bgDark: '#3D2E5C', radius: 20 },
 };
 
 // ─── 레이아웃 (인라인) ───
@@ -154,10 +160,10 @@ const layouts = {
       lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: 36, color: '#555555', lineHeight: 1.7, letterSpacing: 0.3, textAlign: 'left' }),
     ),
   ),
-  content: (s, t) => { const num = s.number ? String(s.number).padStart(2, '0') : '01'; return h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.secondary, padding: 60 } },
+  // Content 변형 A: 기본 (번호 원형 + 제목 + 본문)
+  content: (s, t) => { const num = s.number ? String(s.number).padStart(2, '0') : '01'; const numInt = parseInt(num); const variant = numInt % 3; if (variant === 1) return layouts._contentB(s, t, num); if (variant === 2) return layouts._contentC(s, t, num); return h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.secondary, padding: 60 } },
     h('div', { style: { display: 'flex', flexDirection: 'column', width: _W - 120, background: '#FFFFFF', borderRadius: t.radius + 8, padding: 72 } },
       h('div', { style: { display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 32 } },
-        // 번호 배경 원
         h('div', { style: { display: 'flex', width: 88, height: 88, borderRadius: 44, background: `${t.primary}12`, alignItems: 'center', justifyContent: 'center', marginRight: 20 } },
           h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 48, color: t.primary, lineHeight: 1 } }, num),
         ),
@@ -167,6 +173,33 @@ const layouts = {
       lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: 36, color: '#444444', lineHeight: 1.7, letterSpacing: 0.3, textAlign: 'left' }),
     ),
   ); },
+  // Content 변형 B: 좌우 분할 (번호 좌측 크게, 제목+본문 우측)
+  _contentB: (s, t, num) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.secondary, padding: 60 } },
+    h('div', { style: { display: 'flex', flexDirection: 'row', width: _W - 120, background: '#FFFFFF', borderRadius: t.radius + 8, padding: 72 } },
+      // 좌측: 큰 번호
+      h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', width: 140, marginRight: 32, paddingTop: 8 } },
+        h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 80, color: t.primary, opacity: 0.15, lineHeight: 1 } }, num),
+        h('div', { style: { display: 'flex', width: 4, height: 60, background: t.accent, borderRadius: 2, marginTop: 16 } }),
+      ),
+      // 우측: 제목 + 본문
+      h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1 } },
+        lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: 48, color: '#1A1A1A', lineHeight: 1.3, marginBottom: 32, textAlign: 'left' }),
+        lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: 36, color: '#444444', lineHeight: 1.7, letterSpacing: 0.3, textAlign: 'left' }),
+      ),
+    ),
+  ),
+  // Content 변형 C: 상단 강조 바 + 전체폭 (accent 바 풀 너비)
+  _contentC: (s, t, num) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.secondary, padding: 60 } },
+    h('div', { style: { display: 'flex', flexDirection: 'column', width: _W - 120, background: '#FFFFFF', borderRadius: t.radius + 8, overflow: 'hidden' } },
+      // 상단 accent 바 (전체 너비)
+      h('div', { style: { display: 'flex', width: _W - 120, height: 8, background: t.accent } }),
+      h('div', { style: { display: 'flex', flexDirection: 'column', padding: 72 } },
+        h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 28, color: t.accent, marginBottom: 16, letterSpacing: 2 } }, `POINT ${num}`),
+        lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: 48, color: '#1A1A1A', lineHeight: 1.3, marginBottom: 32, textAlign: 'left' }),
+        lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: 36, color: '#444444', lineHeight: 1.7, letterSpacing: 0.3, textAlign: 'left' }),
+      ),
+    ),
+  ),
   quote: (s, t) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.bgDark, padding: 60 } },
     h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', width: _W - 120, background: '#FFFFFF', borderRadius: t.radius + 8, padding: 72 } },
       // 상단 가는 구분선
