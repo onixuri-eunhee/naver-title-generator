@@ -51,18 +51,16 @@ async function resolveSessionEmail(token) {
 
 // ─── Claude Haiku: 시드키워드 생성 ───
 async function generateSeedKeywords(field, role, target, questions) {
-  const systemPrompt = `You are a Korean SEO keyword expert. Generate seed keywords that the target audience would search on Naver.
+  const systemPrompt = `You are a Korean SEO keyword expert. Generate 20-30 seed keywords that the target audience would search on Naver.
 
 ## RULES
 - Keywords must be in Korean
-- STRICTLY related to the given field/industry. Do NOT include unrelated topics.
 - Mix of short-tail (2 words) and long-tail (3-5 words) keywords
 - Include informational keywords (방법, 추천, 비용, 후기, 비교, 차이)
-- Include question-type keywords (~하는 법, ~하는 방법, ~어디서)
-- Extract key characteristics from the target audience description and create keywords combining those characteristics with the field
-  Example: field="웨딩컨설팅", target mentions "해외거주" → include "해외거주 한국 결혼식", "해외에서 한국 웨딩 준비" etc.
-  Example: field="카페 창업", target mentions "30대 직장인" → include "직장인 카페 창업", "30대 창업" etc.
-- Also include the field's core short-tail keywords (e.g., "웨딩", "결혼", "스드메")
+- Include question-type keywords (하는 법, 하는 방법, 어디서)
+- Be specific to the field and target audience
+- Extract key traits from target description and combine with the field (e.g. if target is overseas Korean, include keywords like 해외 한국 결혼식)
+- IMPORTANT: Output keywords as plain Korean text only. No special characters like ~, ?, !, /, quotes, or arrows.
 - Output ONLY a JSON array of strings, nothing else`;
 
   const userPrompt = `분야: ${field}
@@ -206,9 +204,13 @@ async function fetchSearchAdKeywords(seedKeywords) {
   const allResults = new Map();
   const _apiErrors = []; // 진단용
 
-  // 시드키워드를 5개씩 배치 호출 (API 제한)
-  for (let i = 0; i < seedKeywords.length; i += 5) {
-    const batch = seedKeywords.slice(i, i + 5);
+  // 시드키워드 정제 후 배치 호출 (특수문자 → API 400 에러 방지)
+  const safeSeeds = seedKeywords
+    .map(kw => kw.replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim())
+    .filter(kw => kw.length >= 2);
+
+  for (let i = 0; i < safeSeeds.length; i += 5) {
+    const batch = safeSeeds.slice(i, i + 5);
     const params = new URLSearchParams({
       hintKeywords: batch.join(','),
       showDetail: '1',
@@ -256,7 +258,7 @@ async function fetchSearchAdKeywords(seedKeywords) {
     }
 
     // API rate limit 보호
-    if (i + 5 < seedKeywords.length) await new Promise(r => setTimeout(r, 200));
+    if (i + 5 < safeSeeds.length) await new Promise(r => setTimeout(r, 200));
   }
 
   allResults._apiErrors = _apiErrors;
@@ -519,7 +521,7 @@ export default async function handler(req, res) {
 
     // 진단 정보 (디버깅용, 관리자에게만)
     const _debug = isAdmin ? {
-      _v: 'v4-revert-api',
+      _v: 'v5-prompt-revert-sanitize',
       seedCount: seedKeywords.length,
       searchAdTotal: searchData.size,
       searchAdErrors: searchData._apiErrors || [],
