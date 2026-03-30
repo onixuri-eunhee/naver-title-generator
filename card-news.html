@@ -684,26 +684,10 @@ footer a:hover { text-decoration: underline; }
   var cnSelectedTheme = 'cafe';
   var cnImageDataArr = [];
 
-  // 테마 데이터
-  var CN_THEMES = {
-    cafe:    { name: '카페·베이커리', colors: ['#8B6914','#F5F0E8','#D4A843'] },
-    beauty:  { name: '뷰티·살롱',     colors: ['#C2185B','#FFF0F5','#E91E90'] },
-    fitness: { name: '피트니스·헬스', colors: ['#1B1B1B','#F0F0F0','#AAFF00'] },
-    food:    { name: '요식업·맛집',   colors: ['#D32F2F','#FFF8F0','#FF6D3A'] },
-    edu:     { name: '교육·강의',     colors: ['#1A3A6B','#EEF2F9','#3B7DDD'] },
-    realty:  { name: '부동산·인테리어', colors: ['#2E7D5B','#EFF6F2','#43B88C'] },
-    clean:   { name: '클린·미니멀',   colors: ['#0D9488','#F0FDFA','#2DD4BF'] },
-    dark:    { name: '다크·프리미엄', colors: ['#C9A84C','#2A2A2A','#E8C65A'] },
-    vivid:   { name: '비비드·활기',   colors: ['#7C3AED','#FFF9E6','#FACC15'] },
-    sage:    { name: '소프트 세이지', colors: ['#7C9A8E','#F4F7F5','#D4B896'] },
-    indigo:  { name: '인디고 나이트', colors: ['#2C3E6B','#F0F2F8','#E8A87C'] },
-    coral:   { name: '코랄 블러시',   colors: ['#E8836B','#FFF5F2','#F5C6AA'] },
-    teal:    { name: '미드나잇 티얼', colors: ['#1A535C','#F0F8F9','#4ECDC4'] },
-    lavender:{ name: '라벤더 드림',   colors: ['#9B8EC4','#F8F5FF','#C4B3E8'] },
-  };
+  var CN_THEMES = {};
 
   // 테마 칩 렌더
-  (function renderCnThemes() {
+  function renderCnThemes() {
     var wrap = document.getElementById('cnThemeScroll');
     var html = '';
     Object.keys(CN_THEMES).forEach(function(key) {
@@ -719,7 +703,29 @@ footer a:hover { text-decoration: underline; }
       html += '</div>';
     });
     wrap.innerHTML = html;
-  })();
+  }
+
+  async function loadCnThemes() {
+    var wrap = document.getElementById('cnThemeScroll');
+    wrap.innerHTML = '<div class="hint" style="padding:8px 4px;">테마 불러오는 중...</div>';
+
+    try {
+      var resp = await fetch('/api/card-news-themes', { cache: 'no-store' });
+      if (!resp.ok) throw new Error('theme fetch failed');
+      var data = await resp.json();
+      CN_THEMES = data.themes || {};
+
+      var themeKeys = Object.keys(CN_THEMES);
+      if (themeKeys.length === 0) throw new Error('empty themes');
+      if (!CN_THEMES[cnSelectedTheme]) cnSelectedTheme = themeKeys[0];
+
+      renderCnThemes();
+    } catch (_) {
+      wrap.innerHTML = '<div class="hint" style="padding:8px 4px; color:#DC2626;">테마 목록을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.</div>';
+    }
+  }
+
+  loadCnThemes();
 
   function selectCnSlides(btn) {
     document.querySelectorAll('.cn-slide-btn').forEach(function(b) { b.classList.remove('active'); });

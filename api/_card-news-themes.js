@@ -1,6 +1,6 @@
 /**
- * 카드뉴스 테마 프리셋 9종
- * api/card-news.js에서 import하여 사용
+ * 카드뉴스 테마 프리셋 14종
+ * 카드 생성 API와 프론트 테마 선택 UI가 공통으로 사용한다.
  */
 
 const themes = {
@@ -103,6 +103,70 @@ const themes = {
     bgDark: '#2D1065',
     radius: 20,
   },
+  sage: {
+    name: '소프트 세이지',
+    primary: '#7C9A8E',
+    secondary: '#F4F7F5',
+    accent: '#D4B896',
+    text: '#2C3E35',
+    textLight: '#6B8578',
+    bg: '#F9FBF9',
+    bgDark: '#2C3E35',
+    radius: 16,
+  },
+  indigo: {
+    name: '인디고 나이트',
+    primary: '#2C3E6B',
+    secondary: '#F0F2F8',
+    accent: '#E8A87C',
+    text: '#1A2540',
+    textLight: '#5A6B8A',
+    bg: '#F7F8FC',
+    bgDark: '#1A2540',
+    radius: 14,
+  },
+  coral: {
+    name: '코랄 블러시',
+    primary: '#E8836B',
+    secondary: '#FFF5F2',
+    accent: '#F5C6AA',
+    text: '#5C2A1E',
+    textLight: '#B07060',
+    bg: '#FFFAF8',
+    bgDark: '#5C2A1E',
+    radius: 18,
+  },
+  teal: {
+    name: '미드나잇 티얼',
+    primary: '#1A535C',
+    secondary: '#F0F8F9',
+    accent: '#4ECDC4',
+    text: '#0E2F33',
+    textLight: '#4A7A80',
+    bg: '#F5FBFC',
+    bgDark: '#0E2F33',
+    radius: 14,
+  },
+  lavender: {
+    name: '라벤더 드림',
+    primary: '#9B8EC4',
+    secondary: '#F8F5FF',
+    accent: '#C4B3E8',
+    text: '#3D2E5C',
+    textLight: '#8478A0',
+    bg: '#FDFBFF',
+    bgDark: '#3D2E5C',
+    radius: 20,
+  },
 };
 
-export { themes };
+function buildThemePreviewMap() {
+  return Object.fromEntries(
+    Object.entries(themes).map(([key, theme]) => [
+      key,
+      { name: theme.name, colors: [theme.primary, theme.secondary, theme.accent] },
+    ])
+  );
+}
+
+export { themes, buildThemePreviewMap };

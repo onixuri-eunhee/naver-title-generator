@@ -1,6 +1,7 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 import { logUsage } from './_db.js';
+import { themes } from './_card-news-themes.js';
 
 // satori, @resvg/resvg-wasm → 동적 import로 지연 로딩
 // (top-level static import는 Vercel Serverless에서 FUNCTION_INVOCATION_FAILED 유발)
@@ -104,25 +105,6 @@ async function loadFonts() {
     { name: 'Noto Sans KR', data: fontBold, weight: 700, style: 'normal' },
   ];
 }
-
-// ─── 테마 프리셋 9종 (인라인) ───
-const themes = {
-  cafe: { name: '카페·베이커리', primary: '#8B6914', secondary: '#F5F0E8', accent: '#D4A843', text: '#3D2B00', textLight: '#8B7355', bg: '#FFFCF5', bgDark: '#3D2B00', radius: 16 },
-  beauty: { name: '뷰티·살롱', primary: '#C2185B', secondary: '#FFF0F5', accent: '#E91E90', text: '#4A0028', textLight: '#A0607A', bg: '#FFFAFC', bgDark: '#4A0028', radius: 20 },
-  fitness: { name: '피트니스·헬스', primary: '#1B1B1B', secondary: '#F0F0F0', accent: '#AAFF00', text: '#FFFFFF', textLight: '#787878', bg: '#F5F5F5', bgDark: '#111111', radius: 12 },
-  food: { name: '요식업·맛집', primary: '#D32F2F', secondary: '#FFF8F0', accent: '#FF6D3A', text: '#3E1008', textLight: '#9C6B5E', bg: '#FFFBF7', bgDark: '#3E1008', radius: 16 },
-  edu: { name: '교육·강의', primary: '#1A3A6B', secondary: '#EEF2F9', accent: '#3B7DDD', text: '#0D1F3C', textLight: '#6B82A6', bg: '#F7F9FC', bgDark: '#0D1F3C', radius: 14 },
-  realty: { name: '부동산·인테리어', primary: '#2E7D5B', secondary: '#EFF6F2', accent: '#43B88C', text: '#1A3D2E', textLight: '#4A7A62', bg: '#F7FBF9', bgDark: '#1A3D2E', radius: 14 },
-  clean: { name: '클린·미니멀', primary: '#0D9488', secondary: '#F0FDFA', accent: '#2DD4BF', text: '#134E4A', textLight: '#6B9E99', bg: '#F8FFFE', bgDark: '#134E4A', radius: 18 },
-  dark: { name: '다크·프리미엄', primary: '#C9A84C', secondary: '#2A2A2A', accent: '#E8C65A', text: '#F5F0E0', textLight: '#A89E88', bg: '#1E1E1E', bgDark: '#111111', radius: 12 },
-  vivid: { name: '비비드·활기', primary: '#7C3AED', secondary: '#FFF9E6', accent: '#FACC15', text: '#2D1065', textLight: '#8B6FC0', bg: '#FDFBFF', bgDark: '#2D1065', radius: 20 },
-  // ─── 트렌드 테마 5종 (v2) ───
-  sage: { name: '소프트 세이지', primary: '#7C9A8E', secondary: '#F4F7F5', accent: '#D4B896', text: '#2C3E35', textLight: '#6B8578', bg: '#F9FBF9', bgDark: '#2C3E35', radius: 16 },
-  indigo: { name: '인디고 나이트', primary: '#2C3E6B', secondary: '#F0F2F8', accent: '#E8A87C', text: '#1A2540', textLight: '#5A6B8A', bg: '#F7F8FC', bgDark: '#1A2540', radius: 14 },
-  coral: { name: '코랄 블러시', primary: '#E8836B', secondary: '#FFF5F2', accent: '#F5C6AA', text: '#5C2A1E', textLight: '#B07060', bg: '#FFFAF8', bgDark: '#5C2A1E', radius: 18 },
-  teal: { name: '미드나잇 티얼', primary: '#1A535C', secondary: '#F0F8F9', accent: '#4ECDC4', text: '#0E2F33', textLight: '#4A7A80', bg: '#F5FBFC', bgDark: '#0E2F33', radius: 14 },
-  lavender: { name: '라벤더 드림', primary: '#9B8EC4', secondary: '#F8F5FF', accent: '#C4B3E8', text: '#3D2E5C', textLight: '#8478A0', bg: '#FDFBFF', bgDark: '#3D2E5C', radius: 20 },
-};
 
 // ─── 레이아웃 (인라인) ───
 const _F = 'Noto Sans KR';
