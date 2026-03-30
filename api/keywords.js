@@ -200,6 +200,7 @@ async function fetchSearchAdKeywords(seedKeywords) {
   const signature = hmac.digest('base64');
 
   const allResults = new Map();
+  const _apiErrors = []; // 진단용
 
   // 시드키워드를 5개씩 배치 호출 (API 제한)
   for (let i = 0; i < seedKeywords.length; i += 5) {
@@ -225,7 +226,9 @@ async function fetchSearchAdKeywords(seedKeywords) {
       });
 
       if (!res.ok) {
-        console.error(`[KEYWORDS] SearchAd API error: ${res.status}`);
+        const errBody = await res.text().catch(() => '');
+        console.error(`[KEYWORDS] SearchAd API error: ${res.status} ${errBody.slice(0, 200)}`);
+        _apiErrors.push({ batch: i/5, status: res.status, body: errBody.slice(0, 100) });
         continue;
       }
 
@@ -245,12 +248,14 @@ async function fetchSearchAdKeywords(seedKeywords) {
       }
     } catch (err) {
       console.error(`[KEYWORDS] SearchAd batch error:`, err.message);
+      _apiErrors.push({ batch: i/5, error: err.message });
     }
 
     // API rate limit 보호
     if (i + 5 < seedKeywords.length) await new Promise(r => setTimeout(r, 200));
   }
 
+  allResults._apiErrors = _apiErrors;
   return allResults;
 }
 
@@ -512,6 +517,7 @@ export default async function handler(req, res) {
     const _debug = isAdmin ? {
       seedCount: seedKeywords.length,
       searchAdTotal: searchData.size,
+      searchAdErrors: searchData._apiErrors || [],
       allCandidates: allCandidates.length,
       relevantCandidates: relevantCandidates.length,
       finalCandidates: candidates.length,
