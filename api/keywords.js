@@ -126,24 +126,35 @@ async function expandWithAutoComplete(seedKeywords) {
 }
 
 // ─── 분야 적합도 필터: 엉뚱한 키워드 제거 ───
+// 너무 범용적인 단어는 필터 핵심 단어에서 제외
+const GENERIC_WORDS = new Set([
+  '추천', '비용', '가격', '방법', '후기', '비교', '차이', '종류', '순위', '정보',
+  '사이트', '업체', '전문', '온라인', '오프라인', '서비스', '프로그램', '무료', '유료',
+  '장점', '단점', '효과', '리뷰', '사용법', '이용', '신청', '예약', '상담', '견적',
+  '준비', '과정', '절차', '기간', '시간', '주의', '팁', '노하우', '초보', '입문',
+]);
+
 function extractCoreWords(field, seedKeywords) {
-  // 분야명 + 시드키워드에서 2글자 이상 핵심 단어 추출
-  const allText = [field, ...seedKeywords].join(' ');
-  const words = allText.split(/[\s,/·]+/).filter(w => w.length >= 2);
-  // 중복 제거 + 빈도 높은 단어 우선
+  // 분야명은 최우선 핵심 단어 (반드시 포함)
+  const fieldWords = field.split(/[\s,/·]+/).filter(w => w.length >= 2);
+
+  // 시드키워드에서 2글자 이상 단어 추출 (범용 단어 제외)
+  const allText = seedKeywords.join(' ');
+  const words = allText.split(/[\s,/·]+/).filter(w => w.length >= 2 && !GENERIC_WORDS.has(w));
+
   const freq = new Map();
-  for (const w of words) {
-    freq.set(w, (freq.get(w) || 0) + 1);
-  }
-  // 빈도 순 정렬 후 상위 30개
+  // 분야명 단어에 높은 가중치
+  for (const w of fieldWords) freq.set(w, (freq.get(w) || 0) + 10);
+  for (const w of words) freq.set(w, (freq.get(w) || 0) + 1);
+
+  // 빈도 순 정렬 후 상위 40개
   return Array.from(freq.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 30)
+    .slice(0, 40)
     .map(([w]) => w);
 }
 
 function isRelevantKeyword(keyword, coreWords) {
-  // 키워드가 핵심 단어 중 하나라도 포함하면 통과
   const kw = keyword.toLowerCase();
   return coreWords.some(w => kw.includes(w.toLowerCase()));
 }
@@ -446,8 +457,8 @@ export default async function handler(req, res) {
     const allCandidates = Array.from(searchData.values()).filter(k => k.monthlySearch >= 50);
     const relevantCandidates = allCandidates.filter(k => isRelevantKeyword(k.keyword, coreWords));
 
-    // 적합한 키워드가 너무 적으면 필터 완화 (최소 20개 보장)
-    const candidates = (relevantCandidates.length >= 20 ? relevantCandidates : allCandidates)
+    // 필터를 항상 적용 (fallback 없음 — 엉뚱한 키워드가 나오는 것보다 적은 결과가 나음)
+    const candidates = relevantCandidates
       .sort((a, b) => b.monthlySearch - a.monthlySearch)
       .slice(0, 80);
 
