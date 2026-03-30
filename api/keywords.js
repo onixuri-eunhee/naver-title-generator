@@ -12,7 +12,8 @@ import crypto from 'crypto';
 export const config = { maxDuration: 60 };
 
 const FREE_DAILY_LIMIT = 3;
-const DEBUG_VERSION = 'v20-ranking-polish';
+const DEBUG_VERSION = 'v21-min-300';
+const DISPLAY_MIN_MONTHLY_SEARCH = 300;
 
 let redis;
 function getRedis() {
@@ -417,9 +418,9 @@ function determineMinSearchThreshold(signals, searchAdTotal) {
   const hasNicheContext = /해외|미국|한국|거주|교포|국제|원정|직계가족|소규모|스몰/.test(joinedSignals);
   const signalStrength = (signals.targetPriorityTokens?.length || 0) + (signals.contextTokens?.length || 0) + (signals.journeyTokens?.length || 0);
 
-  let threshold = 50;
-  if (hasNicheContext || signalStrength >= 8 || searchAdTotal <= 120) threshold = 10;
-  if (hasNicheContext || signalStrength >= 12 || searchAdTotal <= 50) threshold = 5;
+  let threshold = 300;
+  if (hasNicheContext || signalStrength >= 8 || searchAdTotal <= 120) threshold = 100;
+  if (hasNicheContext || signalStrength >= 12 || searchAdTotal <= 50) threshold = 50;
   return threshold;
 }
 
@@ -978,8 +979,11 @@ export default async function handler(req, res) {
     })
     .sort((a, b) => b.score - a.score);
 
-    const sections = buildKeywordSections(results, intentSignals);
+    const filteredResults = results.filter(result => result.monthlySearch >= DISPLAY_MIN_MONTHLY_SEARCH);
+    const sections = buildKeywordSections(filteredResults, intentSignals);
     if (_debug) {
+      _debug.displayMinMonthlySearch = DISPLAY_MIN_MONTHLY_SEARCH;
+      _debug.preDisplayCount = results.length;
       _debug.topRanked = results.slice(0, 5).map(result => ({
         keyword: result.keyword,
         score: result.score,
@@ -988,6 +992,18 @@ export default async function handler(req, res) {
         rankingAdjustment: result.rankingAdjustment,
         rankingAdjustmentReasons: result.rankingAdjustmentReasons,
       }));
+    }
+
+    if (filteredResults.length === 0) {
+      if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+      return res.status(200).json({
+        keywords: [],
+        sections: [],
+        totalFound: 0,
+        seedKeywords,
+        message: `월간 검색수 ${DISPLAY_MIN_MONTHLY_SEARCH} 이상인 키워드를 찾지 못했습니다. 입력을 더 넓게 쓰거나 조건을 조정해보세요.`,
+        _debug,
+      });
     }
 
     const remaining = isAdmin ? 999 : FREE_DAILY_LIMIT - (await getRedis().get(rateLimitKey) || 0);
@@ -1002,13 +1018,13 @@ export default async function handler(req, res) {
     if (thresholdFallbackUsed) noticeMessages.push('검색량이 낮은 틈새 키워드까지 포함해 결과를 확장했습니다.');
 
     return res.status(200).json({
-      keywords: results,
+      keywords: filteredResults,
       sections,
-      totalFound: results.length,
+      totalFound: filteredResults.length,
       seedKeywords,
       remaining: Math.max(0, remaining),
       limit: FREE_DAILY_LIMIT,
-      notice: noticeMessages.join(' ') || undefined,
+      notice: [`월간 검색수 ${DISPLAY_MIN_MONTHLY_SEARCH} 이상만 표시합니다.`].concat(noticeMessages).join(' ').trim() || undefined,
       _debug,
     });
 
