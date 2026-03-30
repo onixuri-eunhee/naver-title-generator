@@ -211,9 +211,37 @@ async function fetchSearchAdKeywords(seedKeywords) {
 
   console.log(`[KEYWORDS] SafeSeeds: ${safeSeeds.length} from ${seedKeywords.length}. Sample: [${safeSeeds.slice(0,3).join(', ')}]`);
 
+  // API 테스트: "웨딩" 한 단어로 먼저 확인
+  let _apiTestResult = 'not_run';
+  try {
+    const testTs = String(Date.now());
+    const testH = crypto.createHmac('sha256', SECRET);
+    testH.update(`${testTs}.${method}.${uri}`);
+    const testSig = testH.digest('base64');
+    const testRes = await fetch(`https://api.searchad.naver.com${uri}?hintKeywords=${encodeURIComponent(field)}&showDetail=1`, {
+      headers: { 'X-Timestamp': testTs, 'X-API-KEY': API_KEY, 'X-Customer': CUSTOMER_ID, 'X-Signature': testSig },
+    });
+    if (testRes.ok) {
+      const testData = await testRes.json();
+      _apiTestResult = `ok_${(testData.keywordList||[]).length}`;
+      // API 작동하면 테스트 결과도 allResults에 추가
+      for (const item of (testData.keywordList || [])) {
+        if (!allResults.has(item.relKeyword)) {
+          const pcSearch = item.monthlyPcQcCnt === '< 10' ? 5 : Number(item.monthlyPcQcCnt) || 0;
+          const mobileSearch = item.monthlyMobileQcCnt === '< 10' ? 5 : Number(item.monthlyMobileQcCnt) || 0;
+          allResults.set(item.relKeyword, { keyword: item.relKeyword, monthlySearch: pcSearch + mobileSearch, pcSearch, mobileSearch, competition: item.compIdx || 'low' });
+        }
+      }
+    } else {
+      const errText = await testRes.text().catch(() => '');
+      _apiTestResult = `err_${testRes.status}_${errText.slice(0, 80)}`;
+    }
+  } catch (e) { _apiTestResult = `catch_${e.message}`; }
+  console.log(`[KEYWORDS] API test with "${field}": ${_apiTestResult}`);
+  allResults._apiTestResult = _apiTestResult;
+
   for (let i = 0; i < safeSeeds.length; i += 5) {
-    const batch = safeSeeds.slice(i, i + 5).map(kw => kw.slice(0, 50)); // 키워드당 50자 제한
-    // 각 키워드를 개별 인코딩, 쉼표는 리터럴로 유지 (URLSearchParams 사용 금지)
+    const batch = safeSeeds.slice(i, i + 5).map(kw => kw.slice(0, 50));
     const hintKeywords = batch.map(kw => encodeURIComponent(kw)).join(',');
     const queryString = `hintKeywords=${hintKeywords}&showDetail=1`;
 
@@ -523,7 +551,8 @@ export default async function handler(req, res) {
 
     // 진단 정보 (디버깅용, 관리자에게만)
     const _debug = isAdmin ? {
-      _v: 'v6-manual-url',
+      _v: 'v8-api-test',
+      apiTestResult: searchData._apiTestResult || 'unknown',
       safeSeedsSample: searchData._safeSeedsSample || [],
       seedCount: seedKeywords.length,
       searchAdTotal: searchData.size,
