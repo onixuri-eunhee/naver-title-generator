@@ -206,9 +206,14 @@ async function fetchSearchAdKeywords(seedKeywords) {
   const allResults = new Map();
   const _apiErrors = []; // 진단용
 
+  // 시드키워드 정제 (특수문자 제거 — 네이버 검색광고 API는 한글/영문/숫자/공백만 허용)
+  const cleanKeywords = seedKeywords
+    .map(kw => kw.replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim())
+    .filter(kw => kw.length >= 2);
+
   // 시드키워드를 5개씩 배치 호출 (API 제한)
-  for (let i = 0; i < seedKeywords.length; i += 5) {
-    const batch = seedKeywords.slice(i, i + 5);
+  for (let i = 0; i < cleanKeywords.length; i += 5) {
+    const batch = cleanKeywords.slice(i, i + 5);
     const params = new URLSearchParams({
       hintKeywords: batch.join(','),
       showDetail: '1',
@@ -256,7 +261,7 @@ async function fetchSearchAdKeywords(seedKeywords) {
     }
 
     // API rate limit 보호
-    if (i + 5 < seedKeywords.length) await new Promise(r => setTimeout(r, 200));
+    if (i + 5 < cleanKeywords.length) await new Promise(r => setTimeout(r, 200));
   }
 
   allResults._apiErrors = _apiErrors;
