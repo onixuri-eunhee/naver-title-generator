@@ -1,0 +1,2160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-C61VWMGQ8R"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-C61VWMGQ8R');
+  </script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4973804132466200" crossorigin="anonymous"></script>
+  <title>숏폼 영상 제작기 | 유튜브 숏츠·릴스 영상, 뚝딱</title>
+  <meta name="description" content="블로그 글이나 키워드를 입력하면 AI가 숏폼 대본을 생성하고, 본인 목소리로 녹음하면 자동으로 자막+B-roll 영상이 완성됩니다.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://ddukddaktool.co.kr/shortform.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="숏폼 영상 제작기 | 유튜브 숏츠·릴스 영상, 뚝딱">
+  <meta property="og:description" content="블로그 글이나 키워드를 입력하면 AI가 숏폼 대본을 생성하고, 본인 목소리로 녹음하면 자막+B-roll 영상이 완성됩니다.">
+  <meta property="og:url" content="https://ddukddaktool.co.kr/shortform.html">
+  <meta property="og:site_name" content="뚝딱툴">
+  <meta property="og:locale" content="ko_KR">
+  <meta property="og:image" content="https://ddukddaktool.co.kr/assets/og-default.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="숏폼 영상 제작기 | 유튜브 숏츠·릴스 영상, 뚝딱">
+  <meta name="twitter:description" content="블로그 글이나 키워드를 입력하면 AI가 숏폼 대본을 생성하고, 본인 목소리로 녹음하면 자동으로 자막+B-roll 영상이 완성됩니다.">
+  <meta name="twitter:image" content="https://ddukddaktool.co.kr/assets/og-default.jpg">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "뚝딱툴 숏폼 영상 제작기",
+    "url": "https://ddukddaktool.co.kr/shortform.html",
+    "description": "블로그 글이나 키워드를 입력하면 AI가 숏폼 영상용 HPC 대본을 생성하고, 본인 목소리를 녹음하면 자막과 B-roll 제작까지 이어지는 웹 기반 숏폼 제작 도구입니다.",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "KRW",
+      "description": "회원가입 후 무료 체험 또는 크레딧 기반 사용"
+    },
+    "featureList": [
+      "HPC 구조 숏폼 대본 생성",
+      "브라우저 음성 녹음 또는 오디오 업로드",
+      "STT 타임스탬프 자동 생성",
+      "B-roll 이미지 및 클립 추천"
+    ]
+  }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/navbar-mobile.css">
+  <style>
+    :root {
+      --bg: #F8F9FD;
+      --card: #FFFFFF;
+      --border: #E5E7EB;
+      --text: #1A1A2E;
+      --muted: #6B7280;
+      --accent: #ff5f1f;
+      --accent-soft: rgba(255,95,31,0.12);
+      --hero: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+      --success: #16A34A;
+      --warning: #D97706;
+      --danger: #DC2626;
+      --radius: 16px;
+      --shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(255,95,31,0.08), transparent 28%),
+        linear-gradient(180deg, #FBFCFF 0%, #F8F9FD 48%, #F3F5FB 100%);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; }
+    .navbar {
+      background: rgba(255,255,255,0.94);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 52px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .navbar-logo {
+      font-size: 18px;
+      font-weight: 900;
+      color: #1A1A2E;
+      text-decoration: none;
+    }
+    .navbar-logo span { color: #00C73C; }
+    .navbar-links { display: flex; gap: 4px; }
+    .navbar-links a {
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6B7280;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+      position: relative;
+    }
+    .navbar-links a:hover {
+      background: #F3F4F6;
+      color: #1A1A2E;
+    }
+    .navbar-links a.active {
+      color: var(--accent);
+      font-weight: 700;
+      background: rgba(255,95,31,0.08);
+    }
+    .navbar-links a.pro-badge::after {
+      content: 'PRO';
+      position: absolute;
+      top: 1px;
+      right: 1px;
+      font-size: 8px;
+      font-weight: 800;
+      color: #fff;
+      background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+      border-radius: 4px;
+      padding: 1px 3px;
+      line-height: 1.4;
+    }
+    .navbar-links a.new-badge { margin-right: 12px; }
+    .navbar-links a.new-badge::after {
+      content: 'NEW';
+      position: absolute;
+      top: 1px;
+      right: 1px;
+      font-size: 8px;
+      font-weight: 800;
+      color: #fff;
+      background: #FF4757;
+      border-radius: 4px;
+      padding: 1px 3px;
+      line-height: 1.4;
+    }
+    .navbar-auth {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .navbar-login-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6B7280;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .navbar-login-btn:hover {
+      background: #F3F4F6;
+      color: #1A1A2E;
+    }
+    .navbar-signup-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #00C73C;
+      color: #fff;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .navbar-signup-btn:hover { background: #00A830; }
+    .navbar-user-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #00C73C;
+      text-decoration: none;
+    }
+    .navbar-mypage-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6B7280;
+      text-decoration: none;
+      border: 1px solid #E5E7EB;
+      transition: all 0.15s;
+    }
+    .navbar-mypage-btn:hover {
+      background: #F3F4F6;
+      color: #1A1A2E;
+    }
+    .hero {
+      background: var(--hero);
+      padding: 56px 20px 44px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before,
+    .hero::after {
+      content: '';
+      position: absolute;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      filter: blur(8px);
+    }
+    .hero::before {
+      width: 220px;
+      height: 220px;
+      top: -70px;
+      left: -40px;
+    }
+    .hero::after {
+      width: 260px;
+      height: 260px;
+      bottom: -120px;
+      right: -40px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #FFD8C8;
+      background: rgba(255,95,31,0.14);
+      border: 1px solid rgba(255,95,31,0.34);
+      margin-bottom: 18px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 900;
+      line-height: 1.25;
+      letter-spacing: -0.04em;
+      color: #fff;
+      margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero h1 em {
+      color: var(--accent);
+      font-style: normal;
+    }
+    .hero-subtitle {
+      font-size: clamp(16px, 3vw, 22px);
+      font-weight: 700;
+      color: #FFE7DE;
+      margin-bottom: 12px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero p {
+      max-width: 640px;
+      margin: 0 auto;
+      font-size: 15px;
+      line-height: 1.8;
+      color: rgba(255,255,255,0.72);
+      position: relative;
+      z-index: 1;
+    }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 20px 80px;
+    }
+    .banner {
+      display: none;
+      background: #FFFBEB;
+      border: 1px solid #FDE68A;
+      border-radius: 12px;
+      padding: 14px 16px;
+      text-align: center;
+      margin-bottom: 16px;
+      color: var(--warning);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .banner a {
+      color: #8B5CF6;
+      text-decoration: underline;
+      font-weight: 700;
+      margin-left: 6px;
+    }
+    .page-overview {
+      background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,1));
+      border: 1px solid rgba(229,231,235,0.9);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .page-overview-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: flex-start;
+    }
+    .page-overview h2 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      letter-spacing: -0.03em;
+    }
+    .page-overview p {
+      font-size: 14px;
+      color: var(--muted);
+      max-width: 560px;
+    }
+    .remaining-panel {
+      min-width: 180px;
+      padding: 16px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #FFF6F1 0%, #FFFFFF 100%);
+      border: 1px solid rgba(255,95,31,0.18);
+      text-align: right;
+    }
+    .remaining-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .remaining-value {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -0.02em;
+    }
+    .workflow-intro {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .workflow-chip {
+      border-radius: 14px;
+      background: #F9FAFB;
+      border: 1px solid var(--border);
+      padding: 14px;
+    }
+    .workflow-chip strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+    .workflow-chip span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .step-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+    .step-card.complete {
+      border-color: rgba(22,163,74,0.28);
+    }
+    .step-card.locked {
+      opacity: 0.72;
+    }
+    .step-card.locked .step-lock {
+      display: flex;
+    }
+    .step-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .step-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: #FFF3ED;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .step-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .step-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 4px;
+    }
+    .step-description {
+      font-size: 14px;
+      color: var(--muted);
+      max-width: 620px;
+    }
+    .step-check {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      border: 1px solid #D1D5DB;
+      color: #9CA3AF;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 900;
+      background: #F9FAFB;
+      flex-shrink: 0;
+    }
+    .step-card.complete .step-check {
+      background: rgba(22,163,74,0.14);
+      border-color: rgba(22,163,74,0.24);
+      color: var(--success);
+    }
+    .step-lock {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(248,249,253,0.74);
+      backdrop-filter: blur(1px);
+      align-items: flex-start;
+      justify-content: center;
+      padding: 92px 24px 24px;
+      text-align: center;
+      z-index: 4;
+      color: #475569;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .step-body { position: relative; z-index: 1; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .input-group { margin-bottom: 14px; }
+    .input-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 7px;
+    }
+    .input-label .req { color: var(--accent); }
+    input[type="text"],
+    textarea {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--text);
+      padding: 12px 14px;
+      font-size: 14px;
+      line-height: 1.7;
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+    input[type="text"]:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(255,95,31,0.12);
+    }
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    .tone-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .tone-option {
+      flex: 1 1 220px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color 0.18s ease, background 0.18s ease;
+    }
+    .tone-option:has(input:checked) {
+      border-color: var(--accent);
+      background: #FFF6F1;
+    }
+    .tone-option input { accent-color: var(--accent); }
+    .tone-meta strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+    .tone-meta span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .primary-btn,
+    .secondary-btn,
+    .ghost-btn,
+    .file-btn {
+      border: none;
+      border-radius: 12px;
+      padding: 13px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+    }
+    .primary-btn {
+      background: linear-gradient(135deg, var(--accent), #FF7A45);
+      color: #fff;
+      box-shadow: 0 12px 26px rgba(255,95,31,0.18);
+    }
+    .primary-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 28px rgba(255,95,31,0.22);
+    }
+    .secondary-btn {
+      background: #FFF6F1;
+      color: var(--accent);
+      border: 1px solid rgba(255,95,31,0.22);
+    }
+    .ghost-btn {
+      background: #F3F4F6;
+      color: #374151;
+      border: 1px solid #E5E7EB;
+    }
+    .file-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #111827;
+      color: #fff;
+      min-width: 150px;
+    }
+    button:disabled,
+    .file-btn.disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      transform: none;
+      box-shadow: none;
+    }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .helper-text {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.6;
+    }
+    .error-box,
+    .info-box,
+    .success-box {
+      display: none;
+      margin-top: 14px;
+      border-radius: 14px;
+      padding: 13px 14px;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .error-box.show,
+    .info-box.show,
+    .success-box.show { display: block; }
+    .error-box {
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      color: var(--danger);
+    }
+    .info-box {
+      background: #EFF6FF;
+      border: 1px solid #BFDBFE;
+      color: #1D4ED8;
+    }
+    .success-box {
+      background: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      color: var(--success);
+    }
+    .script-result {
+      display: none;
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #FFF9F5 0%, #FFFFFF 100%);
+      border: 1px solid rgba(255,95,31,0.18);
+    }
+    .script-result.show { display: block; }
+    .script-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .script-meta strong {
+      font-size: 16px;
+      letter-spacing: -0.02em;
+    }
+    .script-time {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid rgba(255,95,31,0.16);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .hpc-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .hpc-card {
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 240px;
+    }
+    .hpc-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .hpc-title {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .hpc-card.hook .hpc-title { color: #D97706; }
+    .hpc-card.point .hpc-title { color: #2563EB; }
+    .hpc-card.cta .hpc-title { color: #16A34A; }
+    .hpc-hint {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .hpc-card textarea {
+      min-height: 162px;
+      height: 100%;
+      background: #FCFCFD;
+    }
+    .record-guide {
+      display: flex;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #FFF7ED 0%, #FFFFFF 100%);
+      border: 1px solid rgba(245,158,11,0.22);
+      margin-bottom: 18px;
+    }
+    .record-guide-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: rgba(245,158,11,0.14);
+      color: var(--warning);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+    .record-guide p {
+      font-size: 13px;
+      color: #9A3412;
+      line-height: 1.75;
+    }
+    .record-layout {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 16px;
+    }
+    .record-panel,
+    .upload-panel {
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      padding: 18px;
+      background: #fff;
+    }
+    .panel-title {
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .panel-desc {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .record-status {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 12px;
+      min-height: 20px;
+    }
+    .record-status.recording {
+      color: var(--danger);
+      font-weight: 700;
+    }
+    .hidden-input { display: none; }
+    .audio-preview {
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(22,163,74,0.22);
+      background: #F7FFF9;
+    }
+    .audio-preview.show { display: block; }
+    .audio-preview-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .audio-preview strong { font-size: 14px; }
+    .audio-preview span {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .audio-preview audio {
+      width: 100%;
+      height: 42px;
+    }
+    .loading-box {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,95,31,0.18);
+      background: linear-gradient(180deg, #FFF8F4 0%, #FFFFFF 100%);
+      margin-bottom: 16px;
+    }
+    .loading-box.show { display: flex; }
+    .spinner {
+      width: 22px;
+      height: 22px;
+      border: 3px solid rgba(255,95,31,0.18);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    .loading-box strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+    .loading-box span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: 0.95fr 1.05fr;
+      gap: 16px;
+    }
+    .result-panel {
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 18px;
+    }
+    .result-panel h3 {
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .result-panel p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .stt-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 360px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .stt-item {
+      border-radius: 14px;
+      background: #F9FAFB;
+      border: 1px solid var(--border);
+      padding: 12px 13px;
+    }
+    .stt-item strong {
+      display: block;
+      font-size: 12px;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .stt-item span {
+      display: block;
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+    .broll-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .broll-item {
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #fff;
+      box-shadow: 0 8px 20px rgba(15,23,42,0.05);
+    }
+    .broll-thumb {
+      display: block;
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      object-fit: cover;
+      background: linear-gradient(180deg, #E5E7EB, #F3F4F6);
+    }
+    .broll-item video.broll-thumb {
+      background: #111827;
+    }
+    .broll-body {
+      padding: 12px;
+    }
+    .broll-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #FFF6F1;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .broll-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1F2937;
+      line-height: 1.6;
+      margin-bottom: 4px;
+      word-break: break-word;
+    }
+    .broll-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+      word-break: break-word;
+    }
+    .empty-state {
+      border-radius: 16px;
+      border: 1px dashed #D1D5DB;
+      background: #F9FAFB;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 20px;
+      text-align: center;
+      line-height: 1.7;
+    }
+    .placeholder {
+      border-radius: 18px;
+      border: 1px dashed rgba(255,95,31,0.32);
+      background: linear-gradient(180deg, #FFF9F5 0%, #FFFFFF 100%);
+      padding: 24px;
+    }
+    .placeholder h3 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      letter-spacing: -0.03em;
+    }
+    .placeholder p {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .placeholder-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      list-style: none;
+    }
+    .placeholder-list li {
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid var(--border);
+      padding: 14px;
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.7;
+    }
+    .placeholder-list strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent);
+    }
+    footer {
+      padding: 36px 20px 44px;
+      text-align: center;
+      font-size: 12px;
+      color: #9CA3AF;
+      line-height: 1.8;
+    }
+    footer a {
+      color: #9CA3AF;
+      text-decoration: none;
+    }
+    footer a:hover { text-decoration: underline; }
+    .auth-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.58);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 300;
+    }
+    .auth-modal.show { display: flex; }
+    .auth-modal-card {
+      width: min(100%, 420px);
+      border-radius: 20px;
+      background: #fff;
+      padding: 24px;
+      box-shadow: 0 26px 60px rgba(15,23,42,0.28);
+      position: relative;
+    }
+    .auth-modal-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      border: none;
+      background: #F3F4F6;
+      color: #374151;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .auth-modal-card h3 {
+      font-size: 22px;
+      font-weight: 900;
+      margin-bottom: 10px;
+      letter-spacing: -0.03em;
+    }
+    .auth-modal-card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.8;
+      margin-bottom: 18px;
+    }
+    .auth-modal-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .auth-link-btn {
+      flex: 1 1 160px;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 48px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+    .auth-link-btn.login {
+      background: #111827;
+      color: #fff;
+    }
+    .auth-link-btn.signup {
+      background: linear-gradient(135deg, var(--accent), #FF7A45);
+      color: #fff;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @media (max-width: 768px) {
+      .hero { padding: 48px 18px 38px; }
+      .container { padding: 24px 16px 72px; }
+      .page-overview,
+      .step-card { padding: 20px; }
+      .page-overview-top,
+      .record-layout,
+      .result-grid,
+      .grid-2,
+      .hpc-grid,
+      .workflow-intro,
+      .placeholder-list {
+        grid-template-columns: 1fr;
+      }
+      .remaining-panel { text-align: left; min-width: 0; }
+      .step-title { font-size: 22px; }
+      .step-header { align-items: center; }
+      .broll-grid { grid-template-columns: 1fr; }
+      .step-lock { padding-top: 112px; }
+      .record-guide { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
+    <div class="navbar-links">
+      <a href="guide.html">사용법</a>
+      <a href="/">제목</a>
+      <a href="hook-generator.html">후킹</a>
+      <a href="threads.html">스레드</a>
+      <a href="blog-writer.html" class="pro-badge">블로그 글</a>
+      <a href="blog-image.html" class="pro-badge">이미지</a>
+      <a href="blog-image-pro.html" class="pro-badge">프리미엄</a>
+      <a href="card-news.html" class="pro-badge">카드뉴스</a>
+      <a href="shortform.html" class="active new-badge">숏폼 영상</a>
+      <a href="keyword-finder.html" class="new-badge">황금키워드</a>
+      <a href="column.html">칼럼</a>
+    </div>
+    <div class="navbar-auth" id="navbarAuth"></div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-badge">SHORTFORM · NEW</div>
+    <h1><em>숏폼 영상</em> 제작기</h1>
+    <div class="hero-subtitle">블로그 글 → 30초 영상, 뚝딱</div>
+    <p>AI가 대본을 만들고, 내 목소리로 녹음하면 자막+영상이 자동 완성</p>
+  </section>
+
+  <main class="container">
+    <div id="signupBanner" class="banner">
+      회원가입하면 무료 체험이 바로 열립니다.
+      <a href="signup.html">가입하기</a>
+    </div>
+
+    <section class="page-overview">
+      <div class="page-overview-top">
+        <div>
+          <h2>숏폼 영상 전체 흐름을 4단계로 정리했습니다</h2>
+          <p>키워드 또는 블로그 글을 바탕으로 30초 분량 대본을 만들고, 본인 목소리 파일을 붙이면 STT와 B-roll 소재가 자동 준비됩니다. Round 1에서는 기획, 음성, 자막, 소재 생성까지 연결합니다.</p>
+        </div>
+        <div class="remaining-panel">
+          <div class="remaining-label">오늘 남은 생성 횟수</div>
+          <div class="remaining-value" id="remainingCount">확인 중...</div>
+        </div>
+      </div>
+      <div class="workflow-intro">
+        <div class="workflow-chip">
+          <strong>Step 1</strong>
+          <span>HPC 대본 생성 후 직접 편집</span>
+        </div>
+        <div class="workflow-chip">
+          <strong>Step 2</strong>
+          <span>브라우저 녹음 또는 파일 업로드</span>
+        </div>
+        <div class="workflow-chip">
+          <strong>Step 3</strong>
+          <span>STT + B-roll 자동 병렬 생성</span>
+        </div>
+        <div class="workflow-chip">
+          <strong>Step 4</strong>
+          <span>렌더링 연결 예정</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="step-card" id="step1Card">
+      <div class="step-header">
+        <div>
+          <div class="step-eyebrow">
+            <span class="step-number">01</span>
+            <span class="step-label">Step 1</span>
+          </div>
+          <h2 class="step-title">대본 생성</h2>
+          <p class="step-description">업종이나 키워드를 입력하고, 필요하면 블로그 글을 붙여넣으세요. 생성된 HPC 구조 대본은 바로 수정할 수 있습니다.</p>
+        </div>
+        <div class="step-check" id="step1Check">✓</div>
+      </div>
+      <div class="step-body">
+        <div class="grid-2">
+          <div class="input-group">
+            <label class="input-label" for="keywordInput">업종/키워드 <span class="req">*</span></label>
+            <input type="text" id="keywordInput" placeholder="예: 피부과 시술 후기, 세무사 절세 팁, 미용실 염색 전후" maxlength="80">
+          </div>
+          <div class="input-group">
+            <label class="input-label">톤 선택</label>
+            <div class="tone-group">
+              <label class="tone-option">
+                <input type="radio" name="scriptTone" value="casual" checked>
+                <span class="tone-meta">
+                  <strong>캐주얼</strong>
+                  <span>숏츠·릴스에서 자연스러운 말투</span>
+                </span>
+              </label>
+              <label class="tone-option">
+                <input type="radio" name="scriptTone" value="professional">
+                <span class="tone-meta">
+                  <strong>전문적</strong>
+                  <span>신뢰감 있는 설명형 톤</span>
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label" for="blogTextInput">블로그 글 붙여넣기 <span style="font-weight:400; color:#6B7280;">(선택)</span></label>
+          <textarea id="blogTextInput" placeholder="원문이 있으면 붙여넣어 주세요. 없으면 키워드만으로도 생성됩니다."></textarea>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="primary-btn" id="generateScriptBtn">대본 생성</button>
+        </div>
+        <div class="helper-text">API: <code>POST /api/shortform-script</code></div>
+        <div class="error-box" id="scriptError"></div>
+
+        <div class="script-result" id="scriptResult">
+          <div class="script-meta">
+            <div>
+              <strong>HPC 구조 대본</strong>
+              <div class="helper-text">각 칸은 바로 편집됩니다. 수정 시 후속 STT/B-roll 생성에도 반영됩니다.</div>
+            </div>
+            <div class="script-time" id="estimatedTime">예상 길이 0초</div>
+          </div>
+          <div class="hpc-grid">
+            <div class="hpc-card hook">
+              <div class="hpc-head">
+                <span class="hpc-title">Hook</span>
+                <span class="hpc-hint">첫 3초</span>
+              </div>
+              <textarea id="hookTextarea" placeholder="시선을 잡는 첫 문장"></textarea>
+            </div>
+            <div class="hpc-card point">
+              <div class="hpc-head">
+                <span class="hpc-title">Point</span>
+                <span class="hpc-hint">핵심 전달</span>
+              </div>
+              <textarea id="pointTextarea" placeholder="핵심 포인트"></textarea>
+            </div>
+            <div class="hpc-card cta">
+              <div class="hpc-head">
+                <span class="hpc-title">CTA</span>
+                <span class="hpc-hint">마무리 행동 유도</span>
+              </div>
+              <textarea id="ctaTextarea" placeholder="댓글, 문의, 저장 유도"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="step-card locked" id="step2Card">
+      <div class="step-lock" id="step2Lock">먼저 Step 1에서 대본을 생성해주세요.</div>
+      <div class="step-header">
+        <div>
+          <div class="step-eyebrow">
+            <span class="step-number">02</span>
+            <span class="step-label">Step 2</span>
+          </div>
+          <h2 class="step-title">음성 녹음/업로드</h2>
+          <p class="step-description">브라우저에서 바로 녹음하거나, 이미 만들어 둔 본인 음성 파일을 올릴 수 있습니다.</p>
+        </div>
+        <div class="step-check" id="step2Check">✓</div>
+      </div>
+      <div class="step-body">
+        <fieldset id="step2Fieldset" style="border:none;">
+          <div class="record-guide">
+            <div class="record-guide-mark">!</div>
+            <p>유튜브는 AI 음성으로 만든 영상을 양산형 콘텐츠로 판단하여 수익화를 거부하거나 채널을 정지시킬 수 있습니다. 본인 목소리로 녹음하면 콘텐츠 안전성이 보장되고, 시청자 신뢰도도 높아집니다.</p>
+          </div>
+
+          <div class="record-layout">
+            <div class="record-panel">
+              <div class="panel-title">브라우저 녹음</div>
+              <div class="panel-desc">MediaRecorder API로 바로 녹음합니다. 조용한 공간에서 30초 내외로 읽어주세요.</div>
+              <div class="btn-row">
+                <button type="button" class="primary-btn" id="recordStartBtn">녹음 시작</button>
+                <button type="button" class="secondary-btn" id="recordStopBtn" disabled>녹음 중지</button>
+                <button type="button" class="ghost-btn" id="recordResetBtn" disabled>다시 녹음</button>
+              </div>
+              <div class="record-status" id="recordStatus">녹음 대기 중</div>
+            </div>
+
+            <div class="upload-panel">
+              <div class="panel-title">파일 업로드</div>
+              <div class="panel-desc">지원 형식: .mp3, .m4a, .wav, .webm / 최대 10MB</div>
+              <div class="btn-row">
+                <label class="file-btn" id="uploadTrigger" for="audioFileInput">오디오 파일 선택</label>
+                <button type="button" class="ghost-btn" id="clearUploadBtn" disabled>파일 지우기</button>
+              </div>
+              <input class="hidden-input" type="file" id="audioFileInput" accept=".mp3,.m4a,.wav,.webm,audio/mpeg,audio/mp4,audio/wav,audio/webm">
+              <div class="helper-text" id="uploadFileName">선택된 파일이 없습니다.</div>
+            </div>
+          </div>
+
+          <div class="audio-preview" id="audioPreview">
+            <div class="audio-preview-head">
+              <div>
+                <strong>오디오 미리보기</strong>
+                <span id="audioMeta">음성 준비 완료</span>
+              </div>
+            </div>
+            <audio id="audioPlayer" controls preload="metadata"></audio>
+          </div>
+
+          <div class="error-box" id="audioError"></div>
+          <div class="success-box" id="audioSuccess"></div>
+        </fieldset>
+      </div>
+    </section>
+
+    <section class="step-card locked" id="step3Card">
+      <div class="step-lock" id="step3Lock">먼저 Step 2에서 음성을 준비해주세요.</div>
+      <div class="step-header">
+        <div>
+          <div class="step-eyebrow">
+            <span class="step-number">03</span>
+            <span class="step-label">Step 3</span>
+          </div>
+          <h2 class="step-title">B-roll 생성 (자동)</h2>
+          <p class="step-description">오디오가 준비되면 STT와 B-roll 추천이 자동으로 병렬 실행됩니다. 결과는 아래에서 바로 미리볼 수 있습니다.</p>
+        </div>
+        <div class="step-check" id="step3Check">✓</div>
+      </div>
+      <div class="step-body">
+        <div class="loading-box" id="materialsLoading">
+          <div class="spinner"></div>
+          <div>
+            <strong id="materialsLoadingTitle">영상 소재 생성 중...</strong>
+            <span id="materialsLoadingText">STT 타임스탬프와 B-roll 이미지를 준비하고 있습니다.</span>
+          </div>
+        </div>
+        <div class="error-box" id="materialsError"></div>
+        <div class="info-box show" id="materialsHint">Step 2가 끝나면 <code>POST /api/shortform-stt</code> 와 <code>POST /api/shortform-broll</code> 이 자동으로 병렬 호출됩니다.</div>
+
+        <div class="result-grid">
+          <div class="result-panel">
+            <h3>STT 타임스탬프</h3>
+            <p>오디오 구간과 자막 문장을 함께 확인합니다.</p>
+            <div class="stt-list" id="sttList">
+              <div class="empty-state">아직 생성된 자막 타임스탬프가 없습니다.</div>
+            </div>
+          </div>
+
+          <div class="result-panel">
+            <h3>B-roll 미리보기</h3>
+            <p>추천 이미지와 클립을 썸네일로 보여줍니다.</p>
+            <div class="broll-grid" id="brollGrid">
+              <div class="empty-state" style="grid-column:1 / -1;">아직 생성된 영상 소재가 없습니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="step-card locked" id="step4Card">
+      <div class="step-lock" id="step4Lock">Step 3가 끝나면 렌더링 단계가 연결됩니다.</div>
+      <div class="step-header">
+        <div>
+          <div class="step-eyebrow">
+            <span class="step-number">04</span>
+            <span class="step-label">Step 4</span>
+          </div>
+          <h2 class="step-title">영상 렌더링</h2>
+          <p class="step-description">Round 2에서 렌더링 API가 연결될 예정입니다. 현재는 준비 중 상태만 안내합니다.</p>
+        </div>
+        <div class="step-check" id="step4Check">✓</div>
+      </div>
+      <div class="step-body">
+        <div class="placeholder">
+          <h3>영상 렌더링 기능은 곧 추가됩니다</h3>
+          <p>향후에는 <code>POST /api/shortform-render</code> 호출 후 진행률 표시와 다운로드 링크까지 이 화면에서 이어집니다.</p>
+          <ul class="placeholder-list">
+            <li><strong>준비 중</strong>자막 합성과 컷 편집 렌더링</li>
+            <li><strong>예정</strong>렌더링 진행률 표시</li>
+            <li><strong>예정</strong>완성 영상 다운로드 링크</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="auth-modal" id="authModal" aria-hidden="true">
+    <div class="auth-modal-card" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+      <button type="button" class="auth-modal-close" id="authModalClose" aria-label="닫기">×</button>
+      <h3 id="authModalTitle">로그인이 필요합니다</h3>
+      <p>남은 횟수 확인과 숏폼 생성 API 사용을 위해 로그인 상태가 필요합니다. 로그인하거나 회원가입 후 다시 진행해주세요.</p>
+      <div class="auth-modal-actions">
+        <a href="login.html" class="auth-link-btn login">로그인</a>
+        <a href="signup.html" class="auth-link-btn signup">회원가입</a>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div style="margin-bottom:4px;">상호명: 어나더핸즈 | 대표자명: 공은희 | 사업자등록번호: 561-01-02951</div>
+    <div style="margin-bottom:4px;">통신판매업 신고번호: 2023-서울강남-01379 | 유선번호: 010-4761-5951 | lboss.reboot@gmail.com</div>
+    <div style="margin-bottom:4px;">주소: 서울특별시 강남구 논현로2길 60, 2층 2147호 (개포동, 세화빌딩)</div>
+    <div style="margin-bottom:4px;"><a href="/terms.html">이용약관</a> | <a href="/privacy.html">개인정보처리방침</a> | <a href="/refund-policy.html">환불규정</a></div>
+    <div>&copy; 2026 어나더핸즈. All rights reserved.</div>
+  </footer>
+
+  <script src="admin-mode.js"></script>
+  <script>
+    (function() {
+      var state = {
+        script: { hook: '', point: '', cta: '' },
+        brollSuggestions: [],
+        estimatedSeconds: 0,
+        step1Complete: false,
+        step2Complete: false,
+        step3Complete: false,
+        audioBlob: null,
+        audioFileName: '',
+        audioMimeType: '',
+        audioUrl: '',
+        audioSourceType: '',
+        mediaRecorder: null,
+        mediaStream: null,
+        recordChunks: [],
+        recordTimer: null,
+        recordStartedAt: 0,
+        processRequestId: 0,
+        reprocessTimer: 0
+      };
+
+      var els = {
+        signupBanner: document.getElementById('signupBanner'),
+        remainingCount: document.getElementById('remainingCount'),
+        step1Card: document.getElementById('step1Card'),
+        step2Card: document.getElementById('step2Card'),
+        step3Card: document.getElementById('step3Card'),
+        step4Card: document.getElementById('step4Card'),
+        step2Fieldset: document.getElementById('step2Fieldset'),
+        keywordInput: document.getElementById('keywordInput'),
+        blogTextInput: document.getElementById('blogTextInput'),
+        generateScriptBtn: document.getElementById('generateScriptBtn'),
+        scriptError: document.getElementById('scriptError'),
+        scriptResult: document.getElementById('scriptResult'),
+        estimatedTime: document.getElementById('estimatedTime'),
+        hookTextarea: document.getElementById('hookTextarea'),
+        pointTextarea: document.getElementById('pointTextarea'),
+        ctaTextarea: document.getElementById('ctaTextarea'),
+        recordStartBtn: document.getElementById('recordStartBtn'),
+        recordStopBtn: document.getElementById('recordStopBtn'),
+        recordResetBtn: document.getElementById('recordResetBtn'),
+        recordStatus: document.getElementById('recordStatus'),
+        audioFileInput: document.getElementById('audioFileInput'),
+        clearUploadBtn: document.getElementById('clearUploadBtn'),
+        uploadTrigger: document.getElementById('uploadTrigger'),
+        uploadFileName: document.getElementById('uploadFileName'),
+        audioPreview: document.getElementById('audioPreview'),
+        audioPlayer: document.getElementById('audioPlayer'),
+        audioMeta: document.getElementById('audioMeta'),
+        audioError: document.getElementById('audioError'),
+        audioSuccess: document.getElementById('audioSuccess'),
+        materialsLoading: document.getElementById('materialsLoading'),
+        materialsLoadingTitle: document.getElementById('materialsLoadingTitle'),
+        materialsLoadingText: document.getElementById('materialsLoadingText'),
+        materialsError: document.getElementById('materialsError'),
+        materialsHint: document.getElementById('materialsHint'),
+        sttList: document.getElementById('sttList'),
+        brollGrid: document.getElementById('brollGrid'),
+        step1Check: document.getElementById('step1Check'),
+        step2Check: document.getElementById('step2Check'),
+        step3Check: document.getElementById('step3Check'),
+        step4Check: document.getElementById('step4Check'),
+        authModal: document.getElementById('authModal'),
+        authModalClose: document.getElementById('authModalClose')
+      };
+
+      function getToken() {
+        try {
+          return localStorage.getItem('ddukddak_token') || '';
+        } catch (e) {
+          return '';
+        }
+      }
+
+      function createHeaders(extraHeaders) {
+        var headers = {};
+        if (extraHeaders) {
+          Object.keys(extraHeaders).forEach(function(key) {
+            headers[key] = extraHeaders[key];
+          });
+        }
+        var token = getToken();
+        if (token) headers.Authorization = 'Bearer ' + token;
+        return headers;
+      }
+
+      function showBox(element, message) {
+        if (!element) return;
+        element.textContent = message || '';
+        element.classList.toggle('show', !!message);
+      }
+
+      function openAuthModal() {
+        els.authModal.classList.add('show');
+        els.authModal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeAuthModal() {
+        els.authModal.classList.remove('show');
+        els.authModal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+      }
+
+      function showSignupBannerIfNeeded() {
+        if (!getToken()) els.signupBanner.style.display = 'block';
+      }
+
+      function formatRemainingText(remaining, limit) {
+        if (typeof remaining !== 'number') return '확인 불가';
+        if (remaining >= 999) return '관리자 모드';
+        if (typeof limit === 'number' && limit === 0) return '사용 제한';
+        if (typeof limit === 'number' && limit > 0) return remaining + '/' + limit + '회';
+        return remaining + '회';
+      }
+
+      function updateRemainingUI(remaining, limit) {
+        els.remainingCount.textContent = formatRemainingText(remaining, limit);
+        if (remaining >= 999) {
+          els.remainingCount.style.color = '#2563EB';
+          return;
+        }
+        if (typeof remaining === 'number' && remaining <= 1) {
+          els.remainingCount.style.color = '#DC2626';
+          return;
+        }
+        els.remainingCount.style.color = 'var(--accent)';
+      }
+
+      async function loadRemaining() {
+        try {
+          var response = await fetch('/api/shortform-script', {
+            method: 'GET',
+            headers: createHeaders()
+          });
+          var data = await parseResponseJson(response);
+          if (response.status === 401) {
+            updateRemainingUI(undefined, undefined);
+            return;
+          }
+          if (!response.ok) throw new Error(extractErrorMessage(data, response.status, '남은 횟수를 불러오지 못했습니다.'));
+          updateRemainingUI(toNumber(data && data.remaining), toNumber(data && data.limit));
+        } catch (e) {
+          els.remainingCount.textContent = '확인 실패';
+          els.remainingCount.style.color = '#6B7280';
+        }
+      }
+
+      function toNumber(value) {
+        return typeof value === 'number' && !isNaN(value) ? value : undefined;
+      }
+
+      function extractErrorMessage(data, status, fallback) {
+        if (data && typeof data.error === 'string') return data.error;
+        if (data && data.error && typeof data.error.message === 'string') return data.error.message;
+        if (data && typeof data.message === 'string') return data.message;
+        return fallback || ('요청 처리에 실패했습니다. (HTTP ' + status + ')');
+      }
+
+      async function parseResponseJson(response) {
+        var contentType = response.headers.get('content-type') || '';
+        if (contentType.indexOf('application/json') === -1) return null;
+        try {
+          return await response.json();
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function updateStepChecks() {
+        updateStepCheck(els.step1Check, state.step1Complete);
+        updateStepCheck(els.step2Check, state.step2Complete);
+        updateStepCheck(els.step3Check, state.step3Complete);
+        updateStepCheck(els.step4Check, false);
+      }
+
+      function updateStepCheck(element, complete) {
+        if (!element) return;
+        element.textContent = complete ? '✓' : '○';
+        element.parentElement.parentElement.classList.toggle('complete', complete);
+      }
+
+      function updateLocks() {
+        var step2Locked = !state.step1Complete;
+        var step3Locked = !state.step2Complete;
+        var step4Locked = !state.step3Complete;
+
+        els.step2Card.classList.toggle('locked', step2Locked);
+        els.step3Card.classList.toggle('locked', step3Locked);
+        els.step4Card.classList.toggle('locked', step4Locked);
+        els.step2Fieldset.disabled = step2Locked;
+        updateStepChecks();
+      }
+
+      function getSelectedTone() {
+        var selected = document.querySelector('input[name="scriptTone"]:checked');
+        return selected ? selected.value : 'casual';
+      }
+
+      function computeEstimatedSeconds(script) {
+        var text = [script.hook, script.point, script.cta].filter(Boolean).join(' ');
+        var compactLength = text.replace(/\s+/g, '').length;
+        if (!compactLength) return 0;
+        return Math.min(60, Math.max(15, Math.round(compactLength / 4.8)));
+      }
+
+      function updateEstimatedTime() {
+        els.estimatedTime.textContent = '예상 길이 ' + state.estimatedSeconds + '초';
+      }
+
+      function renderScriptEditor(script) {
+        els.hookTextarea.value = script.hook || '';
+        els.pointTextarea.value = script.point || '';
+        els.ctaTextarea.value = script.cta || '';
+        autoResize(els.hookTextarea);
+        autoResize(els.pointTextarea);
+        autoResize(els.ctaTextarea);
+        els.scriptResult.classList.add('show');
+      }
+
+      function readScriptFromEditor() {
+        state.script = {
+          hook: els.hookTextarea.value.trim(),
+          point: els.pointTextarea.value.trim(),
+          cta: els.ctaTextarea.value.trim()
+        };
+        state.estimatedSeconds = computeEstimatedSeconds(state.script);
+        updateEstimatedTime();
+      }
+
+      function autoResize(textarea) {
+        textarea.style.height = '0px';
+        textarea.style.height = Math.max(162, textarea.scrollHeight) + 'px';
+      }
+
+      function extractLabeledText(text, labels, stopLabels) {
+        var labelPattern = labels.join('|');
+        var regexSource = '(?:^|\\n)\\s*(?:' + labelPattern + ')\\s*[:：-]?\\s*([\\s\\S]*?)';
+        if (stopLabels.length) {
+          regexSource += '(?=\\n\\s*(?:' + stopLabels.join('|') + ')\\s*[:：-]?|$)';
+        } else {
+          regexSource += '$';
+        }
+        var match = text.match(new RegExp(regexSource, 'i'));
+        return match ? match[1].trim() : '';
+      }
+
+      function normalizeScriptResponse(data) {
+        var candidates = [
+          data && data.script,
+          data && data.hpc,
+          data && data.result,
+          data && data.data,
+          data
+        ];
+        var script = null;
+        var rawText = '';
+        var estimatedSeconds;
+
+        candidates.forEach(function(candidate) {
+          if (script || !candidate || typeof candidate !== 'object') return;
+          var nested = candidate.hpc && typeof candidate.hpc === 'object' ? candidate.hpc : candidate;
+          var hook = nested.hook || nested.Hook || '';
+          var rawPoint = nested.point || nested.Point || nested.body || '';
+          var point = Array.isArray(rawPoint) ? rawPoint.join('\n\n')
+            : Array.isArray(nested.points) ? nested.points.join('\n\n')
+            : String(rawPoint || '');
+          var cta = nested.cta || nested.CTA || nested.callToAction || '';
+          if (hook || point || cta) script = { hook: String(hook || ''), point: String(point || ''), cta: String(cta || '') };
+          estimatedSeconds = estimatedSeconds || toNumber(candidate.estimatedSeconds) || toNumber(candidate.durationSeconds) || toNumber(candidate.duration) || toNumber(candidate.seconds);
+        });
+
+        if (data && typeof data.text === 'string') rawText = data.text;
+        if (!rawText && data && typeof data.content === 'string') rawText = data.content;
+        if (!rawText && data && Array.isArray(data.content) && data.content[0] && typeof data.content[0].text === 'string') rawText = data.content[0].text;
+
+        if (!script && rawText) {
+          script = {
+            hook: extractLabeledText(rawText, ['Hook', 'HOOK', '훅'], ['Point', 'POINT', '포인트', 'CTA', '콜투액션']),
+            point: extractLabeledText(rawText, ['Point', 'POINT', '포인트'], ['CTA', '콜투액션']),
+            cta: extractLabeledText(rawText, ['CTA', '콜투액션'], [])
+          };
+          if (!script.hook && !script.point && !script.cta) {
+            var parts = rawText.split(/\n{2,}/).map(function(part) { return part.trim(); }).filter(Boolean);
+            if (parts.length >= 3) {
+              script = {
+                hook: parts[0],
+                point: parts.slice(1, parts.length - 1).join('\n\n'),
+                cta: parts[parts.length - 1]
+              };
+            }
+          }
+        }
+
+        if (!script || (!script.hook && !script.point && !script.cta)) return null;
+        estimatedSeconds = estimatedSeconds || computeEstimatedSeconds(script);
+
+        var brollSuggestions = null;
+        candidates.forEach(function(candidate) {
+          if (brollSuggestions || !candidate || typeof candidate !== 'object') return;
+          var nested = candidate.hpc && typeof candidate.hpc === 'object' ? candidate.hpc : candidate;
+          if (Array.isArray(nested.brollSuggestions) && nested.brollSuggestions.length) brollSuggestions = nested.brollSuggestions;
+        });
+
+        return { script: script, estimatedSeconds: estimatedSeconds, brollSuggestions: brollSuggestions };
+      }
+
+      function normalizeSttResponse(data) {
+        var source = [];
+        if (data && Array.isArray(data.segments)) source = data.segments;
+        if (!source.length && data && Array.isArray(data.timestamps)) source = data.timestamps;
+        if (!source.length && data && data.result && Array.isArray(data.result.segments)) source = data.result.segments;
+        if (!source.length && data && data.data && Array.isArray(data.data.segments)) source = data.data.segments;
+        if (!source.length && data && typeof data.text === 'string') {
+          return [{ start: 0, end: null, text: data.text.trim() }];
+        }
+        if (!source.length && data && data.result && typeof data.result.text === 'string') {
+          return [{ start: 0, end: null, text: data.result.text.trim() }];
+        }
+        if (!source.length && data && data.data && typeof data.data.text === 'string') {
+          return [{ start: 0, end: null, text: data.data.text.trim() }];
+        }
+        return source.map(function(item) {
+          if (typeof item === 'string') return { start: 0, end: null, text: item };
+          return {
+            start: typeof item.start === 'number' ? item.start : (typeof item.startTime === 'number' ? item.startTime : (typeof item.from === 'number' ? item.from : 0)),
+            end: typeof item.end === 'number' ? item.end : (typeof item.endTime === 'number' ? item.endTime : (typeof item.to === 'number' ? item.to : null)),
+            text: String(item.text || item.caption || item.word || '')
+          };
+        }).filter(function(item) {
+          return item.text;
+        });
+      }
+
+      function normalizeBrollResponse(data) {
+        var source = [];
+        if (data && Array.isArray(data.items)) source = data.items;
+        if (!source.length && data && Array.isArray(data.images)) source = data.images;
+        if (!source.length && data && Array.isArray(data.assets)) source = data.assets;
+        if (!source.length && data && Array.isArray(data.clips)) source = data.clips;
+        if (!source.length && data && data.result && Array.isArray(data.result.items)) source = data.result.items;
+        if (!source.length && data && data.data && Array.isArray(data.data.items)) source = data.data.items;
+        if (!source.length && data && data.result && Array.isArray(data.result.assets)) source = data.result.assets;
+        return source.map(function(item, index) {
+          if (typeof item === 'string') {
+            return {
+              type: guessMediaType(item),
+              url: item,
+              thumbnail: item,
+              title: '추천 소재 ' + (index + 1),
+              subtitle: ''
+            };
+          }
+          var url = item.url || item.imageUrl || item.clipUrl || item.videoUrl || item.src || '';
+          var thumbnail = item.thumbnail || item.thumbUrl || item.previewUrl || item.poster || url;
+          return {
+            type: item.type || guessMediaType(url),
+            url: url,
+            thumbnail: thumbnail,
+            title: String(item.title || item.keyword || item.prompt || ('추천 소재 ' + (index + 1))),
+            subtitle: String(item.description || item.note || item.caption || '')
+          };
+        }).filter(function(item) {
+          return item.url || item.thumbnail;
+        });
+      }
+
+      function guessMediaType(url) {
+        if (/\.(mp4|mov|webm)(\?|$)/i.test(url || '')) return 'video';
+        return 'image';
+      }
+
+      function formatSeconds(seconds) {
+        var safe = Math.max(0, Math.floor(seconds || 0));
+        var minutes = Math.floor(safe / 60);
+        var remain = safe % 60;
+        return minutes + ':' + String(remain).padStart(2, '0');
+      }
+
+      function renderSttResults(items) {
+        if (!items.length) {
+          els.sttList.innerHTML = '<div class="empty-state">타임스탬프 결과가 비어 있습니다.</div>';
+          return;
+        }
+        els.sttList.innerHTML = items.map(function(item) {
+          var range = item.end === null ? formatSeconds(item.start) : formatSeconds(item.start) + ' - ' + formatSeconds(item.end);
+          return '<div class="stt-item"><strong>' + escapeHtml(range) + '</strong><span>' + escapeHtml(item.text) + '</span></div>';
+        }).join('');
+      }
+
+      function renderBrollResults(items) {
+        if (!items.length) {
+          els.brollGrid.innerHTML = '<div class="empty-state" style="grid-column:1 / -1;">추천된 B-roll 소재가 없습니다.</div>';
+          return;
+        }
+        els.brollGrid.innerHTML = items.map(function(item) {
+          var media;
+          if (item.type === 'video') {
+            media = '<video class="broll-thumb" controls playsinline muted preload="metadata" src="' + escapeAttribute(item.url) + '"' + (item.thumbnail ? ' poster="' + escapeAttribute(item.thumbnail) + '"' : '') + '></video>';
+          } else {
+            media = '<img class="broll-thumb" src="' + escapeAttribute(item.thumbnail || item.url) + '" alt="' + escapeAttribute(item.title) + '">';
+          }
+          return '<div class="broll-item">' +
+            media +
+            '<div class="broll-body">' +
+            '<div class="broll-tag">' + escapeHtml(item.type === 'video' ? 'CLIP' : 'IMAGE') + '</div>' +
+            '<div class="broll-title">' + escapeHtml(item.title) + '</div>' +
+            '<div class="broll-subtitle">' + escapeHtml(item.subtitle || '자동 추천 소재') + '</div>' +
+            '</div>' +
+            '</div>';
+        }).join('');
+      }
+
+      function escapeHtml(text) {
+        return String(text || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function escapeAttribute(text) {
+        return escapeHtml(text).replace(/`/g, '&#96;');
+      }
+
+      function setLoading(isLoading, title, detail) {
+        els.materialsLoading.classList.toggle('show', isLoading);
+        if (title) els.materialsLoadingTitle.textContent = title;
+        if (detail) els.materialsLoadingText.textContent = detail;
+      }
+
+      function markStep1Complete() {
+        state.step1Complete = true;
+        updateLocks();
+      }
+
+      function markStep2Complete(sourceLabel) {
+        state.step2Complete = true;
+        updateLocks();
+        showBox(els.audioSuccess, sourceLabel + '이 준비되었습니다. Step 3가 자동으로 시작됩니다.');
+      }
+
+      function clearStep3Results() {
+        state.step3Complete = false;
+        updateLocks();
+        els.sttList.innerHTML = '<div class="empty-state">아직 생성된 자막 타임스탬프가 없습니다.</div>';
+        els.brollGrid.innerHTML = '<div class="empty-state" style="grid-column:1 / -1;">아직 생성된 영상 소재가 없습니다.</div>';
+      }
+
+      async function generateScript() {
+        var keyword = els.keywordInput.value.trim();
+        if (!keyword) {
+          showBox(els.scriptError, '업종/키워드를 입력해주세요.');
+          return;
+        }
+
+        showBox(els.scriptError, '');
+        els.generateScriptBtn.disabled = true;
+        els.generateScriptBtn.textContent = '대본 생성 중...';
+
+        try {
+          var response = await fetch('/api/shortform-script', {
+            method: 'POST',
+            headers: createHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({
+              keyword: keyword,
+              industryKeyword: keyword,
+              topic: keyword,
+              input: keyword,
+              tone: getSelectedTone(),
+              blogText: els.blogTextInput.value.trim(),
+              sourceText: els.blogTextInput.value.trim(),
+              sourceType: els.blogTextInput.value.trim() ? 'blog' : 'keyword'
+            })
+          });
+          var data = await parseResponseJson(response);
+
+          if (response.status === 401) {
+            openAuthModal();
+            return;
+          }
+          if (response.status === 429) {
+            showBox(els.scriptError, extractErrorMessage(data, response.status, '오늘 사용 횟수를 초과했습니다.'));
+            return;
+          }
+          if (!response.ok) throw new Error(extractErrorMessage(data, response.status, '대본 생성에 실패했습니다.'));
+
+          var normalized = normalizeScriptResponse(data || {});
+          if (!normalized) throw new Error('대본 응답 형식을 해석하지 못했습니다. 잠시 후 다시 시도해주세요.');
+
+          state.script = normalized.script;
+          state.estimatedSeconds = normalized.estimatedSeconds;
+          state.brollSuggestions = normalized.brollSuggestions || [];
+          renderScriptEditor(state.script);
+          updateEstimatedTime();
+          markStep1Complete();
+
+          if (typeof data.remaining === 'number') updateRemainingUI(data.remaining, toNumber(data.limit));
+          if (state.step2Complete) {
+            showBox(els.materialsHint, '대본이 바뀌어 Step 3를 다시 생성합니다.');
+            queueReprocess();
+          }
+        } catch (e) {
+          showBox(els.scriptError, e.message || '대본 생성 중 오류가 발생했습니다.');
+        } finally {
+          els.generateScriptBtn.disabled = false;
+          els.generateScriptBtn.textContent = '대본 생성';
+        }
+      }
+
+      function pickRecordingMimeType() {
+        if (typeof MediaRecorder === 'undefined') return '';
+        var candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+        for (var i = 0; i < candidates.length; i++) {
+          if (MediaRecorder.isTypeSupported(candidates[i])) return candidates[i];
+        }
+        return '';
+      }
+
+      async function startRecording() {
+        showBox(els.audioError, '');
+        showBox(els.audioSuccess, '');
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
+          showBox(els.audioError, '이 브라우저에서는 녹음을 지원하지 않습니다. 오디오 파일 업로드를 사용해주세요.');
+          return;
+        }
+        try {
+          if (state.mediaRecorder && state.mediaRecorder.state === 'recording') return;
+          var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          var mimeType = pickRecordingMimeType();
+          state.mediaStream = stream;
+          state.recordChunks = [];
+          state.mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream);
+          state.audioMimeType = mimeType || state.mediaRecorder.mimeType || 'audio/webm';
+
+          state.mediaRecorder.addEventListener('dataavailable', function(event) {
+            if (event.data && event.data.size > 0) state.recordChunks.push(event.data);
+          });
+
+          state.mediaRecorder.addEventListener('stop', function() {
+            stopMediaTracks();
+            clearInterval(state.recordTimer);
+            els.recordStatus.classList.remove('recording');
+            if (!state.recordChunks.length) {
+              els.recordStatus.textContent = '녹음된 데이터가 없습니다.';
+              return;
+            }
+            var blob = new Blob(state.recordChunks, { type: state.audioMimeType || 'audio/webm' });
+            applyAudioBlob(blob, 'recording.' + guessExtensionFromMime(state.audioMimeType), state.audioMimeType, '브라우저 녹음');
+            els.recordStatus.textContent = '녹음이 완료되었습니다.';
+            els.recordStopBtn.disabled = true;
+            els.recordStartBtn.disabled = false;
+            els.recordResetBtn.disabled = false;
+          });
+
+          state.recordStartedAt = Date.now();
+          state.recordTimer = window.setInterval(function() {
+            var elapsed = Math.floor((Date.now() - state.recordStartedAt) / 1000);
+            els.recordStatus.textContent = '녹음 중 · ' + formatSeconds(elapsed);
+          }, 300);
+
+          state.mediaRecorder.start();
+          els.recordStatus.textContent = '녹음 중 · 0:00';
+          els.recordStatus.classList.add('recording');
+          els.recordStartBtn.disabled = true;
+          els.recordStopBtn.disabled = false;
+          els.recordResetBtn.disabled = true;
+        } catch (e) {
+          stopMediaTracks();
+          clearInterval(state.recordTimer);
+          showBox(els.audioError, '마이크 권한을 확인해주세요. 녹음을 시작할 수 없습니다.');
+        }
+      }
+
+      function stopRecording() {
+        if (!state.mediaRecorder || state.mediaRecorder.state !== 'recording') return;
+        state.mediaRecorder.stop();
+        els.recordStopBtn.disabled = true;
+      }
+
+      function stopMediaTracks() {
+        if (!state.mediaStream) return;
+        state.mediaStream.getTracks().forEach(function(track) {
+          track.stop();
+        });
+        state.mediaStream = null;
+      }
+
+      function guessExtensionFromMime(mimeType) {
+        if (mimeType.indexOf('mp4') > -1 || mimeType.indexOf('m4a') > -1) return 'm4a';
+        if (mimeType.indexOf('wav') > -1) return 'wav';
+        if (mimeType.indexOf('mpeg') > -1 || mimeType.indexOf('mp3') > -1) return 'mp3';
+        return 'webm';
+      }
+
+      function revokeAudioUrl() {
+        if (state.audioUrl) URL.revokeObjectURL(state.audioUrl);
+        state.audioUrl = '';
+      }
+
+      function applyAudioBlob(blob, fileName, mimeType, sourceLabel) {
+        revokeAudioUrl();
+        state.audioBlob = blob;
+        state.audioFileName = fileName;
+        state.audioMimeType = mimeType || blob.type || 'audio/webm';
+        state.audioSourceType = sourceLabel;
+        state.audioUrl = URL.createObjectURL(blob);
+        els.audioPlayer.src = state.audioUrl;
+        els.audioPlayer.load();
+        els.audioPreview.classList.add('show');
+        els.audioMeta.textContent = sourceLabel + ' · ' + fileName + ' · ' + formatFileSize(blob.size);
+        els.uploadFileName.textContent = sourceLabel + ' 사용 중: ' + fileName;
+        els.clearUploadBtn.disabled = false;
+        els.recordResetBtn.disabled = false;
+        markStep2Complete(sourceLabel);
+        clearStep3Results();
+        processMaterials('영상 소재 생성 중...', 'STT 타임스탬프와 B-roll 이미지를 준비하고 있습니다.');
+      }
+
+      function formatFileSize(size) {
+        if (size >= 1024 * 1024) return (size / (1024 * 1024)).toFixed(1) + 'MB';
+        if (size >= 1024) return Math.round(size / 1024) + 'KB';
+        return size + 'B';
+      }
+
+      function clearAudioSelection() {
+        revokeAudioUrl();
+        state.audioBlob = null;
+        state.audioFileName = '';
+        state.audioMimeType = '';
+        state.audioSourceType = '';
+        els.audioPlayer.removeAttribute('src');
+        els.audioPlayer.load();
+        els.audioPreview.classList.remove('show');
+        els.uploadFileName.textContent = '선택된 파일이 없습니다.';
+        els.audioFileInput.value = '';
+        els.clearUploadBtn.disabled = true;
+        state.step2Complete = false;
+        clearStep3Results();
+        showBox(els.audioSuccess, '');
+        els.recordResetBtn.disabled = true;
+        updateLocks();
+      }
+
+      function handleAudioFileSelect(event) {
+        showBox(els.audioError, '');
+        showBox(els.audioSuccess, '');
+        var file = event.target.files && event.target.files[0];
+        if (!file) return;
+        var isAllowed = /\.(mp3|m4a|wav|webm)$/i.test(file.name) || /audio\/(mpeg|mp4|wav|webm)/i.test(file.type);
+        if (!isAllowed) {
+          showBox(els.audioError, '지원하지 않는 파일 형식입니다. mp3, m4a, wav, webm 파일만 업로드할 수 있습니다.');
+          event.target.value = '';
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          showBox(els.audioError, '파일 용량은 최대 10MB까지 업로드할 수 있습니다.');
+          event.target.value = '';
+          return;
+        }
+        applyAudioBlob(file, file.name, file.type || 'audio/mpeg', '파일 업로드');
+      }
+
+      function blobToBase64(blob) {
+        return new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function() {
+            var dataUrl = reader.result;
+            var base64 = dataUrl.split(',')[1] || '';
+            resolve(base64);
+          };
+          reader.onerror = function() { reject(new Error('파일 읽기 실패')); };
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      async function buildSttPayload() {
+        var audioBase64 = await blobToBase64(state.audioBlob);
+        return {
+          audioBase64: audioBase64,
+          mimeType: state.audioMimeType || state.audioBlob.type || 'audio/webm'
+        };
+      }
+
+      function buildBrollPayload() {
+        var suggestions = state.brollSuggestions && state.brollSuggestions.length >= 3
+          ? state.brollSuggestions
+          : ['person speaking to camera', 'close-up of smartphone scrolling', 'detail shot of everyday workspace'];
+        return {
+          brollSuggestions: suggestions,
+          scriptContext: [state.script.hook, state.script.point, state.script.cta].filter(Boolean).join('\n\n')
+        };
+      }
+
+      async function processMaterials(title, detail) {
+        if (!state.step1Complete || !state.step2Complete || !state.audioBlob) return;
+        showBox(els.materialsError, '');
+        showBox(els.materialsHint, 'Step 2 완료 후 자동으로 병렬 생성 중입니다.');
+        setLoading(true, title || '영상 소재 생성 중...', detail || 'STT 타임스탬프와 B-roll 이미지를 준비하고 있습니다.');
+
+        var requestId = state.processRequestId + 1;
+        state.processRequestId = requestId;
+        state.step3Complete = false;
+        updateLocks();
+
+        try {
+          var sttBody = await buildSttPayload();
+          var sttPromise = fetch('/api/shortform-stt', {
+            method: 'POST',
+            headers: createHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(sttBody)
+          });
+          var brollPromise = fetch('/api/shortform-broll', {
+            method: 'POST',
+            headers: createHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(buildBrollPayload())
+          });
+          var responses = await Promise.all([sttPromise, brollPromise]);
+          var sttData = await parseResponseJson(responses[0]);
+          var brollData = await parseResponseJson(responses[1]);
+
+          if (requestId !== state.processRequestId) return;
+
+          if (responses[0].status === 401 || responses[1].status === 401) {
+            openAuthModal();
+            return;
+          }
+          if (responses[0].status === 429 || responses[1].status === 429) {
+            showBox(els.materialsError, extractErrorMessage(sttData || brollData, 429, '사용 횟수를 초과했습니다.'));
+            return;
+          }
+          if (!responses[0].ok) throw new Error(extractErrorMessage(sttData, responses[0].status, 'STT 생성에 실패했습니다.'));
+          if (!responses[1].ok) throw new Error(extractErrorMessage(brollData, responses[1].status, 'B-roll 생성에 실패했습니다.'));
+
+          renderSttResults(normalizeSttResponse(sttData || {}));
+          renderBrollResults(normalizeBrollResponse(brollData || {}));
+          state.step3Complete = true;
+          updateLocks();
+          showBox(els.materialsHint, 'STT와 B-roll 생성이 완료되었습니다.');
+        } catch (e) {
+          if (requestId !== state.processRequestId) return;
+          showBox(els.materialsError, e.message || '영상 소재 생성 중 오류가 발생했습니다.');
+        } finally {
+          if (requestId === state.processRequestId) setLoading(false);
+        }
+      }
+
+      function queueReprocess() {
+        if (!state.step2Complete || !state.audioBlob) return;
+        if (state.reprocessTimer) window.clearTimeout(state.reprocessTimer);
+        state.reprocessTimer = window.setTimeout(function() {
+          clearStep3Results();
+          processMaterials('영상 소재 생성 중...', '수정된 대본을 반영해 STT와 B-roll을 다시 생성하고 있습니다.');
+        }, 700);
+      }
+
+      function bindScriptEditor(textarea) {
+        textarea.addEventListener('input', function() {
+          autoResize(textarea);
+          readScriptFromEditor();
+          if (state.step2Complete) queueReprocess();
+        });
+      }
+
+      els.generateScriptBtn.addEventListener('click', generateScript);
+      els.recordStartBtn.addEventListener('click', startRecording);
+      els.recordStopBtn.addEventListener('click', stopRecording);
+      els.recordResetBtn.addEventListener('click', function() {
+        if (state.mediaRecorder && state.mediaRecorder.state === 'recording') stopRecording();
+        clearAudioSelection();
+        els.recordStatus.textContent = '녹음 대기 중';
+      });
+      els.audioFileInput.addEventListener('change', handleAudioFileSelect);
+      els.clearUploadBtn.addEventListener('click', function() {
+        clearAudioSelection();
+        showBox(els.audioError, '');
+        els.recordStatus.textContent = '녹음 대기 중';
+      });
+      bindScriptEditor(els.hookTextarea);
+      bindScriptEditor(els.pointTextarea);
+      bindScriptEditor(els.ctaTextarea);
+
+      els.authModalClose.addEventListener('click', closeAuthModal);
+      els.authModal.addEventListener('click', function(event) {
+        if (event.target === els.authModal) closeAuthModal();
+      });
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && els.authModal.classList.contains('show')) closeAuthModal();
+      });
+      window.addEventListener('beforeunload', function() {
+        revokeAudioUrl();
+        stopMediaTracks();
+      });
+
+      updateEstimatedTime();
+      updateLocks();
+      loadRemaining();
+      showSignupBannerIfNeeded();
+    })();
+  </script>
+  <script src="auth-ui.js"></script>
+</body>
+</html>
