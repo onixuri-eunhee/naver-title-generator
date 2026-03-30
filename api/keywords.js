@@ -12,7 +12,7 @@ import crypto from 'crypto';
 export const config = { maxDuration: 60 };
 
 const FREE_DAILY_LIMIT = 3;
-const DEBUG_VERSION = 'v21-min-300';
+const DEBUG_VERSION = 'v25-blog-retry-no-debug-ui';
 const DISPLAY_MIN_MONTHLY_SEARCH = 300;
 
 let redis;
@@ -424,6 +424,50 @@ function determineMinSearchThreshold(signals, searchAdTotal) {
   return threshold;
 }
 
+function buildFeaturedGroups(results, filteredResults, signals, options = {}) {
+  const hasQuestionDetail = Boolean(options.hasQuestionDetail);
+
+  const baseKeywords = filteredResults
+    .slice()
+    .sort((a, b) => b.score - a.score || b.monthlySearch - a.monthlySearch)
+    .slice(0, 10);
+
+  let nicheKeywords = [];
+  if (hasQuestionDetail) {
+    nicheKeywords = results
+      .map(result => {
+        const intentMeta = result.intentMeta || {};
+        const nicheScore =
+          (intentMeta.targetHits?.length || 0) * 8 +
+          (intentMeta.contextHits?.length || 0) * 6 +
+          (intentMeta.journeyHits?.length || 0) * 5 +
+          (intentMeta.phraseHits?.length || 0) * 4 +
+          (QUESTION_STYLE_REGEX.test(result.keyword) ? 5 : 0) +
+          Math.min(6, Math.floor((result.monthlySearch || 0) / 200));
+
+        return { ...result, _nicheScore: nicheScore };
+      })
+      .filter(result => result._nicheScore > 0)
+      .sort((a, b) => b._nicheScore - a._nicheScore || b.score - a.score || b.monthlySearch - a.monthlySearch)
+      .slice(0, 10)
+      .map(({ _nicheScore, ...result }) => result);
+  }
+
+  return {
+    base: {
+      title: '내 분야 기본 황금키워드',
+      description: '검색량과 경쟁도를 기준으로 본 업종 전반에서 바로 활용하기 좋은 키워드입니다.',
+      keywords: baseKeywords,
+    },
+    niche: {
+      title: '고객 질문 반영 황금키워드',
+      description: '고객 질문과 특수 워딩을 반영해 더 니치하게 좁힌 키워드입니다.',
+      keywords: nicheKeywords,
+      enabled: hasQuestionDetail,
+    },
+  };
+}
+
 function calculateRankingAdjustments(result) {
   const keyword = result.keyword || '';
   const normalized = normalizeKoreanText(keyword);
@@ -592,32 +636,63 @@ async function fetchSearchAdKeywords(seedKeywords) {
 
 // ─── 네이버 검색 API: 블로그 발행량 (포화도) ───
 async function fetchBlogCount(keyword) {
-  try {
-    const params = new URLSearchParams({ query: keyword, display: '1', sort: 'sim' });
-    const res = await fetch(`https://openapi.naver.com/v1/search/blog.json?${params}`, {
-      headers: {
-        'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID,
-        'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET,
-      },
-    });
-    if (!res.ok) return -1; // API 실패 시 -1 (미수집 표시)
-    const data = await res.json();
-    return data.total || 0;
-  } catch (_) {
-    return -1; // 네트워크 에러 시 -1 (미수집 표시)
+  const params = new URLSearchParams({ query: keyword, display: '1', sort: 'sim' });
+  let lastFailure = null;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = await fetch(`https://openapi.naver.com/v1/search/blog.json?${params}`, {
+        headers: {
+          'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID,
+          'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return { count: data.total || 0, ok: true, status: res.status };
+      }
+
+      const body = await res.text().catch(() => '');
+      lastFailure = { keyword, status: res.status, body: body.slice(0, 120), attempt: attempt + 1 };
+
+      // 429/5xx는 짧게 재시도
+      if ((res.status === 429 || res.status >= 500) && attempt < 2) {
+        await new Promise(r => setTimeout(r, 180 * (attempt + 1)));
+        continue;
+      }
+      break;
+    } catch (error) {
+      lastFailure = { keyword, error: error.message, attempt: attempt + 1 };
+      if (attempt < 2) {
+        await new Promise(r => setTimeout(r, 180 * (attempt + 1)));
+        continue;
+      }
+      break;
+    }
   }
+
+  return { count: -1, ok: false, failure: lastFailure };
 }
 
 async function fetchBlogCounts(keywords) {
   const results = new Map();
-  // 10개씩 병렬 (API rate limit 고려)
-  for (let i = 0; i < keywords.length; i += 10) {
-    const batch = keywords.slice(i, i + 10);
+  const failures = [];
+  // 5개씩 병렬 (API rate limit 고려)
+  for (let i = 0; i < keywords.length; i += 5) {
+    const batch = keywords.slice(i, i + 5);
     const counts = await Promise.all(batch.map(kw => fetchBlogCount(kw)));
-    batch.forEach((kw, j) => results.set(kw, counts[j]));
-    if (i + 10 < keywords.length) await new Promise(r => setTimeout(r, 100));
+    batch.forEach((kw, j) => {
+      results.set(kw, counts[j].count);
+      if (!counts[j].ok) failures.push(counts[j].failure || { keyword: kw, status: 'unknown' });
+    });
+    if (i + 5 < keywords.length) await new Promise(r => setTimeout(r, 180));
   }
-  return results;
+
+  return {
+    counts: results,
+    failures,
+  };
 }
 
 // ─── DataLab 트렌드 API ───
@@ -786,6 +861,7 @@ export default async function handler(req, res) {
   }
 
   const { field, role, target, questions, userSeeds } = req.body;
+  const hasQuestionDetail = Boolean(String(questions || '').trim() || String(userSeeds || '').trim());
 
   if (!field || !role || !target) {
     if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
@@ -836,11 +912,23 @@ export default async function handler(req, res) {
     const relevantCandidates = scoredCandidates
       .filter(candidate => candidate._intent.relevant)
       .sort((a, b) => b._intent.score - a._intent.score || b.monthlySearch - a.monthlySearch);
+    const baseDisplayCandidates = scoredCandidates
+      .filter(candidate =>
+        candidate.monthlySearch >= DISPLAY_MIN_MONTHLY_SEARCH &&
+        ((candidate._intent.broadHits?.length || 0) > 0 || (candidate._intent.journeyHits?.length || 0) > 0)
+      )
+      .sort((a, b) => b.monthlySearch - a.monthlySearch || b._intent.score - a._intent.score)
+      .slice(0, 40);
 
     let candidates;
     let fallbackUsed = false;
-    if (relevantCandidates.length > 0) {
-      candidates = relevantCandidates;
+    if (relevantCandidates.length > 0 || baseDisplayCandidates.length > 0) {
+      const candidateMap = new Map();
+      relevantCandidates.slice(0, 60).forEach(candidate => candidateMap.set(candidate.keyword, candidate));
+      baseDisplayCandidates.forEach(candidate => {
+        if (!candidateMap.has(candidate.keyword)) candidateMap.set(candidate.keyword, candidate);
+      });
+      candidates = Array.from(candidateMap.values());
     } else {
       fallbackUsed = true;
       candidates = scoredCandidates
@@ -888,6 +976,7 @@ export default async function handler(req, res) {
       })),
       allCandidates: allCandidates.length,
       relevantCandidates: relevantCandidates.length,
+      baseDisplayCandidates: baseDisplayCandidates.length,
       finalCandidates: candidates.length,
       fallbackUsed,
     } : undefined;
@@ -907,7 +996,12 @@ export default async function handler(req, res) {
     // Phase 3: 블로그 발행량 (전체 후보 — 포화도 데이터 완전 커버)
     console.log(`[KEYWORDS] Phase 3: Fetching blog counts (${candidates.length} keywords)`);
     const blogKeywords = candidates.map(k => k.keyword);
-    const blogCounts = await fetchBlogCounts(blogKeywords);
+    const blogCountResult = await fetchBlogCounts(blogKeywords);
+    const blogCounts = blogCountResult.counts;
+    const blogFailureCount = blogCountResult.failures.length;
+    if (blogFailureCount > 0) {
+      console.warn(`[KEYWORDS] Blog count failures: ${blogFailureCount}/${blogKeywords.length}`);
+    }
 
     // Phase 4: DataLab 트렌드 (상위 40개)
     console.log(`[KEYWORDS] Phase 4: Fetching trends`);
@@ -980,10 +1074,16 @@ export default async function handler(req, res) {
     .sort((a, b) => b.score - a.score);
 
     const filteredResults = results.filter(result => result.monthlySearch >= DISPLAY_MIN_MONTHLY_SEARCH);
-    const sections = buildKeywordSections(filteredResults, intentSignals);
+    const sections = buildKeywordSections(results, intentSignals);
+    const featuredGroups = buildFeaturedGroups(results, filteredResults, intentSignals, { hasQuestionDetail });
     if (_debug) {
       _debug.displayMinMonthlySearch = DISPLAY_MIN_MONTHLY_SEARCH;
       _debug.preDisplayCount = results.length;
+      _debug.hasQuestionDetail = hasQuestionDetail;
+      _debug.blogFailureCount = blogFailureCount;
+      _debug.blogFailureSample = blogCountResult.failures.slice(0, 5);
+      _debug.baseFeaturedCount = featuredGroups.base.keywords.length;
+      _debug.nicheFeaturedCount = featuredGroups.niche.keywords.length;
       _debug.topRanked = results.slice(0, 5).map(result => ({
         keyword: result.keyword,
         score: result.score,
@@ -998,7 +1098,8 @@ export default async function handler(req, res) {
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
       return res.status(200).json({
         keywords: [],
-        sections: [],
+        sections,
+        featuredGroups,
         totalFound: 0,
         seedKeywords,
         message: `월간 검색수 ${DISPLAY_MIN_MONTHLY_SEARCH} 이상인 키워드를 찾지 못했습니다. 입력을 더 넓게 쓰거나 조건을 조정해보세요.`,
@@ -1016,9 +1117,11 @@ export default async function handler(req, res) {
     if (fallbackUsed) noticeMessages.push('분야 적합 키워드가 부족해 일부 결과만 제한적으로 표시했습니다.');
     if (minMonthlySearch < 50) noticeMessages.push(`특수 타겟 검색을 반영해 검색량 하한을 ${minMonthlySearch}으로 낮췄습니다.`);
     if (thresholdFallbackUsed) noticeMessages.push('검색량이 낮은 틈새 키워드까지 포함해 결과를 확장했습니다.');
+    if (blogFailureCount > 0) noticeMessages.push('일부 포화도 데이터는 네이버 응답 지연으로 미수집될 수 있습니다.');
 
     return res.status(200).json({
       keywords: filteredResults,
+      featuredGroups,
       sections,
       totalFound: filteredResults.length,
       seedKeywords,

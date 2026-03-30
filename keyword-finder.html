@@ -88,16 +88,6 @@ input:focus, textarea:focus { border-color:#ff5f1f; }
 .remaining.blocked { color:#DC2626; background:#FFF0F1; }
 .notice-box { display:none; margin-top:16px; padding:12px 14px; border-radius:10px; background:#FFF7ED; color:#C2410C; font-size:13px; font-weight:600; }
 .notice-box.show { display:block; }
-.debug-card { display:none; margin-bottom:16px; border:1px solid #BFDBFE; background:#F8FBFF; }
-.debug-card.show { display:block; }
-.debug-card h3 { font-size:14px; font-weight:700; color:#1D4ED8; margin-bottom:10px; }
-.debug-meta { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
-.debug-chip { display:inline-block; padding:4px 8px; border-radius:999px; background:#DBEAFE; color:#1E40AF; font-size:12px; font-weight:700; }
-.debug-pre {
-  white-space:pre-wrap; word-break:break-word; font-size:12px; line-height:1.55;
-  color:#334155; background:#fff; border:1px solid #DBEAFE; border-radius:10px; padding:12px;
-}
-
 /* 프로그레스 */
 .progress-wrap { display:none; margin-top:20px; }
 .progress-wrap.show { display:block; }
@@ -109,7 +99,8 @@ input:focus, textarea:focus { border-color:#ff5f1f; }
 .result-section { display:none; }
 .result-section.show { display:block; }
 
-.top-keywords { display:grid; grid-template-columns:repeat(auto-fill, minmax(380px, 1fr)); gap:12px; margin-bottom:24px; }
+.top-blocks { display:flex; flex-direction:column; gap:16px; }
+.top-keywords { display:grid; grid-template-columns:repeat(auto-fill, minmax(380px, 1fr)); gap:12px; }
 .kw-card { background:#fff; border:1.5px solid #E5E7EB; border-radius:12px; padding:16px; transition:border-color 0.2s; }
 .kw-card:hover { border-color:#ff5f1f; }
 .kw-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
@@ -154,8 +145,12 @@ td .grade-dot.red { background:#EF4444; }
 /* 전체 테이블 */
 .table-wrap { overflow-x:auto; }
 table { width:100%; border-collapse:collapse; font-size:13px; }
-th { text-align:left; padding:10px 12px; background:#F9FAFB; border-bottom:2px solid #E5E7EB; color:#6B7280; font-weight:600; cursor:pointer; white-space:nowrap; }
-th:hover { color:#ff5f1f; }
+th { text-align:left; padding:10px 12px; background:#F9FAFB; border-bottom:2px solid #E5E7EB; color:#6B7280; font-weight:600; white-space:nowrap; }
+th.sortable { cursor:pointer; }
+th.sortable:hover { color:#ff5f1f; }
+th.sortable { user-select:none; }
+th.active-sort { color:#ff5f1f; }
+.sort-arrow { display:inline-block; min-width:14px; margin-left:4px; color:#C4C9D4; font-size:11px; }
 td { padding:10px 12px; border-bottom:1px solid #F3F4F6; }
 tr:hover { background:#FFF7ED; }
 
@@ -301,19 +296,26 @@ tr:hover { background:#FFF7ED; }
 
   <!-- 결과 -->
   <div class="result-section" id="resultSection">
-    <div class="card debug-card" id="debugCard">
-      <h3>관리자 디버그</h3>
-      <div class="debug-meta" id="debugMeta"></div>
-      <pre class="debug-pre" id="debugPre"></pre>
-    </div>
-
     <!-- TOP 10 -->
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <h2 style="font-size:18px; font-weight:700;">황금키워드 TOP 10</h2>
-        <button class="csv-btn" onclick="downloadCSV()">CSV 다운로드</button>
+    <div class="top-blocks">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <div>
+            <h2 style="font-size:18px; font-weight:700;">내 분야 기본 황금키워드</h2>
+            <p style="font-size:13px; color:#6B7280; margin-top:4px;">업종 전반에서 검색량과 경쟁도를 기준으로 추린 기본 추천입니다.</p>
+          </div>
+          <button class="csv-btn" onclick="downloadCSV()">CSV 다운로드</button>
+        </div>
+        <div class="top-keywords" id="topKeywords"></div>
       </div>
-      <div class="top-keywords" id="topKeywords"></div>
+
+      <div class="card" id="nicheTopCard" style="display:none;">
+        <div style="margin-bottom:16px;">
+          <h2 style="font-size:18px; font-weight:700;">고객 질문 반영 황금키워드</h2>
+          <p style="font-size:13px; color:#6B7280; margin-top:4px;">고객 질문과 직접 키워드를 반영해 더 니치하게 좁힌 추천입니다.</p>
+        </div>
+        <div class="top-keywords" id="nicheTopKeywords"></div>
+      </div>
     </div>
 
     <div class="card" id="sectionsCard" style="display:none;">
@@ -331,12 +333,12 @@ tr:hover { background:#FFF7ED; }
         <table id="keywordTable">
           <thead>
             <tr>
-              <th onclick="sortTable('score')">등급</th>
-              <th onclick="sortTable('keyword')">키워드</th>
-              <th onclick="sortTable('monthlySearch')">월간 검색수</th>
-              <th onclick="sortTable('competition')">경쟁도</th>
-              <th onclick="sortTable('saturation')">포화도</th>
-              <th onclick="sortTable('trend')">트렌드</th>
+              <th class="sortable" id="sort-grade" onclick="sortTable('grade')">등급 <span class="sort-arrow">↓</span></th>
+              <th>키워드</th>
+              <th class="sortable" id="sort-monthlySearch" onclick="sortTable('monthlySearch')">월간 검색수 <span class="sort-arrow">↕</span></th>
+              <th class="sortable" id="sort-competition" onclick="sortTable('competition')">경쟁도 <span class="sort-arrow">↕</span></th>
+              <th class="sortable" id="sort-saturation" onclick="sortTable('saturation')">포화도 <span class="sort-arrow">↕</span></th>
+              <th>트렌드</th>
               <th>블로그 글</th>
             </tr>
           </thead>
@@ -354,29 +356,67 @@ tr:hover { background:#FFF7ED; }
 var token = localStorage.getItem('ddukddak_token');
 var allKeywords = [];
 var allSections = [];
-var currentSort = { key: 'score', asc: false };
+var featuredGroups = null;
+var currentSort = { key: 'grade', asc: false };
 
-function renderDebugInfo(debugInfo, apiVersion) {
-  var card = document.getElementById('debugCard');
-  var meta = document.getElementById('debugMeta');
-  var pre = document.getElementById('debugPre');
+function getGradeRank(grade) {
+  var rank = { blue: 4, green: 3, yellow: 2, red: 1 };
+  return rank[grade] || 0;
+}
 
-  if (!debugInfo) {
-    card.classList.remove('show');
-    meta.innerHTML = '';
-    pre.textContent = '';
-    return;
+function getCompetitionRank(competition) {
+  var rank = { low: 1, medium: 2, high: 3 };
+  return rank[competition] || 0;
+}
+
+function getSortValue(keyword, key) {
+  if (key === 'grade') return getGradeRank(keyword.grade);
+  if (key === 'monthlySearch') return keyword.monthlySearch || 0;
+  if (key === 'competition') return getCompetitionRank(keyword.competition);
+  if (key === 'saturation') return keyword.blogCountAvailable ? keyword.saturation : null;
+  return keyword[key];
+}
+
+function compareKeywords(a, b, key, asc) {
+  var va = getSortValue(a, key);
+  var vb = getSortValue(b, key);
+
+  if (key === 'saturation') {
+    if (va === null && vb === null) return 0;
+    if (va === null) return 1;
+    if (vb === null) return -1;
   }
 
-  var chips = [];
-  if (apiVersion) chips.push('<span class="debug-chip">API ' + apiVersion + '</span>');
-  if (debugInfo && debugInfo.safeSeedCount !== undefined) chips.push('<span class="debug-chip">정제 시드 ' + debugInfo.safeSeedCount + '개</span>');
-  if (debugInfo && debugInfo.relevantCandidates !== undefined) chips.push('<span class="debug-chip">관련 후보 ' + debugInfo.relevantCandidates + '개</span>');
-  if (debugInfo && debugInfo.fallbackUsed) chips.push('<span class="debug-chip">fallback 사용</span>');
+  if (typeof va === 'string' && typeof vb === 'string') {
+    var compared = va.localeCompare(vb, 'ko');
+    return asc ? compared : -compared;
+  }
 
-  meta.innerHTML = chips.join('');
-  pre.textContent = JSON.stringify(debugInfo, null, 2);
-  card.classList.add('show');
+  if (va < vb) return asc ? -1 : 1;
+  if (va > vb) return asc ? 1 : -1;
+
+  if (key === 'grade') {
+    if (a.score < b.score) return asc ? -1 : 1;
+    if (a.score > b.score) return asc ? 1 : -1;
+  }
+
+  return 0;
+}
+
+function updateSortHeaders() {
+  ['grade', 'monthlySearch', 'competition', 'saturation'].forEach(function(key) {
+    var th = document.getElementById('sort-' + key);
+    if (!th) return;
+    var arrow = th.querySelector('.sort-arrow');
+    th.classList.remove('active-sort');
+    if (arrow) arrow.textContent = '↕';
+  });
+
+  var active = document.getElementById('sort-' + currentSort.key);
+  if (!active) return;
+  active.classList.add('active-sort');
+  var activeArrow = active.querySelector('.sort-arrow');
+  if (activeArrow) activeArrow.textContent = currentSort.asc ? '↑' : '↓';
 }
 
 function renderNotice(message) {
@@ -418,6 +458,24 @@ function renderSections(sections) {
     '</div>';
   }).join('');
   card.style.display = 'block';
+}
+
+function renderFeaturedGroups(groups) {
+  featuredGroups = groups || null;
+  var baseKeywords = groups && groups.base && Array.isArray(groups.base.keywords) ? groups.base.keywords : [];
+  var nicheEnabled = Boolean(groups && groups.niche && groups.niche.enabled);
+  var nicheKeywords = nicheEnabled && groups.niche && Array.isArray(groups.niche.keywords) ? groups.niche.keywords : [];
+  var nicheCard = document.getElementById('nicheTopCard');
+
+  renderTopKeywords(baseKeywords);
+
+  if (nicheEnabled && nicheKeywords.length > 0) {
+    renderTopKeywords(nicheKeywords, 'nicheTopKeywords');
+    nicheCard.style.display = 'block';
+  } else {
+    document.getElementById('nicheTopKeywords').innerHTML = '';
+    nicheCard.style.display = 'none';
+  }
 }
 
 // 남은 횟수 체크 (로그인 여부 확인)
@@ -541,7 +599,7 @@ async function findKeywords() {
 
   hideError();
   renderNotice('');
-  renderDebugInfo(null, '');
+  renderFeaturedGroups(null);
   renderSections([]);
   if (!field) { showError('내 분야를 입력해주세요.'); return; }
   if (!role) { showError('"나는" 항목을 입력해주세요.'); return; }
@@ -579,10 +637,8 @@ async function findKeywords() {
       body: JSON.stringify({ field: field, role: role, target: target, questions: questions, userSeeds: userSeeds }),
     });
     var data = await res.json();
-    var apiVersion = res.headers.get('X-Keywords-Version') || '';
 
     clearInterval(progressTimer);
-    renderDebugInfo(data._debug, apiVersion);
 
     if (!res.ok) {
       showError(data.error || '키워드 분석에 실패했습니다.');
@@ -595,15 +651,12 @@ async function findKeywords() {
     setProgress(100, '완료!');
     setTimeout(function() { document.getElementById('progressWrap').classList.remove('show'); }, 800);
 
-    // 디버그 정보 (관리자용)
-    if (data._debug) console.log('[황금키워드 디버그]', JSON.stringify(data._debug, null, 2));
-
     renderNotice(data.notice || '');
 
     // 결과 표시
     allKeywords = data.keywords || [];
     allSections = data.sections || [];
-    renderTopKeywords(allKeywords.slice(0, 10));
+    renderFeaturedGroups(data.featuredGroups || { base: { keywords: allKeywords.slice(0, 10) }, niche: { enabled: false, keywords: [] } });
     renderSections(allSections);
     renderTable(allKeywords);
     document.getElementById('totalCount').textContent = allKeywords.length;
@@ -627,7 +680,7 @@ async function findKeywords() {
   } catch (e) {
     clearInterval(progressTimer);
     renderNotice('');
-    renderDebugInfo(null, '');
+    renderFeaturedGroups(null);
     renderSections([]);
     showError('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     document.getElementById('progressWrap').classList.remove('show');
@@ -664,8 +717,8 @@ function trendBadgeV2(kw) {
   return trendBadge(kw.trend, kw.trendChange);
 }
 
-function renderTopKeywords(keywords) {
-  var container = document.getElementById('topKeywords');
+function renderTopKeywords(keywords, containerId) {
+  var container = document.getElementById(containerId || 'topKeywords');
   container.innerHTML = keywords.map(function(kw, i) {
     return '<div class="kw-card">' +
       '<div class="kw-card-header">' +
@@ -701,6 +754,7 @@ function renderTable(keywords) {
       '<td><a href="blog-writer.html?topic=' + encodeURIComponent(kw.keyword) + '" style="color:#ff5f1f; font-size:12px; font-weight:600; text-decoration:none;">글쓰기</a></td>' +
     '</tr>';
   }).join('');
+  updateSortHeaders();
 }
 
 function sortTable(key) {
@@ -712,11 +766,7 @@ function sortTable(key) {
   }
 
   allKeywords.sort(function(a, b) {
-    var va = a[key], vb = b[key];
-    if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
-    if (va < vb) return currentSort.asc ? -1 : 1;
-    if (va > vb) return currentSort.asc ? 1 : -1;
-    return 0;
+    return compareKeywords(a, b, key, currentSort.asc);
   });
 
   renderTable(allKeywords);
