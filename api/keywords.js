@@ -12,6 +12,7 @@ import crypto from 'crypto';
 export const config = { maxDuration: 60 };
 
 const FREE_DAILY_LIMIT = 3;
+const DEBUG_VERSION = 'v13-no-store-relevance';
 
 let redis;
 function getRedis() {
@@ -59,6 +60,8 @@ async function generateSeedKeywords(field, role, target, questions) {
 - Include informational keywords (방법, 추천, 비용, 후기, 비교, 차이)
 - Include question-type keywords (~하는 법, ~하는 방법, ~어디서)
 - Be specific to the field and target audience
+- Output short search queries only, never full sentences
+- Do not include punctuation such as ?, !, /, :, quotes, or arrows
 - Output ONLY a JSON array of strings, nothing else`;
 
   const userPrompt = `분야: ${field}
@@ -186,6 +189,30 @@ function isRelevantKeyword(keyword, coreWords) {
   return coreWords.some(w => kw.includes(w.toLowerCase()));
 }
 
+function normalizeSearchAdSeedKeywords(seedKeywords) {
+  const safeSeeds = [];
+  const droppedSeeds = [];
+  const seen = new Set();
+
+  for (const rawKeyword of seedKeywords) {
+    const cleaned = String(rawKeyword || '')
+      .replace(/[^가-힣a-zA-Z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 50);
+
+    if (cleaned.length < 2) {
+      if (rawKeyword) droppedSeeds.push({ raw: rawKeyword, cleaned });
+      continue;
+    }
+    if (seen.has(cleaned)) continue;
+    seen.add(cleaned);
+    safeSeeds.push(cleaned);
+  }
+
+  return { safeSeeds, droppedSeeds };
+}
+
 // ─── 검색광고 API: 연관키워드 + 검색량 + 경쟁도 ───
 // ★ 원래 작동하던 코드 그대로 복원 (디버그/테스트 전부 제거)
 async function fetchSearchAdKeywords(seedKeywords) {
@@ -201,13 +228,18 @@ async function fetchSearchAdKeywords(seedKeywords) {
   const signature = hmac.digest('base64');
 
   const allResults = new Map();
+  const { safeSeeds, droppedSeeds } = normalizeSearchAdSeedKeywords(seedKeywords);
+  allResults._safeSeedCount = safeSeeds.length;
+  allResults._safeSeedsSample = safeSeeds.slice(0, 5);
+  allResults._droppedSeedsSample = droppedSeeds.slice(0, 5);
 
   // 시드키워드를 5개씩 배치 호출 (API 제한)
   // URLSearchParams 대신 수동 URL: Vercel 런타임 호환성 보장
-  for (let i = 0; i < seedKeywords.length; i += 5) {
-    const batch = seedKeywords.slice(i, i + 5);
-    const hintKeywords = batch.map(kw => encodeURIComponent(kw.replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim()).replace(/%20/g, '+')).join(',');
+  for (let i = 0; i < safeSeeds.length; i += 5) {
+    const batch = safeSeeds.slice(i, i + 5);
+    const hintKeywords = batch.map(kw => encodeURIComponent(kw).replace(/%20/g, '+')).join(',');
     if (!hintKeywords) continue;
+    if (i === 0) allResults._firstBatch = { batch, lengths: batch.map(kw => kw.length) };
 
     try {
       const ts = String(Date.now());
@@ -228,7 +260,11 @@ async function fetchSearchAdKeywords(seedKeywords) {
         const errBody = await res.text().catch(() => '');
         console.error(`[KEYWORDS] SearchAd batch ${i/5} error: ${res.status} ${errBody.slice(0, 200)}`);
         // 첫 배치 에러를 디버그에 저장
-        if (i === 0) allResults._firstError = { status: res.status, body: errBody.slice(0, 150), url: `${uri}?hintKeywords=${hintKeywords.slice(0, 60)}&showDetail=1` };
+        if (i === 0) allResults._firstError = {
+          status: res.status,
+          body: errBody.slice(0, 150),
+          url: `${uri}?hintKeywords=${hintKeywords.slice(0, 120)}&showDetail=1`,
+        };
         continue;
       }
 
@@ -251,7 +287,7 @@ async function fetchSearchAdKeywords(seedKeywords) {
     }
 
     // API rate limit 보호
-    if (i + 5 < seedKeywords.length) await new Promise(r => setTimeout(r, 200));
+    if (i + 5 < safeSeeds.length) await new Promise(r => setTimeout(r, 200));
   }
 
   return allResults;
@@ -419,6 +455,9 @@ function calculateGoldenScore(keyword, monthlySearch, pcSearch, mobileSearch, co
 // ─── 메인 핸들러 ───
 export default async function handler(req, res) {
   setCorsHeaders(res, req);
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('X-Keywords-Version', DEBUG_VERSION);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
@@ -487,20 +526,15 @@ export default async function handler(req, res) {
     const allCandidates = Array.from(searchData.values()).filter(k => k.monthlySearch >= 50);
     const relevantCandidates = allCandidates.filter(k => isRelevantKeyword(k.keyword, coreWords));
 
-    // 적합 키워드 우선, 최소 5개 보장 (부족분만 비적합에서 채움)
-    const MIN_RESULTS = 5;
     let candidates;
-    if (relevantCandidates.length >= MIN_RESULTS) {
-      // 적합 키워드만 사용
+    let fallbackUsed = false;
+    if (relevantCandidates.length > 0) {
       candidates = relevantCandidates;
     } else {
-      // 적합 키워드 + 부족분을 비적합에서 보충
-      const relevantSet = new Set(relevantCandidates.map(k => k.keyword));
-      const filler = allCandidates
-        .filter(k => !relevantSet.has(k.keyword))
+      fallbackUsed = true;
+      candidates = allCandidates
         .sort((a, b) => b.monthlySearch - a.monthlySearch)
-        .slice(0, MIN_RESULTS - relevantCandidates.length);
-      candidates = [...relevantCandidates, ...filler];
+        .slice(0, 3);
     }
     candidates = candidates
       .sort((a, b) => b.monthlySearch - a.monthlySearch)
@@ -513,16 +547,21 @@ export default async function handler(req, res) {
 
     // 진단 정보 (디버깅용, 관리자에게만)
     const _debug = isAdmin ? {
-      _v: 'v11-url-debug',
+      _v: DEBUG_VERSION,
       firstBatchUrl: searchData._firstError?.url || 'no_error',
       firstBatchError: searchData._firstError || null,
+      firstBatch: searchData._firstBatch || null,
       apiKeyLen: (process.env.NAVER_AD_API_KEY || '').length,
       seedCount: seedKeywords.length,
       seedSample: seedKeywords.slice(0, 3),
+      safeSeedCount: searchData._safeSeedCount || 0,
+      safeSeedsSample: searchData._safeSeedsSample || [],
+      droppedSeedsSample: searchData._droppedSeedsSample || [],
       searchAdTotal: searchData.size,
       allCandidates: allCandidates.length,
       relevantCandidates: relevantCandidates.length,
       finalCandidates: candidates.length,
+      fallbackUsed,
     } : undefined;
 
     if (candidates.length === 0) {
@@ -590,6 +629,7 @@ export default async function handler(req, res) {
       seedKeywords,
       remaining: Math.max(0, remaining),
       limit: FREE_DAILY_LIMIT,
+      notice: fallbackUsed ? '분야 적합 키워드가 부족해 일부 결과만 제한적으로 표시했습니다.' : undefined,
       _debug,
     });
 

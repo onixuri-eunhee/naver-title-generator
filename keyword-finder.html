@@ -86,6 +86,17 @@ input:focus, textarea:focus { border-color:#ff5f1f; }
 .remaining { font-size:13px; color:#6B7280; text-align:center; margin-top:12px; padding:8px; background:#F9FAFB; border-radius:8px; }
 .remaining.admin { color:#3b82f6; background:#EFF6FF; }
 .remaining.blocked { color:#DC2626; background:#FFF0F1; }
+.notice-box { display:none; margin-top:16px; padding:12px 14px; border-radius:10px; background:#FFF7ED; color:#C2410C; font-size:13px; font-weight:600; }
+.notice-box.show { display:block; }
+.debug-card { display:none; margin-bottom:16px; border:1px solid #BFDBFE; background:#F8FBFF; }
+.debug-card.show { display:block; }
+.debug-card h3 { font-size:14px; font-weight:700; color:#1D4ED8; margin-bottom:10px; }
+.debug-meta { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+.debug-chip { display:inline-block; padding:4px 8px; border-radius:999px; background:#DBEAFE; color:#1E40AF; font-size:12px; font-weight:700; }
+.debug-pre {
+  white-space:pre-wrap; word-break:break-word; font-size:12px; line-height:1.55;
+  color:#334155; background:#fff; border:1px solid #DBEAFE; border-radius:10px; padding:12px;
+}
 
 /* 프로그레스 */
 .progress-wrap { display:none; margin-top:20px; }
@@ -222,6 +233,7 @@ tr:hover { background:#FFF7ED; }
 
   <!-- 사용 현황 -->
   <div class="remaining" id="remainingBar" style="margin-top:16px;">남은 횟수 확인 중...</div>
+  <div class="notice-box" id="noticeBox"></div>
 
   <!-- 프로필 저장/불러오기 -->
   <div class="card" style="margin-top:16px;">
@@ -280,6 +292,11 @@ tr:hover { background:#FFF7ED; }
 
   <!-- 결과 -->
   <div class="result-section" id="resultSection">
+    <div class="card debug-card" id="debugCard">
+      <h3>관리자 디버그</h3>
+      <div class="debug-meta" id="debugMeta"></div>
+      <pre class="debug-pre" id="debugPre"></pre>
+    </div>
 
     <!-- TOP 10 -->
     <div class="card">
@@ -320,6 +337,40 @@ tr:hover { background:#FFF7ED; }
 var token = localStorage.getItem('ddukddak_token');
 var allKeywords = [];
 var currentSort = { key: 'score', asc: false };
+
+function renderDebugInfo(debugInfo, apiVersion) {
+  var card = document.getElementById('debugCard');
+  var meta = document.getElementById('debugMeta');
+  var pre = document.getElementById('debugPre');
+
+  if (!debugInfo) {
+    card.classList.remove('show');
+    meta.innerHTML = '';
+    pre.textContent = '';
+    return;
+  }
+
+  var chips = [];
+  if (apiVersion) chips.push('<span class="debug-chip">API ' + apiVersion + '</span>');
+  if (debugInfo && debugInfo.safeSeedCount !== undefined) chips.push('<span class="debug-chip">정제 시드 ' + debugInfo.safeSeedCount + '개</span>');
+  if (debugInfo && debugInfo.relevantCandidates !== undefined) chips.push('<span class="debug-chip">관련 후보 ' + debugInfo.relevantCandidates + '개</span>');
+  if (debugInfo && debugInfo.fallbackUsed) chips.push('<span class="debug-chip">fallback 사용</span>');
+
+  meta.innerHTML = chips.join('');
+  pre.textContent = JSON.stringify(debugInfo, null, 2);
+  card.classList.add('show');
+}
+
+function renderNotice(message) {
+  var el = document.getElementById('noticeBox');
+  if (!message) {
+    el.textContent = '';
+    el.classList.remove('show');
+    return;
+  }
+  el.textContent = message;
+  el.classList.add('show');
+}
 
 // 남은 횟수 체크 (로그인 여부 확인)
 (function() {
@@ -441,6 +492,8 @@ async function findKeywords() {
   var userSeeds = document.getElementById('seedInput').value.trim();
 
   hideError();
+  renderNotice('');
+  renderDebugInfo(null, '');
   if (!field) { showError('내 분야를 입력해주세요.'); return; }
   if (!role) { showError('"나는" 항목을 입력해주세요.'); return; }
   if (!target) { showError('타겟 독자를 입력해주세요.'); return; }
@@ -472,12 +525,15 @@ async function findKeywords() {
 
     var res = await fetch('/api/keywords', {
       method: 'POST',
+      cache: 'no-store',
       headers: headers,
       body: JSON.stringify({ field: field, role: role, target: target, questions: questions, userSeeds: userSeeds }),
     });
     var data = await res.json();
+    var apiVersion = res.headers.get('X-Keywords-Version') || '';
 
     clearInterval(progressTimer);
+    renderDebugInfo(data._debug, apiVersion);
 
     if (!res.ok) {
       showError(data.error || '키워드 분석에 실패했습니다.');
@@ -492,6 +548,8 @@ async function findKeywords() {
 
     // 디버그 정보 (관리자용)
     if (data._debug) console.log('[황금키워드 디버그]', JSON.stringify(data._debug, null, 2));
+
+    renderNotice(data.notice || '');
 
     // 결과 표시
     allKeywords = data.keywords || [];
@@ -517,6 +575,8 @@ async function findKeywords() {
 
   } catch (e) {
     clearInterval(progressTimer);
+    renderNotice('');
+    renderDebugInfo(null, '');
     showError('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     document.getElementById('progressWrap').classList.remove('show');
   }
