@@ -12,7 +12,7 @@ import crypto from 'crypto';
 export const config = { maxDuration: 60 };
 
 const FREE_DAILY_LIMIT = 3;
-const DEBUG_VERSION = 'v13-no-store-relevance';
+const DEBUG_VERSION = 'v20-ranking-polish';
 
 let redis;
 function getRedis() {
@@ -137,56 +137,341 @@ const GENERIC_WORDS = new Set([
   '준비', '과정', '절차', '기간', '시간', '주의', '팁', '노하우', '초보', '입문',
 ]);
 
-function extractCoreWords(field, seedKeywords) {
-  // 분야명 + 시드키워드를 합쳐서 핵심 단어 추출
-  const allText = [field, ...seedKeywords].join(' ');
-  // 공백/구분자로 1차 분리
-  const rawWords = allText.split(/[\s,/·]+/).filter(w => w.length >= 2);
+const BROAD_THEME_WORDS = new Set([
+  '웨딩', '결혼', '결혼식', '예식', '신부', '웨딩홀', '웨딩드레스', '드레스',
+  '웨딩플래너', '웨딩스튜디오', '웨딩촬영', '웨딩박람회', '예식장',
+]);
 
-  // 2글자 이상 서브스트링도 추출 (복합어 대응: "웨딩컨설팅" → "웨딩", "컨설팅")
-  const subWords = [];
-  for (const w of rawWords) {
-    if (w.length >= 4) {
-      // 2글자씩 슬라이딩 윈도우로 서브스트링 추출
-      for (let i = 0; i <= w.length - 2; i++) {
-        const sub = w.substring(i, i + 2);
-        if (!GENERIC_WORDS.has(sub)) subWords.push(sub);
-      }
-      // 3글자 서브스트링도
-      for (let i = 0; i <= w.length - 3; i++) {
-        const sub = w.substring(i, i + 3);
-        if (!GENERIC_WORDS.has(sub)) subWords.push(sub);
-      }
-    }
-  }
+const INTENT_STOP_WORDS = new Set([
+  ...GENERIC_WORDS,
+  '나는', '타겟', '독자', '분야', '고객', '사람', '상태', '처음', '뭐부터',
+  '정도', '관련', '대한', '위한', '같은', '직접', '추가', '질문', '자주',
+  '많이', '하나', '라인', '한줄', '하나씩',
+]);
 
-  const freq = new Map();
-  // 분야명 단어에 높은 가중치
-  const fieldWords = field.split(/[\s,/·]+/).filter(w => w.length >= 2);
-  for (const w of fieldWords) freq.set(w, (freq.get(w) || 0) + 20);
-  // 분야명 서브스트링도 높은 가중치
-  for (const w of fieldWords) {
-    if (w.length >= 4) {
-      for (let i = 0; i <= w.length - 2; i++) freq.set(w.substring(i, i + 2), (freq.get(w.substring(i, i + 2)) || 0) + 15);
-    }
-  }
-  // 원본 단어 (범용 제외)
-  for (const w of rawWords) {
-    if (!GENERIC_WORDS.has(w)) freq.set(w, (freq.get(w) || 0) + 3);
-  }
-  // 서브스트링 (낮은 가중치)
-  for (const w of subWords) freq.set(w, (freq.get(w) || 0) + 1);
+const PROVIDER_BIAS_WORDS = new Set([
+  '플래너', '컨설팅', '컨설턴트', '업체', '상담', '대행', '브랜드', '샵',
+]);
 
-  // 빈도 순 정렬 후 상위 50개
-  return Array.from(freq.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 50)
-    .map(([w]) => w);
+const PROVIDER_INTENT_KEYWORDS = [
+  '자격증', '채용', '월급', '연봉', '취업', '학과', '하는일', '되는법', '직업',
+];
+
+const LOCATION_WORDS = new Set([
+  '서울', '강남', '영등포', '신도림', '인천', '수원', '대전', '대구', '부산',
+  '천안', '원주', '전주', '평택', '청담', '잠실', '강서', '서초', '송파',
+  '분당', '일산', '용인', '부천', '안양', '성남', '광명',
+]);
+
+const QUESTION_STYLE_REGEX = /(방법|하는\s*법|어떻게|순서|체크리스트|리스트|비용|가격|견적|추천|비교|차이|언제|준비|예약|가능)/;
+const AWKWARD_QUERY_REGEX = /(어떻게받나|전문가|정보$|팁$|후기$|어디서하나|몇번방문|입국횟수)/;
+
+function normalizeKoreanText(text) {
+  return String(text || '')
+    .replace(/[^가-힣a-zA-Z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
-function isRelevantKeyword(keyword, coreWords) {
-  const kw = keyword.toLowerCase();
-  return coreWords.some(w => kw.includes(w.toLowerCase()));
+function splitTokens(text, { keepStopWords = false } = {}) {
+  const normalized = normalizeKoreanText(text);
+  if (!normalized) return [];
+  return normalized
+    .split(/\s+/)
+    .filter(token => token.length >= 2)
+    .filter(token => keepStopWords || !INTENT_STOP_WORDS.has(token));
+}
+
+function buildPhraseVariants(text) {
+  const normalized = normalizeKoreanText(text);
+  if (!normalized) return [];
+
+  const variants = new Set();
+  const compact = normalized.replace(/\s+/g, '');
+  if (compact.length >= 4 && compact.length <= 18) variants.add(compact);
+
+  const tokens = normalized.split(/\s+/).filter(token => token.length >= 2);
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const bigram = `${tokens[i]}${tokens[i + 1]}`;
+    if (bigram.length >= 4 && bigram.length <= 18) variants.add(bigram);
+  }
+
+  return Array.from(variants);
+}
+
+function uniqLimit(items, limit = 30) {
+  return Array.from(new Set(items.filter(Boolean))).slice(0, limit);
+}
+
+function containsLocationToken(text) {
+  const tokens = splitTokens(text, { keepStopWords: true });
+  return tokens.some(token => LOCATION_WORDS.has(token));
+}
+
+function extractIntentSignals(field, role, target, questions, userSeeds, seedKeywords) {
+  const themeTexts = [field, role];
+  const userTexts = [field, target, questions, userSeeds];
+  const aiSeedTexts = seedKeywords.slice(0, 12);
+  const seedTexts = [userSeeds, ...aiSeedTexts];
+  const contextTexts = [target, questions];
+  const allowLocationIntent = [field, target, userSeeds].some(containsLocationToken);
+
+  const broadTokens = uniqLimit(
+    [...themeTexts, ...seedTexts, ...contextTexts].flatMap(text =>
+      splitTokens(text, { keepStopWords: true }).filter(token => BROAD_THEME_WORDS.has(token))
+    ),
+    20
+  );
+
+  const specificTokens = uniqLimit(
+    [
+      ...userTexts,
+      ...aiSeedTexts.map(text => ({
+        text,
+        fromAiSeed: true,
+      })),
+    ].flatMap(entry => {
+      const text = typeof entry === 'string' ? entry : entry.text;
+      const fromAiSeed = typeof entry === 'string' ? false : entry.fromAiSeed;
+      return splitTokens(text).filter(token => {
+        if (BROAD_THEME_WORDS.has(token) || PROVIDER_BIAS_WORDS.has(token)) return false;
+        if (!allowLocationIntent && fromAiSeed && LOCATION_WORDS.has(token)) return false;
+        return true;
+      });
+    })
+    .filter(Boolean)
+    ,
+    40
+  );
+
+  const contextTokens = uniqLimit(
+    contextTexts.flatMap(text =>
+      splitTokens(text).filter(token => !BROAD_THEME_WORDS.has(token) && !PROVIDER_BIAS_WORDS.has(token))
+    ),
+    25
+  );
+
+  const targetPriorityTokens = uniqLimit(
+    splitTokens(target).filter(token => !BROAD_THEME_WORDS.has(token) && !PROVIDER_BIAS_WORDS.has(token)),
+    20
+  );
+
+  const phraseVariants = uniqLimit(
+    [
+      ...userTexts,
+      ...aiSeedTexts.filter(text => allowLocationIntent || !containsLocationToken(text)),
+    ].flatMap(text => buildPhraseVariants(text)),
+    40
+  );
+
+  const journeyTokens = uniqLimit(
+    [...userTexts, ...aiSeedTexts].flatMap(text =>
+      splitTokens(text, { keepStopWords: true }).filter(token =>
+        ['준비', '비용', '예산', '기간', '체크리스트', '순서', '리스트', '견적'].includes(token)
+      )
+    ),
+    12
+  );
+
+  const industryTokens = uniqLimit(
+    [...themeTexts, ...aiSeedTexts, userSeeds].flatMap(text =>
+      splitTokens(text).filter(token =>
+        !BROAD_THEME_WORDS.has(token) &&
+        !PROVIDER_BIAS_WORDS.has(token) &&
+        !LOCATION_WORDS.has(token) &&
+        !targetPriorityTokens.includes(token) &&
+        !journeyTokens.includes(token)
+      )
+    ),
+    20
+  );
+
+  return {
+    broadTokens,
+    specificTokens,
+    contextTokens,
+    targetPriorityTokens,
+    phraseVariants,
+    journeyTokens,
+    industryTokens,
+    allowLocationIntent,
+    hasSpecificIntent: specificTokens.length > 0 || contextTokens.length > 0,
+  };
+}
+
+function scoreRelevantKeyword(keyword, signals) {
+  const normalized = normalizeKoreanText(keyword);
+  const compact = normalized.replace(/\s+/g, '');
+  const broadHits = signals.broadTokens.filter(token => normalized.includes(token));
+  const specificHits = signals.specificTokens.filter(token => normalized.includes(token));
+  const contextHits = signals.contextTokens.filter(token => normalized.includes(token));
+  const targetHits = signals.targetPriorityTokens.filter(token => normalized.includes(token));
+  const phraseHits = signals.phraseVariants.filter(phrase => compact.includes(phrase));
+  const journeyHits = signals.journeyTokens.filter(token => normalized.includes(token));
+
+  let score = broadHits.length + specificHits.length * 4 + contextHits.length * 5 + targetHits.length * 7 + phraseHits.length * 8 + journeyHits.length * 4;
+
+  const providerIntentHits = PROVIDER_INTENT_KEYWORDS.filter(token => normalized.includes(token));
+  const baseDomainHit = broadHits.length > 0 || specificHits.length > 0 || phraseHits.length > 0 || journeyHits.length > 0;
+  if (!baseDomainHit) {
+    return { relevant: false, score: 0, broadHits, specificHits, contextHits, targetHits, phraseHits, journeyHits, providerIntentHits };
+  }
+
+  if (providerIntentHits.length > 0 && targetHits.length === 0 && contextHits.length === 0 && phraseHits.length === 0) {
+    return { relevant: false, score: 0, broadHits, specificHits, contextHits, targetHits, phraseHits, journeyHits, providerIntentHits };
+  }
+
+  if (/웨딩홀|박람회|호텔|스튜디오|업체|쇼핑몰|카페/.test(keyword) && phraseHits.length === 0 && contextHits.length === 0 && specificHits.length < 2) {
+    score -= 3;
+  }
+
+  if (!signals.allowLocationIntent && /웨딩홀/.test(keyword) && targetHits.length === 0 && journeyHits.length === 0) {
+    score -= 8;
+  }
+
+  if (/웨딩플래너|컨설팅/.test(keyword) && targetHits.length === 0 && contextHits.length === 0) {
+    score -= 6;
+  }
+
+  if (/웨딩드레스/.test(keyword) && targetHits.length === 0 && contextHits.length === 0 && !compact.includes('결혼식준비') && !compact.includes('체크리스트') && !compact.includes('순서')) {
+    score -= 4;
+  }
+
+  // 타겟/질문 키워드는 추가 가중치이지, 미포함이라고 탈락시키지 않는다.
+  // 다만 완전히 일반 키워드는 약간만 뒤로 보낸다.
+  if (signals.hasSpecificIntent && targetHits.length === 0 && contextHits.length === 0 && phraseHits.length === 0) {
+    score -= 2;
+  }
+
+  return {
+    relevant: score >= 1,
+    score,
+    broadHits,
+    specificHits,
+    contextHits,
+    targetHits,
+    phraseHits,
+    journeyHits,
+    providerIntentHits,
+  };
+}
+
+function buildKeywordSections(results, signals) {
+  const sectionDefs = [
+    {
+      id: 'question',
+      title: '질문형 황금키워드',
+      description: '고객이 실제로 검색창에 묻듯 입력할 만한 준비형 키워드입니다.',
+      scoreKeyword(result) {
+        const intentMeta = result.intentMeta || {};
+        const questionMatch = QUESTION_STYLE_REGEX.test(result.keyword) ? 1 : 0;
+        return questionMatch * 6 + (intentMeta.journeyHits?.length || 0) * 4 + (intentMeta.phraseHits?.length || 0) * 2;
+      },
+    },
+    {
+      id: 'segment',
+      title: '특수 타겟 황금키워드',
+      description: '타겟 독자의 상황, 지역, 생활 맥락이 반영된 틈새 키워드입니다.',
+      scoreKeyword(result) {
+        const intentMeta = result.intentMeta || {};
+        return (intentMeta.targetHits?.length || 0) * 7 + (intentMeta.contextHits?.length || 0) * 5 + (intentMeta.phraseHits?.length || 0) * 2;
+      },
+    },
+    {
+      id: 'industry',
+      title: '업계 워딩 황금키워드',
+      description: '현업에서 쓰는 표현과 고객 검색어가 겹치는 실전형 키워드입니다.',
+      scoreKeyword(result) {
+        const industryHits = (signals.industryTokens || []).filter(token => normalizeKoreanText(result.keyword).includes(token));
+        const intentMeta = result.intentMeta || {};
+        return industryHits.length * 6 + (intentMeta.specificHits?.filter(hit => (signals.industryTokens || []).includes(hit)).length || 0) * 3;
+      },
+    },
+  ];
+
+  return sectionDefs
+    .map(section => {
+      const keywords = results
+        .map(result => ({
+          ...result,
+          _sectionScore: section.scoreKeyword(result),
+        }))
+        .filter(result => result._sectionScore > 0)
+        .sort((a, b) => b._sectionScore - a._sectionScore || b.score - a.score || b.monthlySearch - a.monthlySearch)
+        .slice(0, 6)
+        .map(({ _sectionScore, ...result }) => result);
+
+      return { ...section, keywords };
+    })
+    .filter(section => section.keywords.length > 0);
+}
+
+function determineMinSearchThreshold(signals, searchAdTotal) {
+  const joinedSignals = [
+    ...(signals.targetPriorityTokens || []),
+    ...(signals.contextTokens || []),
+    ...(signals.specificTokens || []),
+    ...(signals.industryTokens || []),
+  ].join(' ');
+
+  const hasNicheContext = /해외|미국|한국|거주|교포|국제|원정|직계가족|소규모|스몰/.test(joinedSignals);
+  const signalStrength = (signals.targetPriorityTokens?.length || 0) + (signals.contextTokens?.length || 0) + (signals.journeyTokens?.length || 0);
+
+  let threshold = 50;
+  if (hasNicheContext || signalStrength >= 8 || searchAdTotal <= 120) threshold = 10;
+  if (hasNicheContext || signalStrength >= 12 || searchAdTotal <= 50) threshold = 5;
+  return threshold;
+}
+
+function calculateRankingAdjustments(result) {
+  const keyword = result.keyword || '';
+  const normalized = normalizeKoreanText(keyword);
+  const compact = normalized.replace(/\s+/g, '');
+  const intentMeta = result.intentMeta || {};
+  let adjustment = 0;
+  const reasons = [];
+
+  const lowSearch = result.monthlySearch || 0;
+  if (lowSearch <= 10) {
+    adjustment -= 4;
+    reasons.push('초저검색량');
+  } else if (lowSearch <= 20) {
+    adjustment -= 2;
+    reasons.push('저검색량');
+  }
+
+  if (AWKWARD_QUERY_REGEX.test(compact)) {
+    adjustment -= 5;
+    reasons.push('어색한문장');
+  }
+
+  if (/웨딩컨설팅|웨딩플래너/.test(compact)) {
+    const customerSignal = (intentMeta.targetHits?.length || 0) + (intentMeta.contextHits?.length || 0) + (intentMeta.journeyHits?.length || 0);
+    if (customerSignal === 0) {
+      adjustment -= 6;
+      reasons.push('공급자축');
+    }
+  }
+
+  if (/정보|팁|후기/.test(compact) && (intentMeta.targetHits?.length || 0) === 0) {
+    adjustment -= 2;
+    reasons.push('일반정보형');
+  }
+
+  if ((intentMeta.targetHits?.length || 0) > 0) {
+    adjustment += 3;
+    reasons.push('타겟일치');
+  }
+  if ((intentMeta.contextHits?.length || 0) > 0) {
+    adjustment += 2;
+    reasons.push('문맥일치');
+  }
+  if ((intentMeta.journeyHits?.length || 0) > 0) {
+    adjustment += 2;
+    reasons.push('준비의도');
+  }
+
+  return { adjustment, reasons };
 }
 
 function normalizeSearchAdSeedKeywords(seedKeywords) {
@@ -519,6 +804,7 @@ export default async function handler(req, res) {
       }
     }
     console.log(`[KEYWORDS] Seeds (AI+manual): ${seedKeywords.length}`);
+    const intentSeedKeywords = [...seedKeywords];
 
     // Phase 1.5: 자동완성으로 시드 확장
     console.log(`[KEYWORDS] Phase 1.5: Expanding with autocomplete`);
@@ -530,12 +816,25 @@ export default async function handler(req, res) {
     const searchData = await fetchSearchAdKeywords(seedKeywords);
     console.log(`[KEYWORDS] SearchAd: ${searchData.size} keywords found`);
 
-    // Phase 2.5: 분야 적합도 필터 (엉뚱한 키워드 제거)
-    const coreWords = extractCoreWords(field, seedKeywords);
-    console.log(`[KEYWORDS] Core words: ${coreWords.slice(0, 10).join(', ')}...`);
+    // Phase 2.5: 입력 의도 기반 관련성 필터
+    const intentSignals = extractIntentSignals(field, role, target, questions, userSeeds, intentSeedKeywords);
+    console.log(`[KEYWORDS] Intent specific tokens: ${intentSignals.specificTokens.slice(0, 10).join(', ')}...`);
 
-    const allCandidates = Array.from(searchData.values()).filter(k => k.monthlySearch >= 50);
-    const relevantCandidates = allCandidates.filter(k => isRelevantKeyword(k.keyword, coreWords));
+    const rawCandidates = Array.from(searchData.values()).filter(k => k.monthlySearch > 0);
+    const minMonthlySearch = determineMinSearchThreshold(intentSignals, searchData.size);
+    let allCandidates = rawCandidates.filter(k => k.monthlySearch >= minMonthlySearch);
+    let thresholdFallbackUsed = false;
+    if (allCandidates.length === 0 && rawCandidates.length > 0) {
+      thresholdFallbackUsed = true;
+      allCandidates = rawCandidates;
+    }
+    const scoredCandidates = allCandidates.map(candidate => ({
+      ...candidate,
+      _intent: scoreRelevantKeyword(candidate.keyword, intentSignals),
+    }));
+    const relevantCandidates = scoredCandidates
+      .filter(candidate => candidate._intent.relevant)
+      .sort((a, b) => b._intent.score - a._intent.score || b.monthlySearch - a.monthlySearch);
 
     let candidates;
     let fallbackUsed = false;
@@ -543,16 +842,16 @@ export default async function handler(req, res) {
       candidates = relevantCandidates;
     } else {
       fallbackUsed = true;
-      candidates = allCandidates
+      candidates = scoredCandidates
         .sort((a, b) => b.monthlySearch - a.monthlySearch)
         .slice(0, 3);
     }
     candidates = candidates
-      .sort((a, b) => b.monthlySearch - a.monthlySearch)
+      .sort((a, b) => (b._intent?.score || 0) - (a._intent?.score || 0) || b.monthlySearch - a.monthlySearch)
       .slice(0, 80);
 
-    console.log(`[KEYWORDS] Filtered: ${allCandidates.length} → ${relevantCandidates.length} relevant, ${candidates.length} total`);
-    console.log(`[KEYWORDS] Core words sample: ${coreWords.slice(0, 5).join(', ')}`);
+    console.log(`[KEYWORDS] Filtered: ${allCandidates.length} candidates after threshold ${minMonthlySearch} → ${relevantCandidates.length} relevant, ${candidates.length} total`);
+    console.log(`[KEYWORDS] Intent token sample: ${intentSignals.specificTokens.slice(0, 5).join(', ')}`);
     if (candidates.length > 0) console.log(`[KEYWORDS] First candidate: "${candidates[0].keyword}" (${candidates[0].monthlySearch})`);
     if (relevantCandidates.length === 0 && allCandidates.length > 0) console.log(`[KEYWORDS] WARNING: 0 relevant from ${allCandidates.length} candidates. First all: "${allCandidates[0].keyword}"`);
 
@@ -569,6 +868,23 @@ export default async function handler(req, res) {
       safeSeedsSample: searchData._safeSeedsSample || [],
       droppedSeedsSample: searchData._droppedSeedsSample || [],
       searchAdTotal: searchData.size,
+      minMonthlySearch,
+      thresholdFallbackUsed,
+      intentSpecificSample: intentSignals.specificTokens.slice(0, 10),
+      intentContextSample: intentSignals.contextTokens.slice(0, 10),
+      targetPrioritySample: intentSignals.targetPriorityTokens.slice(0, 10),
+      journeySample: intentSignals.journeyTokens.slice(0, 10),
+      industrySample: intentSignals.industryTokens.slice(0, 10),
+      allowLocationIntent: intentSignals.allowLocationIntent,
+      topIntentMatches: relevantCandidates.slice(0, 5).map(candidate => ({
+        keyword: candidate.keyword,
+        score: candidate._intent.score,
+        specificHits: candidate._intent.specificHits.slice(0, 4),
+        contextHits: candidate._intent.contextHits.slice(0, 4),
+        targetHits: candidate._intent.targetHits.slice(0, 4),
+        phraseHits: candidate._intent.phraseHits.slice(0, 2),
+        journeyHits: candidate._intent.journeyHits.slice(0, 3),
+      })),
       allCandidates: allCandidates.length,
       relevantCandidates: relevantCandidates.length,
       finalCandidates: candidates.length,
@@ -579,6 +895,7 @@ export default async function handler(req, res) {
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
       return res.status(200).json({
         keywords: [],
+        sections: [],
         totalFound: 0,
         seedKeywords,
         message: '검색량이 있는 키워드를 찾지 못했습니다. 다른 분야나 타겟으로 시도해보세요.',
@@ -603,16 +920,15 @@ export default async function handler(req, res) {
       const trendInfo = trends.has(k.keyword)
         ? trends.get(k.keyword)
         : { trend: 'unknown', trendChange: 0, trendData: [] };
-      const { score, breakdown, saturation, blogCountAvailable, grade, label, description } = calculateGoldenScore(
+      const { score, breakdown, saturation, blogCountAvailable } = calculateGoldenScore(
         k.keyword, k.monthlySearch, k.pcSearch, k.mobileSearch, k.competition, blogCount, trendInfo
       );
 
-      return {
+      const intentBonus = Math.min(12, Math.max(0, Math.floor((k._intent?.score || 0) / 3)));
+      const baseResult = {
         keyword: k.keyword,
-        score,
-        grade,
-        label,
-        gradeDescription: description,
+        rawScore: score,
+        intentBonus,
         monthlySearch: k.monthlySearch,
         pcSearch: k.pcSearch,
         mobileSearch: k.mobileSearch,
@@ -624,9 +940,55 @@ export default async function handler(req, res) {
         trendChange: trendInfo.trendChange,
         trendData: trendInfo.trendData,
         breakdown,
+        intentMeta: {
+          score: k._intent?.score || 0,
+          specificHits: k._intent?.specificHits || [],
+          contextHits: k._intent?.contextHits || [],
+          targetHits: k._intent?.targetHits || [],
+          phraseHits: k._intent?.phraseHits || [],
+          journeyHits: k._intent?.journeyHits || [],
+        },
+      };
+      const rankingAdjustment = calculateRankingAdjustments(baseResult);
+      const boostedScore = score + intentBonus + rankingAdjustment.adjustment;
+      const boostedGrade = getGrade(boostedScore);
+      return {
+        keyword: k.keyword,
+        score: boostedScore,
+        rawScore: score,
+        intentBonus,
+        rankingAdjustment: rankingAdjustment.adjustment,
+        rankingAdjustmentReasons: rankingAdjustment.reasons,
+        grade: boostedGrade.grade,
+        label: boostedGrade.label,
+        gradeDescription: boostedGrade.description,
+        monthlySearch: k.monthlySearch,
+        pcSearch: k.pcSearch,
+        mobileSearch: k.mobileSearch,
+        competition: k.competition,
+        blogCount: blogCountAvailable ? blogCount : -1,
+        blogCountAvailable,
+        saturation,
+        trend: trendInfo.trend,
+        trendChange: trendInfo.trendChange,
+        trendData: trendInfo.trendData,
+        breakdown,
+        intentMeta: baseResult.intentMeta,
       };
     })
     .sort((a, b) => b.score - a.score);
+
+    const sections = buildKeywordSections(results, intentSignals);
+    if (_debug) {
+      _debug.topRanked = results.slice(0, 5).map(result => ({
+        keyword: result.keyword,
+        score: result.score,
+        rawScore: result.rawScore,
+        intentBonus: result.intentBonus,
+        rankingAdjustment: result.rankingAdjustment,
+        rankingAdjustmentReasons: result.rankingAdjustmentReasons,
+      }));
+    }
 
     const remaining = isAdmin ? 999 : FREE_DAILY_LIMIT - (await getRedis().get(rateLimitKey) || 0);
 
@@ -634,13 +996,19 @@ export default async function handler(req, res) {
 
     console.log(`[KEYWORDS] Done! Top: "${results[0]?.keyword}" (${results[0]?.score}pt)`);
 
+    const noticeMessages = [];
+    if (fallbackUsed) noticeMessages.push('분야 적합 키워드가 부족해 일부 결과만 제한적으로 표시했습니다.');
+    if (minMonthlySearch < 50) noticeMessages.push(`특수 타겟 검색을 반영해 검색량 하한을 ${minMonthlySearch}으로 낮췄습니다.`);
+    if (thresholdFallbackUsed) noticeMessages.push('검색량이 낮은 틈새 키워드까지 포함해 결과를 확장했습니다.');
+
     return res.status(200).json({
       keywords: results,
+      sections,
       totalFound: results.length,
       seedKeywords,
       remaining: Math.max(0, remaining),
       limit: FREE_DAILY_LIMIT,
-      notice: fallbackUsed ? '분야 적합 키워드가 부족해 일부 결과만 제한적으로 표시했습니다.' : undefined,
+      notice: noticeMessages.join(' ') || undefined,
       _debug,
     });
 
