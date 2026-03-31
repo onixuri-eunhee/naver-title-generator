@@ -4,7 +4,7 @@ import https from 'node:https';
 import FormData from 'form-data';
 
 export const config = {
-  maxDuration: 120,
+  maxDuration: 300,
   api: { bodyParser: false },
 };
 
@@ -120,6 +120,18 @@ function normalizeWords(words) {
     .map(item => ({ word: item.word, start: item.start, end: item.end }));
 }
 
+function normalizeSegments(segments) {
+  if (!Array.isArray(segments)) return [];
+
+  return segments
+    .filter(item => item && typeof item.text === 'string' && Number.isFinite(item.start))
+    .map(item => ({
+      word: item.text,
+      start: item.start,
+      end: Number.isFinite(item.end) ? item.end : item.start,
+    }));
+}
+
 function getOpenAIApiKey() {
   const apiKey = (process.env.OPENAI_API_KEY || '').replace(/\n/g, '').trim();
   if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
@@ -133,7 +145,7 @@ function buildTranscriptionForm(buffer, mimeType) {
   form.append('file', buffer, { filename, contentType: resolvedType });
   form.append('model', 'whisper-1');
   form.append('response_format', 'verbose_json');
-  form.append('timestamp_granularities[]', 'word');
+  form.append('timestamp_granularities[]', 'segment');
   form.append('language', 'ko');
   return form;
 }
@@ -402,12 +414,13 @@ export default async function handler(req, res) {
     const segments = normalizeWords(
       whisperData.words || whisperData.segments?.flatMap(segment => segment?.words || []) || []
     );
-    const duration = segments.length ? segments[segments.length - 1].end : whisperData.duration || 0;
+    const normalizedSegments = segments.length ? segments : normalizeSegments(whisperData.segments || []);
+    const duration = normalizedSegments.length ? normalizedSegments[normalizedSegments.length - 1].end : whisperData.duration || 0;
 
     await logUsage(email, 'shortform-stt', null, getClientIp(req));
 
     return res.status(200).json({
-      segments,
+      segments: normalizedSegments,
       fullText: whisperData.text || '',
       duration,
     });
