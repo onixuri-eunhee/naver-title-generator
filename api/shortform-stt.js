@@ -155,6 +155,24 @@ function getFormLength(form) {
   });
 }
 
+function buildTinyWavBuffer() {
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36, 4);
+  header.write('WAVE', 8);
+  header.write('fmt ', 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(16000, 24);
+  header.writeUInt32LE(32000, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write('data', 36);
+  header.writeUInt32LE(0, 40);
+  return header;
+}
+
 async function probeOpenAIModels(apiKey) {
   return await new Promise(function(resolve, reject) {
     const request = https.request('https://api.openai.com/v1/models', {
@@ -183,41 +201,44 @@ async function probeOpenAIModels(apiKey) {
   });
 }
 
-async function transcribeAudio(buffer, mimeType) {
+async function callTranscriptionsEndpoint(buffer, mimeType) {
   const apiKey = getOpenAIApiKey();
   const form = buildTranscriptionForm(buffer, mimeType);
   const multipartBuffer = getFormBuffer(form);
 
-  try {
-    const response = await new Promise(function(resolve, reject) {
-      const request = https.request('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          ...form.getHeaders(),
-          'Content-Length': String(multipartBuffer.length),
-        },
-      }, function(res) {
-        const chunks = [];
-        res.on('data', function(chunk) {
-          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-        });
-        res.on('end', function() {
-          resolve({
-            status: res.statusCode || 0,
-            text: Buffer.concat(chunks).toString('utf8'),
-          });
+  return await new Promise(function(resolve, reject) {
+    const request = https.request('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        ...form.getHeaders(),
+        'Content-Length': String(multipartBuffer.length),
+      },
+    }, function(res) {
+      const chunks = [];
+      res.on('data', function(chunk) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      });
+      res.on('end', function() {
+        resolve({
+          status: res.statusCode || 0,
+          text: Buffer.concat(chunks).toString('utf8'),
         });
       });
-
-      request.setTimeout(90000, function() {
-        request.destroy(new Error('Whisper transcription timed out'));
-      });
-      request.on('error', reject);
-      request.write(multipartBuffer);
-      request.end();
     });
 
+    request.setTimeout(90000, function() {
+      request.destroy(new Error('Whisper transcription timed out'));
+    });
+    request.on('error', reject);
+    request.write(multipartBuffer);
+    request.end();
+  });
+}
+
+async function transcribeAudio(buffer, mimeType) {
+  try {
+    const response = await callTranscriptionsEndpoint(buffer, mimeType);
     const text = response.text;
     let data = {};
     try {
@@ -271,6 +292,23 @@ export default async function handler(req, res) {
       } catch (error) {
         return res.status(502).json({
           error: 'models probe failed: ' + (error?.message || 'unknown'),
+          version: STT_VERSION,
+        });
+      }
+    }
+    if (probeMode === 'transcribe-dry') {
+      try {
+        const dryResponse = await callTranscriptionsEndpoint(buildTinyWavBuffer(), 'audio/wav');
+        return res.status(200).json({
+          ok: true,
+          stage: 'transcribe-dry',
+          version: STT_VERSION,
+          upstreamStatus: dryResponse.status,
+          bodyPreview: dryResponse.text.slice(0, 300),
+        });
+      } catch (error) {
+        return res.status(502).json({
+          error: 'transcribe-dry probe failed: ' + (error?.message || 'unknown'),
           version: STT_VERSION,
         });
       }
