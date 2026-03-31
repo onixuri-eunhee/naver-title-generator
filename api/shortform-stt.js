@@ -155,6 +155,34 @@ function getFormLength(form) {
   });
 }
 
+async function probeOpenAIModels(apiKey) {
+  return await new Promise(function(resolve, reject) {
+    const request = https.request('https://api.openai.com/v1/models', {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    }, function(res) {
+      const chunks = [];
+      res.on('data', function(chunk) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      });
+      res.on('end', function() {
+        resolve({
+          status: res.statusCode || 0,
+          text: Buffer.concat(chunks).toString('utf8'),
+        });
+      });
+    });
+
+    request.setTimeout(30000, function() {
+      request.destroy(new Error('OpenAI models probe timed out'));
+    });
+    request.on('error', reject);
+    request.end();
+  });
+}
+
 async function transcribeAudio(buffer, mimeType) {
   const apiKey = getOpenAIApiKey();
   const form = buildTranscriptionForm(buffer, mimeType);
@@ -221,13 +249,31 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
-    if (getProbeMode(req) === 'ping') {
+    const probeMode = getProbeMode(req);
+    if (probeMode === 'ping') {
       return res.status(200).json({
         ok: true,
         stage: 'ping',
         version: STT_VERSION,
         hasOpenAIKey: !!((process.env.OPENAI_API_KEY || '').trim()),
       });
+    }
+    if (probeMode === 'models') {
+      try {
+        const modelsResponse = await probeOpenAIModels(getOpenAIApiKey());
+        return res.status(200).json({
+          ok: true,
+          stage: 'models',
+          version: STT_VERSION,
+          status: modelsResponse.status,
+          bodyPreview: modelsResponse.text.slice(0, 300),
+        });
+      } catch (error) {
+        return res.status(502).json({
+          error: 'models probe failed: ' + (error?.message || 'unknown'),
+          version: STT_VERSION,
+        });
+      }
     }
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -294,6 +340,16 @@ export default async function handler(req, res) {
         multipartLength: length,
         multipartBufferLength: bufferLength,
         headerKeys: Object.keys(probeForm.getHeaders()),
+      });
+    }
+    if (probeMode === 'models') {
+      const modelsResponse = await probeOpenAIModels(getOpenAIApiKey());
+      return res.status(200).json({
+        ok: true,
+        stage: 'models',
+        version: STT_VERSION,
+        status: modelsResponse.status,
+        bodyPreview: modelsResponse.text.slice(0, 300),
       });
     }
 
