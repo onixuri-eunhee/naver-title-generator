@@ -137,6 +137,14 @@ function buildTranscriptionForm(buffer, mimeType) {
   return form;
 }
 
+function getFormBuffer(form) {
+  try {
+    return form.getBuffer();
+  } catch (error) {
+    throw new Error('multipart buffer build failed: ' + (error?.message || error));
+  }
+}
+
 function getFormLength(form) {
   return new Promise(function(resolve, reject) {
     form.getLength(function(error, length) {
@@ -149,6 +157,7 @@ function getFormLength(form) {
 async function transcribeAudio(buffer, mimeType) {
   const apiKey = getOpenAIApiKey();
   const form = buildTranscriptionForm(buffer, mimeType);
+  const multipartBuffer = getFormBuffer(form);
   const controller = new AbortController();
   const timeout = setTimeout(function() {
     controller.abort();
@@ -160,9 +169,9 @@ async function transcribeAudio(buffer, mimeType) {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         ...form.getHeaders(),
+        'Content-Length': String(multipartBuffer.length),
       },
-      body: form,
-      duplex: 'half',
+      body: multipartBuffer,
       signal: controller.signal,
     });
 
@@ -255,10 +264,16 @@ export default async function handler(req, res) {
     if (probeMode === 'form') {
       const probeForm = buildTranscriptionForm(buffer, resolvedMimeType);
       let length = null;
+      let bufferLength = null;
       try {
         length = await getFormLength(probeForm);
       } catch (error) {
         length = null;
+      }
+      try {
+        bufferLength = getFormBuffer(probeForm).length;
+      } catch (error) {
+        bufferLength = null;
       }
       return res.status(200).json({
         ok: true,
@@ -267,6 +282,7 @@ export default async function handler(req, res) {
         bytes: buffer.length,
         mimeType: resolvedMimeType,
         multipartLength: length,
+        multipartBufferLength: bufferLength,
         headerKeys: Object.keys(probeForm.getHeaders()),
       });
     }
