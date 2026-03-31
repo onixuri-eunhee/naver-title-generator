@@ -1,5 +1,6 @@
 import { extractToken, resolveAdmin, resolveSessionEmail, setCorsHeaders, getClientIp } from './_helpers.js';
 import { logUsage } from './_db.js';
+import https from 'node:https';
 import FormData from 'form-data';
 
 export const config = {
@@ -158,24 +159,38 @@ async function transcribeAudio(buffer, mimeType) {
   const apiKey = getOpenAIApiKey();
   const form = buildTranscriptionForm(buffer, mimeType);
   const multipartBuffer = getFormBuffer(form);
-  const controller = new AbortController();
-  const timeout = setTimeout(function() {
-    controller.abort();
-  }, 90000);
 
   try {
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        ...form.getHeaders(),
-        'Content-Length': String(multipartBuffer.length),
-      },
-      body: multipartBuffer,
-      signal: controller.signal,
+    const response = await new Promise(function(resolve, reject) {
+      const request = https.request('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          ...form.getHeaders(),
+          'Content-Length': String(multipartBuffer.length),
+        },
+      }, function(res) {
+        const chunks = [];
+        res.on('data', function(chunk) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        });
+        res.on('end', function() {
+          resolve({
+            status: res.statusCode || 0,
+            text: Buffer.concat(chunks).toString('utf8'),
+          });
+        });
+      });
+
+      request.setTimeout(90000, function() {
+        request.destroy(new Error('Whisper transcription timed out'));
+      });
+      request.on('error', reject);
+      request.write(multipartBuffer);
+      request.end();
     });
 
-    const text = await response.text();
+    const text = response.text;
     let data = {};
     try {
       data = text ? JSON.parse(text) : {};
@@ -183,7 +198,7 @@ async function transcribeAudio(buffer, mimeType) {
       data = { error: { message: text || 'Invalid Whisper response' } };
     }
 
-    if (!response.ok) {
+    if (response.status < 200 || response.status >= 300) {
       const message = data?.error?.message || 'Whisper transcription failed';
       console.error('[shortform-stt] Whisper HTTP error:', response.status, text.slice(0, 500));
       throw new Error(message + ' (HTTP ' + response.status + ')');
@@ -191,14 +206,9 @@ async function transcribeAudio(buffer, mimeType) {
 
     return data;
   } catch (error) {
-    if (error && error.name === 'AbortError') {
-      throw new Error('Whisper transcription timed out');
-    }
     var message = error && error.message ? error.message : 'Whisper transcription failed';
     console.error('[shortform-stt] Whisper upload error:', message);
     throw new Error(message);
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
