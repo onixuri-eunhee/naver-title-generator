@@ -1,7 +1,10 @@
 import { extractToken, resolveAdmin, resolveSessionEmail, setCorsHeaders, getClientIp } from './_helpers.js';
 import { logUsage } from './_db.js';
 
-export const config = { maxDuration: 120 };
+export const config = {
+  maxDuration: 120,
+  api: { bodyParser: { sizeLimit: '15mb' } },
+};
 
 const MAX_AUDIO_SIZE = 10 * 1024 * 1024;
 
@@ -113,6 +116,8 @@ export default async function handler(req, res) {
     const body = parseRequestBody(req.body);
     if (body !== req.body) req.body = body;
 
+    console.log('[shortform-stt] body keys:', Object.keys(body || {}), 'audioBase64 length:', (body?.audioBase64 || '').length, 'mimeType:', body?.mimeType);
+
     const isAdmin = await resolveAdmin(req);
     const token = extractToken(req);
     const email = await resolveSessionEmail(token);
@@ -124,8 +129,10 @@ export default async function handler(req, res) {
     const { audioBase64, mimeType } = body;
     const { buffer, mimeType: resolvedMimeType } = decodeAudioPayload(audioBase64, mimeType);
 
+    console.log('[shortform-stt] buffer size:', buffer?.length || 0, 'resolvedMimeType:', resolvedMimeType);
+
     if (!buffer) {
-      return res.status(400).json({ error: 'audioBase64가 필요합니다.' });
+      return res.status(400).json({ error: 'audioBase64가 필요합니다. (body keys: ' + Object.keys(body || {}).join(',') + ')' });
     }
 
     if (buffer.length > MAX_AUDIO_SIZE) {
