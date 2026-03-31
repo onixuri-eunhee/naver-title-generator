@@ -1443,6 +1443,15 @@
         return headers;
       }
 
+      function getSttProbeMode() {
+        try {
+          var probe = new URLSearchParams(window.location.search).get('stt_probe') || '';
+          return probe.trim().toLowerCase();
+        } catch (e) {
+          return '';
+        }
+      }
+
       function showBox(element, message) {
         if (!element) return;
         element.textContent = message || '';
@@ -1523,6 +1532,37 @@
         } catch (e) {
           return null;
         }
+      }
+
+      async function readResponseDetails(response) {
+        var text = '';
+        var data = null;
+        try {
+          text = await response.text();
+        } catch (e) {
+          text = '';
+        }
+        try {
+          data = text ? JSON.parse(text) : null;
+        } catch (e) {
+          data = null;
+        }
+        return {
+          ok: response.ok,
+          status: response.status,
+          data: data,
+          text: text,
+          sttVersion: response.headers.get('x-shortform-stt-version') || '',
+          vercelId: response.headers.get('x-vercel-id') || '',
+          contentType: response.headers.get('content-type') || ''
+        };
+      }
+
+      function summarizeRawErrorText(text) {
+        var value = String(text || '').replace(/\s+/g, ' ').trim();
+        if (!value) return '(응답 없음)';
+        if (value.length > 220) return value.slice(0, 220) + '...';
+        return value;
       }
 
       function updateStepChecks() {
@@ -2038,11 +2078,14 @@
 
       function buildSttRequest() {
         var mimeType = state.audioMimeType || state.audioBlob.type || 'audio/webm';
+        var probeMode = getSttProbeMode();
+        var headers = createHeaders({
+          'Content-Type': mimeType,
+          'X-Audio-Mime-Type': mimeType
+        });
+        if (probeMode) headers['X-Stt-Probe'] = probeMode;
         return {
-          headers: createHeaders({
-            'Content-Type': mimeType,
-            'X-Audio-Mime-Type': mimeType
-          }),
+          headers: headers,
           body: state.audioBlob
         };
       }
@@ -2066,7 +2109,10 @@
           return;
         }
         showBox(els.materialsError, '');
-        showBox(els.materialsHint, 'Step 2 완료 후 자동으로 병렬 생성 중입니다.');
+        var sttProbeMode = getSttProbeMode();
+        showBox(els.materialsHint, sttProbeMode
+          ? 'STT probe(' + sttProbeMode + ') 실행 중입니다.'
+          : 'Step 2 완료 후 자동으로 병렬 생성 중입니다.');
         setLoading(true, title || '영상 소재 생성 중...', detail || 'STT 타임스탬프와 B-roll 이미지를 준비하고 있습니다.');
 
         var requestId = state.processRequestId + 1;
@@ -2085,39 +2131,50 @@
             headers: sttRequest.headers,
             body: sttRequest.body
           });
-          var brollPromise = fetch('/api/shortform-broll', {
+          var brollPromise = sttProbeMode ? null : fetch('/api/shortform-broll', {
             method: 'POST',
             headers: createHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify(brollBody)
           });
-          var responses = await Promise.all([sttPromise, brollPromise]);
-          var sttData = await parseResponseJson(responses[0]);
-          var brollData = await parseResponseJson(responses[1]);
+          var responses = await Promise.all(sttProbeMode ? [sttPromise] : [sttPromise, brollPromise]);
+          var sttResult = await readResponseDetails(responses[0]);
+          var brollResult = sttProbeMode ? null : await readResponseDetails(responses[1]);
+          var sttData = sttResult.data;
+          var brollData = brollResult ? brollResult.data : null;
 
           if (requestId !== state.processRequestId) return;
 
-          if (responses[0].status === 401 || responses[1].status === 401) {
+          if (sttResult.status === 401 || (!sttProbeMode && brollResult.status === 401)) {
             openAuthModal();
             return;
           }
-          if (responses[0].status === 429 || responses[1].status === 429) {
+          if (sttResult.status === 429 || (!sttProbeMode && brollResult.status === 429)) {
             showBox(els.materialsError, extractErrorMessage(sttData || brollData, 429, '사용 횟수를 초과했습니다.'));
             return;
           }
-          if (!responses[0].ok) {
-            var sttErrText = sttData ? JSON.stringify(sttData) : await responses[0].text().catch(function() { return '(응답 없음)'; });
-            throw new Error('STT 오류: ' + (sttData && sttData.error || sttErrText || 'Unknown') + ' (HTTP ' + responses[0].status + ')');
+          if (!sttResult.ok) {
+            var sttMessage = sttData && sttData.error
+              ? sttData.error
+              : summarizeRawErrorText(sttResult.text);
+            var sttMeta = [];
+            if (sttResult.sttVersion) sttMeta.push('ver=' + sttResult.sttVersion);
+            if (sttResult.vercelId) sttMeta.push('vercel=' + sttResult.vercelId);
+            throw new Error('STT 오류: ' + sttMessage + ' (HTTP ' + sttResult.status + ')' + (sttMeta.length ? ' [' + sttMeta.join(', ') + ']' : ''));
           }
-          if (!responses[1].ok) {
-            var brollErrText = brollData ? JSON.stringify(brollData) : await responses[1].text().catch(function() { return '(응답 없음)'; });
-            throw new Error('B-roll 오류: ' + (brollData && brollData.error || brollErrText || 'Unknown') + ' (HTTP ' + responses[1].status + ')');
+          if (!sttProbeMode && !brollResult.ok) {
+            var brollErrText = brollData && brollData.error
+              ? brollData.error
+              : summarizeRawErrorText(brollResult.text);
+            throw new Error('B-roll 오류: ' + brollErrText + ' (HTTP ' + brollResult.status + ')');
           }
 
           renderSttResults(normalizeSttResponse(sttData || {}));
-          renderBrollResults(normalizeBrollResponse(brollData || {}));
+          if (!sttProbeMode) renderBrollResults(normalizeBrollResponse(brollData || {}));
           state.step3Complete = true;
           updateLocks();
-          showBox(els.materialsHint, 'STT와 B-roll 생성이 완료되었습니다.');
+          showBox(els.materialsHint, sttProbeMode
+            ? 'STT probe(' + sttProbeMode + ') 응답이 도착했습니다.'
+            : 'STT와 B-roll 생성이 완료되었습니다.');
         } catch (e) {
           if (requestId !== state.processRequestId) return;
           showBox(els.materialsError, e.message || '영상 소재 생성 중 오류가 발생했습니다.');

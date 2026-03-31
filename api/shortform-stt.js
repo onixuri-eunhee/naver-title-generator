@@ -7,6 +7,7 @@ export const config = {
   api: { bodyParser: false },
 };
 
+const STT_VERSION = 'v3-probe-formdata';
 const MAX_AUDIO_SIZE = 4 * 1024 * 1024;
 
 function parseRequestBody(body) {
@@ -24,6 +25,14 @@ function parseRequestBody(body) {
 function getHeaderValue(req, key) {
   if (!req || !req.headers) return '';
   return req.headers[key] || req.headers[key.toLowerCase()] || '';
+}
+
+function getProbeMode(req) {
+  const fromHeader = getHeaderValue(req, 'x-stt-probe');
+  if (fromHeader && typeof fromHeader === 'string') return fromHeader.trim().toLowerCase();
+  const fromQuery = req?.query?.probe;
+  if (typeof fromQuery === 'string') return fromQuery.trim().toLowerCase();
+  return '';
 }
 
 function getRequestMimeType(req) {
@@ -116,8 +125,7 @@ function getOpenAIApiKey() {
   return apiKey;
 }
 
-async function transcribeAudio(buffer, mimeType) {
-  const apiKey = getOpenAIApiKey();
+function buildTranscriptionForm(buffer, mimeType) {
   const filename = getFilename(mimeType);
   const resolvedType = mimeType || 'audio/webm';
   const form = new FormData();
@@ -126,6 +134,21 @@ async function transcribeAudio(buffer, mimeType) {
   form.append('response_format', 'verbose_json');
   form.append('timestamp_granularities[]', 'word');
   form.append('language', 'ko');
+  return form;
+}
+
+function getFormLength(form) {
+  return new Promise(function(resolve, reject) {
+    form.getLength(function(error, length) {
+      if (error) return reject(error);
+      resolve(length);
+    });
+  });
+}
+
+async function transcribeAudio(buffer, mimeType) {
+  const apiKey = getOpenAIApiKey();
+  const form = buildTranscriptionForm(buffer, mimeType);
   const controller = new AbortController();
   const timeout = setTimeout(function() {
     controller.abort();
@@ -172,9 +195,22 @@ async function transcribeAudio(buffer, mimeType) {
 
 export default async function handler(req, res) {
   setCorsHeaders(res, req);
+  res.setHeader('X-Shortform-Stt-Version', STT_VERSION);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  if (req.method === 'GET') {
+    if (getProbeMode(req) === 'ping') {
+      return res.status(200).json({
+        ok: true,
+        stage: 'ping',
+        version: STT_VERSION,
+        hasOpenAIKey: !!((process.env.OPENAI_API_KEY || '').trim()),
+      });
+    }
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   if (req.method !== 'POST') {
@@ -203,6 +239,36 @@ export default async function handler(req, res) {
     if (!process.env.OPENAI_API_KEY) {
       console.error('[shortform-stt] OPENAI_API_KEY is missing');
       return res.status(500).json({ error: '서버 설정 오류가 발생했습니다.' });
+    }
+
+    const probeMode = getProbeMode(req);
+    if (probeMode === 'raw') {
+      return res.status(200).json({
+        ok: true,
+        stage: 'raw',
+        version: STT_VERSION,
+        bytes: buffer.length,
+        mimeType: resolvedMimeType,
+        hasOpenAIKey: true,
+      });
+    }
+    if (probeMode === 'form') {
+      const probeForm = buildTranscriptionForm(buffer, resolvedMimeType);
+      let length = null;
+      try {
+        length = await getFormLength(probeForm);
+      } catch (error) {
+        length = null;
+      }
+      return res.status(200).json({
+        ok: true,
+        stage: 'form',
+        version: STT_VERSION,
+        bytes: buffer.length,
+        mimeType: resolvedMimeType,
+        multipartLength: length,
+        headerKeys: Object.keys(probeForm.getHeaders()),
+      });
     }
 
     let whisperData;
