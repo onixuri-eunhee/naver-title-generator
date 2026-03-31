@@ -1514,10 +1514,9 @@
       }
 
       async function parseResponseJson(response) {
-        var contentType = response.headers.get('content-type') || '';
-        if (contentType.indexOf('application/json') === -1) return null;
         try {
-          return await response.json();
+          var text = await response.text();
+          return text ? JSON.parse(text) : null;
         } catch (e) {
           return null;
         }
@@ -2091,8 +2090,14 @@
             showBox(els.materialsError, extractErrorMessage(sttData || brollData, 429, '사용 횟수를 초과했습니다.'));
             return;
           }
-          if (!responses[0].ok) throw new Error(extractErrorMessage(sttData, responses[0].status, 'STT 생성에 실패했습니다.') + ' (HTTP ' + responses[0].status + ')');
-          if (!responses[1].ok) throw new Error(extractErrorMessage(brollData, responses[1].status, 'B-roll 생성에 실패했습니다.') + ' (HTTP ' + responses[1].status + ')');
+          if (!responses[0].ok) {
+            var sttErrText = sttData ? JSON.stringify(sttData) : await responses[0].text().catch(function() { return '(응답 없음)'; });
+            throw new Error('STT 오류: ' + (sttData && sttData.error || sttErrText || 'Unknown') + ' (HTTP ' + responses[0].status + ')');
+          }
+          if (!responses[1].ok) {
+            var brollErrText = brollData ? JSON.stringify(brollData) : await responses[1].text().catch(function() { return '(응답 없음)'; });
+            throw new Error('B-roll 오류: ' + (brollData && brollData.error || brollErrText || 'Unknown') + ' (HTTP ' + responses[1].status + ')');
+          }
 
           renderSttResults(normalizeSttResponse(sttData || {}));
           renderBrollResults(normalizeBrollResponse(brollData || {}));
