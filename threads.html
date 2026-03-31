@@ -776,9 +776,13 @@ async function generate() {
   document.getElementById('resultArea').classList.remove('show');
 
   try {
+    var _token = '';
+    try { _token = localStorage.getItem('ddukddak_token') || ''; } catch(e) {}
+    var _headers = { 'Content-Type': 'application/json' };
+    if (_token) _headers['Authorization'] = 'Bearer ' + _token;
     var res = await fetch('/api/threads', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: _headers,
       body: JSON.stringify({
         type: selectedType,
         tone: selectedTone,
@@ -839,7 +843,9 @@ function copyResult() {
 
 async function loadRemaining() {
   try {
-    var res = await fetch('/api/threads');
+    var _t = ''; try { _t = localStorage.getItem('ddukddak_token') || ''; } catch(e) {}
+    var _h = {}; if (_t) _h['Authorization'] = 'Bearer ' + _t;
+    var res = await fetch('/api/threads', { headers: _h });
     var data = await res.json();
     updateRemainingUI(data.remaining, data.limit);
   } catch(e) {
@@ -885,7 +891,9 @@ function showToast(msg, type) {
 var _origLoadRemaining = loadRemaining;
 loadRemaining = async function() {
   try {
-    var res = await fetch('/api/threads');
+    var _t2 = ''; try { _t2 = localStorage.getItem('ddukddak_token') || ''; } catch(e) {}
+    var _h2 = {}; if (_t2) _h2['Authorization'] = 'Bearer ' + _t2;
+    var res = await fetch('/api/threads', { headers: _h2 });
     var data = await res.json();
     updateRemainingUI(data.remaining, data.limit);
     if (data.admin) {
