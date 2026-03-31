@@ -1,5 +1,6 @@
 import { extractToken, resolveAdmin, resolveSessionEmail, setCorsHeaders, getClientIp } from './_helpers.js';
 import { logUsage } from './_db.js';
+import OpenAI, { toFile } from 'openai';
 
 export const config = {
   maxDuration: 120,
@@ -60,83 +61,37 @@ function normalizeWords(words) {
     .map(item => ({ word: item.word, start: item.start, end: item.end }));
 }
 
-function buildMultipartBody(buffer, filename, mimeType, fields) {
-  const boundary = '----FormBoundary' + Math.random().toString(36).slice(2);
-  const CRLF = '\r\n';
-  const parts = [];
-
-  // 파일 파트
-  parts.push(
-    `--${boundary}${CRLF}` +
-    `Content-Disposition: form-data; name="file"; filename="${filename}"${CRLF}` +
-    `Content-Type: ${mimeType}${CRLF}${CRLF}`
-  );
-  parts.push(buffer);
-  parts.push(CRLF);
-
-  // 텍스트 필드 파트
-  for (const [key, value] of Object.entries(fields)) {
-    parts.push(
-      `--${boundary}${CRLF}` +
-      `Content-Disposition: form-data; name="${key}"${CRLF}${CRLF}` +
-      `${value}${CRLF}`
-    );
+let openaiClient;
+let openaiClientKey = '';
+function getOpenAIClient() {
+  const apiKey = (process.env.OPENAI_API_KEY || '').replace(/\n/g, '').trim();
+  if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
+  if (!openaiClient || openaiClientKey !== apiKey) {
+    openaiClient = new OpenAI({ apiKey });
+    openaiClientKey = apiKey;
   }
-
-  parts.push(`--${boundary}--${CRLF}`);
-
-  // Buffer들을 하나로 결합
-  const buffers = parts.map(p => typeof p === 'string' ? Buffer.from(p, 'utf-8') : p);
-  return { body: Buffer.concat(buffers), contentType: `multipart/form-data; boundary=${boundary}` };
+  return openaiClient;
 }
 
 async function transcribeAudio(buffer, mimeType) {
-  const apiKey = (process.env.OPENAI_API_KEY || '').replace(/\n/g, '').trim();
-  if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
-
   const filename = getFilename(mimeType);
   const resolvedType = mimeType || 'audio/webm';
-
-  // 수동 multipart 구성 — Node 18 FormData/Blob 호환성 문제 회피
-  const { body: multipartBody, contentType } = buildMultipartBody(buffer, filename, resolvedType, {
-    'model': 'whisper-1',
-    'response_format': 'verbose_json',
-    'timestamp_granularities[]': 'word',
-    'language': 'ko',
-  });
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 90000);
+  const openai = getOpenAIClient();
+  const file = await toFile(buffer, filename, { type: resolvedType });
 
   try {
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': contentType,
-      },
-      body: multipartBody,
-      signal: controller.signal,
+    return await openai.audio.transcriptions.create({
+      file,
+      model: 'whisper-1',
+      response_format: 'verbose_json',
+      timestamp_granularities: ['word'],
+      language: 'ko',
     });
-
-    const text = await response.text();
-    let data = {};
-
-    try {
-      data = text ? JSON.parse(text) : {};
-    } catch (_) {
-      data = { error: { message: text || 'Invalid Whisper response' } };
-    }
-
-    if (!response.ok) {
-      const message = data?.error?.message || 'Whisper transcription failed';
-      console.error('[shortform-stt] Whisper API responded:', response.status, text.slice(0, 500));
-      throw new Error(message);
-    }
-
-    return data;
-  } finally {
-    clearTimeout(timeout);
+  } catch (error) {
+    var status = error && typeof error.status === 'number' ? ' (HTTP ' + error.status + ')' : '';
+    var message = error && error.message ? error.message : 'Whisper transcription failed';
+    console.error('[shortform-stt] Whisper SDK error:', message + status);
+    throw new Error(message + status);
   }
 }
 

@@ -2042,9 +2042,10 @@
         var suggestions = state.brollSuggestions && state.brollSuggestions.length >= 3
           ? state.brollSuggestions
           : ['person speaking to camera', 'close-up of smartphone scrolling', 'detail shot of everyday workspace'];
+        var scriptContext = [state.script.hook, state.script.point, state.script.cta].filter(Boolean).join('\n\n').trim();
         return {
           brollSuggestions: suggestions,
-          scriptContext: [state.script.hook, state.script.point, state.script.cta].filter(Boolean).join('\n\n')
+          scriptContext: scriptContext
         };
       }
 
@@ -2066,6 +2067,10 @@
 
         try {
           var sttBody = await buildSttPayload();
+          var brollBody = buildBrollPayload();
+          if (!brollBody.scriptContext) {
+            throw new Error('B-roll용 대본 내용이 비어 있습니다. 대본을 먼저 작성해주세요.');
+          }
           var sttPromise = fetch('/api/shortform-stt', {
             method: 'POST',
             headers: createHeaders({ 'Content-Type': 'application/json' }),
@@ -2074,7 +2079,7 @@
           var brollPromise = fetch('/api/shortform-broll', {
             method: 'POST',
             headers: createHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify(buildBrollPayload())
+            body: JSON.stringify(brollBody)
           });
           var responses = await Promise.all([sttPromise, brollPromise]);
           var sttData = await parseResponseJson(responses[0]);

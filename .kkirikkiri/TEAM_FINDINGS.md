@@ -1,231 +1,245 @@
 # 발견 사항 & 공유 자료
 
-## [keyword-strategist] 태스크 1: 시드 키워드 생성 프롬프트 분석
+## [2026-03-31] shortform-stt.js 502 에러 분석
 
-### 현재 프롬프트 구조
-- **시스템 프롬프트**: 영문으로 작성, "Korean SEO keyword expert" 역할 부여
-- **유저 프롬프트**: 분야/역할/타겟/질문 4개 입력을 한국어로 전달
-- **모델**: Claude Haiku 4.5, max_tokens 1500
-- **출력**: JSON 배열 20~30개 (질문 있으면 30~40개)
-
-### "웨딩" 입력 시 엉뚱한 키워드("부대찌개", "두찜") 나오는 원인 진단
-
-**핵심 원인 3가지:**
-
-1. **시스템 프롬프트의 지시가 너무 일반적임**
-   - `"Generate 20-30 seed keywords that the target audience would search on Naver"` — "분야에 밀접하게 관련된" 키워드라는 제약이 없음
-   - Haiku는 "타겟 독자가 검색할 법한" 것을 넓게 해석하여, 예비 신부가 일상에서 검색할 수 있는 맛집/카페 키워드까지 생성할 수 있음
-
-2. **검색광고 API의 '연관키워드' 확장이 발산함**
-   - `fetchSearchAdKeywords()`가 시드를 5개씩 묶어 검색광고 API에 전달하면, API가 **연관키워드(relKeyword)**를 대량 반환
-   - "웨딩" 시드에서 "웨딩홀 맛집" → "강남 맛집" → "부대찌개 맛집" → "두찜" 같은 연쇄 확장이 일어남
-   - 검색광고 API는 광고주 대상이라 "같이 검색하는 사람들의 다른 검색어"를 폭넓게 포함
-
-3. **자동완성 확장(`expandWithAutoComplete`)도 발산에 기여**
-   - 상위 15개 시드에 대해 네이버 자동완성을 조회하는데, 자동완성은 분야 필터 없이 인기 검색어를 반환
-   - 약간이라도 관련된 키워드에서 전혀 다른 분야로 점프 가능
-
-4. **필터링 부재**
-   - 검색광고 API가 반환한 연관키워드를 `monthlySearch >= 50` 외에는 **분야 적합성 검증 없이** 전부 수용
-   - "부대찌개"든 "두찜"이든 검색량만 50 이상이면 최종 결과에 포함됨
-
-### 시드 키워드 프롬프트 개선안
-
-**A. 시스템 프롬프트 강화**
-```
-현재: "Generate 20-30 seed keywords that the target audience would search on Naver"
-개선: "Generate 20-30 seed keywords STRICTLY RELATED to the given field/industry.
-       Keywords MUST be directly about the field topic.
-       Do NOT include general lifestyle keywords (restaurants, cafes, travel)
-       unless the field itself is about those topics."
-```
-
-**B. 연관키워드 필터링 레이어 추가 (가장 중요)**
-- 검색광고 API 반환 결과에 대해 **분야 적합성 필터** 추가 필요
-- 방법 1: Claude Haiku에게 2차 필터링 요청 (비용 발생하지만 정확)
-- 방법 2: 시드 키워드에서 핵심 단어(예: "웨딩", "결혼", "신부", "예식") 추출 → 연관키워드에 이 중 하나라도 포함되지 않으면 제거 (간단하지만 누락 위험)
-- **방법 3 (권장)**: 원래 입력 분야의 핵심 키워드 목록을 만들고, 연관키워드가 그 중 하나라도 형태소 단위로 포함하는지 검사 + 원래 시드의 2-gram 유사도 체크
-
-**C. 자동완성 확장 범위 축소**
-- 현재 상위 15개 시드 전부 자동완성 → **상위 5개로 축소** 권장
-- 또는 자동완성 결과도 분야 필터 적용
+### 결론: 핵심 원인 2가지 (확정 1 + 의심 1)
 
 ---
 
-## [keyword-strategist] 태스크 3: 점수 알고리즘(calculateGoldenScore) 진단
+### 원인 1 (확정): Vercel Serverless의 request body size limit 미적용
 
-### 현재 배분: 검색량(30) + 경쟁도(20) + 포화도(20) + 트렌드(20) + 보너스(10) = 100점
+**파일:** `/Users/gong-eunhui/Desktop/naver-title-generator/api/shortform-stt.js` (L4-7)
+**파일:** `/Users/gong-eunhui/Desktop/naver-title-generator/vercel.json`
 
-### 문제점 1: 포화도 0이면 20점 무조건 획득 (가장 심각)
+`shortform-stt.js`에서 `export const config`로 bodyParser sizeLimit을 15mb로 설정했지만, **vercel.json의 rewrites 배열에 shortform-stt 경로가 등록되어 있지 않다.**
 
-- `saturation = blogCount / monthlySearch` 인데, **하위 40개 이후 키워드는 blogCount API를 호출하지 않아** blogCount=0이 기본값
-- blogCount=0 → saturation=0 → `saturation <= 5` 조건 충족 → **20점 만점**
-- 실제로는 "데이터 없음"인데 "블루오션"으로 잘못 판정
-- 상위 40개 키워드만 blogCount 조회 → 41번째 이후는 **무조건 포화도 20점** 획득
-- 이것은 점수를 왜곡하는 핵심 버그임
+```json
+// vercel.json — shortform-stt, shortform-broll 라우트 누락
+"rewrites": [
+  { "source": "/api/blog-image", "destination": "/api/blog-image" },
+  // ... 다른 API들 ...
+  // /api/shortform-stt 없음!
+  // /api/shortform-broll 없음!
+]
+```
 
-**개선안**: blogCount를 조회하지 않은 키워드는 포화도 점수를 0점 또는 10점(중간값)으로 부여하거나, "데이터 없음" 표시
+Vercel의 기본 bodyParser limit은 **5MB**다. 21초 오디오 파일을 base64로 인코딩하면 원본 대비 약 1.33배 크기가 되고, JSON 래핑까지 포함하면 용량이 더 늘어난다. 파일 크기가 5MB를 넘으면 Vercel이 함수 실행 전에 요청을 거부하여 502가 발생할 수 있다.
 
-### 문제점 2: "경쟁도 높음 + 검색수 적당 + 포화도 0" → 70~75점의 적정성
-
-시뮬레이션:
-- 검색수 1,000~5,000 → 30점
-- 경쟁도 high → 3점
-- 포화도 0(미조회) → 20점
-- 트렌드 stable → 10점
-- 보너스 0 → 0점
-- **합계: 63점**
-
-실제 보고된 70~75점은 아마:
-- 검색수 1,000~5,000 → 30점
-- 경쟁도 high → 3점
-- 포화도 0(미조회) → 20점
-- 트렌드 rising → 20점
-- 보너스 질문형/롱테일 → 3~5점
-- **합계: 76~78점**
-
-→ **경쟁도 high인데 76점이면 문제임**. 네이버에서 경쟁도 높은 키워드는 블로그 초보가 상위 노출하기 거의 불가능. 이게 "황금키워드"라고 나오면 사용자를 잘못된 방향으로 유도.
-
-### 문제점 3: 80점 이상이 나오기 어려운 구조
-
-만점 시나리오: 30 + 20 + 20 + 20 + 10 = 100
-80점 이상이 되려면:
-- 검색수 1,000~5,000 (30점) — 이 구간 아니면 최대 25점
-- 경쟁도 low (20점) — medium이면 이미 10점 감점
-- 포화도 ≤5 (20점) — 이건 달성 가능
-- 트렌드 상승 (20점) — 대부분 stable(10점)이라 -10
-- 보너스 5점
-
-현실적 최고점: 30 + 20 + 20 + 10 + 5 = **85점** (경쟁도 low + 트렌드 stable)
-경쟁도 medium이면: 30 + 10 + 20 + 10 + 5 = **75점** (이것이 현실적 상한선)
-
-→ **경쟁도 가중치가 너무 큰 cliff 구조**. low=20, medium=10, high=3으로 단 3단계인데, 네이버 검색광고 API의 경쟁도는 대부분 medium 또는 high로 나옴. low가 극히 드물어서 80점 자체가 달성 불가.
-
-### 문제점 4: 검색량 구간 설계 문제
-
-- 100~1,000: 22점 / 1,000~5,000: 30점 → 격차가 8점으로 큼
-- 실제 네이버에서 월 100~500 검색량의 롱테일 키워드가 블로그 초보에게 가장 적합한 황금키워드인 경우가 많음
-- 현재 구조에서는 이런 키워드가 검색량 22점에 갇혀 높은 점수를 받기 어려움
-
-### 문제점 5: 트렌드 점수의 이진적 배분
-
-- rising=20, stable=10, falling=0
-- 단 3단계로 20점을 배분하면 변별력이 없음
-- DataLab 트렌드도 상위 25개만 조회 → 나머지는 stable(10점) 기본값
+**다만**, rewrites가 없어도 Vercel은 `/api/` 폴더 구조로 자동 라우팅하므로 함수 자체는 호출된다. `export const config`의 `api.bodyParser.sizeLimit`은 rewrites 유무와 관계없이 적용되어야 한다. 따라서 이것만으로는 502의 직접 원인이 아닐 수 있지만, rewrites 등록은 안전을 위해 추가해야 한다.
 
 ---
 
-## [keyword-strategist] 태스크 4: 네이버 키워드 전략 관점 + 경쟁 도구 비교
+### 원인 2 (높은 확신): `new FormData()` + `new Blob()` Vercel Node.js 호환성 문제
 
-### 네이버에서 실제 "황금키워드"를 찾는 방법론
+**파일:** `/Users/gong-eunhui/Desktop/naver-title-generator/api/shortform-stt.js` (L67-69)
 
-20년차 블로그 키워드 전문가 관점에서 황금키워드의 정의:
-> **"검색량이 존재하면서, 블로그 상위 노출이 가능한 키워드"**
-
-핵심은 **"내가 이 키워드로 글을 쓰면 상위에 노출될 수 있는가?"** 이며, 이를 판단하는 핵심 지표:
-
-1. **검색량 대비 발행량 비율 (Supply-Demand Ratio)** — 현재 구현의 "포화도"에 해당하지만 세분화 필요
-2. **상위 노출 블로그의 질** — 상위 10개 블로그가 파워블로거인지, 일반 블로거인지
-3. **검색 의도(Search Intent)** — 정보성 vs 상업성 vs 네비게이션
-4. **경쟁 콘텐츠 최신성** — 상위 글이 오래됐으면 신규 진입 기회
-5. **PC/모바일 비율** — 모바일 비율 높을수록 블로그에 유리
-
-### 경쟁 도구들의 지표 비교
-
-| 지표 | 키워드마스터 | 블랙키위 | 뚝딱툴(현재) |
-|------|------------|---------|-------------|
-| 월간 검색량 | O | O | O |
-| PC/모바일 분리 | O | O | O (있지만 점수 미반영) |
-| 경쟁도(검색광고) | O | O | O |
-| 블로그 발행량 | X | O | O (부분적) |
-| 포화도(발행/검색 비율) | X | O (핵심지표) | O (버그 있음) |
-| 검색 트렌드 | O (그래프) | O | O (부분적) |
-| **블로그 포화 지수** | X | **O (핵심)** | X |
-| **상위 노출 난이도** | X | **O** | **X (빠져있음)** |
-| **콘텐츠 포화도** | X | **O** | **X** |
-| **키워드 효율 지수** | X | O | X |
-| 검색 의도 분류 | X | X | X |
-
-### 현재 알고리즘에서 빠진 중요 지표
-
-1. **PC/모바일 비율 활용** — 이미 데이터가 있는데 점수에 미반영. 모바일 비율 높으면 가산점 줘야 함 (블로그가 모바일 검색에서 노출 유리)
-2. **상위 노출 난이도** — 현재 "경쟁도"는 검색광고 경쟁도(광고비 기반)이지 블로그 경쟁도가 아님. 실제 필요한 것은 "이 키워드로 블로그 상위 10위 안에 들 수 있는가"
-3. **키워드-분야 적합도** — 현재 완전히 빠져있어서 엉뚱한 키워드가 고득점
-
-### 구체적 점수 배분 개선안 (100점 만점)
-
-```
-현재:   검색량(30) + 경쟁도(20) + 포화도(20) + 트렌드(20) + 보너스(10)
-개선안: 검색량(25) + 포화도(30) + 경쟁도(15) + 트렌드(15) + 보너스(15)
+```js
+const formData = new FormData();
+formData.append('file', new Blob([buffer], { type: mimeType || 'audio/webm' }), filename);
 ```
 
-**변경 이유:**
+**이것이 502의 핵심 원인일 가능성이 가장 높다.**
 
-| 항목 | 현재→개선 | 이유 |
-|------|----------|------|
-| 검색량 | 30→25 | 황금키워드는 검색량보다 "틈새"가 핵심. 검색량 가중치를 낮추고 구간도 세분화 |
-| 포화도 | 20→30 | **가장 중요한 지표**. 블로그 발행량 대비 검색량이 황금키워드의 핵심. 배분 확대 |
-| 경쟁도 | 20→15 | 검색광고 경쟁도는 블로그 경쟁과 직접 관련 낮음. 참고 지표로 격하 |
-| 트렌드 | 20→15 | stable이 대다수인 현실 반영. 5단계로 세분화하되 배분 축소 |
-| 보너스 | 10→15 | 롱테일, 질문형, 모바일 비율 등 실용적 가산점 확대 |
+- `FormData`와 `Blob`은 Node.js 18.0+에서 실험적(experimental)으로 도입, **Node.js 20+에서 stable**
+- Vercel Serverless Functions의 기본 Node.js 버전은 프로젝트 설정에 따라 다르며, `package.json`에 `engines` 필드가 없으므로 Vercel 기본값을 사용
+- **핵심 문제**: Node.js의 `FormData.append()`에 `Blob`을 전달할 때, `fetch()`가 이를 올바른 `multipart/form-data`로 직렬화하지 못하는 알려진 버그가 존재 (Node.js 18.x 일부 버전)
+- Whisper API가 잘못된 multipart body를 받으면 에러를 반환하고, 코드 L158에서 이를 502로 변환:
 
-**검색량 구간 개선안 (25점):**
-```
-50~200     → 15점 (초소형: 블루오션 가능성 있지만 트래픽 적음)
-200~500    → 22점 (소형: 블로그 초보의 실제 황금 구간)
-500~2,000  → 25점 (중형: 가장 이상적인 황금키워드 구간)
-2,000~5,000 → 20점 (중대형: 좋지만 경쟁 시작)
-5,000~10,000 → 15점 (대형: 경쟁 치열, 상위 노출 어려움)
-10,000+    → 10점 (초대형: 대형 블로거/언론사 독점 구간)
+```js
+return res.status(502).json({ error: '음성 전사 중 오류: ' + (error?.message || '알 수 없는 오류') });
 ```
 
-**포화도 구간 개선안 (30점):**
-```
-데이터없음(미조회) → 10점 (불확실, 중간값)
-saturation ≤ 3     → 30점 (완전 블루오션)
-saturation ≤ 8     → 25점 (블루오션)
-saturation ≤ 15    → 18점 (적정 경쟁)
-saturation ≤ 30    → 10점 (경쟁 있음)
-saturation ≤ 50    → 5점 (과포화)
-saturation > 50    → 0점 (레드오션)
+---
+
+### 원인 3 (낮은 가능성): `timestamp_granularities[]` FormData 키
+
+**파일:** `/Users/gong-eunhui/Desktop/naver-title-generator/api/shortform-stt.js` (L72)
+
+```js
+formData.append('timestamp_granularities[]', 'word');
 ```
 
-**경쟁도 개선안 (15점):**
-```
-low    → 15점
-medium → 8점
-high   → 2점
+OpenAI API는 이 키 이름에 `[]`를 포함하는 것을 기대한다. Node.js `FormData`에서는 이것이 정상 동작하지만, 일부 환경에서 `[]`가 URL 인코딩되어 `timestamp_granularities%5B%5D`로 전달될 수 있다. 다만 이 경우 Whisper API가 해당 파라미터를 무시할 뿐 에러를 반환하지는 않으므로 502의 직접 원인은 아니다.
+
+---
+
+### 원인 4 (참고): OPENAI_API_KEY `\n` 문자
+
+**파일:** `/Users/gong-eunhui/Desktop/naver-title-generator/api/shortform-stt.js` (L64)
+
+```js
+const apiKey = (process.env.OPENAI_API_KEY || '').replace(/\n/g, '').trim();
 ```
 
-**트렌드 개선안 (15점):**
-```
-데이터없음(미조회) → 7점 (중간값)
-급상승(+20% 이상)  → 15점
-상승(+10~20%)     → 12점
-유지(-10~+10%)    → 7점
-하락(-10~-20%)    → 3점
-급하락(-20% 이하)  → 0점
+이 프로젝트에서 이전에 동일 이슈가 발생한 적 있지만, 코드에서 이미 `replace(/\n/g, '').trim()`으로 방어하고 있으므로 현재는 문제없다.
+
+---
+
+### 권장 수정 사항
+
+#### 수정 1: `Blob` 대신 `Buffer`를 직접 사용 (핵심 수정)
+
+```js
+// 변경 전 (L67-69)
+const formData = new FormData();
+const filename = getFilename(mimeType);
+formData.append('file', new Blob([buffer], { type: mimeType || 'audio/webm' }), filename);
+
+// 변경 후 — undici의 File 또는 직접 fetch body 구성
+import { File } from 'node:buffer';  // Node.js 20+
+
+const formData = new FormData();
+const filename = getFilename(mimeType);
+const file = new File([buffer], filename, { type: mimeType || 'audio/webm' });
+formData.append('file', file);
 ```
 
-**보너스 개선안 (15점):**
-```
-질문형 키워드       → +4점 (하는 법, 방법, 추천, 비교 등)
-롱테일(3어절+)     → +3점
-모바일 비율 70%+   → +4점 (모바일 검색 비중 높으면 블로그 노출 유리)
-PC/모바일 합산 검색수 균형 → +2점
-최소 두 가지 이상 해당 시 → +2점 추가
-최대 15점 cap
+또는 더 안전한 방법으로 `node-fetch` + `form-data` 패키지를 사용:
+
+```js
+import FormData from 'form-data';
+
+const formData = new FormData();
+formData.append('file', buffer, {
+  filename: getFilename(mimeType),
+  contentType: mimeType || 'audio/webm',
+});
+formData.append('model', 'whisper-1');
+// ...
+
+const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${apiKey}`,
+    ...formData.getHeaders(),
+  },
+  body: formData,
+});
 ```
 
-### 추가 권장사항
+#### 수정 2: vercel.json에 라우트 추가
 
-1. **blogCount 조회 범위 확대**: 현재 상위 40개 → 최소 60개로 확대 (60초 maxDuration 내 가능). 또는 모든 후보 키워드에 대해 조회하되, 병렬 처리 최적화
-2. **DataLab 트렌드 조회 범위 확대**: 현재 상위 25개 → 40개로 확대
-3. **분야 적합도 필터**: 검색광고 API 결과에서 원래 분야와 무관한 키워드를 제거하는 필터 반드시 추가
-4. **"황금키워드" 라벨 기준 조정**: 현재 사용법에 "80점 이상이면 즉시 글 쓸 가치"라고 안내하지만, 현 알고리즘으로 80점 달성이 극히 어려움 → 기준을 70점으로 낮추거나, 알고리즘을 수정하여 80점이 현실적으로 나오게 해야 함
+```json
+{ "source": "/api/shortform-stt", "destination": "/api/shortform-stt" },
+{ "source": "/api/shortform-broll", "destination": "/api/shortform-broll" }
+```
+
+#### 수정 3: 에러 로깅 강화
+
+현재 L157에서 `error?.message`만 로깅하는데, Whisper API의 실제 응답 body를 함께 로깅하면 디버깅이 쉬워진다:
+
+```js
+if (!response.ok) {
+  const message = data?.error?.message || 'Whisper transcription failed';
+  console.error('[shortform-stt] Whisper API responded:', response.status, text.slice(0, 500));
+  throw new Error(message);
+}
+```
+
+---
+
+### 프론트엔드 측 (정상)
+
+**파일:** `/Users/gong-eunhui/Desktop/naver-title-generator/shortform.html` (L2034-2068)
+
+- `blobToBase64()`: FileReader.readAsDataURL() → base64 추출 (정상)
+- `buildSttPayload()`: `{ audioBase64, mimeType }` JSON 구성 (정상)
+- fetch 호출: `Content-Type: application/json`, `JSON.stringify(sttBody)` (정상)
+- 프론트엔드 측에는 문제 없음
+
+---
+
+## [2026-03-31] UI-API 인터페이스 전체 점검 (ui-reviewer)
+
+### 인터페이스 일치 상태: 전반적 양호
+
+1. **Script API 요청/응답**: UI→API body 일치 (불필요 필드 포함하나 동작에 무해). `points[]`→`point` 변환은 `join('\n\n')`으로 정상 (shortform.html:1621)
+2. **STT API 요청**: `{ audioBase64, mimeType }` JSON 정상 전송. `blobToBase64()`는 순수 base64만 추출, `decodeAudioPayload()`가 양방 처리 가능
+3. **B-roll API 요청**: `{ brollSuggestions[], scriptContext }` 정상 전송. brollSuggestions 흐름 완전 추적 완료 (Script응답 → state → B-roll API)
+4. **에러 핸들링**: 401→authModal, 429→에러메시지, 500/502→catch 블록 모두 정상
+5. **워크플로우 잠금**: Step 1→2→3→4 연쇄 잠금/해제 정상 동작
+6. **음성 녹음 mimeType**: `pickRecordingMimeType()` → `state.audioMimeType` → `buildSttPayload()` 경로 정상
+
+### [WARNING] 빈 scriptContext 엣지 케이스
+- **위치**: shortform.html:2042-2049 vs api/shortform-broll.js:385-386
+- 사용자가 대본 텍스트를 모두 수동 삭제 후 Step 3 자동 실행 시, `scriptContext`가 빈 문자열 → B-roll API가 400 에러 반환
+- 권장: UI에서 scriptContext 빈 경우 B-roll 호출 스킵 또는 사전 경고
+
+---
+
+## [2026-03-31] 코드 분석가 1 (api-reviewer) — 보안/패턴/비용 추가 분석
+
+### [CRITICAL] shortform-stt.js, shortform-broll.js 모두 rate limit 미구현
+- `shortform-script.js`는 일일 1회 무료 제한 + 에러 롤백이 잘 구현됨
+- `shortform-stt.js`와 `shortform-broll.js`에는 rate limit이 전혀 없음
+- Whisper API, Grok Image, Seedance Video 등 외부 유료 API 호출 → 비용 폭증 위험
+- `shortform-script.js`의 rate limit 패턴을 그대로 복제하여 적용 권장
+
+### [WARNING] shortform-broll.js:418 logUsage에 await 누락
+- `logUsage(email, 'shortform-broll', null, ip);` — await 없음
+- Vercel Serverless에서 res 반환 후 비동기 작업 중단 → 로그 유실 가능
+- `generate.js:190`도 동일 패턴이므로 프로젝트 전반의 문제
+
+### [WARNING] KST 날짜 계산 방식 3가지 공존 (일관성 부재)
+- `shortform-script.js:42-46`, `generate.js:28-30` — 수동 UTC+9 offset 방식
+- `shortform-broll.js:15-26` — `Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul'})` 방식
+- `_helpers.js`에는 KST 유틸이 없음 → 공유 함수로 추출하여 통일 필요
+- `getTTLUntilMidnightKST()`도 `shortform-script.js`와 `generate.js`에 중복 정의
+
+### [WARNING] generate.js가 _helpers.js 패턴과 불일치 (레거시)
+- `generate.js`는 `getRedis`, `extractToken`, `resolveSessionEmail`, `getClientIp` 등을 로컬에 재정의
+- `shortform-script.js`는 `_helpers.js`에서 import하는 신규 표준 패턴을 따름
+- `generate.js`도 `_helpers.js` import로 리팩토링해야 일관성 확보
+
+### [INFO] shortform-stt.js:141 에러 응답에 내부 정보 노출
+- `'audioBase64가 필요합니다. (body keys: ' + Object.keys(body || {}).join(',') + ')'`
+- 프로덕션에서 body key 목록이 클라이언트에 노출됨 → 제거 필요
+
+### [INFO] shortform-stt.js 디버그 console.log 3곳 프로덕션 잔류
+- L75, L125, L138에서 요청 정보를 console.log로 출력
+- 디버깅 완료 후 제거 또는 console.debug 전환 필요
+
+### [INFO] Seedance 폴링 타임아웃 30초 vs maxDuration 180초 불균형
+- `shortform-broll.js:12` — SEEDANCE_TIMEOUT_MS = 30000
+- 영상 생성은 보통 30초 이상 소요 → 거의 항상 Grok 이미지 fallback 예상
+- 의도적 설계인지 확인 필요; 아니라면 60~120초로 조정 권장
+
+---
+
+## [2026-03-31] Script API + B-roll API 독립 검증 (8항목 체크리스트)
+
+### 검증 항목별 결과
+
+| # | 항목 | 결과 | 상세 |
+|---|------|------|------|
+| 1 | Script API: Claude 호출 | PASS | endpoint `api.anthropic.com/v1/messages`, model `claude-sonnet-4-20250514`, temp 0.7, `x-api-key`+`anthropic-version` 헤더 모두 정확 |
+| 2 | Script API: JSON 파싱 | PASS | 3단계 파서(직접파싱 -> 코드블록 -> balanced bracket). escape/depth 추적 올바름. `buildScriptPayload`에서 스키마 유효성 검증 포함 |
+| 3 | Script API: Rate Limit | PASS | incr->초과시 decr 패턴 + catch 블록 `rateLimitIncremented` 플래그 롤백. 견고함 |
+| 4 | B-roll API: Grok Imagine | PASS | endpoint `api.x.ai/v1/images/generations`, model `grok-2-image`, size `1024x1792`(9:16). fetchWithTimeout 45초 적용 |
+| 5 | B-roll API: Seedance 폴백 | PASS | try/catch 구조. 폴링(4초간격/30초타임아웃) + 3개 상태 엔드포인트 순차 시도. 실패시 Grok 이미지 대체 |
+| 6 | B-roll API: R2 업로드 | PASS | 키=`shortform-broll/{userId}/{KST날짜}/{UUID}-{suffix}`. Content-Type 검증. b64_json/URL/dataURI 3경로 처리 |
+| 7 | B-roll API: Promise.all | PASS | 개별 `.catch(()->null)` + `filter(Boolean)`. 전부 실패시 502, 부분 성공 허용 |
+| 8 | Import 정합성 | PASS | Script 6개, B-roll 7개 import 전부 export와 일치 확인 |
+
+### 기존 팀 분석과의 교차 검증
+
+위 api-reviewer(코드 분석가 1)의 발견 사항을 독립 검증한 결과 모두 정확함을 확인:
+
+- **B-roll rate limit 부재**: 확인됨. Script API는 `FREE_DAILY_LIMIT=1` 적용, B-roll/STT는 로그인 체크만 수행. 프론트엔드에서 B-roll 단독 호출 시 Grok/Seedance API 비용 무제한 발생 가능.
+- **logUsage await 누락** (B-roll L418): 확인됨. `logUsage(email, ...)` vs Script의 `await logUsage(email, ...)`. Vercel 함수 종료 후 로그 유실 위험.
+- **Seedance 30초 타임아웃**: 확인됨. 영상 생성에 30초는 짧아 대부분 Grok 이미지 폴백으로 빠질 가능성 높음.
+- **KST 날짜 계산 불일치**: 확인됨. Script는 수동 UTC+9, B-roll은 `Intl.DateTimeFormat`. 기능 버그는 아니나 `_helpers.js`에 공유 함수 추출 권장.
+
+### 추가 발견 (기존 분석에 없는 항목)
+
+1. **`normalizeBrollSuggestions` 방어 로직 (Script L141-155)**: brollSuggestions가 3개 미만이면 fallback 문구(`person speaking to camera` 등)로 채움. B-roll API가 정확히 3개를 요구(L383)하므로 필수적인 방어. 올바름.
+
+2. **`estimatedSeconds` 계산 (Script L171)**: 공백 제거 후 글자수/5로 초 추정. 한국어 기준 초당 ~5글자는 합리적 추정치.
+
+3. **B-roll `getSafeUserId` (L28-30)**: 이메일의 `@`, `.` 등을 `_`로 치환하여 R2 키에 안전한 문자열 생성. S3 키 제약을 올바르게 처리.
 
 ---
 
 # DEAD_ENDS (시도했으나 실패한 접근)
 
-(실패한 접근을 여기에 기록)
+(실패한 접근은 여기에 기록)
