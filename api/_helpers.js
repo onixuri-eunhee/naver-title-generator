@@ -68,7 +68,7 @@ function setCorsHeaders(res, req) {
     res.setHeader('Access-Control-Allow-Origin', 'https://ddukddaktool.co.kr');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Audio-Mime-Type');
 }
 
 export { getRedis, getClientIp, extractToken, resolveSessionEmail, resolveAdmin, setCorsHeaders, ADMIN_EMAILS };

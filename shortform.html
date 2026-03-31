@@ -1375,6 +1375,9 @@
         reprocessTimer: 0
       };
 
+      var STT_MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+      var STT_RECORDING_AUDIO_BITS_PER_SECOND = 64000;
+
       var els = {
         signupBanner: document.getElementById('signupBanner'),
         remainingCount: document.getElementById('remainingCount'),
@@ -1884,9 +1887,15 @@
           if (state.mediaRecorder && state.mediaRecorder.state === 'recording') return;
           var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           var mimeType = pickRecordingMimeType();
+          var recorderOptions = { audioBitsPerSecond: STT_RECORDING_AUDIO_BITS_PER_SECOND };
+          if (mimeType) recorderOptions.mimeType = mimeType;
           state.mediaStream = stream;
           state.recordChunks = [];
-          state.mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream);
+          try {
+            state.mediaRecorder = new MediaRecorder(stream, recorderOptions);
+          } catch (_) {
+            state.mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream);
+          }
           state.audioMimeType = mimeType || state.mediaRecorder.mimeType || 'audio/webm';
 
           state.mediaRecorder.addEventListener('dataavailable', function(event) {
@@ -1902,6 +1911,12 @@
               return;
             }
             var blob = new Blob(state.recordChunks, { type: state.audioMimeType || 'audio/webm' });
+            if (blob.size > STT_MAX_UPLOAD_BYTES) {
+              clearAudioSelection();
+              showBox(els.audioError, '녹음 파일이 너무 큽니다. 30초 이내로 다시 녹음하거나 더 짧게 나눠주세요. 현재 ' + formatFileSize(blob.size) + '이며 STT 업로드 한도는 4MB입니다.');
+              els.recordStatus.textContent = '녹음 파일이 커서 업로드할 수 없습니다.';
+              return;
+            }
             applyAudioBlob(blob, 'recording.' + guessExtensionFromMime(state.audioMimeType), state.audioMimeType, '브라우저 녹음');
             els.recordStatus.textContent = '녹음이 완료되었습니다.';
             els.recordStopBtn.disabled = true;
@@ -1955,6 +1970,10 @@
       }
 
       function applyAudioBlob(blob, fileName, mimeType, sourceLabel) {
+        if (blob.size > STT_MAX_UPLOAD_BYTES) {
+          showBox(els.audioError, sourceLabel + ' 파일이 너무 큽니다. STT 업로드 한도는 4MB이며 현재 ' + formatFileSize(blob.size) + '입니다.');
+          return;
+        }
         revokeAudioUrl();
         state.audioBlob = blob;
         state.audioFileName = fileName;
@@ -2009,32 +2028,22 @@
           event.target.value = '';
           return;
         }
-        if (file.size > 8 * 1024 * 1024) {
-          showBox(els.audioError, '파일 용량은 최대 8MB까지 업로드할 수 있습니다. (서버 전송 시 인코딩 오버헤드 포함)');
+        if (file.size > STT_MAX_UPLOAD_BYTES) {
+          showBox(els.audioError, '파일 용량은 최대 4MB까지 업로드할 수 있습니다. mp3/m4a로 압축하거나 30초 이내로 잘라주세요. 현재 ' + formatFileSize(file.size) + '입니다.');
           event.target.value = '';
           return;
         }
         applyAudioBlob(file, file.name, file.type || 'audio/mpeg', '파일 업로드');
       }
 
-      function blobToBase64(blob) {
-        return new Promise(function(resolve, reject) {
-          var reader = new FileReader();
-          reader.onload = function() {
-            var dataUrl = reader.result;
-            var base64 = dataUrl.split(',')[1] || '';
-            resolve(base64);
-          };
-          reader.onerror = function() { reject(new Error('파일 읽기 실패')); };
-          reader.readAsDataURL(blob);
-        });
-      }
-
-      async function buildSttPayload() {
-        var audioBase64 = await blobToBase64(state.audioBlob);
+      function buildSttRequest() {
+        var mimeType = state.audioMimeType || state.audioBlob.type || 'audio/webm';
         return {
-          audioBase64: audioBase64,
-          mimeType: state.audioMimeType || state.audioBlob.type || 'audio/webm'
+          headers: createHeaders({
+            'Content-Type': mimeType,
+            'X-Audio-Mime-Type': mimeType
+          }),
+          body: state.audioBlob
         };
       }
 
@@ -2066,15 +2075,15 @@
         updateLocks();
 
         try {
-          var sttBody = await buildSttPayload();
+          var sttRequest = buildSttRequest();
           var brollBody = buildBrollPayload();
           if (!brollBody.scriptContext) {
             throw new Error('B-roll용 대본 내용이 비어 있습니다. 대본을 먼저 작성해주세요.');
           }
           var sttPromise = fetch('/api/shortform-stt', {
             method: 'POST',
-            headers: createHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify(sttBody)
+            headers: sttRequest.headers,
+            body: sttRequest.body
           });
           var brollPromise = fetch('/api/shortform-broll', {
             method: 'POST',

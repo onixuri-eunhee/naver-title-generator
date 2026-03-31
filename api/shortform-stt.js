@@ -4,10 +4,10 @@ import OpenAI, { toFile } from 'openai';
 
 export const config = {
   maxDuration: 120,
-  api: { bodyParser: { sizeLimit: '15mb' } },
+  api: { bodyParser: false },
 };
 
-const MAX_AUDIO_SIZE = 10 * 1024 * 1024;
+const MAX_AUDIO_SIZE = 4 * 1024 * 1024;
 
 function parseRequestBody(body) {
   if (!body) return {};
@@ -19,6 +19,55 @@ function parseRequestBody(body) {
     }
   }
   return body;
+}
+
+function getHeaderValue(req, key) {
+  if (!req || !req.headers) return '';
+  return req.headers[key] || req.headers[key.toLowerCase()] || '';
+}
+
+function getRequestMimeType(req) {
+  const explicit = getHeaderValue(req, 'x-audio-mime-type');
+  if (explicit && typeof explicit === 'string') return explicit.trim();
+  const contentType = getHeaderValue(req, 'content-type');
+  if (!contentType || typeof contentType !== 'string') return '';
+  return contentType.split(';')[0].trim();
+}
+
+async function readRawRequestBody(req) {
+  if (Buffer.isBuffer(req.body)) return req.body;
+  if (typeof req.body === 'string') return Buffer.from(req.body);
+  if (req.body && typeof req.body === 'object' && !(req.body instanceof Uint8Array)) {
+    return Buffer.from(JSON.stringify(req.body));
+  }
+
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return chunks.length ? Buffer.concat(chunks) : Buffer.alloc(0);
+}
+
+async function parseIncomingAudio(req) {
+  const contentType = getHeaderValue(req, 'content-type');
+  const normalizedContentType = typeof contentType === 'string' ? contentType.toLowerCase() : '';
+  const rawBody = await readRawRequestBody(req);
+
+  if (!rawBody.length) {
+    return { buffer: null, mimeType: getRequestMimeType(req) || 'application/octet-stream' };
+  }
+
+  if (normalizedContentType.includes('application/json')) {
+    const bodyText = rawBody.toString('utf8');
+    const body = parseRequestBody(bodyText);
+    const { audioBase64, mimeType } = body;
+    return decodeAudioPayload(audioBase64, mimeType);
+  }
+
+  return {
+    buffer: rawBody,
+    mimeType: getRequestMimeType(req) || 'audio/webm',
+  };
 }
 
 function decodeAudioPayload(audioBase64, mimeType) {
@@ -107,9 +156,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    const body = parseRequestBody(req.body);
-    if (body !== req.body) req.body = body;
-
     const isAdmin = await resolveAdmin(req);
     const token = extractToken(req);
     const email = await resolveSessionEmail(token);
@@ -118,15 +164,14 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: '로그인이 필요합니다.' });
     }
 
-    const { audioBase64, mimeType } = body;
-    const { buffer, mimeType: resolvedMimeType } = decodeAudioPayload(audioBase64, mimeType);
+    const { buffer, mimeType: resolvedMimeType } = await parseIncomingAudio(req);
 
     if (!buffer) {
-      return res.status(400).json({ error: 'audioBase64가 필요합니다.' });
+      return res.status(400).json({ error: '오디오 데이터가 필요합니다.' });
     }
 
     if (buffer.length > MAX_AUDIO_SIZE) {
-      return res.status(413).json({ error: '오디오 파일은 10MB 이하여야 합니다.' });
+      return res.status(413).json({ error: '오디오 파일은 4MB 이하여야 합니다.' });
     }
 
     if (!process.env.OPENAI_API_KEY) {
