@@ -60,6 +60,36 @@ function normalizeWords(words) {
     .map(item => ({ word: item.word, start: item.start, end: item.end }));
 }
 
+function buildMultipartBody(buffer, filename, mimeType, fields) {
+  const boundary = '----FormBoundary' + Math.random().toString(36).slice(2);
+  const CRLF = '\r\n';
+  const parts = [];
+
+  // 파일 파트
+  parts.push(
+    `--${boundary}${CRLF}` +
+    `Content-Disposition: form-data; name="file"; filename="${filename}"${CRLF}` +
+    `Content-Type: ${mimeType}${CRLF}${CRLF}`
+  );
+  parts.push(buffer);
+  parts.push(CRLF);
+
+  // 텍스트 필드 파트
+  for (const [key, value] of Object.entries(fields)) {
+    parts.push(
+      `--${boundary}${CRLF}` +
+      `Content-Disposition: form-data; name="${key}"${CRLF}${CRLF}` +
+      `${value}${CRLF}`
+    );
+  }
+
+  parts.push(`--${boundary}--${CRLF}`);
+
+  // Buffer들을 하나로 결합
+  const buffers = parts.map(p => typeof p === 'string' ? Buffer.from(p, 'utf-8') : p);
+  return { body: Buffer.concat(buffers), contentType: `multipart/form-data; boundary=${boundary}` };
+}
+
 async function transcribeAudio(buffer, mimeType) {
   const apiKey = (process.env.OPENAI_API_KEY || '').replace(/\n/g, '').trim();
   if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
@@ -67,15 +97,13 @@ async function transcribeAudio(buffer, mimeType) {
   const filename = getFilename(mimeType);
   const resolvedType = mimeType || 'audio/webm';
 
-  // Node.js File API (20+) — Blob보다 안정적인 multipart 직렬화
-  const file = new File([buffer], filename, { type: resolvedType });
-
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('model', 'whisper-1');
-  formData.append('response_format', 'verbose_json');
-  formData.append('timestamp_granularities[]', 'word');
-  formData.append('language', 'ko');
+  // 수동 multipart 구성 — Node 18 FormData/Blob 호환성 문제 회피
+  const { body: multipartBody, contentType } = buildMultipartBody(buffer, filename, resolvedType, {
+    'model': 'whisper-1',
+    'response_format': 'verbose_json',
+    'timestamp_granularities[]': 'word',
+    'language': 'ko',
+  });
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 90000);
@@ -85,8 +113,9 @@ async function transcribeAudio(buffer, mimeType) {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
+        'Content-Type': contentType,
       },
-      body: formData,
+      body: multipartBody,
       signal: controller.signal,
     });
 
