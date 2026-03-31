@@ -415,7 +415,7 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: 'B-roll 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' });
     }
 
-    logUsage(email, 'shortform-broll', null, ip);
+    await logUsage(email, 'shortform-broll', null, ip);
     return res.status(200).json({ items });
   } catch (error) {
     console.error('[SHORTFORM-BROLL] API error:', error);

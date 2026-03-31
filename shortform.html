@@ -2051,6 +2051,11 @@
 
       async function processMaterials(title, detail) {
         if (!state.step1Complete || !state.step2Complete || !state.audioBlob) return;
+        var scriptText = [state.script.hook, state.script.point, state.script.cta].filter(Boolean).join('');
+        if (!scriptText.trim()) {
+          showBox(els.materialsError, '대본 내용이 비어 있습니다. 대본을 먼저 작성해주세요.');
+          return;
+        }
         showBox(els.materialsError, '');
         showBox(els.materialsHint, 'Step 2 완료 후 자동으로 병렬 생성 중입니다.');
         setLoading(true, title || '영상 소재 생성 중...', detail || 'STT 타임스탬프와 B-roll 이미지를 준비하고 있습니다.');
