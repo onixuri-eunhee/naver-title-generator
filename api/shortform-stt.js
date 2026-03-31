@@ -1,6 +1,6 @@
 import { extractToken, resolveAdmin, resolveSessionEmail, setCorsHeaders, getClientIp } from './_helpers.js';
 import { logUsage } from './_db.js';
-import OpenAI, { toFile } from 'openai';
+import FormData from 'form-data';
 
 export const config = {
   maxDuration: 120,
@@ -110,37 +110,63 @@ function normalizeWords(words) {
     .map(item => ({ word: item.word, start: item.start, end: item.end }));
 }
 
-let openaiClient;
-let openaiClientKey = '';
-function getOpenAIClient() {
+function getOpenAIApiKey() {
   const apiKey = (process.env.OPENAI_API_KEY || '').replace(/\n/g, '').trim();
   if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
-  if (!openaiClient || openaiClientKey !== apiKey) {
-    openaiClient = new OpenAI({ apiKey });
-    openaiClientKey = apiKey;
-  }
-  return openaiClient;
+  return apiKey;
 }
 
 async function transcribeAudio(buffer, mimeType) {
+  const apiKey = getOpenAIApiKey();
   const filename = getFilename(mimeType);
   const resolvedType = mimeType || 'audio/webm';
-  const openai = getOpenAIClient();
-  const file = await toFile(buffer, filename, { type: resolvedType });
+  const form = new FormData();
+  form.append('file', buffer, { filename, contentType: resolvedType });
+  form.append('model', 'whisper-1');
+  form.append('response_format', 'verbose_json');
+  form.append('timestamp_granularities[]', 'word');
+  form.append('language', 'ko');
+  const controller = new AbortController();
+  const timeout = setTimeout(function() {
+    controller.abort();
+  }, 90000);
 
   try {
-    return await openai.audio.transcriptions.create({
-      file,
-      model: 'whisper-1',
-      response_format: 'verbose_json',
-      timestamp_granularities: ['word'],
-      language: 'ko',
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        ...form.getHeaders(),
+      },
+      body: form,
+      duplex: 'half',
+      signal: controller.signal,
     });
+
+    const text = await response.text();
+    let data = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch (_) {
+      data = { error: { message: text || 'Invalid Whisper response' } };
+    }
+
+    if (!response.ok) {
+      const message = data?.error?.message || 'Whisper transcription failed';
+      console.error('[shortform-stt] Whisper HTTP error:', response.status, text.slice(0, 500));
+      throw new Error(message + ' (HTTP ' + response.status + ')');
+    }
+
+    return data;
   } catch (error) {
-    var status = error && typeof error.status === 'number' ? ' (HTTP ' + error.status + ')' : '';
+    if (error && error.name === 'AbortError') {
+      throw new Error('Whisper transcription timed out');
+    }
     var message = error && error.message ? error.message : 'Whisper transcription failed';
-    console.error('[shortform-stt] Whisper SDK error:', message + status);
-    throw new Error(message + status);
+    console.error('[shortform-stt] Whisper upload error:', message);
+    throw new Error(message);
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

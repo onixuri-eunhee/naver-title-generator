@@ -10,6 +10,7 @@
     "@upstash/qstash": "^2",
     "@upstash/redis": "^1.36.3",
     "@vercel/kv": "^3.0.0",
+    "form-data": "^4.0.5",
     "openai": "^6.33.0",
     "satori": "^0.12.0"
   },
