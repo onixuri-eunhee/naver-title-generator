@@ -61,12 +61,18 @@ function normalizeWords(words) {
 }
 
 async function transcribeAudio(buffer, mimeType) {
+  const apiKey = (process.env.OPENAI_API_KEY || '').replace(/\n/g, '').trim();
+  if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
+
   const formData = new FormData();
-  formData.append('file', new Blob([buffer], { type: mimeType || 'application/octet-stream' }), getFilename(mimeType));
+  const filename = getFilename(mimeType);
+  formData.append('file', new Blob([buffer], { type: mimeType || 'audio/webm' }), filename);
   formData.append('model', 'whisper-1');
   formData.append('response_format', 'verbose_json');
   formData.append('timestamp_granularities[]', 'word');
   formData.append('language', 'ko');
+
+  console.log('[shortform-stt] Whisper request: filename=%s mimeType=%s bufferSize=%d', filename, mimeType, buffer.length);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 90000);
@@ -75,7 +81,7 @@ async function transcribeAudio(buffer, mimeType) {
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: formData,
       signal: controller.signal,
@@ -148,8 +154,8 @@ export default async function handler(req, res) {
     try {
       whisperData = await transcribeAudio(buffer, resolvedMimeType);
     } catch (error) {
-      console.error('[shortform-stt] Whisper API error:', error);
-      return res.status(502).json({ error: '음성 전사 중 오류가 발생했습니다.' });
+      console.error('[shortform-stt] Whisper API error:', error?.message || error);
+      return res.status(502).json({ error: '음성 전사 중 오류: ' + (error?.message || '알 수 없는 오류') });
     }
 
     const segments = normalizeWords(
