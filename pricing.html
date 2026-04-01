@@ -21,11 +21,37 @@
 <meta property="og:url" content="https://ddukddaktool.co.kr/pricing.html" />
 <meta property="og:image" content="https://ddukddaktool.co.kr/assets/og-default.jpg" />
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/navbar.css">
 <link rel="stylesheet" href="/navbar-mobile.css">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1A2E; }
+
+  /* 네비게이션 */
+  .navbar {
+    background: #fff; border-bottom: 1px solid #E5E7EB; padding: 0 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 52px; position: sticky; top: 0; z-index: 100;
+  }
+  .navbar-logo { font-size: 18px; font-weight: 900; color: #1A1A2E; text-decoration: none; }
+  .navbar-logo span { color: #00C73C; }
+  .navbar-links { display: flex; gap: 4px; }
+  .navbar-links a {
+    padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+    color: #6B7280; text-decoration: none; transition: background 0.15s, color 0.15s; position: relative;
+  }
+  .navbar-links a:hover { background: #F3F4F6; color: #1A1A2E; }
+  .navbar-links a.new-badge { position: relative; margin-right: 12px; }
+  .navbar-links a.new-badge::after {
+    content: 'NEW'; position: absolute; top: 1px; right: 1px;
+    font-size: 8px; font-weight: 800; color: #fff; background: #FF4757;
+    border-radius: 4px; padding: 1px 3px; line-height: 1.4;
+  }
+  .navbar-links a.pro-badge::after {
+    content: 'PRO'; position: absolute; top: 1px; right: 1px;
+    font-size: 8px; font-weight: 800; color: #fff;
+    background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+    border-radius: 4px; padding: 1px 3px; line-height: 1.4;
+  }
 
   header {
     background: linear-gradient(135deg, #1A1A2E, #16213E, #0F3460);
@@ -184,6 +210,7 @@
     <a href="card-news.html" class="pro-badge">카드뉴스</a>
     <a href="keyword-finder.html" class="new-badge">황금키워드</a>
     <a href="column.html">칼럼</a>
+    <a href="pricing.html" style="color:#8B5CF6; font-weight:700;">크레딧 충전</a>
   </div>
   <div class="navbar-auth" id="navbarAuth"></div>
 </nav>

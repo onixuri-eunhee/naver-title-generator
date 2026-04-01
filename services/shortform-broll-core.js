@@ -58,6 +58,7 @@ export const BROLL_VERSION = 'v7-veo-hero-fallback';
 const FLUX_REALISM_ENDPOINT = 'https://fal.run/fal-ai/flux-realism';
 const FLUX_IMAGE_SIZE = { width: 768, height: 1344 };
 const CLIP_DURATION_SEC = 5;
+const VEO_CLIP_DURATION_SEC = 4;
 const VEO_POLL_INTERVAL_MS = 5000;
 const VEO_TIMEOUT_MS = 180000;
 const SEEDANCE_POLL_INTERVAL_MS = 4000;
@@ -466,7 +467,7 @@ async function callVeoHeroVideo(prompt, key) {
       ],
       parameters: {
         aspectRatio: '9:16',
-        durationSeconds: CLIP_DURATION_SEC,
+        durationSeconds: VEO_CLIP_DURATION_SEC,
         sampleCount: 1,
         resolution: '720p',
       },
@@ -489,7 +490,7 @@ async function callVeoHeroVideo(prompt, key) {
     url: asset.url,
     r2Url: asset.r2Url,
     prompt,
-    durationSec: CLIP_DURATION_SEC,
+    durationSec: VEO_CLIP_DURATION_SEC,
     provider: 'veo3-lite',
   };
 }
