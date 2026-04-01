@@ -2931,12 +2931,11 @@
             var fadeDur = fadeTimeMap[speedKey] || 0.15;
             var maxW = CANVAS_W * 0.78;
 
-            // Lay out sttWords into lines using measureText
             ctx.font = 'bold ' + fontSize + 'px "Noto Sans KR", sans-serif';
-            var lines = []; // each line: array of { word, start, end, x }
+            var lines = [];
             var currentLine = [];
             var lineW = 0;
-            var spaceW = ctx.measureText(' ').width;
+            var spaceW = ctx.measureText('\u3000').width * 0.3;
 
             for (var i = 0; i < sttWords.length; i++) {
               var w = sttWords[i];
@@ -2959,17 +2958,19 @@
             }
             if (currentLine.length) lines.push(currentLine);
 
-            // Draw each word
+            // 자체 줄 수 기반 startY 재계산 (화면 중앙 정렬)
+            var totalH = lines.length * lineHeight;
+            var adjStartY = (CANVAS_H - totalH) / 2 + lineHeight * 0.5;
+
             for (var li = 0; li < lines.length; li++) {
               var line = lines[li];
-              // Calculate total line width for centering
               var totalW = 0;
               for (var j = 0; j < line.length; j++) {
                 totalW += line[j].width;
                 if (j > 0) totalW += spaceW;
               }
               var curX = cx - totalW / 2;
-              var curY = startY + li * lineHeight;
+              var curY = adjStartY + li * lineHeight;
 
               for (var k = 0; k < line.length; k++) {
                 var word = line[k];
@@ -2980,26 +2981,22 @@
                 var alpha, offsetY, fillColor, scale;
 
                 if (currentTime < fadeStart) {
-                  // Not yet — ghost text
                   alpha = 0.15;
                   offsetY = 0;
                   fillColor = color;
                   scale = 1.0;
                 } else if (currentTime < wordStart) {
-                  // Fading in
                   var fadeProgress = easeOutCubic(clamp01((currentTime - fadeStart) / fadeDur));
                   alpha = 0.15 + fadeProgress * 0.85;
                   offsetY = (1 - fadeProgress) * 10;
                   fillColor = color;
                   scale = 1.0;
                 } else if (currentTime < wordEnd) {
-                  // Currently speaking — highlight
                   alpha = 1.0;
                   offsetY = 0;
                   fillColor = ACCENT;
                   scale = 1.05;
                 } else {
-                  // Done speaking
                   alpha = 1.0;
                   offsetY = 0;
                   fillColor = color;
@@ -3090,212 +3087,101 @@
             return boundaries;
           }
 
-          /* ── STT 세그먼트를 문장 단위로 그룹핑 ── */
-          function groupSttIntoSentences(sttSegs) {
-            if (!sttSegs || !sttSegs.length) return [];
-            var result = [];
-            var curWords = [];
-            var curText = '';
-            for (var i = 0; i < sttSegs.length; i++) {
-              var seg = sttSegs[i];
-              curWords.push(seg);
-              curText += (curText ? ' ' : '') + seg.text;
-              var isEnd = /[.!?。！？]$/.test(seg.text.trim()) || i === sttSegs.length - 1;
-              if (isEnd && curWords.length) {
-                var first = curWords[0];
-                var last = curWords[curWords.length - 1];
-                var segEnd = (last.end !== null && last.end !== undefined)
-                  ? last.end
-                  : (i + 1 < sttSegs.length ? sttSegs[i + 1].start : first.start + 2.0);
-                result.push({
-                  text: curText.trim(),
-                  start: first.start,
-                  end: segEnd,
-                  sttWords: curWords.slice()
-                });
-                curWords = [];
-                curText = '';
+          /* ── 시간 범위에 해당하는 STT 세그먼트 추출 ── */
+          function getSttWordsInRange(sttSegments, rangeStart, rangeEnd) {
+            if (!sttSegments || !sttSegments.length) return null;
+            var words = [];
+            for (var i = 0; i < sttSegments.length; i++) {
+              var seg = sttSegments[i];
+              var segEnd = seg.end !== null && seg.end !== undefined ? seg.end : seg.start + 0.3;
+              if (segEnd > rangeStart && seg.start < rangeEnd) {
+                words.push(seg);
               }
             }
-            return result;
-          }
-
-          /* ── STT 문장을 HPC 섹션에 배정 (midpoint 기준) ── */
-          function assignSttSentencesToSections(sttSentences, sections) {
-            var buckets = [];
-            for (var b = 0; b < sections.length; b++) buckets.push([]);
-            for (var i = 0; i < sttSentences.length; i++) {
-              var mid = (sttSentences[i].start + sttSentences[i].end) / 2;
-              var best = 0;
-              for (var s = 0; s < sections.length; s++) {
-                if (mid >= sections[s].start && mid < sections[s].end) { best = s; break; }
-                if (mid >= sections[s].start) best = s;
-              }
-              buckets[best].push(sttSentences[i]);
-            }
-            for (var b2 = 0; b2 < buckets.length; b2++) {
-              if (!buckets[b2].length) {
-                for (var adj = b2 - 1; adj >= 0; adj--) {
-                  if (buckets[adj].length > 1) { buckets[b2].push(buckets[adj].pop()); break; }
-                }
-              }
-            }
-            return buckets;
+            return words.length ? words : null;
           }
 
           function buildMotionScenes(script, mediaItems, totalDur, sttSegments) {
             var sections = findSectionBoundaries(script, sttSegments, totalDur);
             var sentenceEntries = [];
-            var hasStt = sttSegments && sttSegments.length > 0;
 
-            if (hasStt) {
-              /* ── STT 기반: 문장별 정확한 타임스탬프 ── */
-              var sttSentences = groupSttIntoSentences(sttSegments);
-              var buckets = assignSttSentencesToSections(sttSentences, sections);
-              for (var i = 0; i < sections.length; i++) {
-                var assigned = buckets[i];
-                for (var j = 0; j < assigned.length; j++) {
-                  var sent = assigned[j];
-                  sentenceEntries.push({
-                    type: 'text',
-                    text: sent.text,
-                    start: sent.start,
-                    duration: Math.max(0.4, sent.end - sent.start),
-                    sttWords: sent.sttWords,
-                    sectionIndex: i
-                  });
-                }
-              }
-              // 시간순 정렬 + 겹침 보정
-              sentenceEntries.sort(function(a, b) { return a.start - b.start; });
-              for (var oi = 1; oi < sentenceEntries.length; oi++) {
-                var prevEnd = sentenceEntries[oi - 1].start + sentenceEntries[oi - 1].duration;
-                if (sentenceEntries[oi].start < prevEnd) {
-                  sentenceEntries[oi].start = prevEnd;
-                }
-              }
-            } else {
-              /* ── 폴백: 글자 수 비율 분배 (기존 로직) ── */
-              for (var i2 = 0; i2 < sections.length; i2++) {
-                var section = sections[i2];
-                var sentences = splitNarrationSentences(section.text);
-                if (!sentences.length) continue;
-                var sectionDur = Math.max(0.6, section.end - section.start);
-                var charTotal = sentences.reduce(function(sum, s2) {
-                  return sum + s2.replace(/\s+/g, '').length;
-                }, 0) || sentences.length;
-                var localCursor = section.start;
-                for (var j2 = 0; j2 < sentences.length; j2++) {
-                  var chars = sentences[j2].replace(/\s+/g, '').length || 1;
-                  var remaining = Math.max(0.4, section.end - localCursor);
-                  var dur = j2 === sentences.length - 1
-                    ? remaining
-                    : Math.max(1.0, sectionDur * (chars / charTotal));
-                  dur = Math.min(dur, remaining);
-                  sentenceEntries.push({
-                    type: 'text',
-                    text: sentences[j2],
-                    start: localCursor,
-                    duration: dur,
-                    sttWords: null,
-                    sectionIndex: i2
-                  });
-                  localCursor += dur;
-                }
+            for (var i = 0; i < sections.length; i++) {
+              var section = sections[i];
+              var sentences = splitNarrationSentences(section.text);
+              if (!sentences.length) continue;
+              var sectionDur = Math.max(0.6, section.end - section.start);
+              var charTotal = sentences.reduce(function(sum, sentence) {
+                return sum + sentence.replace(/\s+/g, '').length;
+              }, 0) || sentences.length;
+              var localCursor = section.start;
+
+              for (var j = 0; j < sentences.length; j++) {
+                var chars = sentences[j].replace(/\s+/g, '').length || 1;
+                var remaining = Math.max(0.4, section.end - localCursor);
+                var duration = j === sentences.length - 1
+                  ? remaining
+                  : Math.max(1.0, sectionDur * (chars / charTotal));
+                duration = Math.min(duration, remaining);
+                var sceneStart = localCursor;
+                var sceneEnd = sceneStart + duration;
+                sentenceEntries.push({
+                  type: 'text',
+                  text: sentences[j],
+                  start: sceneStart,
+                  duration: duration,
+                  sttWords: getSttWordsInRange(sttSegments, sceneStart, sceneEnd)
+                });
+                localCursor += duration;
               }
             }
 
             if (!sentenceEntries.length) {
-              return [{ type: 'text', text: [script.hook, script.point, script.cta].filter(Boolean).join(' '), start: 0, duration: totalDur, sttWords: null }];
+              return [{ type: 'text', text: [script.hook, script.point, script.cta].filter(Boolean).join(' '), start: 0, duration: totalDur, sttWords: getSttWordsInRange(sttSegments, 0, totalDur) }];
             }
 
-            /* ── B-roll 삽입: HPC 섹션 전환 시점 우선, 남으면 균등 배치 ── */
             var sceneList = [];
             var mediaCount = Math.min((mediaItems || []).length, 5);
+            var groupSize = mediaCount ? Math.max(1, Math.ceil(sentenceEntries.length / (mediaCount + 1))) : sentenceEntries.length;
             var mediaIndex = 0;
-            var prevSectionIdx = sentenceEntries.length ? sentenceEntries[0].sectionIndex : -1;
 
             for (var idx = 0; idx < sentenceEntries.length; idx++) {
-              var entry = sentenceEntries[idx];
-              // HPC 섹션 전환 시 B-roll 삽입
-              if (entry.sectionIndex !== prevSectionIdx && mediaIndex < mediaCount) {
-                var brollAt = sceneList.length > 0
-                  ? sceneList[sceneList.length - 1].start + sceneList[sceneList.length - 1].duration
-                  : entry.start;
+              sceneList.push(sentenceEntries[idx]);
+              var shouldInsertMedia = mediaIndex < mediaCount
+                && idx < sentenceEntries.length - 1
+                && ((idx + 1) % groupSize === 0);
+              if (shouldInsertMedia) {
                 sceneList.push({
                   type: 'broll',
                   mediaIndex: mediaIndex,
-                  start: brollAt,
+                  start: sentenceEntries[idx].start + sentenceEntries[idx].duration - 0.01,
                   duration: Math.min(3.2, Math.max(2.2, totalDur / Math.max(4, mediaCount + 2)))
                 });
-                mediaIndex++;
-              }
-              prevSectionIdx = entry.sectionIndex;
-              sceneList.push(entry);
-            }
-
-            // 남은 미디어: 텍스트 씬 사이 균등 배치
-            if (mediaIndex < mediaCount) {
-              var textIdxs = [];
-              for (var ti = 0; ti < sceneList.length; ti++) {
-                if (sceneList[ti].type === 'text') textIdxs.push(ti);
-              }
-              var grpSz = Math.max(1, Math.ceil(textIdxs.length / (mediaCount - mediaIndex + 1)));
-              var inserted = 0;
-              for (var gi = grpSz; gi < textIdxs.length && mediaIndex < mediaCount; gi += grpSz + 1) {
-                var afterPos = textIdxs[gi] + inserted;
-                var prevScene = sceneList[afterPos];
-                sceneList.splice(afterPos + 1, 0, {
-                  type: 'broll',
-                  mediaIndex: mediaIndex,
-                  start: prevScene.start + prevScene.duration,
-                  duration: Math.min(3.2, Math.max(2.2, totalDur / Math.max(4, mediaCount + 2)))
-                });
-                mediaIndex++;
-                inserted++;
+                mediaIndex += 1;
               }
             }
 
-            /* ── 타이밍 조정 ── */
-            if (hasStt) {
-              // STT 모드: text 씬은 STT 타이밍 보존, broll은 gap에 배치
-              for (var bi = 0; bi < sceneList.length; bi++) {
-                if (sceneList[bi].type === 'broll') {
-                  var prevEnd2 = bi > 0 ? sceneList[bi - 1].start + sceneList[bi - 1].duration : 0;
-                  var nextStart = totalDur;
-                  for (var ni = bi + 1; ni < sceneList.length; ni++) {
-                    if (sceneList[ni].type === 'text') { nextStart = sceneList[ni].start; break; }
-                  }
-                  sceneList[bi].start = prevEnd2;
-                  sceneList[bi].duration = Math.min(sceneList[bi].duration, Math.max(0.5, nextStart - prevEnd2));
+            var cursor = 0;
+            for (var s = 0; s < sceneList.length; s++) {
+              sceneList[s].start = cursor;
+              cursor += sceneList[s].duration;
+            }
+            var ratio = cursor > 0 ? totalDur / cursor : 1;
+            cursor = 0;
+            for (var k = 0; k < sceneList.length; k++) {
+              sceneList[k].start = cursor;
+              sceneList[k].duration = sceneList[k].duration * ratio;
+              cursor += sceneList[k].duration;
+            }
+            if (sceneList.length) {
+              sceneList[sceneList.length - 1].duration += Math.max(0, totalDur - cursor);
+            }
+
+            // STT 있으면: 정규화된 시간에 맞춰 sttWords 재매핑
+            if (sttSegments && sttSegments.length) {
+              for (var ri = 0; ri < sceneList.length; ri++) {
+                if (sceneList[ri].type === 'text') {
+                  sceneList[ri].sttWords = getSttWordsInRange(sttSegments, sceneList[ri].start, sceneList[ri].start + sceneList[ri].duration);
                 }
-              }
-              // totalDur 보정
-              if (sceneList.length) {
-                var lastSc = sceneList[sceneList.length - 1];
-                var lastEnd = lastSc.start + lastSc.duration;
-                if (lastEnd < totalDur) {
-                  lastSc.duration += (totalDur - lastEnd);
-                } else if (lastEnd > totalDur) {
-                  lastSc.duration = Math.max(0.1, totalDur - lastSc.start);
-                }
-              }
-            } else {
-              // 폴백: 순차 배치 + 비율 정규화
-              var cursor = 0;
-              for (var s = 0; s < sceneList.length; s++) {
-                sceneList[s].start = cursor;
-                cursor += sceneList[s].duration;
-              }
-              var ratio = cursor > 0 ? totalDur / cursor : 1;
-              cursor = 0;
-              for (var k = 0; k < sceneList.length; k++) {
-                sceneList[k].start = cursor;
-                sceneList[k].duration *= ratio;
-                cursor += sceneList[k].duration;
-              }
-              if (sceneList.length) {
-                sceneList[sceneList.length - 1].duration += Math.max(0, totalDur - cursor);
               }
             }
 
