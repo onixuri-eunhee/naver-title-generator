@@ -53,10 +53,11 @@ async function logUsage(userEmail, tool, mode, ip) {
   }
 }
 
-export const BROLL_VERSION = 'v3-xai-b64-fallback';
+export const BROLL_VERSION = 'v4-xai-aspect-ratio';
 
 const GROK_IMAGE_MODEL = 'grok-imagine-image';
-const GROK_IMAGE_SIZE = '1024x1792';
+const GROK_IMAGE_ASPECT_RATIO = '9:16';
+const GROK_IMAGE_RESOLUTION = '2k';
 const CLIP_DURATION_SEC = 5;
 const SEEDANCE_POLL_INTERVAL_MS = 4000;
 const SEEDANCE_TIMEOUT_MS = 30000;
@@ -280,7 +281,8 @@ async function callGrokImage(prompt, key) {
       model: GROK_IMAGE_MODEL,
       prompt,
       n: 1,
-      size: GROK_IMAGE_SIZE,
+      aspect_ratio: GROK_IMAGE_ASPECT_RATIO,
+      resolution: GROK_IMAGE_RESOLUTION,
       response_format: 'b64_json',
     }),
   });
