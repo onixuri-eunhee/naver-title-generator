@@ -53,9 +53,9 @@ async function logUsage(userEmail, tool, mode, ip) {
   }
 }
 
-export const BROLL_VERSION = 'v2-image-fallback-default';
+export const BROLL_VERSION = 'v3-xai-b64-fallback';
 
-const GROK_IMAGE_MODEL = 'grok-2-image';
+const GROK_IMAGE_MODEL = 'grok-imagine-image';
 const GROK_IMAGE_SIZE = '1024x1792';
 const CLIP_DURATION_SEC = 5;
 const SEEDANCE_POLL_INTERVAL_MS = 4000;
@@ -281,6 +281,7 @@ async function callGrokImage(prompt, key) {
       prompt,
       n: 1,
       size: GROK_IMAGE_SIZE,
+      response_format: 'b64_json',
     }),
   });
   const data = await parseJsonResponse(response);
@@ -411,24 +412,29 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
   const clipPrompt1 = buildVisualPrompt(brollSuggestions[1], scriptContext, 'video');
   const clipPrompt2 = buildVisualPrompt(brollSuggestions[2], scriptContext, 'video');
 
+  const failures = [];
   const [heroImage, clip1, clip2] = await Promise.all([
     callGrokImage(imagePrompt, createR2Key(userId, 'img.png')).catch(error => {
       console.error('[SHORTFORM-BROLL] Grok hero image failed:', error.message);
+      failures.push(`hero:${error.message}`);
       return null;
     }),
     createClipWithFallback(clipPrompt1, userId, 1).catch(error => {
       console.error('[SHORTFORM-BROLL] Clip 1 failed:', error.message);
+      failures.push(`clip1:${error.message}`);
       return null;
     }),
     createClipWithFallback(clipPrompt2, userId, 2).catch(error => {
       console.error('[SHORTFORM-BROLL] Clip 2 failed:', error.message);
+      failures.push(`clip2:${error.message}`);
       return null;
     }),
   ]);
 
   const items = [heroImage, clip1, clip2].filter(Boolean);
   if (items.length === 0) {
-    throw new HttpError(502, 'B-roll 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    const reason = failures.length ? ` (${failures.slice(0, 2).join(' | ')})` : '';
+    throw new HttpError(502, 'B-roll 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' + reason);
   }
 
   await logUsage(userEmail, 'shortform-broll', null, ip);
