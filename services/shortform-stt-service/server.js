@@ -34,7 +34,7 @@ function setCorsHeaders(req, res) {
     res.setHeader('Access-Control-Allow-Origin', 'https://ddukddaktool.co.kr');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Audio-Mime-Type, X-Stt-Probe, X-Stt-Service-Secret');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Audio-Mime-Type, X-Audio-File-Name, X-Stt-Probe, X-Stt-Service-Secret');
   res.setHeader('Access-Control-Expose-Headers', 'X-Shortform-Stt-Version');
 }
 

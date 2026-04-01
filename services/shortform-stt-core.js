@@ -1,7 +1,7 @@
 import https from 'node:https';
 import FormData from 'form-data';
 
-export const STT_VERSION = 'v4-railway-service';
+export const STT_VERSION = 'v5-mime-filename-fix';
 export const MAX_AUDIO_SIZE = Math.max(
   1,
   Number(process.env.SHORTFORM_STT_MAX_AUDIO_MB || 20)
@@ -45,6 +45,11 @@ function getHeaderValue(headers, key) {
   return headers[key] || headers[key.toLowerCase()] || '';
 }
 
+function normalizeMimeType(mimeType) {
+  if (!mimeType || typeof mimeType !== 'string') return '';
+  return mimeType.split(';')[0].trim().toLowerCase();
+}
+
 function getProbeMode(headers, query) {
   const fromHeader = getHeaderValue(headers, 'x-stt-probe');
   if (typeof fromHeader === 'string' && fromHeader.trim()) return fromHeader.trim().toLowerCase();
@@ -53,11 +58,10 @@ function getProbeMode(headers, query) {
 }
 
 function getRequestMimeType(headers) {
-  const explicit = getHeaderValue(headers, 'x-audio-mime-type');
-  if (typeof explicit === 'string' && explicit.trim()) return explicit.trim();
+  const explicit = normalizeMimeType(getHeaderValue(headers, 'x-audio-mime-type'));
+  if (explicit) return explicit;
   const contentType = getHeaderValue(headers, 'content-type');
-  if (!contentType || typeof contentType !== 'string') return '';
-  return contentType.split(';')[0].trim();
+  return normalizeMimeType(contentType);
 }
 
 function decodeAudioPayload(audioBase64, mimeType) {
@@ -91,6 +95,15 @@ function parseIncomingAudio(rawBody, headers) {
     buffer: rawBody,
     mimeType: getRequestMimeType(headers) || 'audio/webm',
   };
+}
+
+function getRequestedFilename(headers, mimeType) {
+  const fromHeader = getHeaderValue(headers, 'x-audio-file-name');
+  if (typeof fromHeader === 'string' && fromHeader.trim()) {
+    const safe = fromHeader.trim().replace(/[^a-zA-Z0-9._-]+/g, '_');
+    if (/\.(flac|m4a|mp3|mp4|mpeg|mpga|oga|ogg|wav|webm)$/i.test(safe)) return safe;
+  }
+  return getFilename(mimeType);
 }
 
 function getFilename(mimeType) {
@@ -138,9 +151,9 @@ function getOpenAIApiKey() {
   return apiKey;
 }
 
-function buildTranscriptionForm(buffer, mimeType) {
-  const filename = getFilename(mimeType);
-  const resolvedType = mimeType || 'audio/webm';
+function buildTranscriptionForm(buffer, mimeType, requestedFilename) {
+  const resolvedType = normalizeMimeType(mimeType) || 'audio/webm';
+  const filename = requestedFilename || getFilename(resolvedType);
   const form = new FormData();
   form.append('file', buffer, { filename, contentType: resolvedType });
   form.append('model', 'whisper-1');
@@ -213,9 +226,9 @@ async function probeOpenAIModels(apiKey) {
   });
 }
 
-async function callTranscriptionsEndpoint(buffer, mimeType) {
+async function callTranscriptionsEndpoint(buffer, mimeType, requestedFilename) {
   const apiKey = getOpenAIApiKey();
-  const form = buildTranscriptionForm(buffer, mimeType);
+  const form = buildTranscriptionForm(buffer, mimeType, requestedFilename);
   const multipartBuffer = getFormBuffer(form);
 
   return await new Promise(function(resolve, reject) {
@@ -248,8 +261,8 @@ async function callTranscriptionsEndpoint(buffer, mimeType) {
   });
 }
 
-async function transcribeAudio(buffer, mimeType) {
-  const response = await callTranscriptionsEndpoint(buffer, mimeType);
+async function transcribeAudio(buffer, mimeType, requestedFilename) {
+  const response = await callTranscriptionsEndpoint(buffer, mimeType, requestedFilename);
   const text = response.text;
   let data = {};
   try {
@@ -319,6 +332,7 @@ export async function handleShortformSttRequest(params) {
   }
 
   const { buffer, mimeType } = parseIncomingAudio(rawBody, headers);
+  const requestedFilename = getRequestedFilename(headers, mimeType);
   if (!buffer) {
     throw new HttpError(400, '오디오 데이터가 필요합니다.');
   }
@@ -336,13 +350,14 @@ export async function handleShortformSttRequest(params) {
         version: STT_VERSION,
         bytes: buffer.length,
         mimeType,
+        filename: requestedFilename,
         hasOpenAIKey: !!((process.env.OPENAI_API_KEY || '').trim()),
       },
     };
   }
 
   if (probeMode === 'form') {
-    const probeForm = buildTranscriptionForm(buffer, mimeType);
+    const probeForm = buildTranscriptionForm(buffer, mimeType, requestedFilename);
     let length = null;
     let bufferLength = null;
     try {
@@ -360,6 +375,7 @@ export async function handleShortformSttRequest(params) {
         version: STT_VERSION,
         bytes: buffer.length,
         mimeType,
+        filename: requestedFilename,
         multipartLength: length,
         multipartBufferLength: bufferLength,
         headerKeys: Object.keys(probeForm.getHeaders()),
@@ -381,7 +397,7 @@ export async function handleShortformSttRequest(params) {
     };
   }
 
-  const whisperData = await transcribeAudio(buffer, mimeType);
+  const whisperData = await transcribeAudio(buffer, mimeType, requestedFilename);
   const wordSegments = normalizeWords(
     whisperData.words || whisperData.segments?.flatMap(segment => segment?.words || []) || []
   );

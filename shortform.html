@@ -2087,7 +2087,8 @@
         var probeMode = getSttProbeMode();
         var headers = createHeaders({
           'Content-Type': mimeType,
-          'X-Audio-Mime-Type': mimeType
+          'X-Audio-Mime-Type': mimeType,
+          'X-Audio-File-Name': state.audioFileName || ('audio.' + guessExtensionFromMime(mimeType))
         });
         if (probeMode) headers['X-Stt-Probe'] = probeMode;
         return {
