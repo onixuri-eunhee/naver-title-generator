@@ -2397,7 +2397,9 @@
       }
 
       function buildBrollPayload() {
-        var targetCount = state.estimatedSeconds >= 76 ? 5 : state.estimatedSeconds >= 56 ? 4 : 3;
+        var targetCount = 3;
+        if (state.estimatedSeconds >= 40) targetCount = 4;
+        if (state.estimatedSeconds >= 65) targetCount = 5;
         var suggestions = state.brollSuggestions && state.brollSuggestions.length >= 3
           ? state.brollSuggestions
           : [
@@ -3003,7 +3005,7 @@
             }
 
             var sceneList = [];
-            var mediaCount = Math.min((mediaItems || []).length, 4);
+            var mediaCount = Math.min((mediaItems || []).length, 5);
             var groupSize = mediaCount ? Math.max(1, Math.ceil(sentenceEntries.length / (mediaCount + 1))) : sentenceEntries.length;
             var mediaIndex = 0;
 
