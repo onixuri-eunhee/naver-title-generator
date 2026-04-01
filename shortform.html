@@ -2494,6 +2494,117 @@
           source.start(0);
           var startTime = audioCtx.currentTime;
 
+          /* ── 모션 그래픽 씬 구성 ── */
+          var validImages = images.filter(Boolean);
+          var scenes = buildMotionScenes(state.script, validImages, duration);
+          var ACCENT = '#ff5f1f';
+          var ACCENT2 = '#10B981';
+          var BG_GRAD_1 = '#1A1A2E';
+          var BG_GRAD_2 = '#16213E';
+
+          function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+          function easeInOutQuad(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+          function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+
+          function drawDarkBackground(ctx, w, h) {
+            var grad = ctx.createLinearGradient(0, 0, w, h);
+            grad.addColorStop(0, BG_GRAD_1);
+            grad.addColorStop(0.5, BG_GRAD_2);
+            grad.addColorStop(1, '#0F3460');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+          }
+
+          function drawTextLine(ctx, text, x, y, fontSize, color, alpha, offsetY) {
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.font = 'bold ' + fontSize + 'px "Noto Sans KR", sans-serif';
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, x, y + offsetY);
+            ctx.restore();
+          }
+
+          function drawNumberBadge(ctx, num, x, y, size, color, alpha) {
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.beginPath();
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.font = 'bold ' + Math.round(size * 1.1) + 'px "Noto Sans KR", sans-serif';
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(String(num), x, y + 1);
+            ctx.restore();
+          }
+
+          function drawBrollScene(ctx, img, elapsed, sceneStart, sceneDuration, w, h) {
+            var segElapsed = elapsed - sceneStart;
+            var zoomProgress = segElapsed / sceneDuration;
+            var scale = 1.0 + zoomProgress * 0.08;
+            ctx.save();
+            ctx.translate(w / 2, h / 2);
+            ctx.scale(scale, scale);
+            ctx.translate(-w / 2, -h / 2);
+            drawImageCover(ctx, img, w, h);
+            ctx.restore();
+            ctx.fillStyle = 'rgba(0,0,0,0.25)';
+            ctx.fillRect(0, 0, w, h);
+          }
+
+          function wrapText(ctx, text, maxWidth) {
+            var chars = text.split('');
+            var lines = []; var line = '';
+            for (var i = 0; i < chars.length; i++) {
+              var test = line + chars[i];
+              if (ctx.measureText(test).width > maxWidth && line) {
+                lines.push(line); line = chars[i];
+              } else { line = test; }
+            }
+            if (line) lines.push(line);
+            return lines;
+          }
+
+          function drawMotionText(ctx, textLines, cx, startY, fontSize, lineHeight, color, animProgress) {
+            for (var i = 0; i < textLines.length; i++) {
+              var lineDelay = i * 0.12;
+              var lineProgress = clamp01((animProgress - lineDelay) / 0.3);
+              var eased = easeOutCubic(lineProgress);
+              var alpha = eased;
+              var offsetY = (1 - eased) * 40;
+              drawTextLine(ctx, textLines[i], cx, startY + i * lineHeight, fontSize, color, alpha, offsetY);
+            }
+          }
+
+          function buildMotionScenes(script, imgs, totalDur) {
+            var hookText = (script.hook || '').trim();
+            var pointText = (script.point || '').trim();
+            var ctaText = (script.cta || '').trim();
+            var parts = [hookText, pointText, ctaText].filter(Boolean);
+            if (parts.length === 0) parts = [''];
+            var sceneList = [];
+            var numTextScenes = parts.length;
+            var numBrollScenes = Math.min(imgs.length, numTextScenes);
+            var totalScenes = numTextScenes + numBrollScenes;
+            var sceneDur = totalDur / totalScenes;
+            var t = 0;
+            for (var i = 0; i < numTextScenes; i++) {
+              sceneList.push({ type: 'text', text: parts[i], section: i, start: t, duration: sceneDur });
+              t += sceneDur;
+              if (i < numBrollScenes) {
+                sceneList.push({ type: 'broll', imageIndex: i, start: t, duration: sceneDur });
+                t += sceneDur;
+              }
+            }
+            if (sceneList.length > 0) {
+              sceneList[sceneList.length - 1].duration += (totalDur - t);
+            }
+            return sceneList;
+          }
+
           function drawFrame() {
             if (aborted) { recorder.stop(); source.stop(); audioCtx.close(); return; }
             var elapsed = audioCtx.currentTime - startTime;
@@ -2505,25 +2616,57 @@
             var pct = 25 + (elapsed / duration) * 70;
             updateRenderProgress(pct, '렌더링 중... ' + Math.round(elapsed) + '/' + Math.round(duration) + '초');
 
-            ctx.fillStyle = '#1A1A2E';
-            ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+            drawDarkBackground(ctx, CANVAS_W, CANVAS_H);
 
-            if (images.length > 0) {
-              var validImages = images.filter(Boolean);
-              if (validImages.length > 0) {
-                var imgIndex = Math.min(Math.floor(elapsed / (duration / validImages.length)), validImages.length - 1);
-                var img = validImages[imgIndex];
-                var segDuration = duration / validImages.length;
-                var segElapsed = elapsed - imgIndex * segDuration;
-                var zoomProgress = segElapsed / segDuration;
-                var scale = 1.0 + zoomProgress * 0.08;
-                ctx.save();
-                ctx.translate(CANVAS_W / 2, CANVAS_H / 2);
-                ctx.scale(scale, scale);
-                ctx.translate(-CANVAS_W / 2, -CANVAS_H / 2);
-                drawImageCover(ctx, img, CANVAS_W, CANVAS_H);
-                ctx.restore();
+            var currentScene = scenes[scenes.length - 1];
+            for (var si = 0; si < scenes.length; si++) {
+              if (elapsed < scenes[si].start + scenes[si].duration) {
+                currentScene = scenes[si];
+                break;
               }
+            }
+
+            var sceneElapsed = elapsed - currentScene.start;
+            var sceneProgress = clamp01(sceneElapsed / currentScene.duration);
+            var FADE_DUR = 0.4;
+            var fadeIn = clamp01(sceneElapsed / FADE_DUR);
+            var fadeOut = clamp01((currentScene.duration - sceneElapsed) / FADE_DUR);
+            var sceneFade = Math.min(fadeIn, fadeOut);
+
+            if (currentScene.type === 'broll' && validImages[currentScene.imageIndex]) {
+              drawBrollScene(ctx, validImages[currentScene.imageIndex], elapsed, currentScene.start, currentScene.duration, CANVAS_W, CANVAS_H);
+            } else if (currentScene.type === 'text') {
+              var section = currentScene.section;
+              var sectionColors = [ACCENT, ACCENT2, '#6366F1'];
+              var badgeColor = sectionColors[section % sectionColors.length];
+              var fontSize = Math.round(CANVAS_W * 0.044);
+              var lineHeight = fontSize * 1.7;
+              ctx.font = 'bold ' + fontSize + 'px "Noto Sans KR", sans-serif';
+              var maxW = CANVAS_W * 0.78;
+              var textLines = wrapText(ctx, currentScene.text, maxW);
+              var totalTextH = textLines.length * lineHeight;
+              var startY = (CANVAS_H - totalTextH) / 2;
+
+              var badgeAlpha = easeOutCubic(clamp01(sceneProgress / 0.2)) * sceneFade;
+              drawNumberBadge(ctx, section + 1, CANVAS_W / 2, startY - 70, 32, badgeColor, badgeAlpha);
+
+              var sectionLabels = ['HOOK', 'POINT', 'CTA'];
+              var labelAlpha = easeOutCubic(clamp01((sceneProgress - 0.05) / 0.2)) * sceneFade;
+              drawTextLine(ctx, sectionLabels[section % 3] || '', CANVAS_W / 2, startY - 25, Math.round(fontSize * 0.55), badgeColor, labelAlpha, (1 - labelAlpha) * 20);
+
+              var textAnimProgress = clamp01((sceneProgress - 0.1) / 0.6);
+              ctx.save();
+              ctx.globalAlpha = sceneFade;
+              drawMotionText(ctx, textLines, CANVAS_W / 2, startY + 20, fontSize, lineHeight, '#FFFFFF', textAnimProgress);
+              ctx.restore();
+
+              var accentBarAlpha = easeInOutQuad(clamp01((sceneProgress - 0.05) / 0.3)) * sceneFade;
+              ctx.save();
+              ctx.globalAlpha = accentBarAlpha;
+              var barW = CANVAS_W * 0.12;
+              ctx.fillStyle = badgeColor;
+              ctx.fillRect((CANVAS_W - barW) / 2, startY + totalTextH + 40, barW, 4);
+              ctx.restore();
             }
 
             var subtitle = getActiveSubtitle(state.sttSegments, elapsed);
