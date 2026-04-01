@@ -1925,7 +1925,10 @@
             url: url,
             thumbnail: thumbnail,
             title: String(item.title || item.keyword || item.prompt || ('추천 소재 ' + (index + 1))),
-            subtitle: String(item.description || item.note || item.caption || '')
+            subtitle: String(item.description || item.note || item.caption || ''),
+            provider: String(item.provider || ''),
+            fallbackFrom: String(item.fallbackFrom || ''),
+            fallbackReason: String(item.fallbackReason || '')
           };
         }).filter(function(item) {
           return item.url || item.thumbnail;
@@ -1961,6 +1964,12 @@
           return;
         }
         els.brollGrid.innerHTML = items.map(function(item) {
+          var providerLabel = item.provider ? item.provider.toUpperCase() : '';
+          var fallbackLabel = item.fallbackFrom ? ' · ' + item.fallbackFrom.toUpperCase() + ' fallback' : '';
+          var subtitleText = item.subtitle || '자동 추천 소재';
+          if (item.fallbackReason) {
+            subtitleText = subtitleText + ' · ' + item.fallbackReason;
+          }
           var media;
           if (item.type === 'video') {
             media = '<video class="broll-thumb" controls playsinline muted preload="metadata" src="' + escapeAttribute(item.url) + '"' + (item.thumbnail ? ' poster="' + escapeAttribute(item.thumbnail) + '"' : '') + '></video>';
@@ -1972,7 +1981,8 @@
             '<div class="broll-body">' +
             '<div class="broll-tag">' + escapeHtml(item.type === 'video' ? 'CLIP' : 'IMAGE') + '</div>' +
             '<div class="broll-title">' + escapeHtml(item.title) + '</div>' +
-            '<div class="broll-subtitle">' + escapeHtml(item.subtitle || '자동 추천 소재') + '</div>' +
+            '<div class="broll-subtitle">' + escapeHtml(subtitleText) + '</div>' +
+            (providerLabel ? '<div class="broll-subtitle" style="margin-top:4px;color:#9ca3af;">provider: ' + escapeHtml(providerLabel + fallbackLabel) + '</div>' : '') +
             '</div>' +
             '</div>';
         }).join('');

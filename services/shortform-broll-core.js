@@ -407,7 +407,7 @@ async function callFluxImage(prompt, key) {
   if (!imageUrl) throw new Error('FLUX image URL not found in result');
   const r2Url = await uploadImageUrlToR2(imageUrl, key);
   if (!r2Url) throw new Error('R2 image upload failed');
-  return { type: 'image', url: imageUrl, r2Url, prompt };
+  return { type: 'image', url: imageUrl, r2Url, prompt, provider: 'flux-realism' };
 }
 
 async function pollVeoOperation(operationName, accessToken, location) {
@@ -575,14 +575,24 @@ async function createHeroMotionWithFallback(prompt, userId) {
   const heroImageKey = createR2Key(userId, 'hero-fallback.png');
 
   if (!hasVeoConfig()) {
-    return callFluxImage(prompt, heroImageKey);
+    const fallback = await callFluxImage(prompt, heroImageKey);
+    return {
+      ...fallback,
+      fallbackFrom: 'veo3-lite',
+      fallbackReason: 'Veo config is missing',
+    };
   }
 
   try {
     return await callVeoHeroVideo(prompt, heroVideoKey);
   } catch (error) {
     console.error('[SHORTFORM-BROLL] Veo hero clip failed, falling back to Flux image:', error.message);
-    return callFluxImage(prompt, heroImageKey);
+    const fallback = await callFluxImage(prompt, heroImageKey);
+    return {
+      ...fallback,
+      fallbackFrom: 'veo3-lite',
+      fallbackReason: error.message,
+    };
   }
 }
 
