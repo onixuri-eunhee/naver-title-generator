@@ -53,7 +53,7 @@ async function logUsage(userEmail, tool, mode, ip) {
   }
 }
 
-export const BROLL_VERSION = 'v5-flux-pro';
+export const BROLL_VERSION = 'v5-flux-pro-queue';
 
 const FLUX_MODEL = 'fal-ai/flux-pro/v1.1';
 const FLUX_IMAGE_SIZE = { width: 768, height: 1344 };
@@ -270,7 +270,8 @@ async function persistVideoResult(videoPayload, key) {
 async function callFluxImage(prompt, key) {
   if (!process.env.FAL_KEY) throw new Error('FAL_KEY is missing');
 
-  const response = await fetchWithTimeout('https://queue.fal.run/' + FLUX_MODEL, {
+  // 1) 큐에 요청 제출
+  const submitRes = await fetchWithTimeout('https://queue.fal.run/' + FLUX_MODEL, {
     method: 'POST',
     headers: {
       Authorization: `Key ${process.env.FAL_KEY}`,
@@ -282,11 +283,44 @@ async function callFluxImage(prompt, key) {
       num_images: 1,
       safety_tolerance: '5',
     }),
-  }, 60000);
-  const data = await parseJsonResponse(response);
-  if (!response.ok) throw new Error(`FLUX image failed: ${response.status} ${JSON.stringify(data)}`);
-  const imageUrl = data?.images?.[0]?.url || data?.data?.[0]?.url || findFirstUrl(data);
-  if (!imageUrl) throw new Error('FLUX image URL not found in response');
+  }, 30000);
+  const submitData = await parseJsonResponse(submitRes);
+  if (!submitRes.ok) throw new Error(`FLUX submit failed: ${submitRes.status} ${JSON.stringify(submitData)}`);
+
+  const requestId = submitData.request_id;
+  if (!requestId) {
+    // 동기 응답인 경우
+    const imageUrl = submitData?.images?.[0]?.url || findFirstUrl(submitData);
+    if (!imageUrl) throw new Error('FLUX image URL not found');
+    const r2Url = await uploadImageUrlToR2(imageUrl, key);
+    if (!r2Url) throw new Error('R2 image upload failed');
+    return { type: 'image', url: imageUrl, r2Url, prompt };
+  }
+
+  // 2) 결과 폴링
+  const pollUrl = `https://queue.fal.run/${FLUX_MODEL}/requests/${requestId}`;
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 120000) {
+    await sleep(2000);
+    const statusRes = await fetchWithTimeout(pollUrl + '/status', {
+      method: 'GET',
+      headers: { Authorization: `Key ${process.env.FAL_KEY}` },
+    }, 10000);
+    const statusData = await parseJsonResponse(statusRes);
+    const status = (statusData.status || '').toUpperCase();
+    if (status === 'COMPLETED') break;
+    if (status === 'FAILED') throw new Error(`FLUX generation failed: ${JSON.stringify(statusData)}`);
+  }
+
+  // 3) 결과 가져오기
+  const resultRes = await fetchWithTimeout(pollUrl, {
+    method: 'GET',
+    headers: { Authorization: `Key ${process.env.FAL_KEY}` },
+  }, 15000);
+  const resultData = await parseJsonResponse(resultRes);
+  if (!resultRes.ok) throw new Error(`FLUX result failed: ${resultRes.status} ${JSON.stringify(resultData)}`);
+  const imageUrl = resultData?.images?.[0]?.url || findFirstUrl(resultData);
+  if (!imageUrl) throw new Error('FLUX image URL not found in result');
   const r2Url = await uploadImageUrlToR2(imageUrl, key);
   if (!r2Url) throw new Error('R2 image upload failed');
   return { type: 'image', url: imageUrl, r2Url, prompt };
