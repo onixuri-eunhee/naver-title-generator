@@ -53,11 +53,10 @@ async function logUsage(userEmail, tool, mode, ip) {
   }
 }
 
-export const BROLL_VERSION = 'v4-xai-aspect-ratio';
+export const BROLL_VERSION = 'v5-flux-pro';
 
-const GROK_IMAGE_MODEL = 'grok-imagine-image';
-const GROK_IMAGE_ASPECT_RATIO = '9:16';
-const GROK_IMAGE_RESOLUTION = '2k';
+const FLUX_MODEL = 'fal-ai/flux-pro/v1.1';
+const FLUX_IMAGE_SIZE = { width: 768, height: 1344 };
 const CLIP_DURATION_SEC = 5;
 const SEEDANCE_POLL_INTERVAL_MS = 4000;
 const SEEDANCE_TIMEOUT_MS = 30000;
@@ -268,29 +267,29 @@ async function persistVideoResult(videoPayload, key) {
   return uploadRemoteAssetToR2(sourceUrl, key, 'video/mp4', 'video/');
 }
 
-async function callGrokImage(prompt, key) {
-  if (!process.env.XAI_API_KEY) throw new Error('XAI_API_KEY is missing');
+async function callFluxImage(prompt, key) {
+  if (!process.env.FAL_KEY) throw new Error('FAL_KEY is missing');
 
-  const response = await fetchWithTimeout('https://api.x.ai/v1/images/generations', {
+  const response = await fetchWithTimeout('https://queue.fal.run/' + FLUX_MODEL, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${process.env.XAI_API_KEY}`,
+      Authorization: `Key ${process.env.FAL_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: GROK_IMAGE_MODEL,
       prompt,
-      n: 1,
-      aspect_ratio: GROK_IMAGE_ASPECT_RATIO,
-      resolution: GROK_IMAGE_RESOLUTION,
-      response_format: 'b64_json',
+      image_size: FLUX_IMAGE_SIZE,
+      num_images: 1,
+      safety_tolerance: '5',
     }),
-  });
+  }, 60000);
   const data = await parseJsonResponse(response);
-  if (!response.ok) throw new Error(`Grok image failed: ${response.status} ${JSON.stringify(data)}`);
-  const imagePayload = data?.data?.[0] || data?.images?.[0] || data;
-  const asset = await persistImageResult(imagePayload, key);
-  return { type: 'image', url: asset.url, r2Url: asset.r2Url, prompt };
+  if (!response.ok) throw new Error(`FLUX image failed: ${response.status} ${JSON.stringify(data)}`);
+  const imageUrl = data?.images?.[0]?.url || data?.data?.[0]?.url || findFirstUrl(data);
+  if (!imageUrl) throw new Error('FLUX image URL not found in response');
+  const r2Url = await uploadImageUrlToR2(imageUrl, key);
+  if (!r2Url) throw new Error('R2 image upload failed');
+  return { type: 'image', url: imageUrl, r2Url, prompt };
 }
 
 async function fetchSeedanceStatus(id) {
@@ -363,14 +362,14 @@ async function callSeedanceVideo(prompt, key) {
 
 async function createClipWithFallback(prompt, userId, clipNumber) {
   if (!(process.env.SEEDANCE_API_KEY || '').trim()) {
-    return callGrokImage(prompt, createR2Key(userId, `clip${clipNumber}-fallback.png`));
+    return callFluxImage(prompt, createR2Key(userId, `clip${clipNumber}-fallback.png`));
   }
 
   try {
     return await callSeedanceVideo(prompt, createR2Key(userId, `clip${clipNumber}.mp4`));
   } catch (error) {
     console.error(`[SHORTFORM-BROLL] Seedance clip ${clipNumber} failed, falling back to Grok image:`, error.message);
-    return callGrokImage(prompt, createR2Key(userId, `clip${clipNumber}-fallback.png`));
+    return callFluxImage(prompt, createR2Key(userId, `clip${clipNumber}-fallback.png`));
   }
 }
 
@@ -385,7 +384,7 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
           ok: true,
           stage: 'ping',
           version: BROLL_VERSION,
-          hasXaiKey: !!((process.env.XAI_API_KEY || '').trim()),
+          hasFalKey: !!((process.env.FAL_KEY || '').trim()),
           hasSeedanceKey: !!((process.env.SEEDANCE_API_KEY || '').trim()),
           hasR2: !!(process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET_NAME),
         },
@@ -416,7 +415,7 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
 
   const failures = [];
   const [heroImage, clip1, clip2] = await Promise.all([
-    callGrokImage(imagePrompt, createR2Key(userId, 'img.png')).catch(error => {
+    callFluxImage(imagePrompt, createR2Key(userId, 'img.png')).catch(error => {
       console.error('[SHORTFORM-BROLL] Grok hero image failed:', error.message);
       failures.push(`hero:${error.message}`);
       return null;

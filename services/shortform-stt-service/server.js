@@ -105,7 +105,7 @@ const server = http.createServer(async function(req, res) {
       sttVersion: STT_VERSION,
       brollVersion: BROLL_VERSION,
       hasOpenAIKey: !!((process.env.OPENAI_API_KEY || '').trim()),
-      hasXaiKey: !!((process.env.XAI_API_KEY || '').trim()),
+      hasFalKey: !!((process.env.FAL_KEY || '').trim()),
       hasSeedanceKey: !!((process.env.SEEDANCE_API_KEY || '').trim()),
       maxAudioMb: Number(process.env.SHORTFORM_STT_MAX_AUDIO_MB || 20),
     });
