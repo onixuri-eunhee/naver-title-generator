@@ -2496,7 +2496,7 @@
 
           /* ── 모션 그래픽 씬 구성 ── */
           var validImages = images.filter(Boolean);
-          var scenes = buildMotionScenes(state.script, validImages, duration);
+          var scenes = buildMotionScenes(state.script, validImages, duration, state.sttSegments);
           var ACCENT = '#ff5f1f';
           var ACCENT2 = '#10B981';
           var BG_GRAD_1 = '#1A1A2E';
@@ -2579,28 +2579,76 @@
             }
           }
 
-          function buildMotionScenes(script, imgs, totalDur) {
-            var hookText = (script.hook || '').trim();
-            var pointText = (script.point || '').trim();
-            var ctaText = (script.cta || '').trim();
-            var parts = [hookText, pointText, ctaText].filter(Boolean);
-            if (parts.length === 0) parts = [''];
-            var sceneList = [];
-            var numTextScenes = parts.length;
-            var numBrollScenes = Math.min(imgs.length, numTextScenes);
-            var totalScenes = numTextScenes + numBrollScenes;
-            var sceneDur = totalDur / totalScenes;
-            var t = 0;
-            for (var i = 0; i < numTextScenes; i++) {
-              sceneList.push({ type: 'text', text: parts[i], section: i, start: t, duration: sceneDur });
-              t += sceneDur;
-              if (i < numBrollScenes) {
-                sceneList.push({ type: 'broll', imageIndex: i, start: t, duration: sceneDur });
-                t += sceneDur;
+          function findSectionBoundaries(script, sttSegments, totalDur) {
+            var sections = [
+              (script.hook || '').trim(),
+              (script.point || '').trim(),
+              (script.cta || '').trim()
+            ].filter(Boolean);
+            if (sections.length === 0) return [{ start: 0, end: totalDur }];
+            if (!sttSegments.length) {
+              var charTotal = sections.reduce(function(s, t) { return s + t.length; }, 0) || 1;
+              var boundaries = []; var ct = 0;
+              for (var i = 0; i < sections.length; i++) {
+                var ratio = sections[i].length / charTotal;
+                boundaries.push({ start: ct, end: ct + totalDur * ratio, text: sections[i] });
+                ct += totalDur * ratio;
+              }
+              return boundaries;
+            }
+            var allSttText = sttSegments.map(function(s) { return s.text; }).join('');
+            var sectionTextsNorm = sections.map(function(t) { return t.replace(/\s+/g, ''); });
+            var sttTextsNorm = sttSegments.map(function(s) { return s.text.replace(/\s+/g, ''); });
+            var cumChars = [0];
+            for (var ci = 0; ci < sttTextsNorm.length; ci++) {
+              cumChars.push(cumChars[ci] + sttTextsNorm[ci].length);
+            }
+            var totalSttChars = cumChars[cumChars.length - 1] || 1;
+            var sectionCharLens = sectionTextsNorm.map(function(t) { return t.length; });
+            var totalScriptChars = sectionCharLens.reduce(function(a, b) { return a + b; }, 0) || 1;
+            var boundaries = [];
+            var charCursor = 0;
+            for (var si = 0; si < sections.length; si++) {
+              var sectionRatio = sectionCharLens[si] / totalScriptChars;
+              var sectionChars = Math.round(sectionRatio * totalSttChars);
+              var startChar = charCursor;
+              var endChar = Math.min(charCursor + sectionChars, totalSttChars);
+              var startSeg = 0; var endSeg = sttSegments.length - 1;
+              for (var j = 0; j < cumChars.length; j++) {
+                if (cumChars[j] <= startChar) startSeg = j;
+                if (cumChars[j] >= endChar) { endSeg = Math.max(0, j - 1); break; }
+              }
+              startSeg = Math.min(startSeg, sttSegments.length - 1);
+              endSeg = Math.min(endSeg, sttSegments.length - 1);
+              var tStart = si === 0 ? 0 : sttSegments[startSeg].start;
+              var tEnd = si === sections.length - 1 ? totalDur : (sttSegments[endSeg].end || sttSegments[endSeg].start + 0.5);
+              boundaries.push({ start: tStart, end: tEnd, text: sections[si] });
+              charCursor = endChar;
+            }
+            for (var bi = 1; bi < boundaries.length; bi++) {
+              if (boundaries[bi].start < boundaries[bi - 1].end) {
+                var mid = (boundaries[bi].start + boundaries[bi - 1].end) / 2;
+                boundaries[bi - 1].end = mid;
+                boundaries[bi].start = mid;
               }
             }
-            if (sceneList.length > 0) {
-              sceneList[sceneList.length - 1].duration += (totalDur - t);
+            return boundaries;
+          }
+
+          function buildMotionScenes(script, imgs, totalDur, sttSegments) {
+            var boundaries = findSectionBoundaries(script, sttSegments, totalDur);
+            var sceneList = [];
+            var brollDur = 2.5;
+            for (var i = 0; i < boundaries.length; i++) {
+              var b = boundaries[i];
+              var sectionDur = b.end - b.start;
+              if (i < imgs.length && sectionDur > brollDur + 1) {
+                var textDur = sectionDur - brollDur;
+                sceneList.push({ type: 'text', text: b.text, section: i, start: b.start, duration: textDur });
+                sceneList.push({ type: 'broll', imageIndex: i, start: b.start + textDur, duration: brollDur });
+              } else {
+                sceneList.push({ type: 'text', text: b.text, section: i, start: b.start, duration: sectionDur });
+              }
             }
             return sceneList;
           }
