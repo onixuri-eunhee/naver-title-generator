@@ -2600,7 +2600,11 @@
               video.loop = true;
               video.preload = 'auto';
               video.playsInline = true;
-              video.onloadeddata = function() {
+              video.onloadedmetadata = function() {
+                if (!video.videoWidth || !video.videoHeight) {
+                  resolve(null);
+                  return;
+                }
                 resolve({ kind: 'video', element: video, meta: item });
               };
               video.onerror = function() { resolve(null); };
@@ -2621,8 +2625,8 @@
       function drawVisualCover(ctx, visual, cw, ch) {
         if (!visual || !visual.element) { ctx.fillStyle = '#1A1A2E'; ctx.fillRect(0, 0, cw, ch); return; }
         var source = visual.element;
-        var sourceWidth = visual.kind === 'video' ? (source.videoWidth || cw) : source.naturalWidth;
-        var sourceHeight = visual.kind === 'video' ? (source.videoHeight || ch) : source.naturalHeight;
+        var sourceWidth = visual.kind === 'video' ? source.videoWidth : source.naturalWidth;
+        var sourceHeight = visual.kind === 'video' ? source.videoHeight : source.naturalHeight;
         if (!sourceWidth || !sourceHeight) { ctx.fillStyle = '#1A1A2E'; ctx.fillRect(0, 0, cw, ch); return; }
         var imgRatio = sourceWidth / sourceHeight;
         var canvasRatio = cw / ch;
