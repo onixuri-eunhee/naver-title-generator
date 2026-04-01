@@ -2010,6 +2010,24 @@
         return 'webm';
       }
 
+      function getSafeAudioHeaderFileName(mimeType) {
+        var fallback = 'audio.' + guessExtensionFromMime(mimeType || 'audio/webm');
+        var original = (state.audioFileName || fallback).trim();
+        if (!original) return fallback;
+
+        var extMatch = original.match(/\.([a-zA-Z0-9]+)$/);
+        var ext = extMatch ? extMatch[1].toLowerCase() : guessExtensionFromMime(mimeType || 'audio/webm');
+        var base = original.replace(/\.[a-zA-Z0-9]+$/, '');
+        var sanitized = base
+          .replace(/[^\x20-\x7E]+/g, '_')
+          .replace(/[^a-zA-Z0-9._-]+/g, '_')
+          .replace(/^_+|_+$/g, '')
+          .slice(0, 60);
+
+        if (!sanitized) sanitized = 'audio';
+        return sanitized + '.' + ext;
+      }
+
       function revokeAudioUrl() {
         if (state.audioUrl) URL.revokeObjectURL(state.audioUrl);
         state.audioUrl = '';
@@ -2088,7 +2106,7 @@
         var headers = createHeaders({
           'Content-Type': mimeType,
           'X-Audio-Mime-Type': mimeType,
-          'X-Audio-File-Name': state.audioFileName || ('audio.' + guessExtensionFromMime(mimeType))
+          'X-Audio-File-Name': getSafeAudioHeaderFileName(mimeType)
         });
         if (probeMode) headers['X-Stt-Probe'] = probeMode;
         return {
