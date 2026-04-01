@@ -7,6 +7,11 @@ import {
   normalizeError,
   readIncomingBody,
 } from '../shortform-stt-core.js';
+import {
+  BROLL_VERSION,
+  handleShortformBrollRequest,
+  normalizeBrollError,
+} from '../shortform-broll-core.js';
 
 const PORT = Number(process.env.PORT || 8080);
 const SERVICE_SECRET = (process.env.STT_SERVICE_SHARED_SECRET || '').trim();
@@ -41,8 +46,15 @@ function setCorsHeaders(req, res) {
 function writeJson(res, status, body) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('X-Shortform-Stt-Version', STT_VERSION);
+  if (!res.hasHeader('X-Shortform-Stt-Version')) {
+    res.setHeader('X-Shortform-Stt-Version', STT_VERSION);
+  }
   res.end(JSON.stringify(body));
+}
+
+function getVersionHeader(pathname) {
+  if (pathname === '/api/shortform-broll') return BROLL_VERSION;
+  return STT_VERSION;
 }
 
 function extractBearerToken(req) {
@@ -89,15 +101,18 @@ const server = http.createServer(async function(req, res) {
   if (reqUrl.pathname === '/health') {
     writeJson(res, 200, {
       ok: true,
-      service: 'shortform-stt',
-      version: STT_VERSION,
+      service: 'shortform-media',
+      sttVersion: STT_VERSION,
+      brollVersion: BROLL_VERSION,
       hasOpenAIKey: !!((process.env.OPENAI_API_KEY || '').trim()),
+      hasXaiKey: !!((process.env.XAI_API_KEY || '').trim()),
+      hasSeedanceKey: !!((process.env.SEEDANCE_API_KEY || '').trim()),
       maxAudioMb: Number(process.env.SHORTFORM_STT_MAX_AUDIO_MB || 20),
     });
     return;
   }
 
-  if (reqUrl.pathname !== '/api/shortform-stt') {
+  if (!['/api/shortform-stt', '/api/shortform-broll'].includes(reqUrl.pathname)) {
     writeJson(res, 404, { error: 'Not found' });
     return;
   }
@@ -109,17 +124,31 @@ const server = http.createServer(async function(req, res) {
 
   try {
     const rawBody = req.method === 'GET' ? Buffer.alloc(0) : await readIncomingBody(req);
-    const result = await handleShortformSttRequest({
-      method: req.method,
-      headers: req.headers,
-      query: getQueryObject(reqUrl.searchParams),
-      rawBody,
-    });
+    let result;
+    if (reqUrl.pathname === '/api/shortform-broll') {
+      result = await handleShortformBrollRequest({
+        method: req.method,
+        rawBody,
+        query: getQueryObject(reqUrl.searchParams),
+        userEmail: await resolveSessionEmail(extractBearerToken(req)),
+        ip: req.headers['x-real-ip'] || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown',
+      });
+    } else {
+      result = await handleShortformSttRequest({
+        method: req.method,
+        headers: req.headers,
+        query: getQueryObject(reqUrl.searchParams),
+        rawBody,
+      });
+    }
+    res.setHeader('X-Shortform-Stt-Version', getVersionHeader(reqUrl.pathname));
     writeJson(res, result.status, result.body);
   } catch (error) {
-    const normalized = normalizeError(error);
-    console.error('[railway-shortform-stt] error:', normalized.message);
-    writeJson(res, normalized.status, { error: normalized.message, version: STT_VERSION });
+    const normalized = reqUrl.pathname === '/api/shortform-broll'
+      ? normalizeBrollError(error)
+      : normalizeError(error);
+    console.error('[railway-shortform-media] error:', normalized.message);
+    writeJson(res, normalized.status, { error: normalized.message, version: getVersionHeader(reqUrl.pathname) });
   }
 });
 
