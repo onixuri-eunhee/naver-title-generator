@@ -1,276 +1,66 @@
 import { extractToken, resolveAdmin, resolveSessionEmail, setCorsHeaders, getClientIp } from './_helpers.js';
 import { logUsage } from './_db.js';
-import https from 'node:https';
-import FormData from 'form-data';
+import {
+  STT_VERSION,
+  handleShortformSttRequest,
+  normalizeError,
+  readIncomingBody,
+} from '../services/shortform-stt-core.js';
 
 export const config = {
   maxDuration: 300,
   api: { bodyParser: false },
 };
 
-const STT_VERSION = 'v3-probe-formdata';
-const MAX_AUDIO_SIZE = 4 * 1024 * 1024;
-
-function parseRequestBody(body) {
-  if (!body) return {};
-  if (typeof body === 'string') {
-    try {
-      return JSON.parse(body);
-    } catch (_) {
-      return {};
-    }
-  }
-  return body;
-}
-
-function getHeaderValue(req, key) {
-  if (!req || !req.headers) return '';
-  return req.headers[key] || req.headers[key.toLowerCase()] || '';
-}
+const REMOTE_STT_BASE_URL = (process.env.SHORTFORM_STT_SERVICE_URL || '').trim().replace(/\/+$/, '');
+const REMOTE_STT_SECRET = (process.env.STT_SERVICE_SHARED_SECRET || '').trim();
 
 function getProbeMode(req) {
-  const fromHeader = getHeaderValue(req, 'x-stt-probe');
-  if (fromHeader && typeof fromHeader === 'string') return fromHeader.trim().toLowerCase();
-  const fromQuery = req?.query?.probe;
-  if (typeof fromQuery === 'string') return fromQuery.trim().toLowerCase();
-  return '';
+  const fromHeader = req.headers['x-stt-probe'] || '';
+  if (typeof fromHeader === 'string' && fromHeader.trim()) return fromHeader.trim().toLowerCase();
+  const fromQuery = req.query?.probe;
+  return typeof fromQuery === 'string' ? fromQuery.trim().toLowerCase() : '';
 }
 
-function getRequestMimeType(req) {
-  const explicit = getHeaderValue(req, 'x-audio-mime-type');
-  if (explicit && typeof explicit === 'string') return explicit.trim();
-  const contentType = getHeaderValue(req, 'content-type');
-  if (!contentType || typeof contentType !== 'string') return '';
-  return contentType.split(';')[0].trim();
+function buildProxyUrl(req) {
+  const url = new URL(`${REMOTE_STT_BASE_URL}/api/shortform-stt`);
+  if (typeof req.query?.probe === 'string' && req.query.probe.trim()) {
+    url.searchParams.set('probe', req.query.probe.trim());
+  }
+  return url;
 }
 
-async function readRawRequestBody(req) {
-  if (Buffer.isBuffer(req.body)) return req.body;
-  if (typeof req.body === 'string') return Buffer.from(req.body);
-  if (req.body && typeof req.body === 'object' && !(req.body instanceof Uint8Array)) {
-    return Buffer.from(JSON.stringify(req.body));
-  }
+async function proxyToRailway(req, rawBody) {
+  const headers = {
+    'X-Stt-Service-Secret': REMOTE_STT_SECRET,
+  };
+  const contentType = req.headers['content-type'];
+  const audioMimeType = req.headers['x-audio-mime-type'];
+  const probeMode = req.headers['x-stt-probe'];
 
-  const chunks = [];
-  for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  return chunks.length ? Buffer.concat(chunks) : Buffer.alloc(0);
-}
+  if (contentType) headers['Content-Type'] = contentType;
+  if (audioMimeType) headers['X-Audio-Mime-Type'] = audioMimeType;
+  if (probeMode) headers['X-Stt-Probe'] = probeMode;
 
-async function parseIncomingAudio(req) {
-  const contentType = getHeaderValue(req, 'content-type');
-  const normalizedContentType = typeof contentType === 'string' ? contentType.toLowerCase() : '';
-  const rawBody = await readRawRequestBody(req);
-
-  if (!rawBody.length) {
-    return { buffer: null, mimeType: getRequestMimeType(req) || 'application/octet-stream' };
-  }
-
-  if (normalizedContentType.includes('application/json')) {
-    const bodyText = rawBody.toString('utf8');
-    const body = parseRequestBody(bodyText);
-    const { audioBase64, mimeType } = body;
-    return decodeAudioPayload(audioBase64, mimeType);
-  }
+  const response = await fetch(buildProxyUrl(req), {
+    method: req.method,
+    headers,
+    body: req.method === 'GET' ? undefined : rawBody,
+  });
 
   return {
-    buffer: rawBody,
-    mimeType: getRequestMimeType(req) || 'audio/webm',
+    status: response.status,
+    text: await response.text(),
+    contentType: response.headers.get('content-type') || 'application/json; charset=utf-8',
+    version: response.headers.get('x-shortform-stt-version') || STT_VERSION,
   };
 }
 
-function decodeAudioPayload(audioBase64, mimeType) {
-  if (!audioBase64 || typeof audioBase64 !== 'string') return { buffer: null, mimeType };
-
-  const dataUrlMatch = audioBase64.match(/^data:([^;]+);base64,(.+)$/);
-  const resolvedMimeType = dataUrlMatch?.[1] || mimeType || 'application/octet-stream';
-  const rawBase64 = (dataUrlMatch?.[2] || audioBase64).replace(/\s+/g, '');
-  const normalizedBase64 = rawBase64.replace(/-/g, '+').replace(/_/g, '/');
-  const buffer = Buffer.from(normalizedBase64, 'base64');
-
-  if (!buffer.length) return { buffer: null, mimeType: resolvedMimeType };
-  return { buffer, mimeType: resolvedMimeType };
-}
-
-function getFilename(mimeType) {
-  const extension = ({
-    'audio/mpeg': 'mp3',
-    'audio/mp3': 'mp3',
-    'audio/mp4': 'm4a',
-    'audio/m4a': 'm4a',
-    'audio/wav': 'wav',
-    'audio/x-wav': 'wav',
-    'audio/webm': 'webm',
-    'audio/ogg': 'ogg',
-    'audio/aac': 'aac',
-    'audio/flac': 'flac',
-    'video/mp4': 'mp4',
-    'video/webm': 'webm',
-  })[mimeType] || 'webm';
-
-  return `audio.${extension}`;
-}
-
-function normalizeWords(words) {
-  if (!Array.isArray(words)) return [];
-
-  return words
-    .filter(item => item && typeof item.word === 'string' && Number.isFinite(item.start) && Number.isFinite(item.end))
-    .map(item => ({ word: item.word, start: item.start, end: item.end }));
-}
-
-function normalizeSegments(segments) {
-  if (!Array.isArray(segments)) return [];
-
-  return segments
-    .filter(item => item && typeof item.text === 'string' && Number.isFinite(item.start))
-    .map(item => ({
-      word: item.text,
-      start: item.start,
-      end: Number.isFinite(item.end) ? item.end : item.start,
-    }));
-}
-
-function getOpenAIApiKey() {
-  const apiKey = (process.env.OPENAI_API_KEY || '').replace(/\n/g, '').trim();
-  if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
-  return apiKey;
-}
-
-function buildTranscriptionForm(buffer, mimeType) {
-  const filename = getFilename(mimeType);
-  const resolvedType = mimeType || 'audio/webm';
-  const form = new FormData();
-  form.append('file', buffer, { filename, contentType: resolvedType });
-  form.append('model', 'whisper-1');
-  form.append('response_format', 'verbose_json');
-  form.append('timestamp_granularities[]', 'segment');
-  form.append('language', 'ko');
-  return form;
-}
-
-function getFormBuffer(form) {
-  try {
-    return form.getBuffer();
-  } catch (error) {
-    throw new Error('multipart buffer build failed: ' + (error?.message || error));
-  }
-}
-
-function getFormLength(form) {
-  return new Promise(function(resolve, reject) {
-    form.getLength(function(error, length) {
-      if (error) return reject(error);
-      resolve(length);
-    });
-  });
-}
-
-function buildTinyWavBuffer() {
-  const header = Buffer.alloc(44);
-  header.write('RIFF', 0);
-  header.writeUInt32LE(36, 4);
-  header.write('WAVE', 8);
-  header.write('fmt ', 12);
-  header.writeUInt32LE(16, 16);
-  header.writeUInt16LE(1, 20);
-  header.writeUInt16LE(1, 22);
-  header.writeUInt32LE(16000, 24);
-  header.writeUInt32LE(32000, 28);
-  header.writeUInt16LE(2, 32);
-  header.writeUInt16LE(16, 34);
-  header.write('data', 36);
-  header.writeUInt32LE(0, 40);
-  return header;
-}
-
-async function probeOpenAIModels(apiKey) {
-  return await new Promise(function(resolve, reject) {
-    const request = https.request('https://api.openai.com/v1/models', {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-    }, function(res) {
-      const chunks = [];
-      res.on('data', function(chunk) {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      });
-      res.on('end', function() {
-        resolve({
-          status: res.statusCode || 0,
-          text: Buffer.concat(chunks).toString('utf8'),
-        });
-      });
-    });
-
-    request.setTimeout(30000, function() {
-      request.destroy(new Error('OpenAI models probe timed out'));
-    });
-    request.on('error', reject);
-    request.end();
-  });
-}
-
-async function callTranscriptionsEndpoint(buffer, mimeType) {
-  const apiKey = getOpenAIApiKey();
-  const form = buildTranscriptionForm(buffer, mimeType);
-  const multipartBuffer = getFormBuffer(form);
-
-  return await new Promise(function(resolve, reject) {
-    const request = https.request('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        ...form.getHeaders(),
-        'Content-Length': String(multipartBuffer.length),
-      },
-    }, function(res) {
-      const chunks = [];
-      res.on('data', function(chunk) {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      });
-      res.on('end', function() {
-        resolve({
-          status: res.statusCode || 0,
-          text: Buffer.concat(chunks).toString('utf8'),
-        });
-      });
-    });
-
-    request.setTimeout(90000, function() {
-      request.destroy(new Error('Whisper transcription timed out'));
-    });
-    request.on('error', reject);
-    request.write(multipartBuffer);
-    request.end();
-  });
-}
-
-async function transcribeAudio(buffer, mimeType) {
-  try {
-    const response = await callTranscriptionsEndpoint(buffer, mimeType);
-    const text = response.text;
-    let data = {};
-    try {
-      data = text ? JSON.parse(text) : {};
-    } catch (_) {
-      data = { error: { message: text || 'Invalid Whisper response' } };
-    }
-
-    if (response.status < 200 || response.status >= 300) {
-      const message = data?.error?.message || 'Whisper transcription failed';
-      console.error('[shortform-stt] Whisper HTTP error:', response.status, text.slice(0, 500));
-      throw new Error(message + ' (HTTP ' + response.status + ')');
-    }
-
-    return data;
-  } catch (error) {
-    var message = error && error.message ? error.message : 'Whisper transcription failed';
-    console.error('[shortform-stt] Whisper upload error:', message);
-    throw new Error(message);
-  }
+function writeProxyResponse(res, proxied) {
+  res.statusCode = proxied.status;
+  res.setHeader('Content-Type', proxied.contentType);
+  res.setHeader('X-Shortform-Stt-Version', proxied.version);
+  res.end(proxied.text);
 }
 
 export default async function handler(req, res) {
@@ -281,58 +71,26 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  if (req.method === 'GET') {
-    const probeMode = getProbeMode(req);
-    if (probeMode === 'ping') {
-      return res.status(200).json({
-        ok: true,
-        stage: 'ping',
-        version: STT_VERSION,
-        hasOpenAIKey: !!((process.env.OPENAI_API_KEY || '').trim()),
-      });
-    }
-    if (probeMode === 'models') {
-      try {
-        const modelsResponse = await probeOpenAIModels(getOpenAIApiKey());
-        return res.status(200).json({
-          ok: true,
-          stage: 'models',
-          version: STT_VERSION,
-          status: modelsResponse.status,
-          bodyPreview: modelsResponse.text.slice(0, 300),
-        });
-      } catch (error) {
-        return res.status(502).json({
-          error: 'models probe failed: ' + (error?.message || 'unknown'),
-          version: STT_VERSION,
-        });
-      }
-    }
-    if (probeMode === 'transcribe-dry') {
-      try {
-        const dryResponse = await callTranscriptionsEndpoint(buildTinyWavBuffer(), 'audio/wav');
-        return res.status(200).json({
-          ok: true,
-          stage: 'transcribe-dry',
-          version: STT_VERSION,
-          upstreamStatus: dryResponse.status,
-          bodyPreview: dryResponse.text.slice(0, 300),
-        });
-      } catch (error) {
-        return res.status(502).json({
-          error: 'transcribe-dry probe failed: ' + (error?.message || 'unknown'),
-          version: STT_VERSION,
-        });
-      }
-    }
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  if (req.method !== 'POST') {
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    if (req.method === 'GET') {
+      if (REMOTE_STT_BASE_URL && REMOTE_STT_SECRET) {
+        const proxied = await proxyToRailway(req, Buffer.alloc(0));
+        return writeProxyResponse(res, proxied);
+      }
+
+      const localGet = await handleShortformSttRequest({
+        method: 'GET',
+        headers: req.headers,
+        query: req.query || {},
+        rawBody: Buffer.alloc(0),
+      });
+      return res.status(localGet.status).json(localGet.body);
+    }
+
     const isAdmin = await resolveAdmin(req);
     const token = extractToken(req);
     const email = await resolveSessionEmail(token);
@@ -341,91 +99,33 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: '로그인이 필요합니다.' });
     }
 
-    const { buffer, mimeType: resolvedMimeType } = await parseIncomingAudio(req);
+    const rawBody = await readIncomingBody(req);
 
-    if (!buffer) {
-      return res.status(400).json({ error: '오디오 데이터가 필요합니다.' });
-    }
+    if (REMOTE_STT_BASE_URL && REMOTE_STT_SECRET) {
+      const proxied = await proxyToRailway(req, rawBody);
 
-    if (buffer.length > MAX_AUDIO_SIZE) {
-      return res.status(413).json({ error: '오디오 파일은 4MB 이하여야 합니다.' });
-    }
-
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('[shortform-stt] OPENAI_API_KEY is missing');
-      return res.status(500).json({ error: '서버 설정 오류가 발생했습니다.' });
-    }
-
-    const probeMode = getProbeMode(req);
-    if (probeMode === 'raw') {
-      return res.status(200).json({
-        ok: true,
-        stage: 'raw',
-        version: STT_VERSION,
-        bytes: buffer.length,
-        mimeType: resolvedMimeType,
-        hasOpenAIKey: true,
-      });
-    }
-    if (probeMode === 'form') {
-      const probeForm = buildTranscriptionForm(buffer, resolvedMimeType);
-      let length = null;
-      let bufferLength = null;
-      try {
-        length = await getFormLength(probeForm);
-      } catch (error) {
-        length = null;
+      if (proxied.status >= 200 && proxied.status < 300 && !getProbeMode(req)) {
+        await logUsage(email, 'shortform-stt', null, getClientIp(req));
       }
-      try {
-        bufferLength = getFormBuffer(probeForm).length;
-      } catch (error) {
-        bufferLength = null;
-      }
-      return res.status(200).json({
-        ok: true,
-        stage: 'form',
-        version: STT_VERSION,
-        bytes: buffer.length,
-        mimeType: resolvedMimeType,
-        multipartLength: length,
-        multipartBufferLength: bufferLength,
-        headerKeys: Object.keys(probeForm.getHeaders()),
-      });
-    }
-    if (probeMode === 'models') {
-      const modelsResponse = await probeOpenAIModels(getOpenAIApiKey());
-      return res.status(200).json({
-        ok: true,
-        stage: 'models',
-        version: STT_VERSION,
-        status: modelsResponse.status,
-        bodyPreview: modelsResponse.text.slice(0, 300),
-      });
+
+      return writeProxyResponse(res, proxied);
     }
 
-    let whisperData;
-    try {
-      whisperData = await transcribeAudio(buffer, resolvedMimeType);
-    } catch (error) {
-      console.error('[shortform-stt] Whisper API error:', error?.message || error);
-      return res.status(502).json({ error: '음성 전사 중 오류: ' + (error?.message || '알 수 없는 오류') });
-    }
-
-    const segments = normalizeWords(
-      whisperData.words || whisperData.segments?.flatMap(segment => segment?.words || []) || []
-    );
-    const normalizedSegments = segments.length ? segments : normalizeSegments(whisperData.segments || []);
-    const duration = normalizedSegments.length ? normalizedSegments[normalizedSegments.length - 1].end : whisperData.duration || 0;
-
-    await logUsage(email, 'shortform-stt', null, getClientIp(req));
-
-    return res.status(200).json({
-      segments: normalizedSegments,
-      fullText: whisperData.text || '',
-      duration,
+    const localPost = await handleShortformSttRequest({
+      method: 'POST',
+      headers: req.headers,
+      query: req.query || {},
+      rawBody,
     });
+
+    if (!getProbeMode(req)) {
+      await logUsage(email, 'shortform-stt', null, getClientIp(req));
+    }
+
+    return res.status(localPost.status).json(localPost.body);
   } catch (error) {
-    console.error('[shortform-stt] API error:', error);
-    return res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+    const normalized = normalizeError(error);
+    console.error('[shortform-stt] API error:', normalized.message);
+    return res.status(normalized.status).json({ error: normalized.message, version: STT_VERSION });
   }
 }
