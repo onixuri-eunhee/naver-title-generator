@@ -770,6 +770,39 @@
       width: 100%;
       height: 42px;
     }
+    .audio-trim-panel {
+      display: none;
+      margin-top: 14px;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+    }
+    .audio-trim-panel.show { display: block; }
+    .trim-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .trim-field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .trim-field input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .trim-help {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
     .loading-box {
       display: none;
       align-items: center;
@@ -822,7 +855,29 @@
       margin-bottom: 14px;
     }
     /* Step 4 렌더링 */
-    .render-controls { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+    .render-controls { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+    .render-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(180px, 220px));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .render-option label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .render-option select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fff;
+    }
     .render-btn {
       padding: 12px 28px; border-radius: 14px; border: none; cursor: pointer;
       font-size: 15px; font-weight: 700; color: #fff; background: var(--accent);
@@ -1287,6 +1342,19 @@
               </div>
             </div>
             <audio id="audioPlayer" controls preload="metadata"></audio>
+            <div class="audio-trim-panel" id="audioTrimPanel">
+              <div class="trim-grid">
+                <div class="trim-field">
+                  <label for="trimStartInput">시작 잘라내기(초)</label>
+                  <input type="number" id="trimStartInput" min="0" step="0.1" value="0">
+                </div>
+                <div class="trim-field">
+                  <label for="trimEndInput">끝 시점(초)</label>
+                  <input type="number" id="trimEndInput" min="0" step="0.1" value="0">
+                </div>
+              </div>
+              <div class="trim-help" id="trimSummary">시작 공백과 마지막 무음을 잘라낼 수 있습니다. 중간 숨소리/무음 자동 제거는 다음 단계에서 추가할 수 있습니다.</div>
+            </div>
           </div>
 
           <div class="error-box" id="audioError"></div>
@@ -1353,6 +1421,23 @@
         <div class="step-check" id="step4Check">✓</div>
       </div>
       <div class="step-body">
+        <div class="render-options">
+          <div class="render-option">
+            <label for="textRevealSelect">텍스트 등장 방식</label>
+            <select id="textRevealSelect">
+              <option value="line">한 줄씩 등장</option>
+              <option value="block">문단 한번에 등장</option>
+            </select>
+          </div>
+          <div class="render-option">
+            <label for="motionSpeedSelect">텍스트 속도</label>
+            <select id="motionSpeedSelect">
+              <option value="normal">보통</option>
+              <option value="slow">느리게</option>
+              <option value="fast">빠르게</option>
+            </select>
+          </div>
+        </div>
         <div class="render-controls">
           <button type="button" class="render-btn" id="renderStartBtn">영상 생성 시작</button>
           <button type="button" class="render-btn cancel" id="renderCancelBtn" style="display:none;">취소</button>
@@ -1408,6 +1493,13 @@
         audioMimeType: '',
         audioUrl: '',
         audioSourceType: '',
+        audioDuration: 0,
+        trimStart: 0,
+        trimEnd: 0,
+        trimAutoDetected: false,
+        trimAnalysisId: 0,
+        textRevealMode: 'line',
+        motionSpeed: 'normal',
         mediaRecorder: null,
         mediaStream: null,
         recordChunks: [],
@@ -1456,6 +1548,10 @@
         audioPreview: document.getElementById('audioPreview'),
         audioPlayer: document.getElementById('audioPlayer'),
         audioMeta: document.getElementById('audioMeta'),
+        audioTrimPanel: document.getElementById('audioTrimPanel'),
+        trimStartInput: document.getElementById('trimStartInput'),
+        trimEndInput: document.getElementById('trimEndInput'),
+        trimSummary: document.getElementById('trimSummary'),
         audioError: document.getElementById('audioError'),
         audioSuccess: document.getElementById('audioSuccess'),
         materialsLoading: document.getElementById('materialsLoading'),
@@ -1471,6 +1567,8 @@
         step4Check: document.getElementById('step4Check'),
         renderStartBtn: document.getElementById('renderStartBtn'),
         renderCancelBtn: document.getElementById('renderCancelBtn'),
+        textRevealSelect: document.getElementById('textRevealSelect'),
+        motionSpeedSelect: document.getElementById('motionSpeedSelect'),
         renderProgressWrap: document.getElementById('renderProgressWrap'),
         renderProgressBar: document.getElementById('renderProgressBar'),
         renderProgressLabel: document.getElementById('renderProgressLabel'),
@@ -2104,6 +2202,7 @@
           return;
         }
         revokeAudioUrl();
+        resetTrimState();
         state.audioBlob = blob;
         state.audioFileName = fileName;
         state.audioMimeType = mimeType || blob.type || 'audio/webm';
@@ -2119,6 +2218,7 @@
         markStep2Complete(sourceLabel);
         clearStep3Results();
         processMaterials('영상 소재 생성 중...', 'STT 타임스탬프와 B-roll 이미지를 준비하고 있습니다.');
+        runAutoTrimDetection(blob);
       }
 
       function formatFileSize(size) {
@@ -2127,12 +2227,128 @@
         return size + 'B';
       }
 
+      function roundTrimValue(value) {
+        return Math.round(Math.max(0, Number(value) || 0) * 10) / 10;
+      }
+
+      function syncTrimInputs() {
+        var duration = state.audioDuration || 0;
+        if (!els.trimStartInput || !els.trimEndInput) return;
+        els.trimStartInput.max = duration ? duration.toFixed(1) : '0';
+        els.trimEndInput.max = duration ? duration.toFixed(1) : '0';
+        els.trimStartInput.value = roundTrimValue(state.trimStart).toFixed(1);
+        els.trimEndInput.value = roundTrimValue(state.trimEnd || duration).toFixed(1);
+        els.audioTrimPanel.classList.toggle('show', duration > 0);
+      }
+
+      function updateTrimSummary() {
+        var duration = state.audioDuration || 0;
+        if (!duration) {
+          els.trimSummary.textContent = '시작 공백과 마지막 무음을 잘라낼 수 있습니다. 중간 숨소리/무음 자동 제거는 다음 단계에서 추가할 수 있습니다.';
+          return;
+        }
+        var start = roundTrimValue(state.trimStart);
+        var end = roundTrimValue(state.trimEnd || duration);
+        var output = Math.max(0.1, end - start);
+        var autoNote = state.trimAutoDetected && start > 0 ? ' 시작 공백 자동 감지 적용.' : '';
+        els.trimSummary.textContent = '원본 ' + duration.toFixed(1) + '초 → 렌더 구간 ' + start.toFixed(1) + '초 ~ ' + end.toFixed(1) + '초, 최종 ' + output.toFixed(1) + '초로 생성됩니다.' + autoNote;
+      }
+
+      function clampTrimState() {
+        var duration = state.audioDuration || 0;
+        var start = roundTrimValue(state.trimStart);
+        var end = roundTrimValue(state.trimEnd || duration);
+        if (!duration) {
+          state.trimStart = 0;
+          state.trimEnd = 0;
+          syncTrimInputs();
+          updateTrimSummary();
+          return;
+        }
+        start = Math.min(Math.max(0, start), Math.max(0, duration - 0.1));
+        end = Math.min(Math.max(start + 0.1, end), duration);
+        state.trimStart = start;
+        state.trimEnd = end;
+        syncTrimInputs();
+        updateTrimSummary();
+      }
+
+      function resetTrimState() {
+        state.audioDuration = 0;
+        state.trimStart = 0;
+        state.trimEnd = 0;
+        state.trimAutoDetected = false;
+        state.trimAnalysisId += 1;
+        syncTrimInputs();
+        updateTrimSummary();
+      }
+
+      async function detectLeadingSilenceSeconds(blob) {
+        var AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx || !blob) return 0;
+
+        var audioCtx = new AudioCtx();
+        try {
+          var arrayBuffer = await blob.arrayBuffer();
+          var audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+          var sampleRate = audioBuffer.sampleRate;
+          var maxFrames = Math.min(audioBuffer.length, Math.floor(sampleRate * 8));
+          var windowSize = Math.max(256, Math.floor(sampleRate * 0.02));
+          var threshold = 0.02;
+          var requiredWindows = 2;
+          var consecutive = 0;
+
+          for (var i = 0; i < maxFrames; i += windowSize) {
+            var peak = 0;
+            var end = Math.min(maxFrames, i + windowSize);
+            for (var ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+              var data = audioBuffer.getChannelData(ch);
+              for (var j = i; j < end; j++) {
+                var abs = Math.abs(data[j]);
+                if (abs > peak) peak = abs;
+              }
+            }
+
+            if (peak >= threshold) {
+              consecutive += 1;
+              if (consecutive >= requiredWindows) {
+                var detected = Math.max(0, (i / sampleRate) - 0.04);
+                return roundTrimValue(detected);
+              }
+            } else {
+              consecutive = 0;
+            }
+          }
+          return 0;
+        } catch (_) {
+          return 0;
+        } finally {
+          if (audioCtx && typeof audioCtx.close === 'function') {
+            try { await audioCtx.close(); } catch (_) {}
+          }
+        }
+      }
+
+      async function runAutoTrimDetection(blob) {
+        if (!blob) return;
+        var analysisId = state.trimAnalysisId;
+        var detected = await detectLeadingSilenceSeconds(blob);
+        if (analysisId !== state.trimAnalysisId) return;
+        if (!state.audioBlob || blob !== state.audioBlob) return;
+        if (detected >= 0.2) {
+          state.trimStart = detected;
+          state.trimAutoDetected = true;
+          clampTrimState();
+        }
+      }
+
       function clearAudioSelection() {
         revokeAudioUrl();
         state.audioBlob = null;
         state.audioFileName = '';
         state.audioMimeType = '';
         state.audioSourceType = '';
+        resetTrimState();
         els.audioPlayer.removeAttribute('src');
         els.audioPlayer.load();
         els.audioPreview.classList.remove('show');
@@ -2303,6 +2519,30 @@
         els.recordStatus.textContent = '녹음 대기 중';
       });
       els.audioFileInput.addEventListener('change', handleAudioFileSelect);
+      els.audioPlayer.addEventListener('loadedmetadata', function() {
+        var duration = Number(els.audioPlayer.duration) || 0;
+        if (!duration || !isFinite(duration)) return;
+        state.audioDuration = duration;
+        state.trimStart = 0;
+        state.trimEnd = duration;
+        clampTrimState();
+      });
+      els.trimStartInput.addEventListener('input', function() {
+        state.trimStart = Number(els.trimStartInput.value) || 0;
+        state.trimAutoDetected = false;
+        clampTrimState();
+      });
+      els.trimEndInput.addEventListener('input', function() {
+        state.trimEnd = Number(els.trimEndInput.value) || 0;
+        state.trimAutoDetected = false;
+        clampTrimState();
+      });
+      els.textRevealSelect.addEventListener('change', function() {
+        state.textRevealMode = els.textRevealSelect.value || 'line';
+      });
+      els.motionSpeedSelect.addEventListener('change', function() {
+        state.motionSpeed = els.motionSpeedSelect.value || 'normal';
+      });
       els.clearUploadBtn.addEventListener('click', function() {
         clearAudioSelection();
         showBox(els.audioError, '');
@@ -2420,6 +2660,48 @@
         updateRenderProgress(0, '');
       }
 
+      function createTrimmedAudioBuffer(audioCtx, audioBuffer, startSec, endSec) {
+        var sampleRate = audioBuffer.sampleRate;
+        var startFrame = Math.max(0, Math.floor(startSec * sampleRate));
+        var endFrame = Math.min(audioBuffer.length, Math.ceil(endSec * sampleRate));
+        var frameLength = Math.max(1, endFrame - startFrame);
+        var trimmed = audioCtx.createBuffer(audioBuffer.numberOfChannels, frameLength, sampleRate);
+        for (var channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+          var source = audioBuffer.getChannelData(channel).subarray(startFrame, endFrame);
+          trimmed.copyToChannel(source, channel, 0);
+        }
+        return trimmed;
+      }
+
+      function getTrimmedSegments(segments, trimStart, trimEnd) {
+        if (!Array.isArray(segments) || !segments.length) return [];
+        return segments.map(function(seg) {
+          var start = Math.max(0, (Number(seg.start) || 0) - trimStart);
+          var originalEnd = seg.end !== null && seg.end !== undefined ? Number(seg.end) : null;
+          var end = originalEnd !== null ? Math.min(trimEnd - trimStart, Math.max(0, originalEnd - trimStart)) : null;
+          return {
+            start: start,
+            end: end,
+            text: seg.text
+          };
+        }).filter(function(seg) {
+          var visibleEnd = seg.end !== null ? seg.end : seg.start + 0.2;
+          return visibleEnd > 0 && seg.start < (trimEnd - trimStart);
+        });
+      }
+
+      function getMotionSettings() {
+        var speedKey = state.motionSpeed || 'normal';
+        var speedMap = {
+          slow: { lineDelay: 0.18, lineDuration: 0.42, textWindow: 0.78 },
+          normal: { lineDelay: 0.12, lineDuration: 0.3, textWindow: 0.6 },
+          fast: { lineDelay: 0.08, lineDuration: 0.22, textWindow: 0.45 }
+        };
+        var preset = speedMap[speedKey] || speedMap.normal;
+        preset.mode = state.textRevealMode || 'line';
+        return preset;
+      }
+
       async function startRender() {
         if (state.isRendering) return;
         resetRenderUI();
@@ -2453,7 +2735,11 @@
           var audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
           if (aborted) { audioCtx.close(); throw new Error('취소됨'); }
 
-          var duration = audioBuffer.duration;
+          var trimStart = Math.min(Math.max(0, state.trimStart || 0), Math.max(0, audioBuffer.duration - 0.1));
+          var trimEnd = Math.min(Math.max(trimStart + 0.1, state.trimEnd || audioBuffer.duration), audioBuffer.duration);
+          var trimmedAudioBuffer = createTrimmedAudioBuffer(audioCtx, audioBuffer, trimStart, trimEnd);
+          var duration = trimmedAudioBuffer.duration;
+          var renderSegments = getTrimmedSegments(state.sttSegments, trimStart, trimEnd);
           updateRenderProgress(25, '렌더링 시작...');
 
           var CANVAS_W = 1080, CANVAS_H = 1920;
@@ -2464,7 +2750,7 @@
           var canvasStream = canvas.captureStream(30);
           var audioDest = audioCtx.createMediaStreamDestination();
           var source = audioCtx.createBufferSource();
-          source.buffer = audioBuffer;
+          source.buffer = trimmedAudioBuffer;
           source.connect(audioDest);
           source.connect(audioCtx.destination);
 
@@ -2496,11 +2782,12 @@
 
           /* ── 모션 그래픽 씬 구성 ── */
           var validImages = images.filter(Boolean);
-          var scenes = buildMotionScenes(state.script, validImages, duration, state.sttSegments);
+          var scenes = buildMotionScenes(state.script, validImages, duration, renderSegments);
           var ACCENT = '#ff5f1f';
           var ACCENT2 = '#10B981';
           var BG_GRAD_1 = '#1A1A2E';
           var BG_GRAD_2 = '#16213E';
+          var motionSettings = getMotionSettings();
 
           function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
           function easeInOutQuad(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
@@ -2570,8 +2857,8 @@
 
           function drawMotionText(ctx, textLines, cx, startY, fontSize, lineHeight, color, animProgress) {
             for (var i = 0; i < textLines.length; i++) {
-              var lineDelay = i * 0.12;
-              var lineProgress = clamp01((animProgress - lineDelay) / 0.3);
+              var lineDelay = motionSettings.mode === 'line' ? i * motionSettings.lineDelay : 0;
+              var lineProgress = clamp01((animProgress - lineDelay) / motionSettings.lineDuration);
               var eased = easeOutCubic(lineProgress);
               var alpha = eased;
               var offsetY = (1 - eased) * 40;
@@ -2702,7 +2989,7 @@
               var labelAlpha = easeOutCubic(clamp01((sceneProgress - 0.05) / 0.2)) * sceneFade;
               drawTextLine(ctx, sectionLabels[section % 3] || '', CANVAS_W / 2, startY - 25, Math.round(fontSize * 0.55), badgeColor, labelAlpha, (1 - labelAlpha) * 20);
 
-              var textAnimProgress = clamp01((sceneProgress - 0.1) / 0.6);
+              var textAnimProgress = clamp01((sceneProgress - 0.1) / motionSettings.textWindow);
               ctx.save();
               ctx.globalAlpha = sceneFade;
               drawMotionText(ctx, textLines, CANVAS_W / 2, startY + 20, fontSize, lineHeight, '#FFFFFF', textAnimProgress);
@@ -2717,7 +3004,7 @@
               ctx.restore();
             }
 
-            var subtitle = getActiveSubtitle(state.sttSegments, elapsed);
+            var subtitle = getActiveSubtitle(renderSegments, elapsed);
             drawSubtitle(ctx, subtitle, CANVAS_W, CANVAS_H);
             requestAnimationFrame(drawFrame);
           }
@@ -2736,7 +3023,7 @@
           els.renderDownloadBtn.href = videoUrl;
           els.renderDownloadWrap.classList.add('show');
           var sizeMB = (blob.size / 1024 / 1024).toFixed(1);
-          els.renderInfo.textContent = '영상 크기: ' + sizeMB + 'MB | 형식: WebM | 해상도: 1080x1920';
+          els.renderInfo.textContent = '영상 크기: ' + sizeMB + 'MB | 형식: WebM | 해상도: 1080x1920 | 오디오 트림 ' + trimStart.toFixed(1) + '초~' + trimEnd.toFixed(1) + '초 | 텍스트 ' + (motionSettings.mode === 'line' ? '한 줄씩' : '문단') + ' · ' + (state.motionSpeed === 'slow' ? '느리게' : state.motionSpeed === 'fast' ? '빠르게' : '보통');
           updateStepCheck(els.step4Check, true);
         } catch (e) {
           if (e.message !== '취소됨') {
@@ -2759,6 +3046,9 @@
       });
 
       updateEstimatedTime();
+      state.textRevealMode = els.textRevealSelect.value || 'line';
+      state.motionSpeed = els.motionSpeedSelect.value || 'normal';
+      updateTrimSummary();
       updateLocks();
       loadRemaining();
       showSignupBannerIfNeeded();
