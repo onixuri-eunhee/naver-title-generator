@@ -1378,6 +1378,7 @@
       var STT_MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
       var STT_RECORDING_AUDIO_BITS_PER_SECOND = 64000;
       var DIRECT_STT_ENDPOINT = 'https://naver-title-generator-production.up.railway.app/api/shortform-stt';
+      var DIRECT_BROLL_ENDPOINT = '/api/shortform-broll';
 
       var els = {
         signupBanner: document.getElementById('signupBanner'),
@@ -1447,6 +1448,11 @@
       function getSttEndpoint() {
         var isLocal = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname || '');
         return isLocal ? '/api/shortform-stt' : DIRECT_STT_ENDPOINT;
+      }
+
+      function getBrollEndpoint() {
+        var isLocal = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname || '');
+        return isLocal ? '/api/shortform-broll' : DIRECT_BROLL_ENDPOINT;
       }
 
       function getSttProbeMode() {
@@ -2156,7 +2162,7 @@
             headers: sttRequest.headers,
             body: sttRequest.body
           });
-          var brollPromise = sttProbeMode ? null : fetch('/api/shortform-broll', {
+          var brollPromise = sttProbeMode ? null : fetch(getBrollEndpoint(), {
             method: 'POST',
             headers: createHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify(brollBody)
