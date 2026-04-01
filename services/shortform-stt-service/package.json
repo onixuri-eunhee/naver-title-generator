@@ -1,0 +1,8 @@
+{
+  "name": "shortform-stt-service",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "form-data": "^4.0.1"
+  }
+}
