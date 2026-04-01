@@ -821,6 +821,41 @@
       color: var(--muted);
       margin-bottom: 14px;
     }
+    /* Step 4 렌더링 */
+    .render-controls { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+    .render-btn {
+      padding: 12px 28px; border-radius: 14px; border: none; cursor: pointer;
+      font-size: 15px; font-weight: 700; color: #fff; background: var(--accent);
+      transition: opacity .15s;
+    }
+    .render-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .render-btn.cancel { background: #6B7280; }
+    .render-progress-wrap { display: none; margin-bottom: 16px; }
+    .render-progress-wrap.show { display: block; }
+    .render-progress-bar-bg {
+      height: 8px; border-radius: 4px; background: #E5E7EB; overflow: hidden;
+    }
+    .render-progress-bar {
+      height: 100%; border-radius: 4px; background: var(--accent);
+      transition: width .3s ease; width: 0%;
+    }
+    .render-progress-label { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    .render-preview-area { display: none; margin-bottom: 16px; }
+    .render-preview-area.show { display: block; }
+    .render-preview-area video {
+      width: 100%; max-width: 360px; border-radius: 14px;
+      border: 1px solid var(--border); background: #000;
+    }
+    .render-download-wrap { display: none; gap: 12px; align-items: center; margin-top: 12px; }
+    .render-download-wrap.show { display: flex; }
+    .render-download-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 22px; border-radius: 12px; border: none; cursor: pointer;
+      font-size: 14px; font-weight: 700; color: #fff; background: #10B981;
+      text-decoration: none;
+    }
+    .render-error { color: #EF4444; font-size: 13px; margin-top: 8px; }
+    .render-info { color: var(--muted); font-size: 13px; margin-top: 4px; }
     .stt-list {
       display: flex;
       flex-direction: column;
@@ -1313,20 +1348,27 @@
             <span class="step-label">Step 4</span>
           </div>
           <h2 class="step-title">영상 렌더링</h2>
-          <p class="step-description">Round 2에서 렌더링 API가 연결될 예정입니다. 현재는 준비 중 상태만 안내합니다.</p>
+          <p class="step-description">B-roll 이미지와 음성, 자막을 합성하여 숏폼 영상을 만듭니다. 브라우저에서 바로 렌더링됩니다.</p>
         </div>
         <div class="step-check" id="step4Check">✓</div>
       </div>
       <div class="step-body">
-        <div class="placeholder">
-          <h3>영상 렌더링 기능은 곧 추가됩니다</h3>
-          <p>향후에는 <code>POST /api/shortform-render</code> 호출 후 진행률 표시와 다운로드 링크까지 이 화면에서 이어집니다.</p>
-          <ul class="placeholder-list">
-            <li><strong>준비 중</strong>자막 합성과 컷 편집 렌더링</li>
-            <li><strong>예정</strong>렌더링 진행률 표시</li>
-            <li><strong>예정</strong>완성 영상 다운로드 링크</li>
-          </ul>
+        <div class="render-controls">
+          <button type="button" class="render-btn" id="renderStartBtn">영상 생성 시작</button>
+          <button type="button" class="render-btn cancel" id="renderCancelBtn" style="display:none;">취소</button>
         </div>
+        <div class="render-progress-wrap" id="renderProgressWrap">
+          <div class="render-progress-bar-bg"><div class="render-progress-bar" id="renderProgressBar"></div></div>
+          <div class="render-progress-label" id="renderProgressLabel">준비 중...</div>
+        </div>
+        <div class="render-error" id="renderError"></div>
+        <div class="render-preview-area" id="renderPreviewArea">
+          <video id="renderPreviewVideo" controls playsinline></video>
+        </div>
+        <div class="render-download-wrap" id="renderDownloadWrap">
+          <a class="render-download-btn" id="renderDownloadBtn" download="shortform.webm">다운로드</a>
+        </div>
+        <div class="render-info" id="renderInfo"></div>
       </div>
     </section>
   </main>
@@ -1372,7 +1414,13 @@
         recordTimer: null,
         recordStartedAt: 0,
         processRequestId: 0,
-        reprocessTimer: 0
+        reprocessTimer: 0,
+        sttSegments: [],
+        brollItems: [],
+        renderProgress: 0,
+        renderBlob: null,
+        renderAbort: null,
+        isRendering: false
       };
 
       var STT_MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
@@ -1421,6 +1469,17 @@
         step2Check: document.getElementById('step2Check'),
         step3Check: document.getElementById('step3Check'),
         step4Check: document.getElementById('step4Check'),
+        renderStartBtn: document.getElementById('renderStartBtn'),
+        renderCancelBtn: document.getElementById('renderCancelBtn'),
+        renderProgressWrap: document.getElementById('renderProgressWrap'),
+        renderProgressBar: document.getElementById('renderProgressBar'),
+        renderProgressLabel: document.getElementById('renderProgressLabel'),
+        renderError: document.getElementById('renderError'),
+        renderPreviewArea: document.getElementById('renderPreviewArea'),
+        renderPreviewVideo: document.getElementById('renderPreviewVideo'),
+        renderDownloadWrap: document.getElementById('renderDownloadWrap'),
+        renderDownloadBtn: document.getElementById('renderDownloadBtn'),
+        renderInfo: document.getElementById('renderInfo'),
         authModal: document.getElementById('authModal'),
         authModalClose: document.getElementById('authModalClose')
       };
@@ -2199,8 +2258,12 @@
             throw new Error('B-roll 오류: ' + brollErrText + ' (HTTP ' + brollResult.status + ')');
           }
 
-          renderSttResults(normalizeSttResponse(sttData || {}));
-          if (!sttProbeMode) renderBrollResults(normalizeBrollResponse(brollData || {}));
+          state.sttSegments = normalizeSttResponse(sttData || {});
+          renderSttResults(state.sttSegments);
+          if (!sttProbeMode) {
+            state.brollItems = normalizeBrollResponse(brollData || {});
+            renderBrollResults(state.brollItems);
+          }
           state.step3Complete = true;
           updateLocks();
           showBox(els.materialsHint, sttProbeMode
@@ -2259,6 +2322,249 @@
       window.addEventListener('beforeunload', function() {
         revokeAudioUrl();
         stopMediaTracks();
+      });
+
+      /* ── Step 4: 영상 렌더링 엔진 ── */
+      function preloadImages(urls) {
+        return Promise.all(urls.map(function(src) {
+          return new Promise(function(resolve) {
+            var img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() { resolve(img); };
+            img.onerror = function() { resolve(null); };
+            img.src = src;
+          });
+        }));
+      }
+
+      function drawImageCover(ctx, img, cw, ch) {
+        if (!img) { ctx.fillStyle = '#1A1A2E'; ctx.fillRect(0, 0, cw, ch); return; }
+        var imgRatio = img.naturalWidth / img.naturalHeight;
+        var canvasRatio = cw / ch;
+        var sw, sh, sx, sy;
+        if (imgRatio > canvasRatio) {
+          sh = img.naturalHeight; sw = sh * canvasRatio;
+          sx = (img.naturalWidth - sw) / 2; sy = 0;
+        } else {
+          sw = img.naturalWidth; sh = sw / canvasRatio;
+          sx = 0; sy = (img.naturalHeight - sh) / 2;
+        }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+      }
+
+      function getActiveSubtitle(segments, currentTime) {
+        var active = [];
+        for (var i = 0; i < segments.length; i++) {
+          var seg = segments[i];
+          var endTime = seg.end !== null ? seg.end : (i + 1 < segments.length ? segments[i + 1].start : currentTime + 1);
+          if (currentTime >= seg.start && currentTime < endTime) {
+            active.push(seg.text);
+          }
+        }
+        return active.join(' ');
+      }
+
+      function drawSubtitle(ctx, text, cw, ch) {
+        if (!text) return;
+        ctx.save();
+        var fontSize = Math.round(cw * 0.042);
+        ctx.font = 'bold ' + fontSize + 'px "Noto Sans KR", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        var maxWidth = cw * 0.85;
+        var words = text.split('');
+        var lines = [];
+        var currentLine = '';
+        for (var i = 0; i < words.length; i++) {
+          var testLine = currentLine + words[i];
+          if (ctx.measureText(testLine).width > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = words[i];
+          } else {
+            currentLine = testLine;
+          }
+        }
+        if (currentLine) lines.push(currentLine);
+        var lineHeight = fontSize * 1.5;
+        var totalHeight = lines.length * lineHeight;
+        var padding = fontSize * 0.6;
+        var boxY = ch - totalHeight - padding * 2 - ch * 0.06;
+        var boxWidth = maxWidth + padding * 2;
+        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.beginPath();
+        var r = 12;
+        var bx = (cw - boxWidth) / 2;
+        ctx.roundRect(bx, boxY, boxWidth, totalHeight + padding * 2, r);
+        ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        for (var j = 0; j < lines.length; j++) {
+          ctx.fillText(lines[j], cw / 2, boxY + padding + (j + 1) * lineHeight);
+        }
+        ctx.restore();
+      }
+
+      function updateRenderProgress(pct, label) {
+        state.renderProgress = pct;
+        els.renderProgressBar.style.width = Math.round(pct) + '%';
+        els.renderProgressLabel.textContent = label || (Math.round(pct) + '%');
+      }
+
+      function resetRenderUI() {
+        els.renderError.textContent = '';
+        els.renderInfo.textContent = '';
+        els.renderProgressWrap.classList.remove('show');
+        els.renderPreviewArea.classList.remove('show');
+        els.renderDownloadWrap.classList.remove('show');
+        els.renderStartBtn.style.display = '';
+        els.renderCancelBtn.style.display = 'none';
+        updateRenderProgress(0, '');
+      }
+
+      async function startRender() {
+        if (state.isRendering) return;
+        resetRenderUI();
+
+        if (!state.sttSegments.length && !state.audioBlob) {
+          els.renderError.textContent = 'STT 결과와 오디오가 필요합니다.';
+          return;
+        }
+        if (!state.audioBlob) {
+          els.renderError.textContent = '오디오 파일이 필요합니다.';
+          return;
+        }
+
+        state.isRendering = true;
+        els.renderStartBtn.disabled = true;
+        els.renderCancelBtn.style.display = '';
+        els.renderProgressWrap.classList.add('show');
+        updateRenderProgress(5, '이미지 로딩 중...');
+
+        var aborted = false;
+        state.renderAbort = function() { aborted = true; };
+
+        try {
+          var imageUrls = state.brollItems.map(function(item) { return item.url || item.thumbnail; }).filter(Boolean);
+          var images = await preloadImages(imageUrls);
+          if (aborted) throw new Error('취소됨');
+          updateRenderProgress(15, '오디오 디코딩 중...');
+
+          var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          var arrayBuffer = await state.audioBlob.arrayBuffer();
+          var audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+          if (aborted) { audioCtx.close(); throw new Error('취소됨'); }
+
+          var duration = audioBuffer.duration;
+          updateRenderProgress(25, '렌더링 시작...');
+
+          var CANVAS_W = 1080, CANVAS_H = 1920;
+          var canvas = document.createElement('canvas');
+          canvas.width = CANVAS_W; canvas.height = CANVAS_H;
+          var ctx = canvas.getContext('2d');
+
+          var canvasStream = canvas.captureStream(30);
+          var audioDest = audioCtx.createMediaStreamDestination();
+          var source = audioCtx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(audioDest);
+          source.connect(audioCtx.destination);
+
+          var combined = new MediaStream([
+            canvasStream.getVideoTracks()[0],
+            audioDest.stream.getAudioTracks()[0]
+          ]);
+
+          var mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+            ? 'video/webm;codecs=vp9,opus'
+            : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
+              ? 'video/webm;codecs=vp8,opus'
+              : 'video/webm';
+          var recorder = new MediaRecorder(combined, { mimeType: mimeType, videoBitsPerSecond: 4000000 });
+          var chunks = [];
+          recorder.ondataavailable = function(e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
+
+          var renderDone = new Promise(function(resolve, reject) {
+            recorder.onstop = function() {
+              var blob = new Blob(chunks, { type: mimeType });
+              resolve(blob);
+            };
+            recorder.onerror = function(e) { reject(e.error || new Error('MediaRecorder 오류')); };
+          });
+
+          recorder.start(100);
+          source.start(0);
+          var startTime = audioCtx.currentTime;
+
+          function drawFrame() {
+            if (aborted) { recorder.stop(); source.stop(); audioCtx.close(); return; }
+            var elapsed = audioCtx.currentTime - startTime;
+            if (elapsed >= duration) {
+              recorder.stop();
+              source.stop();
+              return;
+            }
+            var pct = 25 + (elapsed / duration) * 70;
+            updateRenderProgress(pct, '렌더링 중... ' + Math.round(elapsed) + '/' + Math.round(duration) + '초');
+
+            ctx.fillStyle = '#1A1A2E';
+            ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+            if (images.length > 0) {
+              var validImages = images.filter(Boolean);
+              if (validImages.length > 0) {
+                var imgIndex = Math.min(Math.floor(elapsed / (duration / validImages.length)), validImages.length - 1);
+                var img = validImages[imgIndex];
+                var segDuration = duration / validImages.length;
+                var segElapsed = elapsed - imgIndex * segDuration;
+                var zoomProgress = segElapsed / segDuration;
+                var scale = 1.0 + zoomProgress * 0.08;
+                ctx.save();
+                ctx.translate(CANVAS_W / 2, CANVAS_H / 2);
+                ctx.scale(scale, scale);
+                ctx.translate(-CANVAS_W / 2, -CANVAS_H / 2);
+                drawImageCover(ctx, img, CANVAS_W, CANVAS_H);
+                ctx.restore();
+              }
+            }
+
+            var subtitle = getActiveSubtitle(state.sttSegments, elapsed);
+            drawSubtitle(ctx, subtitle, CANVAS_W, CANVAS_H);
+            requestAnimationFrame(drawFrame);
+          }
+          requestAnimationFrame(drawFrame);
+
+          var blob = await renderDone;
+          if (aborted) throw new Error('취소됨');
+          audioCtx.close();
+
+          state.renderBlob = blob;
+          updateRenderProgress(100, '완료!');
+
+          var videoUrl = URL.createObjectURL(blob);
+          els.renderPreviewVideo.src = videoUrl;
+          els.renderPreviewArea.classList.add('show');
+          els.renderDownloadBtn.href = videoUrl;
+          els.renderDownloadWrap.classList.add('show');
+          var sizeMB = (blob.size / 1024 / 1024).toFixed(1);
+          els.renderInfo.textContent = '영상 크기: ' + sizeMB + 'MB | 형식: WebM | 해상도: 1080x1920';
+          updateStepCheck(els.step4Check, true);
+        } catch (e) {
+          if (e.message !== '취소됨') {
+            els.renderError.textContent = '렌더링 오류: ' + e.message;
+          } else {
+            els.renderInfo.textContent = '렌더링이 취소되었습니다.';
+          }
+        } finally {
+          state.isRendering = false;
+          state.renderAbort = null;
+          els.renderStartBtn.disabled = false;
+          els.renderStartBtn.style.display = '';
+          els.renderCancelBtn.style.display = 'none';
+        }
+      }
+
+      els.renderStartBtn.addEventListener('click', startRender);
+      els.renderCancelBtn.addEventListener('click', function() {
+        if (state.renderAbort) state.renderAbort();
       });
 
       updateEstimatedTime();
