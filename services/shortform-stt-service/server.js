@@ -107,6 +107,10 @@ const server = http.createServer(async function(req, res) {
       hasOpenAIKey: !!((process.env.OPENAI_API_KEY || '').trim()),
       hasFalKey: !!((process.env.FAL_KEY || '').trim()),
       hasSeedanceKey: !!((process.env.SEEDANCE_API_KEY || '').trim()),
+      hasVeoProject: !!((process.env.GOOGLE_VERTEX_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || '').trim()),
+      hasVeoServiceAccount: !!((process.env.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON_BASE64 || process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 || '').trim()),
+      veoLocation: (process.env.GOOGLE_VERTEX_LOCATION || 'us-central1').trim(),
+      veoModelId: (process.env.GOOGLE_VERTEX_VEO_MODEL || 'veo-3.0-fast-generate-001').trim(),
       maxAudioMb: Number(process.env.SHORTFORM_STT_MAX_AUDIO_MB || 20),
     });
     return;

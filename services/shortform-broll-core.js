@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createSign, randomUUID } from 'node:crypto';
 
 /* ── R2 upload (inlined from api/_r2.js) ── */
 let _s3Client = null;
@@ -53,14 +53,20 @@ async function logUsage(userEmail, tool, mode, ip) {
   }
 }
 
-export const BROLL_VERSION = 'v6-flux-realism-direct';
+export const BROLL_VERSION = 'v7-veo-hero-fallback';
 
 const FLUX_REALISM_ENDPOINT = 'https://fal.run/fal-ai/flux-realism';
 const FLUX_IMAGE_SIZE = { width: 768, height: 1344 };
 const CLIP_DURATION_SEC = 5;
+const VEO_POLL_INTERVAL_MS = 5000;
+const VEO_TIMEOUT_MS = 180000;
 const SEEDANCE_POLL_INTERVAL_MS = 4000;
 const SEEDANCE_TIMEOUT_MS = 30000;
 const EXTERNAL_FETCH_TIMEOUT_MS = 45000;
+const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const GOOGLE_CLOUD_PLATFORM_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
+const DEFAULT_VEO_LOCATION = 'us-central1';
+const DEFAULT_VEO_MODEL = 'veo-3.0-fast-generate-001';
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -122,6 +128,109 @@ function createR2Key(userId, suffix) {
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function base64UrlEncode(value) {
+  return Buffer.from(value)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+}
+
+function parseJsonEnv(value) {
+  if (!value || typeof value !== 'string') return null;
+  try {
+    return JSON.parse(value);
+  } catch (_) {
+    return null;
+  }
+}
+
+function parseBase64JsonEnv(value) {
+  if (!value || typeof value !== 'string') return null;
+  try {
+    return JSON.parse(Buffer.from(value, 'base64').toString('utf8'));
+  } catch (_) {
+    return null;
+  }
+}
+
+function getGoogleServiceAccount() {
+  const parsed = parseJsonEnv(process.env.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON)
+    || parseJsonEnv(process.env.GOOGLE_SERVICE_ACCOUNT_JSON)
+    || parseBase64JsonEnv(process.env.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON_BASE64)
+    || parseBase64JsonEnv(process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64);
+
+  if (!parsed?.client_email || !parsed?.private_key) return null;
+  return {
+    clientEmail: parsed.client_email,
+    privateKey: String(parsed.private_key).replace(/\\n/g, '\n'),
+  };
+}
+
+function getVeoProjectId() {
+  return (process.env.GOOGLE_VERTEX_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || '').trim();
+}
+
+function getVeoLocation() {
+  return (process.env.GOOGLE_VERTEX_LOCATION || DEFAULT_VEO_LOCATION).trim();
+}
+
+function getVeoModelId() {
+  return (process.env.GOOGLE_VERTEX_VEO_MODEL || DEFAULT_VEO_MODEL).trim();
+}
+
+function hasVeoConfig() {
+  return !!(getVeoProjectId() && getGoogleServiceAccount());
+}
+
+let googleTokenCache = { token: null, expiresAt: 0 };
+
+async function getGoogleAccessToken() {
+  const serviceAccount = getGoogleServiceAccount();
+  const projectId = getVeoProjectId();
+  if (!serviceAccount || !projectId) {
+    throw new Error('Google Vertex credentials are missing');
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (googleTokenCache.token && googleTokenCache.expiresAt - 60 > now) {
+    return googleTokenCache.token;
+  }
+
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const claimSet = {
+    iss: serviceAccount.clientEmail,
+    scope: GOOGLE_CLOUD_PLATFORM_SCOPE,
+    aud: GOOGLE_OAUTH_TOKEN_URL,
+    exp: now + 3600,
+    iat: now,
+  };
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedClaimSet = base64UrlEncode(JSON.stringify(claimSet));
+  const unsignedJwt = `${encodedHeader}.${encodedClaimSet}`;
+  const signature = createSign('RSA-SHA256').update(unsignedJwt).end().sign(serviceAccount.privateKey);
+  const assertion = `${unsignedJwt}.${base64UrlEncode(signature)}`;
+
+  const response = await fetchWithTimeout(GOOGLE_OAUTH_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion,
+    }).toString(),
+  }, 15000);
+  const data = await parseJsonResponse(response);
+  if (!response.ok || !data?.access_token) {
+    throw new Error(`Google access token failed: ${response.status} ${JSON.stringify(data)}`);
+  }
+
+  googleTokenCache = {
+    token: data.access_token,
+    expiresAt: now + Number(data.expires_in || 3600),
+  };
+  return googleTokenCache.token;
 }
 
 function parseDataUri(dataUri) {
@@ -255,6 +364,12 @@ async function persistImageResult(imagePayload, key) {
 }
 
 async function persistVideoResult(videoPayload, key) {
+  if (videoPayload?.bytesBase64Encoded) {
+    const mimeType = videoPayload.mimeType || videoPayload.encoding || 'video/mp4';
+    const r2Url = await uploadToR2(key, Buffer.from(videoPayload.bytesBase64Encoded, 'base64'), mimeType);
+    return { url: r2Url, r2Url };
+  }
+
   const sourceUrl = findFirstVideoUrl(videoPayload);
   if (!sourceUrl) throw new Error('Video URL not found');
   if (sourceUrl.startsWith('data:')) {
@@ -293,6 +408,85 @@ async function callFluxImage(prompt, key) {
   const r2Url = await uploadImageUrlToR2(imageUrl, key);
   if (!r2Url) throw new Error('R2 image upload failed');
   return { type: 'image', url: imageUrl, r2Url, prompt };
+}
+
+async function pollVeoOperation(operationName, accessToken, location) {
+  const operationUrl = `https://${location}-aiplatform.googleapis.com/v1/${operationName}`;
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < VEO_TIMEOUT_MS) {
+    await sleep(VEO_POLL_INTERVAL_MS);
+    const response = await fetchWithTimeout(operationUrl, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    }, 15000);
+    const data = await parseJsonResponse(response);
+    if (!response.ok) {
+      throw new Error(`Veo poll failed: ${response.status} ${JSON.stringify(data)}`);
+    }
+    if (data?.done) {
+      if (data.error) {
+        throw new Error(`Veo operation failed: ${JSON.stringify(data.error)}`);
+      }
+      return data;
+    }
+  }
+
+  throw new Error('Veo generation timed out');
+}
+
+async function callVeoHeroVideo(prompt, key) {
+  if (!hasVeoConfig()) throw new Error('Google Vertex Veo config is missing');
+
+  const projectId = getVeoProjectId();
+  const location = getVeoLocation();
+  const modelId = getVeoModelId();
+  const accessToken = await getGoogleAccessToken();
+  const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${modelId}:predictLongRunning`;
+
+  const response = await fetchWithTimeout(endpoint, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json; charset=utf-8',
+    },
+    body: JSON.stringify({
+      instances: [
+        {
+          prompt,
+        },
+      ],
+      parameters: {
+        aspectRatio: '9:16',
+        durationSeconds: CLIP_DURATION_SEC,
+        sampleCount: 1,
+        resolution: '720p',
+      },
+    }),
+  }, 30000);
+  const data = await parseJsonResponse(response);
+  if (!response.ok || !data?.name) {
+    throw new Error(`Veo request failed: ${response.status} ${JSON.stringify(data)}`);
+  }
+
+  const operation = await pollVeoOperation(data.name, accessToken, location);
+  const firstVideo = operation?.response?.videos?.[0];
+  if (!firstVideo) {
+    throw new Error(`Veo response missing video: ${JSON.stringify(operation)}`);
+  }
+
+  const asset = await persistVideoResult(firstVideo, key);
+  return {
+    type: 'video',
+    url: asset.url,
+    r2Url: asset.r2Url,
+    prompt,
+    durationSec: CLIP_DURATION_SEC,
+    provider: 'veo3-lite',
+  };
 }
 
 async function fetchSeedanceStatus(id) {
@@ -376,6 +570,22 @@ async function createClipWithFallback(prompt, userId, clipNumber) {
   }
 }
 
+async function createHeroMotionWithFallback(prompt, userId) {
+  const heroVideoKey = createR2Key(userId, 'hero.mp4');
+  const heroImageKey = createR2Key(userId, 'hero-fallback.png');
+
+  if (!hasVeoConfig()) {
+    return callFluxImage(prompt, heroImageKey);
+  }
+
+  try {
+    return await callVeoHeroVideo(prompt, heroVideoKey);
+  } catch (error) {
+    console.error('[SHORTFORM-BROLL] Veo hero clip failed, falling back to Flux image:', error.message);
+    return callFluxImage(prompt, heroImageKey);
+  }
+}
+
 export async function handleShortformBrollRequest({ method, rawBody, userEmail, ip, query }) {
   const probeMode = typeof query?.probe === 'string' ? query.probe.trim().toLowerCase() : '';
 
@@ -389,6 +599,10 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
           version: BROLL_VERSION,
           hasFalKey: !!((process.env.FAL_KEY || '').trim()),
           hasSeedanceKey: !!((process.env.SEEDANCE_API_KEY || '').trim()),
+          hasVeoConfig: hasVeoConfig(),
+          veoProjectId: getVeoProjectId() || null,
+          veoLocation: getVeoLocation(),
+          veoModelId: getVeoModelId(),
           hasR2: !!(process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET_NAME),
         },
       };
@@ -414,21 +628,20 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
   const userId = getSafeUserId(userEmail, ip);
   const failures = [];
   const tasks = brollSuggestions.slice(0, 5).map(function(suggestion, index) {
-    const isHero = index === 0;
-    const prompt = buildVisualPrompt(suggestion, scriptContext, isHero ? 'image' : 'video');
-    const key = createR2Key(userId, isHero ? 'img.png' : `clip${index}.fallback.png`);
-
-    if (isHero) {
-      return callFluxImage(prompt, key).catch(error => {
-        console.error('[SHORTFORM-BROLL] Hero image failed:', error.message);
+    if (index === 0) {
+      const heroPrompt = buildVisualPrompt(suggestion, scriptContext, 'video');
+      return createHeroMotionWithFallback(heroPrompt, userId).catch(error => {
+        console.error('[SHORTFORM-BROLL] Hero motion failed:', error.message);
         failures.push(`hero:${error.message}`);
         return null;
       });
     }
 
-    return createClipWithFallback(prompt, userId, index).catch(error => {
-      console.error('[SHORTFORM-BROLL] Clip ' + index + ' failed:', error.message);
-      failures.push(`clip${index}:${error.message}`);
+    const prompt = buildVisualPrompt(suggestion, scriptContext, 'image');
+    const key = createR2Key(userId, `image${index}.png`);
+    return callFluxImage(prompt, key).catch(error => {
+      console.error('[SHORTFORM-BROLL] Image ' + index + ' failed:', error.message);
+      failures.push(`image${index}:${error.message}`);
       return null;
     });
   });
