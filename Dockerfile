@@ -5,8 +5,8 @@ WORKDIR /app
 # 서비스 코드 복사
 COPY services/ ./services/
 
-# 서비스 전용 의존성만 설치
-WORKDIR /app/services/shortform-stt-service
+# services/ 레벨에서 의존성 설치 (core.js가 여기서 import)
+WORKDIR /app/services
 RUN npm install --production
 
 WORKDIR /app
