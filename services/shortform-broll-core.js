@@ -1,6 +1,57 @@
 import { randomUUID } from 'node:crypto';
-import { uploadImageUrlToR2, uploadToR2 } from '../api/_r2.js';
-import { logUsage } from '../api/_db.js';
+
+/* ── R2 upload (inlined from api/_r2.js) ── */
+let _s3Client = null;
+async function getS3Client() {
+  if (_s3Client) return _s3Client;
+  const { S3Client } = await import('@aws-sdk/client-s3');
+  _s3Client = new S3Client({
+    region: 'auto',
+    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: process.env.R2_ACCESS_KEY_ID,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+    },
+  });
+  return _s3Client;
+}
+async function uploadToR2(key, body, contentType = 'image/png') {
+  const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+  const client = await getS3Client();
+  await client.send(new PutObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME,
+    Key: key,
+    Body: body,
+    ContentType: contentType,
+  }));
+  return `https://pub-cac85a1d3b8d486082bd1bff2fadcaed.r2.dev/${key}`;
+}
+async function uploadImageUrlToR2(imageUrl, key) {
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const contentType = response.headers.get('content-type') || 'image/png';
+    return await uploadToR2(key, buffer, contentType);
+  } catch (err) {
+    console.error(`[R2] URL upload failed for ${key}:`, err.message);
+    return null;
+  }
+}
+
+/* ── DB usage log (inlined from api/_db.js) ── */
+let _sql = null;
+async function logUsage(userEmail, tool, mode, ip) {
+  try {
+    if (!_sql) {
+      const { neon } = await import('@neondatabase/serverless');
+      _sql = neon(process.env.POSTGRES_URL);
+    }
+    await _sql`INSERT INTO usage_logs (user_email, tool, mode, ip) VALUES (${userEmail}, ${tool}, ${mode || null}, ${ip || null})`;
+  } catch (err) {
+    console.error('[DB] logUsage failed:', err.message);
+  }
+}
 
 export const BROLL_VERSION = 'v2-image-fallback-default';
 
