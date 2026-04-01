@@ -2397,12 +2397,19 @@
       }
 
       function buildBrollPayload() {
+        var targetCount = state.estimatedSeconds >= 76 ? 5 : state.estimatedSeconds >= 56 ? 4 : 3;
         var suggestions = state.brollSuggestions && state.brollSuggestions.length >= 3
           ? state.brollSuggestions
-          : ['person speaking to camera', 'close-up of smartphone scrolling', 'detail shot of everyday workspace'];
+          : [
+            'person speaking to camera',
+            'close-up of smartphone scrolling',
+            'detail shot of everyday workspace',
+            'wide shot of modern city street',
+            'hands organizing notes on desk'
+          ];
         var scriptContext = [state.script.hook, state.script.point, state.script.cta].filter(Boolean).join('\n\n').trim();
         return {
-          brollSuggestions: suggestions,
+          brollSuggestions: suggestions.slice(0, targetCount),
           scriptContext: scriptContext
         };
       }
@@ -2565,31 +2572,56 @@
       });
 
       /* ── Step 4: 영상 렌더링 엔진 ── */
-      function preloadImages(urls) {
-        return Promise.all(urls.map(function(src) {
+      function preloadMedia(items) {
+        return Promise.all((items || []).map(function(item) {
           return new Promise(function(resolve) {
+            if (!item || !item.url) {
+              resolve(null);
+              return;
+            }
+
+            if (item.type === 'video') {
+              var video = document.createElement('video');
+              video.crossOrigin = 'anonymous';
+              video.muted = true;
+              video.loop = true;
+              video.preload = 'auto';
+              video.playsInline = true;
+              video.onloadeddata = function() {
+                resolve({ kind: 'video', element: video, meta: item });
+              };
+              video.onerror = function() { resolve(null); };
+              video.src = item.url;
+              video.load();
+              return;
+            }
+
             var img = new Image();
             img.crossOrigin = 'anonymous';
-            img.onload = function() { resolve(img); };
+            img.onload = function() { resolve({ kind: 'image', element: img, meta: item }); };
             img.onerror = function() { resolve(null); };
-            img.src = src;
+            img.src = item.thumbnail || item.url;
           });
         }));
       }
 
-      function drawImageCover(ctx, img, cw, ch) {
-        if (!img) { ctx.fillStyle = '#1A1A2E'; ctx.fillRect(0, 0, cw, ch); return; }
-        var imgRatio = img.naturalWidth / img.naturalHeight;
+      function drawVisualCover(ctx, visual, cw, ch) {
+        if (!visual || !visual.element) { ctx.fillStyle = '#1A1A2E'; ctx.fillRect(0, 0, cw, ch); return; }
+        var source = visual.element;
+        var sourceWidth = visual.kind === 'video' ? (source.videoWidth || cw) : source.naturalWidth;
+        var sourceHeight = visual.kind === 'video' ? (source.videoHeight || ch) : source.naturalHeight;
+        if (!sourceWidth || !sourceHeight) { ctx.fillStyle = '#1A1A2E'; ctx.fillRect(0, 0, cw, ch); return; }
+        var imgRatio = sourceWidth / sourceHeight;
         var canvasRatio = cw / ch;
         var sw, sh, sx, sy;
         if (imgRatio > canvasRatio) {
-          sh = img.naturalHeight; sw = sh * canvasRatio;
-          sx = (img.naturalWidth - sw) / 2; sy = 0;
+          sh = sourceHeight; sw = sh * canvasRatio;
+          sx = (sourceWidth - sw) / 2; sy = 0;
         } else {
-          sw = img.naturalWidth; sh = sw / canvasRatio;
-          sx = 0; sy = (img.naturalHeight - sh) / 2;
+          sw = sourceWidth; sh = sw / canvasRatio;
+          sx = 0; sy = (sourceHeight - sh) / 2;
         }
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+        ctx.drawImage(source, sx, sy, sw, sh, 0, 0, cw, ch);
       }
 
       function getActiveSubtitle(segments, currentTime) {
@@ -2725,8 +2757,8 @@
         state.renderAbort = function() { aborted = true; };
 
         try {
-          var imageUrls = state.brollItems.map(function(item) { return item.url || item.thumbnail; }).filter(Boolean);
-          var images = await preloadImages(imageUrls);
+          var mediaItems = state.brollItems.filter(function(item) { return item && (item.url || item.thumbnail); });
+          var images = await preloadMedia(mediaItems);
           if (aborted) throw new Error('취소됨');
           updateRenderProgress(15, '오디오 디코딩 중...');
 
@@ -2828,19 +2860,25 @@
             ctx.restore();
           }
 
-          function drawBrollScene(ctx, img, elapsed, sceneStart, sceneDuration, w, h) {
-            var segElapsed = elapsed - sceneStart;
-            var zoomProgress = segElapsed / sceneDuration;
-            var scale = 1.0 + zoomProgress * 0.08;
-            ctx.save();
-            ctx.translate(w / 2, h / 2);
-            ctx.scale(scale, scale);
-            ctx.translate(-w / 2, -h / 2);
-            drawImageCover(ctx, img, w, h);
-            ctx.restore();
-            ctx.fillStyle = 'rgba(0,0,0,0.25)';
-            ctx.fillRect(0, 0, w, h);
+      function drawBrollScene(ctx, visual, elapsed, sceneStart, sceneDuration, w, h) {
+        var segElapsed = elapsed - sceneStart;
+        var zoomProgress = segElapsed / sceneDuration;
+        if (visual && visual.kind === 'video' && visual.element.duration && isFinite(visual.element.duration)) {
+          var localTime = segElapsed % visual.element.duration;
+          if (Math.abs((visual.element.currentTime || 0) - localTime) > 0.25) {
+            try { visual.element.currentTime = localTime; } catch (_) {}
           }
+        }
+        var scale = visual && visual.kind === 'image' ? (1.0 + zoomProgress * 0.08) : 1.0;
+        ctx.save();
+        ctx.translate(w / 2, h / 2);
+        ctx.scale(scale, scale);
+        ctx.translate(-w / 2, -h / 2);
+        drawVisualCover(ctx, visual, w, h);
+        ctx.restore();
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(0, 0, w, h);
+      }
 
           function wrapText(ctx, text, maxWidth) {
             var chars = text.split('');
@@ -2864,6 +2902,13 @@
               var offsetY = (1 - eased) * 40;
               drawTextLine(ctx, textLines[i], cx, startY + i * lineHeight, fontSize, color, alpha, offsetY);
             }
+          }
+
+          function splitNarrationSentences(text) {
+            return String(text || '')
+              .split(/(?<=[.!?。！？])\s+|\n+/)
+              .map(function(sentence) { return sentence.trim(); })
+              .filter(Boolean);
           }
 
           function findSectionBoundaries(script, sttSegments, totalDur) {
@@ -2922,20 +2967,76 @@
             return boundaries;
           }
 
-          function buildMotionScenes(script, imgs, totalDur, sttSegments) {
-            var boundaries = findSectionBoundaries(script, sttSegments, totalDur);
-            var sceneList = [];
-            var brollDur = 2.5;
-            for (var i = 0; i < boundaries.length; i++) {
-              var b = boundaries[i];
-              var sectionDur = b.end - b.start;
-              if (i < imgs.length && sectionDur > brollDur + 1) {
-                var textDur = sectionDur - brollDur;
-                sceneList.push({ type: 'text', text: b.text, section: i, start: b.start, duration: textDur });
-                sceneList.push({ type: 'broll', imageIndex: i, start: b.start + textDur, duration: brollDur });
-              } else {
-                sceneList.push({ type: 'text', text: b.text, section: i, start: b.start, duration: sectionDur });
+          function buildMotionScenes(script, mediaItems, totalDur, sttSegments) {
+            var sections = findSectionBoundaries(script, sttSegments, totalDur);
+            var sentenceEntries = [];
+
+            for (var i = 0; i < sections.length; i++) {
+              var section = sections[i];
+              var sentences = splitNarrationSentences(section.text);
+              if (!sentences.length) continue;
+              var sectionDur = Math.max(0.6, section.end - section.start);
+              var charTotal = sentences.reduce(function(sum, sentence) {
+                return sum + sentence.replace(/\s+/g, '').length;
+              }, 0) || sentences.length;
+              var localCursor = section.start;
+
+              for (var j = 0; j < sentences.length; j++) {
+                var chars = sentences[j].replace(/\s+/g, '').length || 1;
+                var remaining = Math.max(0.4, section.end - localCursor);
+                var duration = j === sentences.length - 1
+                  ? remaining
+                  : Math.max(1.0, sectionDur * (chars / charTotal));
+                duration = Math.min(duration, remaining);
+                sentenceEntries.push({
+                  type: 'text',
+                  text: sentences[j],
+                  start: localCursor,
+                  duration: duration
+                });
+                localCursor += duration;
               }
+            }
+
+            if (!sentenceEntries.length) {
+              return [{ type: 'text', text: [script.hook, script.point, script.cta].filter(Boolean).join(' '), start: 0, duration: totalDur }];
+            }
+
+            var sceneList = [];
+            var mediaCount = Math.min((mediaItems || []).length, 4);
+            var groupSize = mediaCount ? Math.max(1, Math.ceil(sentenceEntries.length / (mediaCount + 1))) : sentenceEntries.length;
+            var mediaIndex = 0;
+
+            for (var idx = 0; idx < sentenceEntries.length; idx++) {
+              sceneList.push(sentenceEntries[idx]);
+              var shouldInsertMedia = mediaIndex < mediaCount
+                && idx < sentenceEntries.length - 1
+                && ((idx + 1) % groupSize === 0);
+              if (shouldInsertMedia) {
+                sceneList.push({
+                  type: 'broll',
+                  mediaIndex: mediaIndex,
+                  start: sentenceEntries[idx].start + sentenceEntries[idx].duration - 0.01,
+                  duration: Math.min(3.2, Math.max(2.2, totalDur / Math.max(4, mediaCount + 2)))
+                });
+                mediaIndex += 1;
+              }
+            }
+
+            var cursor = 0;
+            for (var s = 0; s < sceneList.length; s++) {
+              sceneList[s].start = cursor;
+              cursor += sceneList[s].duration;
+            }
+            var ratio = cursor > 0 ? totalDur / cursor : 1;
+            cursor = 0;
+            for (var k = 0; k < sceneList.length; k++) {
+              sceneList[k].start = cursor;
+              sceneList[k].duration = sceneList[k].duration * ratio;
+              cursor += sceneList[k].duration;
+            }
+            if (sceneList.length) {
+              sceneList[sceneList.length - 1].duration += Math.max(0, totalDur - cursor);
             }
             return sceneList;
           }
@@ -2968,12 +3069,9 @@
             var fadeOut = clamp01((currentScene.duration - sceneElapsed) / FADE_DUR);
             var sceneFade = Math.min(fadeIn, fadeOut);
 
-            if (currentScene.type === 'broll' && validImages[currentScene.imageIndex]) {
-              drawBrollScene(ctx, validImages[currentScene.imageIndex], elapsed, currentScene.start, currentScene.duration, CANVAS_W, CANVAS_H);
+            if (currentScene.type === 'broll' && validImages[currentScene.mediaIndex]) {
+              drawBrollScene(ctx, validImages[currentScene.mediaIndex], elapsed, currentScene.start, currentScene.duration, CANVAS_W, CANVAS_H);
             } else if (currentScene.type === 'text') {
-              var section = currentScene.section;
-              var sectionColors = [ACCENT, ACCENT2, '#6366F1'];
-              var badgeColor = sectionColors[section % sectionColors.length];
               var fontSize = Math.round(CANVAS_W * 0.044);
               var lineHeight = fontSize * 1.7;
               ctx.font = 'bold ' + fontSize + 'px "Noto Sans KR", sans-serif';
@@ -2981,13 +3079,6 @@
               var textLines = wrapText(ctx, currentScene.text, maxW);
               var totalTextH = textLines.length * lineHeight;
               var startY = (CANVAS_H - totalTextH) / 2;
-
-              var badgeAlpha = easeOutCubic(clamp01(sceneProgress / 0.2)) * sceneFade;
-              drawNumberBadge(ctx, section + 1, CANVAS_W / 2, startY - 70, 32, badgeColor, badgeAlpha);
-
-              var sectionLabels = ['HOOK', 'POINT', 'CTA'];
-              var labelAlpha = easeOutCubic(clamp01((sceneProgress - 0.05) / 0.2)) * sceneFade;
-              drawTextLine(ctx, sectionLabels[section % 3] || '', CANVAS_W / 2, startY - 25, Math.round(fontSize * 0.55), badgeColor, labelAlpha, (1 - labelAlpha) * 20);
 
               var textAnimProgress = clamp01((sceneProgress - 0.1) / motionSettings.textWindow);
               ctx.save();
@@ -2999,13 +3090,15 @@
               ctx.save();
               ctx.globalAlpha = accentBarAlpha;
               var barW = CANVAS_W * 0.12;
-              ctx.fillStyle = badgeColor;
+              ctx.fillStyle = ACCENT;
               ctx.fillRect((CANVAS_W - barW) / 2, startY + totalTextH + 40, barW, 4);
               ctx.restore();
             }
 
-            var subtitle = getActiveSubtitle(renderSegments, elapsed);
-            drawSubtitle(ctx, subtitle, CANVAS_W, CANVAS_H);
+            if (currentScene.type === 'broll') {
+              var subtitle = getActiveSubtitle(renderSegments, elapsed);
+              drawSubtitle(ctx, subtitle, CANVAS_W, CANVAS_H);
+            }
             requestAnimationFrame(drawFrame);
           }
           requestAnimationFrame(drawFrame);

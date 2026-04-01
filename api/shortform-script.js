@@ -29,11 +29,11 @@ const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다.
   "hook": "string",
   "points": ["string", "string", "string"],
   "cta": "string",
-  "brollSuggestions": ["short english phrase", "short english phrase", "short english phrase"]
+  "brollSuggestions": ["short english phrase", "short english phrase", "short english phrase", "short english phrase", "short english phrase"]
 }
 
 [brollSuggestions 규칙]
-- 정확히 3개
+- 정확히 5개
 - 영어로 작성
 - 각 항목은 짧은 B-roll 이미지 설명
 - 예: "close-up of hands typing on laptop"
@@ -140,18 +140,20 @@ function toSentence(value) {
 
 function normalizeBrollSuggestions(items) {
   const normalized = Array.isArray(items)
-    ? items.map(item => toSentence(item)).filter(Boolean).slice(0, 3)
+    ? items.map(item => toSentence(item)).filter(Boolean).slice(0, 5)
     : [];
 
-  if (normalized.length === 3) return normalized;
+  if (normalized.length === 5) return normalized;
 
   const fallback = [
     'person speaking to camera',
     'close-up of smartphone scrolling',
     'detail shot of everyday workspace',
+    'wide shot of modern city street',
+    'hands organizing notes on desk',
   ];
 
-  return [...normalized, ...fallback].slice(0, 3);
+  return [...normalized, ...fallback].slice(0, 5);
 }
 
 function buildScriptPayload(parsed) {

@@ -405,37 +405,35 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
   const scriptContext = typeof body.scriptContext === 'string' ? body.scriptContext.trim() : '';
 
   if (brollSuggestions.length < 3) {
-    throw new HttpError(400, 'brollSuggestions는 비어 있지 않은 영어 설명 3개가 필요합니다.');
+    throw new HttpError(400, 'brollSuggestions는 비어 있지 않은 영어 설명 3개 이상이 필요합니다.');
   }
   if (!scriptContext) {
     throw new HttpError(400, 'scriptContext가 필요합니다.');
   }
 
   const userId = getSafeUserId(userEmail, ip);
-  const imagePrompt = buildVisualPrompt(brollSuggestions[0], scriptContext, 'image');
-  const clipPrompt1 = buildVisualPrompt(brollSuggestions[1], scriptContext, 'video');
-  const clipPrompt2 = buildVisualPrompt(brollSuggestions[2], scriptContext, 'video');
-
   const failures = [];
-  const [heroImage, clip1, clip2] = await Promise.all([
-    callFluxImage(imagePrompt, createR2Key(userId, 'img.png')).catch(error => {
-      console.error('[SHORTFORM-BROLL] Grok hero image failed:', error.message);
-      failures.push(`hero:${error.message}`);
-      return null;
-    }),
-    createClipWithFallback(clipPrompt1, userId, 1).catch(error => {
-      console.error('[SHORTFORM-BROLL] Clip 1 failed:', error.message);
-      failures.push(`clip1:${error.message}`);
-      return null;
-    }),
-    createClipWithFallback(clipPrompt2, userId, 2).catch(error => {
-      console.error('[SHORTFORM-BROLL] Clip 2 failed:', error.message);
-      failures.push(`clip2:${error.message}`);
-      return null;
-    }),
-  ]);
+  const tasks = brollSuggestions.slice(0, 5).map(function(suggestion, index) {
+    const isHero = index === 0;
+    const prompt = buildVisualPrompt(suggestion, scriptContext, isHero ? 'image' : 'video');
+    const key = createR2Key(userId, isHero ? 'img.png' : `clip${index}.fallback.png`);
 
-  const items = [heroImage, clip1, clip2].filter(Boolean);
+    if (isHero) {
+      return callFluxImage(prompt, key).catch(error => {
+        console.error('[SHORTFORM-BROLL] Hero image failed:', error.message);
+        failures.push(`hero:${error.message}`);
+        return null;
+      });
+    }
+
+    return createClipWithFallback(prompt, userId, index).catch(error => {
+      console.error('[SHORTFORM-BROLL] Clip ' + index + ' failed:', error.message);
+      failures.push(`clip${index}:${error.message}`);
+      return null;
+    });
+  });
+
+  const items = (await Promise.all(tasks)).filter(Boolean);
   if (items.length === 0) {
     const reason = failures.length ? ` (${failures.slice(0, 2).join(' | ')})` : '';
     throw new HttpError(502, 'B-roll 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' + reason);
