@@ -411,17 +411,22 @@ async function callFluxImage(prompt, key) {
 }
 
 async function pollVeoOperation(operationName, accessToken, location) {
-  const operationUrl = `https://${location}-aiplatform.googleapis.com/v1/${operationName}`;
+  const projectId = getVeoProjectId();
+  const modelId = getVeoModelId();
+  const fetchOperationUrl = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${modelId}:fetchPredictOperation`;
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < VEO_TIMEOUT_MS) {
     await sleep(VEO_POLL_INTERVAL_MS);
-    const response = await fetchWithTimeout(operationUrl, {
-      method: 'GET',
+    const response = await fetchWithTimeout(fetchOperationUrl, {
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
       },
+      body: JSON.stringify({
+        operationName,
+      }),
     }, 15000);
     const data = await parseJsonResponse(response);
     if (!response.ok) {
