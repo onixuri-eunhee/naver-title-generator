@@ -8,10 +8,11 @@ Current split:
 
 - `Vercel`
   - `shortform.html`
-  - auth/session checks
-  - `api/shortform-stt.js` proxy
+  - login/session issuance
+  - B-roll and other light APIs
 - `Railway`
   - `services/shortform-stt-service/server.js`
+  - session validation
   - actual OpenAI transcription call
 
 ## Why this split
@@ -27,7 +28,7 @@ Current split:
 - `services/shortform-stt-service/server.js`
   - Railway HTTP service
 - `api/shortform-stt.js`
-  - Vercel auth + proxy
+  - legacy/fallback endpoint
 
 ## Railway setup
 
@@ -43,6 +44,8 @@ npm run railway:shortform-stt
 OPENAI_API_KEY=...
 STT_SERVICE_SHARED_SECRET=...
 SHORTFORM_STT_MAX_AUDIO_MB=20
+KV_REST_API_URL=...
+KV_REST_API_TOKEN=...
 ```
 
 ### Health check
@@ -65,43 +68,46 @@ Expected response:
 
 ## Vercel setup
 
-Add these environment variables to Vercel:
+For direct browser -> Railway STT, Vercel does not need STT proxy env vars.
+
+The shortform page is hardcoded to call the Railway STT URL in production and `/api/shortform-stt` only on localhost.
+
+Keep Vercel focused on static hosting, login flow, and light APIs like B-roll.
+
+If you still want to preserve the Vercel proxy path as a fallback, add these variables to Vercel:
 
 ```bash
 SHORTFORM_STT_SERVICE_URL=https://your-railway-domain.up.railway.app
 STT_SERVICE_SHARED_SECRET=the-same-secret-as-railway
 ```
 
-If both values are present, `api/shortform-stt.js` proxies to Railway.
-
-If either value is missing, Vercel falls back to the local STT path.
+If both values are present, `api/shortform-stt.js` can proxy to Railway.
 
 ## Request flow
 
 ### Current shortform flow
 
 1. Browser uploads/records audio.
-2. Browser calls `POST /api/shortform-stt` on Vercel.
-3. Vercel checks login/admin.
-4. Vercel forwards the raw request body to Railway with `X-Stt-Service-Secret`.
+2. Browser sends `POST https://<railway-domain>/api/shortform-stt`.
+3. Browser includes the login Bearer token from localStorage.
+4. Railway validates that token against Upstash session storage.
 5. Railway calls OpenAI Whisper.
-6. Railway returns transcript JSON.
-7. Vercel returns the same JSON to the browser.
+6. Railway returns transcript JSON directly to the browser.
 
 ## Probe flow
 
-These still work through Vercel:
+These work through the Railway STT service:
 
-- `GET /api/shortform-stt?probe=ping`
-- `GET /api/shortform-stt?probe=models`
-- `GET /api/shortform-stt?probe=transcribe-dry`
+- `GET https://<railway-domain>/api/shortform-stt?probe=ping`
+- `GET https://<railway-domain>/api/shortform-stt?probe=models`
+- `GET https://<railway-domain>/api/shortform-stt?probe=transcribe-dry`
 - `shortform.html?stt_probe=raw`
 - `shortform.html?stt_probe=form`
 
 They are useful to distinguish:
 
-- Vercel boot issues
-- proxy issues
+- session validation issues
+- Railway service issues
 - Railway outbound issues
 - OpenAI endpoint issues
 

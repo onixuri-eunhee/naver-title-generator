@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { URL } from 'node:url';
+import { Redis } from '@upstash/redis';
 import {
   STT_VERSION,
   handleShortformSttRequest,
@@ -9,6 +10,33 @@ import {
 
 const PORT = Number(process.env.PORT || 8080);
 const SERVICE_SECRET = (process.env.STT_SERVICE_SHARED_SECRET || '').trim();
+const ALLOWED_ORIGINS = [
+  'https://ddukddaktool.co.kr',
+  'https://www.ddukddaktool.co.kr',
+];
+
+let redis;
+function getRedis() {
+  if (!redis) {
+    redis = new Redis({
+      url: process.env.KV_REST_API_URL,
+      token: process.env.KV_REST_API_TOKEN,
+    });
+  }
+  return redis;
+}
+
+function setCorsHeaders(req, res) {
+  const origin = req.headers.origin || '';
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', 'https://ddukddaktool.co.kr');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Audio-Mime-Type, X-Stt-Probe, X-Stt-Service-Secret');
+  res.setHeader('Access-Control-Expose-Headers', 'X-Shortform-Stt-Version');
+}
 
 function writeJson(res, status, body) {
   res.statusCode = status;
@@ -17,10 +45,27 @@ function writeJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-function isAuthorized(reqUrl, req) {
+function extractBearerToken(req) {
+  const auth = req.headers.authorization || req.headers.Authorization || '';
+  return auth.startsWith('Bearer ') ? auth.slice(7) : '';
+}
+
+async function resolveSessionEmail(token) {
+  if (!token) return null;
+  try {
+    const session = await getRedis().get(`session:${token}`);
+    return session && session.email ? session.email : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function isAuthorized(reqUrl, req) {
   if (reqUrl.pathname === '/health') return true;
-  if (!SERVICE_SECRET) return false;
-  return (req.headers['x-stt-service-secret'] || '') === SERVICE_SECRET;
+  if (SERVICE_SECRET && (req.headers['x-stt-service-secret'] || '') === SERVICE_SECRET) return true;
+
+  const email = await resolveSessionEmail(extractBearerToken(req));
+  return !!email;
 }
 
 function getQueryObject(searchParams) {
@@ -33,6 +78,7 @@ function getQueryObject(searchParams) {
 
 const server = http.createServer(async function(req, res) {
   const reqUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  setCorsHeaders(req, res);
 
   if (req.method === 'OPTIONS') {
     res.statusCode = 200;
@@ -56,7 +102,7 @@ const server = http.createServer(async function(req, res) {
     return;
   }
 
-  if (!isAuthorized(reqUrl, req)) {
+  if (!(await isAuthorized(reqUrl, req))) {
     writeJson(res, 401, { error: 'Unauthorized' });
     return;
   }
