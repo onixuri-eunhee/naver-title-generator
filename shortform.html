@@ -2968,6 +2968,48 @@
               .filter(Boolean);
           }
 
+          function splitNarrationDisplayLines(text) {
+            var clauses = String(text || '')
+              .split(/(?<=[,，·])/)
+              .map(function(part) { return part.trim(); })
+              .filter(Boolean);
+            if (!clauses.length) clauses = [String(text || '').trim()].filter(Boolean);
+
+            var maxChars = 18;
+            var result = [];
+
+            clauses.forEach(function(clause) {
+              var compact = clause.replace(/\s+/g, ' ').trim();
+              if (!compact) return;
+              if (compact.length <= maxChars) {
+                result.push(compact);
+                return;
+              }
+
+              var buffer = '';
+              var pieces = compact.split(/\s+/);
+              if (pieces.length > 1) {
+                pieces.forEach(function(piece) {
+                  var candidate = buffer ? (buffer + ' ' + piece) : piece;
+                  if (candidate.length > maxChars && buffer) {
+                    result.push(buffer);
+                    buffer = piece;
+                  } else {
+                    buffer = candidate;
+                  }
+                });
+                if (buffer) result.push(buffer);
+                return;
+              }
+
+              for (var i = 0; i < compact.length; i += maxChars) {
+                result.push(compact.slice(i, i + maxChars));
+              }
+            });
+
+            return result.filter(Boolean);
+          }
+
           function findSectionBoundaries(script, sttSegments, totalDur) {
             var sections = [
               (script.hook || '').trim(),
@@ -3031,23 +3073,27 @@
             for (var i = 0; i < sections.length; i++) {
               var section = sections[i];
               var sentences = splitNarrationSentences(section.text);
-              if (!sentences.length) continue;
+              var displayLines = [];
+              for (var sentenceIndex = 0; sentenceIndex < sentences.length; sentenceIndex++) {
+                displayLines = displayLines.concat(splitNarrationDisplayLines(sentences[sentenceIndex]));
+              }
+              if (!displayLines.length) continue;
               var sectionDur = Math.max(0.6, section.end - section.start);
-              var charTotal = sentences.reduce(function(sum, sentence) {
+              var charTotal = displayLines.reduce(function(sum, sentence) {
                 return sum + sentence.replace(/\s+/g, '').length;
-              }, 0) || sentences.length;
+              }, 0) || displayLines.length;
               var localCursor = section.start;
 
-              for (var j = 0; j < sentences.length; j++) {
-                var chars = sentences[j].replace(/\s+/g, '').length || 1;
+              for (var j = 0; j < displayLines.length; j++) {
+                var chars = displayLines[j].replace(/\s+/g, '').length || 1;
                 var remaining = Math.max(0.4, section.end - localCursor);
-                var duration = j === sentences.length - 1
+                var duration = j === displayLines.length - 1
                   ? remaining
                   : Math.max(1.0, sectionDur * (chars / charTotal));
                 duration = Math.min(duration, remaining);
                 sentenceEntries.push({
                   type: 'text',
-                  text: sentences[j],
+                  text: displayLines[j],
                   start: localCursor,
                   duration: duration
                 });
@@ -3164,17 +3210,14 @@
                 drawDarkBackground(ctx, CANVAS_W, CANVAS_H);
               }
               var fontSize = Math.round(CANVAS_W * 0.044);
-              var lineHeight = fontSize * 1.7;
               ctx.font = 'bold ' + fontSize + 'px "Noto Sans KR", sans-serif';
-              var maxW = CANVAS_W * 0.78;
-              var textLines = wrapText(ctx, currentScene.text, maxW);
-              var totalTextH = textLines.length * lineHeight;
-              var startY = (CANVAS_H - totalTextH) / 2;
+              var textLine = currentScene.text;
+              var startY = CANVAS_H / 2;
 
               var textAnimProgress = clamp01((sceneProgress - 0.1) / motionSettings.textWindow);
               ctx.save();
               ctx.globalAlpha = sceneFade;
-              drawMotionText(ctx, textLines, CANVAS_W / 2, startY + 20, fontSize, lineHeight, '#FFFFFF', textAnimProgress);
+              drawMotionText(ctx, [textLine], CANVAS_W / 2, startY, fontSize, fontSize * 1.7, '#FFFFFF', textAnimProgress);
               ctx.restore();
 
               var accentBarAlpha = easeInOutQuad(clamp01((sceneProgress - 0.05) / 0.3)) * sceneFade;
@@ -3182,16 +3225,12 @@
               ctx.globalAlpha = accentBarAlpha;
               var barW = CANVAS_W * 0.12;
               ctx.fillStyle = ACCENT;
-              ctx.fillRect((CANVAS_W - barW) / 2, startY + totalTextH + 40, barW, 4);
+              ctx.fillRect((CANVAS_W - barW) / 2, startY + 80, barW, 4);
               ctx.restore();
             } else {
               drawDarkBackground(ctx, CANVAS_W, CANVAS_H);
             }
 
-            if (currentScene.type === 'broll') {
-              var subtitle = getActiveSubtitle(renderSegments, elapsed);
-              drawSubtitle(ctx, subtitle, CANVAS_W, CANVAS_H);
-            }
             requestAnimationFrame(drawFrame);
           }
           requestAnimationFrame(drawFrame);
