@@ -1,7 +1,7 @@
 import https from 'node:https';
 import FormData from 'form-data';
 
-export const STT_VERSION = 'v5-mime-filename-fix';
+export const STT_VERSION = 'v6-word-timestamps';
 export const MAX_AUDIO_SIZE = Math.max(
   1,
   Number(process.env.SHORTFORM_STT_MAX_AUDIO_MB || 20)
@@ -130,7 +130,7 @@ function normalizeWords(words) {
 
   return words
     .filter(item => item && typeof item.word === 'string' && Number.isFinite(item.start) && Number.isFinite(item.end))
-    .map(item => ({ word: item.word, start: item.start, end: item.end }));
+    .map(item => ({ word: item.word, text: item.word, start: item.start, end: item.end }));
 }
 
 function normalizeSegments(segments) {
@@ -139,7 +139,7 @@ function normalizeSegments(segments) {
   return segments
     .filter(item => item && typeof item.text === 'string' && Number.isFinite(item.start))
     .map(item => ({
-      word: item.text,
+      text: item.text,
       start: item.start,
       end: Number.isFinite(item.end) ? item.end : item.start,
     }));
@@ -159,6 +159,7 @@ function buildTranscriptionForm(buffer, mimeType, requestedFilename) {
   form.append('model', 'whisper-1');
   form.append('response_format', 'verbose_json');
   form.append('timestamp_granularities[]', 'segment');
+  form.append('timestamp_granularities[]', 'word');
   form.append('language', 'ko');
   return form;
 }
@@ -398,16 +399,24 @@ export async function handleShortformSttRequest(params) {
   }
 
   const whisperData = await transcribeAudio(buffer, mimeType, requestedFilename);
-  const wordSegments = normalizeWords(
+  const words = normalizeWords(
     whisperData.words || whisperData.segments?.flatMap(segment => segment?.words || []) || []
   );
-  const segments = wordSegments.length ? wordSegments : normalizeSegments(whisperData.segments || []);
-  const duration = segments.length ? segments[segments.length - 1].end : whisperData.duration || 0;
+  const segments = normalizeSegments(whisperData.segments || []);
+  const timelineSegments = segments.length ? segments : words.map(function(item) {
+    return {
+      text: item.text,
+      start: item.start,
+      end: item.end,
+    };
+  });
+  const duration = timelineSegments.length ? timelineSegments[timelineSegments.length - 1].end : whisperData.duration || 0;
 
   return {
     status: 200,
     body: {
-      segments,
+      segments: timelineSegments,
+      words,
       fullText: whisperData.text || '',
       duration,
     },
