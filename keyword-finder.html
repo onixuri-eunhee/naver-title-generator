@@ -39,7 +39,7 @@ body { font-family:'Noto Sans KR',sans-serif; background:#FAFBFC; color:#1a1a2e;
   position:sticky; top:0; z-index:100;
 }
 .navbar-logo { font-size: 18px; font-weight: 900; color: #1A1A2E; text-decoration: none; }
-.navbar-logo span { color: #00C73C; }
+.navbar-logo span { color: #ff5f1f; }
 .navbar-links { display: flex; gap: 4px; }
 .navbar-links a {
   padding: 6px 10px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
@@ -51,20 +51,29 @@ body { font-family:'Noto Sans KR',sans-serif; background:#FAFBFC; color:#1a1a2e;
 .navbar-links a.new-badge { position:relative; margin-right:12px; }
 .navbar-links a.new-badge::after { content:'NEW'; position:absolute; top:-6px; right:-16px; font-size:8px; background:#ff5f1f; color:#fff; padding:1px 4px; border-radius:4px; font-weight:700; }
 .navbar-auth { display: flex; align-items: center; gap: 8px; }
-.navbar-auth a { font-size: 12.5px; font-weight: 600; color: #6B7280; text-decoration: none; padding: 6px 12px; border-radius: 8px; transition: all 0.15s; }
+.navbar-login-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #6B7280; background: none; border: none; text-decoration: none; transition: background 0.15s; }
+.navbar-login-btn:hover { background: #F3F4F6; color: #1A1A2E; }
+.navbar-signup-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; color: #fff; background: #ff5f1f; border: none; text-decoration: none; transition: background 0.15s; }
+.navbar-signup-btn:hover { background: #e6541a; }
+.navbar-user-name { font-size: 13px; font-weight: 500; color: #1A1A2E; }
+.navbar-credit { font-size: 12px; color: #8B5CF6; font-weight: 600; }
+.navbar-mypage-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #6B7280; background: none; border: 1px solid #E5E7EB; text-decoration: none; transition: background 0.15s; }
+.navbar-mypage-btn:hover { background: #F3F4F6; color: #1A1A2E; }
+.navbar-logout-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #6B7280; background: none; border: none; cursor: pointer; transition: background 0.15s; }
+.navbar-logout-btn:hover { background: #F3F4F6; color: #1A1A2E; }
 
 .hero {
-  background: linear-gradient(135deg, #1A1A2E, #16213E, #0F3460);
-  padding: 48px 20px 40px; text-align: center; color: #fff;
+  background: #FAFBFE;
+  padding: 48px 20px 40px; text-align: center;
 }
-.hero-badge { display:inline-block; background:rgba(255,255,255,0.15); padding:4px 14px; border-radius:20px; font-size:12px; font-weight:600; margin-bottom:16px; }
-.hero h1 { font-size:26px; font-weight:900; line-height:1.4; margin-bottom:12px; }
-.hero h1 em { font-style:normal; color:#fbbf24; }
-.hero p { font-size:14px; color:rgba(255,255,255,0.7); line-height:1.7; }
+.hero-badge { display:inline-block; background:rgba(255,95,31,0.1); color:#ff5f1f; border:1px solid rgba(255,95,31,0.25); padding:4px 14px; border-radius:20px; font-size:12px; font-weight:700; margin-bottom:16px; }
+.hero h1 { font-size:26px; font-weight:900; line-height:1.4; margin-bottom:12px; color:#1A1A2E; }
+.hero h1 em { font-style:normal; color:#ff5f1f; }
+.hero p { font-size:14px; color:#6B7280; line-height:1.7; }
 
 .container { max-width:860px; margin:0 auto; padding:24px 16px; }
 
-.card { background:#fff; border-radius:14px; padding:24px; box-shadow:0 1px 6px rgba(0,0,0,0.06); margin-bottom:20px; }
+.card { background:#fff; border-radius:14px; padding:24px; border:1px solid #E5E7EB; margin-bottom:20px; }
 
 label { display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:6px; }
 input[type="text"], textarea {

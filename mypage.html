@@ -27,7 +27,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
   position: sticky; top: 0; z-index: 100;
 }
 .navbar-logo { font-size: 18px; font-weight: 900; color: #1A1A2E; text-decoration: none; }
-.navbar-logo span { color: #00C73C; }
+.navbar-logo span { color: #ff5f1f; }
 .navbar-links { display: flex; gap: 4px; }
 .navbar-links a {
   padding: 7px 14px; border-radius: 8px; font-size: 13px;
@@ -57,13 +57,13 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
 .navbar-login-btn:hover { background: #F3F4F6; }
 .navbar-signup-btn {
   font-size: 13px; font-weight: 600; color: #fff;
-  background: #00C73C; text-decoration: none;
+  background: #ff5f1f; text-decoration: none;
   padding: 6px 14px; border-radius: 6px;
   transition: background 0.15s;
 }
-.navbar-signup-btn:hover { background: #00A830; }
+.navbar-signup-btn:hover { background: #e6541a; }
 .navbar-user-name {
-  font-size: 13px; font-weight: 600; color: #00C73C;
+  font-size: 13px; font-weight: 600; color: #1A1A2E;
   text-decoration: none;
 }
 .navbar-credit {
@@ -76,17 +76,32 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
   transition: background 0.15s;
 }
 .navbar-mypage-btn:hover { background: #F3F4F6; }
+.navbar-logout-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.navbar-logout-btn:hover {
+  background: #F3F4F6;
+  color: #1A1A2E;
+}
 
 .hero {
-  background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+  background: #FAFBFE;
   padding: 48px 20px 40px; text-align: center;
 }
 .hero h1 {
   font-size: clamp(22px, 4.5vw, 34px); font-weight: 700;
-  color: #fff; line-height: 1.4; margin-bottom: 14px; letter-spacing: -0.5px;
+  color: #1A1A2E; line-height: 1.4; margin-bottom: 14px; letter-spacing: -0.5px;
 }
-.hero h1 em { color: #8B5CF6; font-style: normal; }
-.hero p { color: rgba(255,255,255,0.6); font-size: 14px; max-width: 520px; margin: 0 auto; line-height: 1.8; }
+.hero h1 em { color: #ff5f1f; font-style: normal; }
+.hero p { color: #6B7280; font-size: 14px; max-width: 520px; margin: 0 auto; line-height: 1.8; }
 
 .container { max-width: 640px; margin: 0 auto; padding: 32px 20px 80px; }
 

@@ -86,7 +86,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
   position: sticky; top: 0; z-index: 100;
 }
 .navbar-logo { font-size: 18px; font-weight: 900; color: #1A1A2E; text-decoration: none; }
-.navbar-logo span { color: #00C73C; }
+.navbar-logo span { color: #ff5f1f; }
 .navbar-links { display: flex; gap: 4px; }
 .navbar-links a {
   padding: 7px 14px; border-radius: 8px; font-size: 13px;
@@ -129,18 +129,18 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
-  background: #00C73C;
+  background: #ff5f1f;
   color: #fff;
   text-decoration: none;
   transition: all 0.15s;
 }
 .navbar-signup-btn:hover {
-  background: #00A830;
+  background: #e6541a;
 }
 .navbar-user-name {
   font-size: 13px;
   font-weight: 600;
-  color: #00C73C;
+  color: #1A1A2E;
   text-decoration: none;
 }
 .navbar-credit {
@@ -162,17 +162,32 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
   background: #F3F4F6;
   color: #1A1A2E;
 }
+.navbar-logout-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.navbar-logout-btn:hover {
+  background: #F3F4F6;
+  color: #1A1A2E;
+}
 
 .hero {
-  background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+  background: #FAFBFE;
   padding: 52px 20px 44px; text-align: center;
 }
 .hero h1 {
   font-size: clamp(22px, 4.5vw, 34px); font-weight: 700;
-  color: #fff; line-height: 1.4; margin-bottom: 14px; letter-spacing: -0.5px;
+  color: #1A1A2E; line-height: 1.4; margin-bottom: 14px; letter-spacing: -0.5px;
 }
 .hero h1 em { color: #ff5f1f; font-style: normal; }
-.hero p { color: rgba(255,255,255,0.6); font-size: 14px; max-width: 520px; margin: 0 auto; line-height: 1.8; }
+.hero p { color: #6B7280; font-size: 14px; max-width: 520px; margin: 0 auto; line-height: 1.8; }
 
 .container { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
 
@@ -362,7 +377,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
   transition: all 0.18s;
 }
 .copy-btn:hover, .publish-btn:hover, .schedule-btn:hover { color: #1A1A2E; border-color: #1A1A2E; }
-.copy-btn.copied { color: #00C73C; border-color: #00C73C; }
+.copy-btn.copied { color: #ff5f1f; border-color: #ff5f1f; }
 .publish-btn { color: #8B5CF6; border-color: #8B5CF6; }
 .publish-btn:hover { background: rgba(139,92,246,0.06); }
 .publish-btn:disabled { color: #9CA3AF; border-color: #E5E7EB; cursor: not-allowed; background: #F9FAFB; }
@@ -379,7 +394,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
 }
 .toast.show { opacity: 1; }
 .toast.error { background: #FF4757; }
-.toast.success { background: #00C73C; }
+.toast.success { background: #ff5f1f; }
 
 /* 예약 모달 */
 .schedule-modal-overlay {
