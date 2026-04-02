@@ -2910,117 +2910,14 @@
             return lines;
           }
 
-          function drawMotionText(ctx, textLines, cx, startY, fontSize, lineHeight, color, animProgress, sttWords, currentTime) {
-            if (sttWords && sttWords.length && typeof currentTime === 'number') {
-              drawSttSyncedText(ctx, textLines, cx, startY, fontSize, lineHeight, color, sttWords, currentTime);
-            } else {
-              for (var i = 0; i < textLines.length; i++) {
-                var lineDelay = motionSettings.mode === 'line' ? i * motionSettings.lineDelay : 0;
-                var lineProgress = clamp01((animProgress - lineDelay) / motionSettings.lineDuration);
-                var eased = easeOutCubic(lineProgress);
-                var alpha = eased;
-                var offsetY = (1 - eased) * 40;
-                drawTextLine(ctx, textLines[i], cx, startY + i * lineHeight, fontSize, color, alpha, offsetY);
-              }
-            }
-          }
-
-          function drawSttSyncedText(ctx, textLines, cx, startY, fontSize, lineHeight, color, sttWords, currentTime) {
-            var speedKey = state.motionSpeed || 'normal';
-            var fadeTimeMap = { slow: 0.25, normal: 0.15, fast: 0.08 };
-            var fadeDur = fadeTimeMap[speedKey] || 0.15;
-            var maxW = CANVAS_W * 0.78;
-
-            ctx.font = 'bold ' + fontSize + 'px "Noto Sans KR", sans-serif';
-            var lines = [];
-            var currentLine = [];
-            var lineW = 0;
-            var spaceW = ctx.measureText('\u3000').width * 0.3;
-
-            for (var i = 0; i < sttWords.length; i++) {
-              var w = sttWords[i];
-              var wordText = String(w.text || w.word || '');
-              if (!wordText) continue;
-              var ww = ctx.measureText(wordText).width;
-              var needed = currentLine.length ? spaceW + ww : ww;
-              if (currentLine.length && lineW + needed > maxW) {
-                lines.push(currentLine);
-                currentLine = [];
-                lineW = 0;
-              }
-              currentLine.push({
-                text: wordText,
-                start: typeof w.start === 'number' ? w.start : 0,
-                end: typeof w.end === 'number' ? w.end : (typeof w.start === 'number' ? w.start + 0.3 : 0.3),
-                width: ww
-              });
-              lineW += (currentLine.length > 1 ? spaceW + ww : ww);
-            }
-            if (currentLine.length) lines.push(currentLine);
-
-            // 자체 줄 수 기반 startY 재계산 (화면 중앙 정렬)
-            var totalH = lines.length * lineHeight;
-            var adjStartY = (CANVAS_H - totalH) / 2 + lineHeight * 0.5;
-
-            for (var li = 0; li < lines.length; li++) {
-              var line = lines[li];
-              var totalW = 0;
-              for (var j = 0; j < line.length; j++) {
-                totalW += line[j].width;
-                if (j > 0) totalW += spaceW;
-              }
-              var curX = cx - totalW / 2;
-              var curY = adjStartY + li * lineHeight;
-
-              for (var k = 0; k < line.length; k++) {
-                var word = line[k];
-                var wordStart = word.start;
-                var wordEnd = word.end;
-                var fadeStart = wordStart - fadeDur;
-
-                var alpha, offsetY, fillColor, scale;
-
-                if (currentTime < fadeStart) {
-                  alpha = 0.15;
-                  offsetY = 0;
-                  fillColor = color;
-                  scale = 1.0;
-                } else if (currentTime < wordStart) {
-                  var fadeProgress = easeOutCubic(clamp01((currentTime - fadeStart) / fadeDur));
-                  alpha = 0.15 + fadeProgress * 0.85;
-                  offsetY = (1 - fadeProgress) * 10;
-                  fillColor = color;
-                  scale = 1.0;
-                } else if (currentTime < wordEnd) {
-                  alpha = 1.0;
-                  offsetY = 0;
-                  fillColor = ACCENT;
-                  scale = 1.05;
-                } else {
-                  alpha = 1.0;
-                  offsetY = 0;
-                  fillColor = color;
-                  scale = 1.0;
-                }
-
-                ctx.save();
-                ctx.globalAlpha = alpha;
-                ctx.font = 'bold ' + fontSize + 'px "Noto Sans KR", sans-serif';
-                ctx.fillStyle = fillColor;
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'middle';
-                if (scale !== 1.0) {
-                  var wordCx = curX + word.width / 2;
-                  var wordCy = curY + offsetY;
-                  ctx.translate(wordCx, wordCy);
-                  ctx.scale(scale, scale);
-                  ctx.translate(-wordCx, -wordCy);
-                }
-                ctx.fillText(word.text, curX, curY + offsetY);
-                ctx.restore();
-
-                curX += word.width + spaceW;
-              }
+          function drawMotionText(ctx, textLines, cx, startY, fontSize, lineHeight, color, animProgress) {
+            for (var i = 0; i < textLines.length; i++) {
+              var lineDelay = motionSettings.mode === 'line' ? i * motionSettings.lineDelay : 0;
+              var lineProgress = clamp01((animProgress - lineDelay) / motionSettings.lineDuration);
+              var eased = easeOutCubic(lineProgress);
+              var alpha = eased;
+              var offsetY = (1 - eased) * 40;
+              drawTextLine(ctx, textLines[i], cx, startY + i * lineHeight, fontSize, color, alpha, offsetY);
             }
           }
 
@@ -3087,20 +2984,6 @@
             return boundaries;
           }
 
-          /* ── 시간 범위에 해당하는 STT 세그먼트 추출 ── */
-          function getSttWordsInRange(sttSegments, rangeStart, rangeEnd) {
-            if (!sttSegments || !sttSegments.length) return null;
-            var words = [];
-            for (var i = 0; i < sttSegments.length; i++) {
-              var seg = sttSegments[i];
-              var segEnd = seg.end !== null && seg.end !== undefined ? seg.end : seg.start + 0.3;
-              if (segEnd > rangeStart && seg.start < rangeEnd) {
-                words.push(seg);
-              }
-            }
-            return words.length ? words : null;
-          }
-
           function buildMotionScenes(script, mediaItems, totalDur, sttSegments) {
             var sections = findSectionBoundaries(script, sttSegments, totalDur);
             var sentenceEntries = [];
@@ -3122,21 +3005,18 @@
                   ? remaining
                   : Math.max(1.0, sectionDur * (chars / charTotal));
                 duration = Math.min(duration, remaining);
-                var sceneStart = localCursor;
-                var sceneEnd = sceneStart + duration;
                 sentenceEntries.push({
                   type: 'text',
                   text: sentences[j],
-                  start: sceneStart,
-                  duration: duration,
-                  sttWords: getSttWordsInRange(sttSegments, sceneStart, sceneEnd)
+                  start: localCursor,
+                  duration: duration
                 });
                 localCursor += duration;
               }
             }
 
             if (!sentenceEntries.length) {
-              return [{ type: 'text', text: [script.hook, script.point, script.cta].filter(Boolean).join(' '), start: 0, duration: totalDur, sttWords: getSttWordsInRange(sttSegments, 0, totalDur) }];
+              return [{ type: 'text', text: [script.hook, script.point, script.cta].filter(Boolean).join(' '), start: 0, duration: totalDur }];
             }
 
             var sceneList = [];
@@ -3174,15 +3054,6 @@
             }
             if (sceneList.length) {
               sceneList[sceneList.length - 1].duration += Math.max(0, totalDur - cursor);
-            }
-
-            // STT 있으면: 정규화된 시간에 맞춰 sttWords 재매핑
-            if (sttSegments && sttSegments.length) {
-              for (var ri = 0; ri < sceneList.length; ri++) {
-                if (sceneList[ri].type === 'text') {
-                  sceneList[ri].sttWords = getSttWordsInRange(sttSegments, sceneList[ri].start, sceneList[ri].start + sceneList[ri].duration);
-                }
-              }
             }
 
             return sceneList;
@@ -3227,32 +3098,10 @@
               var totalTextH = textLines.length * lineHeight;
               var startY = (CANVAS_H - totalTextH) / 2;
 
-              var textAnimProgress;
-              var sceneSttWords = currentScene.sttWords || null;
-              if (sceneSttWords && sceneSttWords.length) {
-                // STT 기반: "말한 단어 수 / 전체 단어 수"로 진행률 계산
-                var spokenCount = 0;
-                for (var wi = 0; wi < sceneSttWords.length; wi++) {
-                  var wEnd = sceneSttWords[wi].end !== null && sceneSttWords[wi].end !== undefined
-                    ? sceneSttWords[wi].end
-                    : sceneSttWords[wi].start + 0.3;
-                  if (elapsed >= wEnd) spokenCount++;
-                  else if (elapsed >= sceneSttWords[wi].start) {
-                    // 단어 중간: 부분 진행률 반영
-                    spokenCount += clamp01((elapsed - sceneSttWords[wi].start) / (wEnd - sceneSttWords[wi].start));
-                    break;
-                  } else {
-                    break;
-                  }
-                }
-                textAnimProgress = sceneSttWords.length > 0 ? spokenCount / sceneSttWords.length : 0;
-              } else {
-                // 폴백: 기존 시간 기반 진행률
-                textAnimProgress = clamp01((sceneProgress - 0.1) / motionSettings.textWindow);
-              }
+              var textAnimProgress = clamp01((sceneProgress - 0.1) / motionSettings.textWindow);
               ctx.save();
               ctx.globalAlpha = sceneFade;
-              drawMotionText(ctx, textLines, CANVAS_W / 2, startY + 20, fontSize, lineHeight, '#FFFFFF', textAnimProgress, sceneSttWords, elapsed);
+              drawMotionText(ctx, textLines, CANVAS_W / 2, startY + 20, fontSize, lineHeight, '#FFFFFF', textAnimProgress);
               ctx.restore();
 
               var accentBarAlpha = easeInOutQuad(clamp01((sceneProgress - 0.05) / 0.3)) * sceneFade;
