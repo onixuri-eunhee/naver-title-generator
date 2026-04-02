@@ -113,6 +113,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Black+Han+Sans&display=swap" rel="stylesheet">
 <style>
   :root {
+    --accent: #ff5f1f;
+    --accent-light: #FFF4EF;
     --positive: #00C73C;
     --positive-light: #E8FFF0;
     --threat: #FF4757;
@@ -124,13 +126,14 @@
     --light-gray: #F3F4F6;
     --border: #E5E7EB;
     --white: #FFFFFF;
+    --bg: #FAFBFE;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
     font-family: 'Noto Sans KR', sans-serif;
-    background: #F8F9FD;
+    background: var(--bg);
     color: var(--dark);
     min-height: 100vh;
   }
@@ -154,7 +157,7 @@
     color: #1A1A2E;
     text-decoration: none;
   }
-  .navbar-logo span { color: #00C73C; }
+  .navbar-logo span { color: var(--accent); }
   .navbar-links {
     display: flex;
     gap: 4px;
@@ -174,7 +177,7 @@
     color: #1A1A2E;
   }
   .navbar-links a.new-badge { position: relative; margin-right: 12px; }
-.navbar-links a.new-badge::after {
+  .navbar-links a.new-badge::after {
     content: 'NEW';
     position: absolute;
     top: 1px;
@@ -221,69 +224,57 @@
   }
   .ad-top .ad-box { height: 90px; max-width: 728px; margin: 0 auto; }
 
-  /* 광고 영역 활성화 */
-  /* .ad-top, .ad-mid, .ad-bottom { display: none; } */
-
-  /* 헤더 */
+  /* 헤더 — 라이트 톤 */
   header {
-    background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
-    padding: 48px 20px 40px;
+    background: var(--bg);
+    padding: 56px 20px 40px;
     text-align: center;
     position: relative;
-    overflow: hidden;
-  }
-  header::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle at 30% 50%, rgba(0,199,60,0.08) 0%, transparent 50%),
-                radial-gradient(circle at 70% 30%, rgba(46,134,255,0.08) 0%, transparent 50%);
-    pointer-events: none;
   }
   header h1 {
     font-family: 'Noto Sans KR', sans-serif;
-    font-size: clamp(22px, 4.5vw, 38px);
-    font-weight: 700;
-    color: #fff;
+    font-size: clamp(24px, 5vw, 42px);
+    font-weight: 900;
+    color: var(--dark);
     letter-spacing: -0.5px;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     line-height: 1.3;
   }
-  header h1 span { color: var(--positive); }
-  header p {
-    color: rgba(255,255,255,0.6);
-    font-size: 15px;
-    line-height: 1.6;
+  header h1 span { color: var(--accent); }
+  header .hero-sub {
+    color: var(--gray);
+    font-size: 16px;
+    line-height: 1.7;
+    font-weight: 400;
+    max-width: 520px;
+    margin: 0 auto;
   }
   .badge-row {
     display: flex;
     gap: 8px;
     justify-content: center;
     flex-wrap: wrap;
-    margin-top: 20px;
+    margin-top: 24px;
   }
   .badge {
     padding: 5px 14px;
     border-radius: 20px;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
   }
-  .badge-g { background: rgba(0,199,60,0.15); color: var(--positive); border: 1px solid rgba(0,199,60,0.3); }
-  .badge-r { background: rgba(255,71,87,0.15); color: var(--threat); border: 1px solid rgba(255,71,87,0.3); }
-  .badge-b { background: rgba(46,134,255,0.15); color: var(--curiosity); border: 1px solid rgba(46,134,255,0.3); }
+  .badge-g { background: var(--positive-light); color: var(--positive); }
+  .badge-r { background: var(--threat-light); color: var(--threat); }
+  .badge-b { background: var(--curiosity-light); color: var(--curiosity); }
 
   /* 메인 */
-  .container { max-width: 860px; margin: 0 auto; padding: 32px 20px; }
+  .container { max-width: 860px; margin: 0 auto; padding: 0 20px 32px; }
 
   /* 입력 섹션 */
   .input-section {
     background: var(--white);
-    border-radius: 16px;
+    border-radius: 12px;
     padding: 28px;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+    border: 1px solid var(--border);
     margin-bottom: 24px;
   }
   .input-section h2 {
@@ -312,7 +303,7 @@
   select, input[type="text"] {
     width: 100%;
     padding: 11px 14px;
-    border: 1.5px solid var(--border);
+    border: 1px solid var(--border);
     border-radius: 8px;
     font-size: 14px;
     font-family: 'Noto Sans KR', sans-serif;
@@ -322,8 +313,8 @@
     outline: none;
   }
   select:focus, input[type="text"]:focus {
-    border-color: var(--curiosity);
-    box-shadow: 0 0 0 3px rgba(46,134,255,0.1);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255,95,31,0.08);
   }
 
   .keyword-hint {
@@ -348,15 +339,15 @@
     transition: all 0.15s;
     color: var(--dark);
   }
-  .hint-tag:hover { background: var(--curiosity); color: #fff; border-color: var(--curiosity); }
+  .hint-tag:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
 
   .generate-btn {
     width: 100%;
     padding: 15px;
-    background: linear-gradient(135deg, #00C73C, #00A830);
+    background: var(--accent);
     color: #fff;
     border: none;
-    border-radius: 10px;
+    border-radius: 8px;
     font-family: 'Noto Sans KR', sans-serif;
     font-size: 16px;
     font-weight: 700;
@@ -364,7 +355,7 @@
     transition: all 0.2s;
     letter-spacing: -0.3px;
   }
-  .generate-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,199,60,0.35); }
+  .generate-btn:hover { background: #e6541a; }
   .generate-btn:active { transform: translateY(0); }
 
   /* 결과 섹션 */
@@ -378,25 +369,27 @@
   /* 챕터 */
   .chapter {
     background: var(--white);
-    border-radius: 16px;
-    margin-bottom: 20px;
+    border-radius: 12px;
+    margin-bottom: 16px;
     overflow: hidden;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+    border: 1px solid var(--border);
   }
   .chapter-header {
-    padding: 18px 24px;
+    padding: 16px 24px;
     display: flex;
     align-items: center;
     gap: 12px;
+    border-bottom: 1px solid var(--border);
+    background: #fff;
   }
-  .chapter-header.positive { background: linear-gradient(135deg, #00C73C, #00A830); }
-  .chapter-header.threat { background: linear-gradient(135deg, #FF4757, #E83245); }
-  .chapter-header.curiosity { background: linear-gradient(135deg, #2E86FF, #1A6FE0); }
+  .chapter-header.positive { border-left: 3px solid var(--positive); }
+  .chapter-header.threat { border-left: 3px solid var(--threat); }
+  .chapter-header.curiosity { border-left: 3px solid var(--curiosity); }
 
-  .chapter-icon { font-size: 24px; }
+  .chapter-icon { font-size: 20px; display: none; }
   .chapter-info { flex: 1; }
-  .chapter-title { font-size: 16px; font-weight: 700; color: #fff; }
-  .chapter-desc { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 2px; }
+  .chapter-title { font-size: 15px; font-weight: 700; color: var(--dark); }
+  .chapter-desc { font-size: 12px; color: var(--gray); margin-top: 2px; }
 
   .chapter-body { padding: 20px 24px; }
 
@@ -429,19 +422,19 @@
     align-items: center;
     gap: 10px;
     padding: 11px 14px;
-    background: #F8F9FD;
+    background: var(--bg);
     border-radius: 8px;
     margin-bottom: 7px;
     transition: background 0.15s;
   }
-  .title-item:hover { background: #EFF2FA; }
+  .title-item:hover { background: #F0F1F5; }
   .title-text { flex: 1; font-size: 14px; line-height: 1.5; color: var(--dark); }
 
   .copy-btn {
     flex-shrink: 0;
     padding: 5px 12px;
     background: #fff;
-    border: 1.5px solid var(--border);
+    border: 1px solid var(--border);
     border-radius: 6px;
     font-size: 11px;
     font-weight: 600;
@@ -451,7 +444,7 @@
     transition: all 0.15s;
     white-space: nowrap;
   }
-  .copy-btn:hover { border-color: var(--curiosity); color: var(--curiosity); background: var(--curiosity-light); }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
   .copy-btn.copied { background: var(--positive); border-color: var(--positive); color: #fff; }
 
   /* 전체 복사 */
@@ -481,9 +474,9 @@
   /* 팁 섹션 */
   .tips {
     background: var(--white);
-    border-radius: 16px;
+    border-radius: 12px;
     padding: 24px;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+    border: 1px solid var(--border);
     margin-bottom: 24px;
   }
   .tips h3 { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
@@ -499,7 +492,7 @@
     flex-shrink: 0;
     width: 20px;
     height: 20px;
-    background: var(--curiosity);
+    background: var(--accent);
     color: #fff;
     border-radius: 50%;
     display: flex;
@@ -508,6 +501,115 @@
     font-size: 11px;
     font-weight: 700;
     margin-top: 1px;
+  }
+
+  /* 콘텐츠 섹션 */
+  .content-section {
+    background: #fff;
+    border-top: 1px solid var(--border);
+    padding: 48px 20px;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  .content-section section { margin-bottom: 48px; }
+  .content-section section:last-child { margin-bottom: 0; }
+  .content-section h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 16px;
+  }
+  .content-section p {
+    font-size: 15px;
+    line-height: 1.9;
+    color: #374151;
+  }
+  .content-section p + p { margin-top: 12px; }
+
+  /* 클릭 문법 카드 */
+  .grammar-card {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 20px 24px;
+    border-left: 3px solid var(--border);
+  }
+  .grammar-card strong { font-size: 15px; color: var(--dark); }
+  .grammar-card p { font-size: 14px; color: var(--gray); margin-top: 6px; line-height: 1.7; }
+
+  /* FAQ */
+  .faq-item {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 20px 24px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: border-color 0.15s;
+  }
+  .faq-item[open] { border-color: var(--border); }
+  .faq-item summary {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--dark);
+    list-style: none;
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item p { font-size: 14px; color: var(--gray); margin-top: 12px; line-height: 1.8; }
+
+  /* 도구 그리드 */
+  .tools-section {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 20px 48px;
+  }
+  .tools-section-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    color: var(--gray);
+  }
+  .tools-grid {
+    display: grid;
+    gap: 12px;
+  }
+  .tools-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .tools-grid-2 { grid-template-columns: 1fr 1fr; }
+  @media(max-width: 640px) {
+    .tools-grid-3 { grid-template-columns: 1fr; }
+    .tools-grid-2 { grid-template-columns: 1fr; }
+  }
+  .tool-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    text-decoration: none;
+    display: block;
+    transition: border-color 0.15s;
+  }
+  .tool-card:hover { border-color: var(--accent); }
+  .tool-card-current {
+    background: var(--accent-light);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .tool-card-tag {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    margin-bottom: 6px;
+  }
+  .tool-card-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 4px;
+  }
+  .tool-card-desc {
+    font-size: 12px;
+    color: var(--gray);
   }
 
   footer {
@@ -541,18 +643,18 @@
     border-radius: 8px;
     font-size: 13px;
     font-weight: 600;
-    background: #00C73C;
+    background: var(--accent);
     color: #fff;
     text-decoration: none;
     transition: all 0.15s;
   }
   .navbar-signup-btn:hover {
-    background: #00A830;
+    background: #e6541a;
   }
   .navbar-user-name {
     font-size: 13px;
     font-weight: 600;
-    color: #00C73C;
+    color: var(--accent);
     text-decoration: none;
   }
   .navbar-credit {
@@ -586,7 +688,7 @@
   <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
   <div class="navbar-links">
     <a href="guide.html">사용법</a>
-    <a href="/" style="color:#00C73C; font-weight:700;">제목</a>
+    <a href="/" style="color:#ff5f1f; font-weight:700;">제목</a>
     <a href="hook-generator.html">후킹</a>
     <a href="threads.html">스레드</a>
     <a href="blog-writer.html" class="pro-badge">블로그 글</a>
@@ -606,12 +708,12 @@
 
 <!-- 헤더 -->
 <header>
-  <h1>네이버 블로그 <span>제목 생성기</span></h1>
-  <p>업종과 키워드만 입력하면 클릭을 부르는 제목을 자동으로 만들어드립니다</p>
+  <h1><span>뚝딱툴</span> — 블로거를 위한 AI 도구 모음</h1>
+  <p class="hero-sub">업종과 키워드만 입력하면 클릭을 부르는 제목 12패턴을 자동 생성합니다.<br>제목부터 글, 이미지, 카드뉴스까지 한곳에서.</p>
   <div class="badge-row">
-    <span class="badge badge-g">✅ 긍정 메시지</span>
-    <span class="badge badge-r">⚠️ 위협 메시지</span>
-    <span class="badge badge-b">🔥 호기심 메시지</span>
+    <span class="badge badge-g">긍정 메시지</span>
+    <span class="badge badge-r">위협 메시지</span>
+    <span class="badge badge-b">호기심 메시지</span>
   </div>
 </header>
 
@@ -619,20 +721,20 @@
 
   <!-- 입력 섹션 -->
   <div class="input-section">
-    <h2>🎯 업종과 키워드를 입력하세요</h2>
+    <h2>업종과 키워드를 입력하세요</h2>
     <div class="form-row">
       <div>
         <label>업종 선택</label>
         <select id="category" onchange="showHints()">
           <option value="">— 업종을 선택하세요 —</option>
-          <option value="wedding">💍 웨딩/결혼</option>
-          <option value="food">🍽️ 요식업/카페</option>
-          <option value="edu">📚 온라인 강의/교육</option>
-          <option value="beauty">💄 뷰티/피부/헤어</option>
-          <option value="realty">🏠 부동산/인테리어</option>
-          <option value="fitness">💪 헬스/운동</option>
-          <option value="marketing">📣 마케팅/블로그</option>
-          <option value="other">🔧 기타</option>
+          <option value="wedding">웨딩/결혼</option>
+          <option value="food">요식업/카페</option>
+          <option value="edu">온라인 강의/교육</option>
+          <option value="beauty">뷰티/피부/헤어</option>
+          <option value="realty">부동산/인테리어</option>
+          <option value="fitness">헬스/운동</option>
+          <option value="marketing">마케팅/블로그</option>
+          <option value="other">기타</option>
         </select>
       </div>
       <div>
@@ -642,11 +744,11 @@
     </div>
 
     <div class="keyword-hint" id="hintBox">
-      <strong>💡 추천 키워드</strong>
+      <strong>추천 키워드</strong>
       <div class="hint-tags" id="hintTags"></div>
     </div>
 
-    <button class="generate-btn" id="generateBtn" onclick="generateTitles()">✨ 클릭을 부르는 제목 12가지 패턴 생성하기</button>
+    <button class="generate-btn" id="generateBtn" onclick="generateTitles()">제목 12패턴 생성하기</button>
     <div id="remainingInfo" style="text-align:center; margin-top:10px; font-size:12px; color:#6B7280; display:none;">
       오늘 남은 AI 생성 횟수: <strong id="remainingCount">-</strong>회
     </div>
@@ -656,16 +758,15 @@
   <div class="results" id="results">
 
     <div class="copy-all-row">
-      <button class="copy-all-btn" onclick="copyAll()">📋 전체 제목 복사</button>
+      <button class="copy-all-btn" onclick="copyAll()">전체 제목 복사</button>
     </div>
 
     <!-- Chapter 1: 긍정 -->
     <div class="chapter">
       <div class="chapter-header positive">
-        <div class="chapter-icon">💚</div>
         <div class="chapter-info">
-          <div class="chapter-title">Chapter 1. 긍정 메시지</div>
-          <div class="chapter-desc">고객이 얻을 수 있는 이득을 보여주는 제목 — 사실 고객은 무엇이 필요한지 모른다</div>
+          <div class="chapter-title">긍정 메시지</div>
+          <div class="chapter-desc">고객이 얻을 수 있는 이득을 보여주는 제목</div>
         </div>
       </div>
       <div class="chapter-body">
@@ -696,10 +797,9 @@
     <!-- Chapter 2: 위협 -->
     <div class="chapter">
       <div class="chapter-header threat">
-        <div class="chapter-icon">🚨</div>
         <div class="chapter-info">
-          <div class="chapter-title">Chapter 2. 위협 메시지</div>
-          <div class="chapter-desc">내 고객은 언제 지갑을 열까? — 무언가를 잃을 위기에 처했을 때</div>
+          <div class="chapter-title">위협 메시지</div>
+          <div class="chapter-desc">무언가를 잃을 위기에 처했을 때 지갑이 열린다</div>
         </div>
       </div>
       <div class="chapter-body">
@@ -725,10 +825,9 @@
     <!-- Chapter 3: 호기심 -->
     <div class="chapter">
       <div class="chapter-header curiosity">
-        <div class="chapter-icon">🔵</div>
         <div class="chapter-info">
-          <div class="chapter-title">Chapter 3. 호기심 메시지</div>
-          <div class="chapter-desc">고객이 뻔한 광고를 거르는 법 — 예측 불가능이 클릭을 만든다</div>
+          <div class="chapter-title">호기심 메시지</div>
+          <div class="chapter-desc">예측 불가능이 클릭을 만든다</div>
         </div>
       </div>
       <div class="chapter-body">
@@ -753,7 +852,7 @@
 
     <!-- 팁 -->
     <div class="tips">
-      <h3>📌 제목 쓸 때 꼭 기억하세요</h3>
+      <h3>제목 쓸 때 꼭 기억하세요</h3>
       <div class="tip-item"><span class="tip-num">1</span><span>핵심 키워드는 제목 <strong>맨 왼쪽</strong>에 배치하세요. 네이버는 앞쪽 단어에 더 높은 가중치를 줍니다.</span></div>
       <div class="tip-item"><span class="tip-num">2</span><span><strong>롱테일 키워드</strong>가 오히려 강합니다. "웨딩홀"보다 "강남 웨딩홀 비용 실제 후기"처럼 2~3단어 조합이 경쟁이 낮고 상위 노출이 쉽습니다.</span></div>
       <div class="tip-item"><span class="tip-num">3</span><span>숫자는 <strong>구체적일수록</strong> 좋습니다. '몇 가지'보다 '3가지', '2주'보다 '14일'이 클릭율이 높습니다.</span></div>
@@ -775,107 +874,95 @@
 </div>
 
 <!-- 콘텐츠 섹션 -->
-<div style="background:#fff; border-top:1px solid #E5E7EB; padding:48px 20px; max-width:860px; margin:0 auto;">
+<div class="content-section">
 
   <!-- 블로그 제목이 중요한 이유 -->
-  <section style="margin-bottom:48px;">
-    <h2 style="font-size:22px; font-weight:700; color:#1A1A2E; margin-bottom:16px;">📌 네이버 블로그 제목, 왜 중요할까요?</h2>
-    <p style="font-size:15px; line-height:1.9; color:#374151;">
+  <section>
+    <h2>네이버 블로그 제목, 왜 중요할까요?</h2>
+    <p>
       네이버 블로그는 글의 내용이 아무리 좋아도 <strong>제목에서 클릭을 받지 못하면 아무도 읽지 않습니다.</strong>
       검색 결과에서 독자가 가장 먼저 보는 것이 제목이고, 클릭 여부는 평균 0.3초 안에 결정됩니다.
       특히 네이버 홈피드(모바일 메인)는 2024년부터 <strong>체류시간과 클릭률(CTR)을 핵심 지표</strong>로 삼고 있어,
       첫 클릭을 유도하는 제목이 곧 알고리즘 상위 노출의 시작점이 됩니다.
     </p>
-    <p style="font-size:15px; line-height:1.9; color:#374151; margin-top:12px;">
+    <p>
       19년간 3,500쌍 이상의 웨딩 상담을 진행하며 <strong>"같은 내용도 표현 방식에 따라 문의율이 3배 이상 차이 난다"</strong>는 것을 직접 경험했습니다.
       이 생성기는 그 경험을 바탕으로 만든 12가지 제목 패턴을 자동으로 적용해 드립니다.
     </p>
   </section>
 
   <!-- 클릭 문법 7가지 -->
-  <section style="margin-bottom:48px;">
-    <h2 style="font-size:22px; font-weight:700; color:#1A1A2E; margin-bottom:20px;">✍️ 클릭을 부르는 제목 문법 7가지</h2>
-
-    <div style="display:flex; flex-direction:column; gap:16px;">
-      <div style="background:#F8F9FD; border-radius:12px; padding:20px 24px; border-left:4px solid #00C73C;">
-        <strong style="font-size:15px; color:#1A1A2E;">1. 숫자형</strong>
-        <p style="font-size:14px; color:#6B7280; margin-top:6px; line-height:1.7;">구체적인 숫자는 뇌가 본능적으로 신뢰합니다. "몇 가지"보다 "3가지", "몇 주"보다 "14일"이 클릭율이 높습니다.<br><span style="color:#00C73C;">예: 블로그 상위 노출 <strong>3가지</strong> 핵심 원칙</span></p>
+  <section>
+    <h2>클릭을 부르는 제목 문법 7가지</h2>
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div class="grammar-card" style="border-left-color:#00C73C;">
+        <strong>1. 숫자형</strong>
+        <p>구체적인 숫자는 뇌가 본능적으로 신뢰합니다. "몇 가지"보다 "3가지", "몇 주"보다 "14일"이 클릭율이 높습니다.<br><span style="color:#00C73C;">예: 블로그 상위 노출 <strong>3가지</strong> 핵심 원칙</span></p>
       </div>
-      <div style="background:#F8F9FD; border-radius:12px; padding:20px 24px; border-left:4px solid #00C73C;">
-        <strong style="font-size:15px; color:#1A1A2E;">2. 실화/후기형</strong>
-        <p style="font-size:14px; color:#6B7280; margin-top:6px; line-height:1.7;">제3자의 경험담은 가장 강력한 신뢰 장치입니다. "실제 후기", "직접 써봤더니", "○○ 사장님의 경우" 같은 표현을 활용하세요.<br><span style="color:#00C73C;">예: 광고 없이 <strong>매출 2배</strong> 올린 사장님의 비밀</span></p>
+      <div class="grammar-card" style="border-left-color:#00C73C;">
+        <strong>2. 실화/후기형</strong>
+        <p>제3자의 경험담은 가장 강력한 신뢰 장치입니다. "실제 후기", "직접 써봤더니" 같은 표현을 활용하세요.<br><span style="color:#00C73C;">예: 광고 없이 <strong>매출 2배</strong> 올린 사장님의 비밀</span></p>
       </div>
-      <div style="background:#F8F9FD; border-radius:12px; padding:20px 24px; border-left:4px solid #FF4757;">
-        <strong style="font-size:15px; color:#1A1A2E;">3. 손실 회피형</strong>
-        <p style="font-size:14px; color:#6B7280; margin-top:6px; line-height:1.7;">심리학에서 손실에 대한 공포는 이득에 대한 기대보다 2.5배 강합니다. "모르면 손해", "이렇게 하면 망한다" 같은 표현이 클릭을 유도합니다.<br><span style="color:#FF4757;">예: <strong>아직도 이렇게 하고 계세요?</strong> 블로그 망하는 지름길</span></p>
+      <div class="grammar-card" style="border-left-color:#FF4757;">
+        <strong>3. 손실 회피형</strong>
+        <p>심리학에서 손실에 대한 공포는 이득에 대한 기대보다 2.5배 강합니다. "모르면 손해", "이렇게 하면 망한다" 같은 표현이 클릭을 유도합니다.<br><span style="color:#FF4757;">예: <strong>아직도 이렇게 하고 계세요?</strong> 블로그 망하는 지름길</span></p>
       </div>
-      <div style="background:#F8F9FD; border-radius:12px; padding:20px 24px; border-left:4px solid #FF4757;">
-        <strong style="font-size:15px; color:#1A1A2E;">4. 전문가 권위형</strong>
-        <p style="font-size:14px; color:#6B7280; margin-top:6px; line-height:1.7;">"19년 경력", "전문가가 말하는", "업계 사람만 아는" 같은 표현은 정보의 신뢰도를 높여 클릭을 유도합니다.<br><span style="color:#FF4757;">예: <strong>10년차 블로거</strong>가 절대 안 알려주는 제목 짜는 법</span></p>
+      <div class="grammar-card" style="border-left-color:#FF4757;">
+        <strong>4. 전문가 권위형</strong>
+        <p>"19년 경력", "전문가가 말하는", "업계 사람만 아는" 같은 표현은 정보의 신뢰도를 높여 클릭을 유도합니다.<br><span style="color:#FF4757;">예: <strong>10년차 블로거</strong>가 절대 안 알려주는 제목 짜는 법</span></p>
       </div>
-      <div style="background:#F8F9FD; border-radius:12px; padding:20px 24px; border-left:4px solid #2E86FF;">
-        <strong style="font-size:15px; color:#1A1A2E;">5. 상식 파괴형</strong>
-        <p style="font-size:14px; color:#6B7280; margin-top:6px; line-height:1.7;">사람들이 알고 있던 것을 뒤집는 정보는 강한 호기심을 유발합니다. "사실은 반대입니다", "오해하고 있습니다" 패턴이 효과적입니다.<br><span style="color:#2E86FF;">예: 블로그 매일 올려야 한다고요? <strong>사실은 정반대입니다</strong></span></p>
+      <div class="grammar-card" style="border-left-color:#2E86FF;">
+        <strong>5. 상식 파괴형</strong>
+        <p>사람들이 알고 있던 것을 뒤집는 정보는 강한 호기심을 유발합니다. "사실은 반대입니다", "오해하고 있습니다" 패턴이 효과적입니다.<br><span style="color:#2E86FF;">예: 블로그 매일 올려야 한다고요? <strong>사실은 정반대입니다</strong></span></p>
       </div>
-      <div style="background:#F8F9FD; border-radius:12px; padding:20px 24px; border-left:4px solid #2E86FF;">
-        <strong style="font-size:15px; color:#1A1A2E;">6. 타깃 호출형</strong>
-        <p style="font-size:14px; color:#6B7280; margin-top:6px; line-height:1.7;">"자영업자만", "초보 블로거라면", "30대 사장님" 같이 특정 독자를 직접 부르는 제목은 해당 독자의 클릭 확률을 크게 높입니다.<br><span style="color:#2E86FF;">예: <strong>자영업자 블로거</strong>라면 이것만 알면 됩니다</span></p>
+      <div class="grammar-card" style="border-left-color:#2E86FF;">
+        <strong>6. 타깃 호출형</strong>
+        <p>"자영업자만", "초보 블로거라면", "30대 사장님" 같이 특정 독자를 직접 부르는 제목은 해당 독자의 클릭 확률을 크게 높입니다.<br><span style="color:#2E86FF;">예: <strong>자영업자 블로거</strong>라면 이것만 알면 됩니다</span></p>
       </div>
-      <div style="background:#F8F9FD; border-radius:12px; padding:20px 24px; border-left:4px solid #8B5CF6;">
-        <strong style="font-size:15px; color:#1A1A2E;">7. 연도/최신 정보형</strong>
-        <p style="font-size:14px; color:#6B7280; margin-top:6px; line-height:1.7;">"2026년 기준", "최신 알고리즘 변경 반영" 같은 표현은 최신 정보라는 신뢰감과 함께 검색 정확도도 함께 올라갑니다.<br><span style="color:#8B5CF6;">예: <strong>2026년 기준</strong> 네이버 홈피드 노출 공략법</span></p>
+      <div class="grammar-card" style="border-left-color:#8B5CF6;">
+        <strong>7. 연도/최신 정보형</strong>
+        <p>"2026년 기준", "최신 알고리즘 변경 반영" 같은 표현은 최신 정보라는 신뢰감과 함께 검색 정확도도 함께 올라갑니다.<br><span style="color:#8B5CF6;">예: <strong>2026년 기준</strong> 네이버 홈피드 노출 공략법</span></p>
       </div>
     </div>
   </section>
 
   <!-- FAQ -->
-  <section style="margin-bottom:48px;">
-    <h2 style="font-size:22px; font-weight:700; color:#1A1A2E; margin-bottom:20px;">❓ 자주 묻는 질문 (FAQ)</h2>
-
-    <div style="display:flex; flex-direction:column; gap:12px;">
-      <details style="background:#F8F9FD; border-radius:12px; padding:20px 24px; cursor:pointer;">
-        <summary style="font-size:15px; font-weight:600; color:#1A1A2E; list-style:none; display:flex; justify-content:space-between;">
-          Q. 생성된 제목을 그대로 써도 되나요?
-        </summary>
-        <p style="font-size:14px; color:#6B7280; margin-top:12px; line-height:1.8;">
+  <section>
+    <h2>자주 묻는 질문</h2>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <details class="faq-item">
+        <summary>Q. 생성된 제목을 그대로 써도 되나요?</summary>
+        <p>
           생성된 제목은 <strong>참고용 뼈대</strong>로 활용하시는 것을 권장드립니다. 내용과 실제 연관성 있게 약간 수정해서 사용하시면 더 좋습니다.
           예를 들어 "2개월 만에 매출 2배"라는 표현은 실제 내용에서 뒷받침이 되어야 독자의 신뢰를 얻을 수 있습니다.
         </p>
       </details>
-      <details style="background:#F8F9FD; border-radius:12px; padding:20px 24px; cursor:pointer;">
-        <summary style="font-size:15px; font-weight:600; color:#1A1A2E; list-style:none; display:flex; justify-content:space-between;">
-          Q. 어떤 키워드를 입력해야 가장 좋은 결과가 나오나요?
-        </summary>
-        <p style="font-size:14px; color:#6B7280; margin-top:12px; line-height:1.8;">
+      <details class="faq-item">
+        <summary>Q. 어떤 키워드를 입력해야 가장 좋은 결과가 나오나요?</summary>
+        <p>
           <strong>2~4 단어 조합의 롱테일 키워드</strong>가 가장 효과적입니다. "블로그"보다는 "자영업자 블로그 마케팅", "다이어트"보다는 "직장인 점심 다이어트" 처럼 구체적으로 입력할수록
           경쟁이 낮고 실제 검색 의도에 맞는 제목이 생성됩니다.
         </p>
       </details>
-      <details style="background:#F8F9FD; border-radius:12px; padding:20px 24px; cursor:pointer;">
-        <summary style="font-size:15px; font-weight:600; color:#1A1A2E; list-style:none; display:flex; justify-content:space-between;">
-          Q. 네이버 블로그 제목 글자 수 제한이 있나요?
-        </summary>
-        <p style="font-size:14px; color:#6B7280; margin-top:12px; line-height:1.8;">
+      <details class="faq-item">
+        <summary>Q. 네이버 블로그 제목 글자 수 제한이 있나요?</summary>
+        <p>
           네이버는 최대 <strong>64바이트(한글 약 32자)</strong>까지 제목으로 설정할 수 있습니다.
           모바일 검색 결과에서는 약 <strong>28~32자에서 제목이 잘려 보이기</strong> 때문에, 핵심 키워드와 임팩트 있는 표현을 반드시 앞쪽에 배치하세요.
         </p>
       </details>
-      <details style="background:#F8F9FD; border-radius:12px; padding:20px 24px; cursor:pointer;">
-        <summary style="font-size:15px; font-weight:600; color:#1A1A2E; list-style:none; display:flex; justify-content:space-between;">
-          Q. 제목에 키워드를 여러 개 넣어도 되나요?
-        </summary>
-        <p style="font-size:14px; color:#6B7280; margin-top:12px; line-height:1.8;">
+      <details class="faq-item">
+        <summary>Q. 제목에 키워드를 여러 개 넣어도 되나요?</summary>
+        <p>
           키워드를 <strong>억지로 여러 개 넣는 것은 오히려 역효과</strong>입니다. 네이버 알고리즘은 2023년 이후 키워드 도배를 저품질로 판단합니다.
           핵심 키워드 1~2개만 자연스럽게 제목에 녹이고, 나머지는 본문에서 자연스럽게 활용하세요.
         </p>
       </details>
-      <details style="background:#F8F9FD; border-radius:12px; padding:20px 24px; cursor:pointer;">
-        <summary style="font-size:15px; font-weight:600; color:#1A1A2E; list-style:none; display:flex; justify-content:space-between;">
-          Q. 이 도구는 무료인가요?
-        </summary>
-        <p style="font-size:14px; color:#6B7280; margin-top:12px; line-height:1.8;">
-          네, <strong>완전 무료</strong>로 사용하실 수 있습니다. 회원가입이나 로그인 없이 키워드만 입력하면 즉시 사용 가능합니다.
-          사이트 운영은 광고 수익으로 유지되고 있으며, 콘텐츠 자체는 무제한 무료로 제공됩니다.
+      <details class="faq-item">
+        <summary>Q. 이 도구는 무료인가요?</summary>
+        <p>
+          네, 제목 생성기는 <strong>무료</strong>로 사용하실 수 있습니다. 회원가입 후 키워드만 입력하면 즉시 사용 가능합니다.
+          블로그 글 작성, 이미지 생성 등 PRO 도구도 가입 시 무료 체험 횟수가 제공됩니다.
         </p>
       </details>
     </div>
@@ -883,12 +970,12 @@
 
   <!-- 이 도구에 대해 -->
   <section>
-    <h2 style="font-size:22px; font-weight:700; color:#1A1A2E; margin-bottom:16px;">🛠 이 도구에 대해</h2>
-    <p style="font-size:15px; line-height:1.9; color:#374151;">
+    <h2>이 도구에 대해</h2>
+    <p>
       뚝딱툴의 네이버 블로그 제목 생성기는 <strong>광고비 없이 연 매출 13억을 만든 웨딩 컨설턴트</strong>가 실제 비즈니스 현장에서 검증한 클릭 문법을 바탕으로 만들었습니다.
       광고비를 한 푼도 쓰지 않고 연 매출 13억 원까지 성장시킨 유기적 마케팅 노하우를 누구나 쉽게 활용할 수 있도록 도구로 구현했습니다.
     </p>
-    <p style="font-size:15px; line-height:1.9; color:#374151; margin-top:12px;">
+    <p>
       AI를 쓸 줄 몰라도, 마케팅을 잘 몰라도, <strong>키워드 하나만 입력하면 12가지 검증된 패턴</strong>의 제목을 즉시 받아보실 수 있습니다.
       자영업자, 소상공인, 블로그를 막 시작한 분들 모두를 위해 만들었습니다.
     </p>
@@ -897,43 +984,55 @@
 </div>
 
 <!-- 뚝딱툴 도구 모음 -->
-<div style="max-width:860px; margin:0 auto; padding:0 20px 48px;">
+<div class="tools-section">
 
   <!-- 무료 도구 -->
-  <div style="font-size:13px; font-weight:700; color:#00C73C; letter-spacing:0.05em; margin-bottom:14px;">🆓 무료 도구</div>
-  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:32px;">
-    <div style="background:#F0FDF4; border:2px solid #00C73C; border-radius:14px; padding:20px;">
-      <div style="font-size:11px; font-weight:700; color:#00C73C; margin-bottom:6px; letter-spacing:0.05em;">현재 페이지</div>
-      <div style="font-size:16px; font-weight:700; color:#1A1A2E; margin-bottom:4px;">📝 블로그 제목 생성기</div>
-      <div style="font-size:12px; color:#6B7280;">키워드 입력 → 클릭을 부르는 제목 12패턴</div>
+  <div class="tools-section-label" style="color:var(--accent);">무료 도구</div>
+  <div class="tools-grid tools-grid-3" style="margin-bottom:28px;">
+    <div class="tool-card-current">
+      <div class="tool-card-tag" style="color:var(--accent);">현재 페이지</div>
+      <div class="tool-card-name">블로그 제목 생성기</div>
+      <div class="tool-card-desc">키워드 입력 — 클릭을 부르는 제목 12패턴</div>
     </div>
-    <a href="hook-generator.html" style="background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:20px; text-decoration:none; display:block; transition:all 0.2s;" onmouseover="this.style.borderColor='#00C73C';this.style.boxShadow='0 4px 16px rgba(0,199,60,0.12)'" onmouseout="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
-      <div style="font-size:11px; font-weight:700; color:#9CA3AF; margin-bottom:6px; letter-spacing:0.05em;">바로가기 →</div>
-      <div style="font-size:16px; font-weight:700; color:#1A1A2E; margin-bottom:4px;">🔥 후킹문구 생성기</div>
-      <div style="font-size:12px; color:#6B7280;">업종 + 키워드 → 스크롤 멈추는 문구 15개</div>
+    <a href="hook-generator.html" class="tool-card">
+      <div class="tool-card-tag" style="color:var(--gray);">바로가기</div>
+      <div class="tool-card-name">후킹문구 생성기</div>
+      <div class="tool-card-desc">업종 + 키워드 — 스크롤 멈추는 문구 15개</div>
     </a>
-    <a href="threads.html" style="background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:20px; text-decoration:none; display:block; transition:all 0.2s;" onmouseover="this.style.borderColor='#00C73C';this.style.boxShadow='0 4px 16px rgba(0,199,60,0.12)'" onmouseout="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
-      <div style="font-size:11px; font-weight:700; color:#9CA3AF; margin-bottom:6px; letter-spacing:0.05em;">바로가기 →</div>
-      <div style="font-size:16px; font-weight:700; color:#1A1A2E; margin-bottom:4px;">🧵 스레드 글 생성기</div>
-      <div style="font-size:12px; color:#6B7280;">유형·말투 선택 → 터지는 스레드 글 3개</div>
+    <a href="threads.html" class="tool-card">
+      <div class="tool-card-tag" style="color:var(--gray);">바로가기</div>
+      <div class="tool-card-name">스레드 글 생성기</div>
+      <div class="tool-card-desc">유형 + 말투 선택 — 터지는 스레드 글 3개</div>
     </a>
   </div>
 
   <!-- PRO 도구 -->
-  <div style="font-size:13px; font-weight:700; color:#8B5CF6; letter-spacing:0.05em; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
-    <span>✦ PRO 도구</span>
-    <span style="font-size:10px; font-weight:600; color:#FF4757; letter-spacing:0;">현재 사용 제한 중</span>
-  </div>
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-    <a href="blog-writer.html" style="background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:20px; text-decoration:none; display:block; transition:all 0.2s; position:relative;" onmouseover="this.style.borderColor='#8B5CF6';this.style.boxShadow='0 4px 16px rgba(139,92,246,0.12)'" onmouseout="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
-      <div style="font-size:11px; font-weight:700; color:#8B5CF6; margin-bottom:6px; letter-spacing:0.05em;">PRO ✦</div>
-      <div style="font-size:16px; font-weight:700; color:#1A1A2E; margin-bottom:4px;">✍️ 블로그 글 생성기</div>
-      <div style="font-size:12px; color:#6B7280;">업종·키워드 → 상위노출 블로그 글 작성</div>
+  <div class="tools-section-label" style="color:#8B5CF6;">PRO 도구</div>
+  <div class="tools-grid tools-grid-2">
+    <a href="blog-writer.html" class="tool-card">
+      <div class="tool-card-tag" style="color:#8B5CF6;">PRO</div>
+      <div class="tool-card-name">블로그 글 생성기</div>
+      <div class="tool-card-desc">업종 + 키워드 — 상위노출 블로그 글 작성</div>
     </a>
-    <a href="blog-image.html" style="background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:20px; text-decoration:none; display:block; transition:all 0.2s; position:relative;" onmouseover="this.style.borderColor='#8B5CF6';this.style.boxShadow='0 4px 16px rgba(139,92,246,0.12)'" onmouseout="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
-      <div style="font-size:11px; font-weight:700; color:#8B5CF6; margin-bottom:6px; letter-spacing:0.05em;">PRO ✦</div>
-      <div style="font-size:16px; font-weight:700; color:#1A1A2E; margin-bottom:4px;">🖼️ 블로그 이미지 생성기</div>
-      <div style="font-size:12px; color:#6B7280;">주제 입력 → FLUX AI로 블로그 이미지 4~8장 생성</div>
+    <a href="blog-image.html" class="tool-card">
+      <div class="tool-card-tag" style="color:#8B5CF6;">PRO</div>
+      <div class="tool-card-name">블로그 이미지 생성기</div>
+      <div class="tool-card-desc">주제 입력 — AI로 블로그 이미지 4~8장 생성</div>
+    </a>
+    <a href="blog-image-pro.html" class="tool-card">
+      <div class="tool-card-tag" style="color:#8B5CF6;">PRO</div>
+      <div class="tool-card-name">프리미엄 이미지</div>
+      <div class="tool-card-desc">GPT Image / FLUX Realism 고퀄리티 이미지</div>
+    </a>
+    <a href="card-news.html" class="tool-card">
+      <div class="tool-card-tag" style="color:#8B5CF6;">PRO</div>
+      <div class="tool-card-name">카드뉴스 생성기</div>
+      <div class="tool-card-desc">텍스트 붙여넣기 — AI 카드뉴스 자동 생성</div>
+    </a>
+    <a href="keyword-finder.html" class="tool-card">
+      <div class="tool-card-tag" style="color:var(--accent);">NEW</div>
+      <div class="tool-card-name">황금키워드 찾기</div>
+      <div class="tool-card-desc">경쟁 낮은 블루오션 키워드 자동 발굴</div>
     </a>
   </div>
 </div>
@@ -1128,12 +1227,12 @@ function setLoading(loading) {
   const btn = document.getElementById('generateBtn');
   if (loading) {
     btn.disabled = true;
-    btn.textContent = '🔄 AI가 제목을 생성하고 있습니다...';
+    btn.textContent = 'AI가 제목을 생성하고 있습니다...';
     btn.style.opacity = '0.7';
     btn.style.cursor = 'not-allowed';
   } else {
     btn.disabled = false;
-    btn.textContent = '✨ 클릭을 부르는 제목 12가지 패턴 생성하기';
+    btn.textContent = '제목 12패턴 생성하기';
     btn.style.opacity = '1';
     btn.style.cursor = 'pointer';
   }
@@ -1205,7 +1304,7 @@ function copyAll() {
   navigator.clipboard.writeText(all).then(() => {
     const btn = document.querySelector('.copy-all-btn');
     btn.textContent = '전체 복사 완료!';
-    setTimeout(() => { btn.textContent = '📋 전체 제목 복사'; }, 2000);
+    setTimeout(() => { btn.textContent = '전체 제목 복사'; }, 2000);
   });
 }
 
