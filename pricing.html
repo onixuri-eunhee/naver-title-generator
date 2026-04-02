@@ -469,8 +469,11 @@ async function handleBuy() {
 
   // 위젯 초기화 (v1 Payment Widget SDK — 공식 샘플 기준)
   try {
-    var clientKey = 'test_gck_DLJOpm5QrIwmRWv4MagNVPNdxbWn';
-    console.log('[TOSS] Initializing PaymentWidget with key:', clientKey);
+    var keyRes = await fetch('/api/payment-client-key');
+    var keyData = await keyRes.json();
+    var clientKey = keyData.clientKey;
+    if (!clientKey) { throw new Error('클라이언트 키가 설정되지 않았습니다.'); }
+    console.log('[TOSS] Initializing PaymentWidget with key:', clientKey.substring(0, 15) + '...');
     paymentWidget = PaymentWidget(clientKey, PaymentWidget.ANONYMOUS);
     console.log('[TOSS] PaymentWidget created:', paymentWidget);
 
