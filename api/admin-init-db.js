@@ -59,6 +59,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, message: '테이블 3개 + 인덱스 5개 생성 완료' });
   } catch (err) {
     console.error('[INIT-DB] Error:', err.message);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: '서버 오류가 발생했습니다.' });
   }
 }

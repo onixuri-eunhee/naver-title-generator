@@ -30,21 +30,22 @@ input:focus { border-color:#3b82f6; }
 <div class="card">
   <h1>🔐 관리자</h1>
   <div class="ip-display" id="ipDisplay">IP 확인 중...</div>
-  <div class="field">
-    <label>관리자 비밀번호</label>
-    <input type="password" id="adminKey" placeholder="비밀번호 입력">
-  </div>
   <button class="btn btn-primary" id="btnRegister" onclick="whitelist('POST')">✅ 내 IP 화이트리스트 등록</button>
   <button class="btn btn-danger" id="btnRemove" onclick="whitelist('DELETE')">❌ 화이트리스트 해제</button>
   <button class="btn" style="background:#334155; color:#e2e8f0;" onclick="checkStatus()">🔍 상태 확인</button>
   <div class="status" id="status"></div>
 </div>
 <script>
+function authHeaders() {
+  var h = { 'Content-Type': 'application/json' };
+  var tk = localStorage.getItem('ddukddak_token');
+  if (tk) h['Authorization'] = 'Bearer ' + tk;
+  return h;
+}
+
 async function checkStatus() {
-  var key = document.getElementById('adminKey').value;
-  if (!key) { showStatus('비밀번호를 입력하세요', 'err'); return; }
   try {
-    var res = await fetch('/api/admin?adminKey=' + encodeURIComponent(key));
+    var res = await fetch('/api/admin', { headers: authHeaders() });
     var data = await res.json();
     if (!res.ok) { showStatus(data.error, 'err'); return; }
     document.getElementById('ipDisplay').textContent = '내 IP: ' + data.ip;
@@ -53,13 +54,10 @@ async function checkStatus() {
 }
 
 async function whitelist(method) {
-  var key = document.getElementById('adminKey').value;
-  if (!key) { showStatus('비밀번호를 입력하세요', 'err'); return; }
   try {
     var res = await fetch('/api/admin', {
       method: method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ adminKey: key }),
+      headers: authHeaders(),
     });
     var data = await res.json();
     if (!res.ok) { showStatus(data.error, 'err'); return; }

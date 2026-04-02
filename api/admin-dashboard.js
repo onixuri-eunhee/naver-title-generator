@@ -109,6 +109,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid action. Use: stats, users, logs' });
   } catch (err) {
     console.error('[ADMIN-DASHBOARD] Error:', err.message);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: '서버 오류가 발생했습니다.' });
   }
 }

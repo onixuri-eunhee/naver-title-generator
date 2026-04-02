@@ -555,7 +555,7 @@ export default async function handler(req, res) {
   let sessionEmail = null;
 
   if (!isAdmin) {
-    const token = req.body?.token || req.headers?.authorization?.replace('Bearer ', '');
+    const token = req.headers?.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null;
     if (!token) {
       return res.status(401).json({ error: '로그인이 필요합니다.' });
     }

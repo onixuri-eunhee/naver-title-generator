@@ -60,7 +60,7 @@ function getTodayKeyByEmail(email) {
 function extractToken(req) {
   const auth = req.headers['authorization'] || req.headers['Authorization'] || '';
   if (auth.startsWith('Bearer ')) return auth.slice(7);
-  return req.body?.token || req.query?.token || null;
+  return null;
 }
 
 async function resolveSessionEmail(token) {

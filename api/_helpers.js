@@ -24,7 +24,7 @@ function getClientIp(req) {
 function extractToken(req) {
   const auth = req.headers['authorization'] || req.headers['Authorization'] || '';
   if (auth.startsWith('Bearer ')) return auth.slice(7);
-  return req.body?.token || req.query?.token || null;
+  return null;
 }
 
 async function resolveSessionEmail(token) {
@@ -64,8 +64,6 @@ function setCorsHeaders(res, req) {
   const origin = req?.headers?.origin || '';
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-  } else if (!origin) {
-    res.setHeader('Access-Control-Allow-Origin', 'https://ddukddaktool.co.kr');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Audio-Mime-Type');

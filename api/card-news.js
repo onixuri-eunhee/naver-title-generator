@@ -511,7 +511,7 @@ export default async function handler(req, res) {
   let sessionEmail = null;
 
   if (!isAdmin) {
-    const token = req.body?.token || req.query?.token || req.headers?.authorization?.replace('Bearer ', '');
+    const token = req.headers?.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null;
     if (!token) {
       return res.status(401).json({ error: '로그인이 필요합니다.' });
     }
@@ -542,6 +542,9 @@ export default async function handler(req, res) {
     // 입력 검증
     if (!blogText || blogText.trim().length < 100) {
       return res.status(400).json({ error: '블로그 글을 100자 이상 입력해주세요.' });
+    }
+    if (blogText.length > 50000) {
+      return res.status(400).json({ error: '텍스트가 너무 깁니다. 50,000자 이내로 입력해주세요.' });
     }
     if (blogText.length > 30000) {
       return res.status(400).json({ error: '블로그 글이 너무 깁니다. 30,000자 이내로 입력해주세요.' });

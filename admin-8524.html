@@ -263,6 +263,8 @@ async function loadUsers(page) {
   var url = '/api/admin-dashboard?action=users&page=' + page + '&limit=20';
   if (search) url += '&search=' + encodeURIComponent(search);
 
+  function esc(str) { var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
   try {
     var res = await fetch(url, { headers: apiHeaders() });
     var data = await res.json();
@@ -272,7 +274,7 @@ async function loadUsers(page) {
     tbody.innerHTML = data.users.map(function(u, i) {
       var num = (data.pagination.page - 1) * data.pagination.limit + i + 1;
       var date = new Date(u.created_at).toLocaleDateString('ko-KR');
-      return '<tr><td>' + num + '</td><td>' + u.email + '</td><td>' + (u.name || '-') + '</td><td>' + (u.phone || '-') + '</td><td>' + u.credits + '</td><td>' + date + '</td></tr>';
+      return '<tr><td>' + num + '</td><td>' + esc(u.email) + '</td><td>' + esc(u.name || '-') + '</td><td>' + esc(u.phone || '-') + '</td><td>' + esc(String(u.credits)) + '</td><td>' + esc(date) + '</td></tr>';
     }).join('');
 
     // 페이지네이션
@@ -299,11 +301,11 @@ async function loadLogs() {
     var container = document.getElementById('logsContainer');
     container.innerHTML = data.logs.map(function(log) {
       var time = new Date(log.created_at).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
-      var tool = log.tool || 'unknown';
+      var tool = esc(log.tool || 'unknown');
       return '<div class="log-row">' +
-        '<span class="log-time">' + time + '</span>' +
-        '<span class="log-tool ' + tool + '">' + tool + (log.mode ? ':' + log.mode : '') + '</span>' +
-        '<span class="log-email">' + (log.user_email || log.ip || '-') + '</span>' +
+        '<span class="log-time">' + esc(time) + '</span>' +
+        '<span class="log-tool">' + tool + (log.mode ? ':' + esc(log.mode) : '') + '</span>' +
+        '<span class="log-email">' + esc(log.user_email || log.ip || '-') + '</span>' +
         '</div>';
     }).join('');
   } catch (e) { console.error('Logs load error:', e); }

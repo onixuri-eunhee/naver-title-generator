@@ -52,7 +52,7 @@ function getTTLUntilMidnightKST() {
 function extractToken(req) {
   const auth = req.headers['authorization'] || req.headers['Authorization'] || '';
   if (auth.startsWith('Bearer ')) return auth.slice(7);
-  return req.body?.token || req.query?.token || null;
+  return null;
 }
 
 async function resolveSessionEmail(token) {
@@ -106,6 +106,12 @@ export default async function handler(req, res) {
 
     if (!apiMessages) {
       return res.status(400).json({ error: 'prompt 또는 messages가 필요합니다.' });
+    }
+
+    // 입력 길이 제한
+    const totalLen = JSON.stringify(apiMessages).length + (system ? system.length : 0);
+    if (totalLen > 100000) {
+      return res.status(400).json({ error: '입력이 너무 깁니다.' });
     }
 
     // 모델 화이트리스트 (허용된 모델만 사용 가능)
