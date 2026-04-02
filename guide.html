@@ -50,14 +50,26 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
+:root {
+  --bg: #FAFBFE;
+  --card: #FFFFFF;
+  --border: #E5E7EB;
+  --text: #1A1A2E;
+  --muted: #6B7280;
+  --accent: #ff5f1f;
+  --accent-soft: rgba(255,95,31,0.12);
+  --radius: 16px;
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1A2E; line-height: 1.7; }
-.navbar { background: #fff; border-bottom: 1px solid #E5E7EB; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; height: 52px; position: sticky; top: 0; z-index: 100; }
-.navbar-logo { font-size: 18px; font-weight: 900; color: #1A1A2E; text-decoration: none; }
-.navbar-logo span { color: #00C73C; }
+body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+
+/* ── Navbar ── */
+.navbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 20px; display: flex; align-items: center; justify-content: space-between; height: 52px; position: sticky; top: 0; z-index: 100; }
+.navbar-logo { font-size: 18px; font-weight: 900; color: var(--text); text-decoration: none; }
+.navbar-logo span { color: var(--accent); }
 .navbar-links { display: flex; gap: 4px; }
 .navbar-links a { padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #9CA3AF; text-decoration: none; transition: background 0.15s, color 0.15s; }
-.navbar-links a:hover { background: #F3F4F6; color: #1A1A2E; }
+.navbar-links a:hover { background: #F3F4F6; color: var(--text); }
 .navbar-links a.pro-badge { position: relative; }
 .navbar-links a.pro-badge::after {
   content: 'PRO';
@@ -70,114 +82,146 @@ body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1
   padding: 1px 3px;
   line-height: 1.4;
 }
-.hero { background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%); padding: 52px 20px 44px; text-align: center; }
-.hero-badge { display: inline-block; background: rgba(0,199,60,0.15); color: #00C73C; border: 1px solid rgba(0,199,60,0.3); padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 18px; letter-spacing: 0.05em; }
-.hero h1 { font-size: clamp(20px, 4vw, 32px); font-weight: 700; color: #fff; line-height: 1.4; margin-bottom: 14px; letter-spacing: -0.5px; }
-.hero h1 em { color: #00C73C; font-style: normal; }
-.hero p { color: rgba(255,255,255,0.6); font-size: 14px; max-width: 520px; margin: 0 auto; line-height: 1.8; }
-.container { max-width: 740px; margin: 0 auto; padding: 40px 20px 80px; }
-
-/* 목차 */
-.toc { background: #fff; border-radius: 16px; padding: 28px 32px; border: 1px solid #E5E7EB; margin-bottom: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
-.toc h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #1A1A2E; }
-.toc-list { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.toc-list li a { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; text-decoration: none; color: #374151; font-size: 14px; font-weight: 500; transition: all 0.15s; border: 1px solid #F3F4F6; }
-.toc-list li a:hover { background: #F0FDF4; border-color: #00C73C; color: #1A1A2E; }
-.toc-list li a .toc-num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 8px; background: #F3F4F6; font-size: 11px; font-weight: 800; color: #9CA3AF; flex-shrink: 0; }
-.toc-list li a:hover .toc-num { background: #00C73C; color: #fff; }
-.toc-free { display: inline-block; background: #E8FFF0; color: #00C73C; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-left: 4px; }
-.toc-pro { display: inline-block; background: #F3E8FF; color: #8B5CF6; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-left: 4px; }
-
-/* 도구 섹션 */
-.tool-section { background: #fff; border-radius: 16px; padding: 36px; border: 1px solid #E5E7EB; margin-bottom: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
-.tool-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.tool-header h2 { font-size: 20px; font-weight: 700; color: #1A1A2E; }
-.tool-badge-free { display: inline-block; background: #E8FFF0; color: #00C73C; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; }
-.tool-badge-pro { display: inline-block; background: #F3E8FF; color: #8B5CF6; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; }
-.tool-intro { font-size: 15px; color: #6B7280; line-height: 1.8; margin-bottom: 24px; }
-
-.sub-title { font-size: 16px; font-weight: 700; color: #1A1A2E; margin: 28px 0 12px; padding-left: 12px; border-left: 3px solid #00C73C; }
-.sub-title:first-of-type { margin-top: 0; }
-
-/* 테이블 */
-.guide-table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 13px; }
-.guide-table th { background: #F8F9FD; padding: 10px 12px; text-align: left; font-weight: 700; color: #374151; border-bottom: 2px solid #E5E7EB; }
-.guide-table td { padding: 10px 12px; border-bottom: 1px solid #F3F4F6; color: #374151; vertical-align: top; }
-.guide-table tr:last-child td { border-bottom: none; }
-.guide-table .good { color: #00C73C; font-weight: 700; }
-.guide-table .bad { color: #EF4444; font-weight: 700; }
-
-/* 팁 박스 */
-.tip-list { list-style: none; margin: 12px 0 20px; }
-.tip-list li { display: flex; gap: 10px; padding: 12px 16px; margin-bottom: 8px; background: #F8F9FD; border-radius: 10px; font-size: 14px; color: #374151; line-height: 1.7; }
-.tip-list li:last-child { margin-bottom: 0; }
-.tip-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: #00C73C; color: #fff; font-size: 11px; font-weight: 800; flex-shrink: 0; margin-top: 2px; }
-
-/* 시나리오 */
-.scenario-card { background: #F8F9FD; border-radius: 12px; padding: 16px 20px; margin: 8px 0; border: 1px solid #E5E7EB; font-size: 14px; color: #374151; line-height: 1.7; }
-.scenario-card strong { color: #1A1A2E; }
-
-/* 실수 박스 */
-.mistake-box { background: #FFF7ED; border-left: 4px solid #F97316; border-radius: 0 12px 12px 0; padding: 16px 20px; margin: 8px 0; font-size: 14px; color: #92400E; line-height: 1.7; }
-
-/* 워크플로우 */
-.workflow-box { background: linear-gradient(135deg, #F0FDF4 0%, #F8F9FD 100%); border-radius: 14px; padding: 24px; margin: 16px 0; border: 1px solid #D1FAE5; }
-.workflow-box h3 { font-size: 15px; font-weight: 700; color: #1A1A2E; margin-bottom: 16px; }
-.workflow-step { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
-.workflow-step:last-child { margin-bottom: 0; }
-.step-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 56px; height: 26px; border-radius: 8px; background: #00C73C; color: #fff; font-size: 11px; font-weight: 800; flex-shrink: 0; }
-.step-text { font-size: 14px; color: #374151; line-height: 1.6; }
-.step-arrow { text-align: center; color: #00C73C; font-size: 16px; margin: 4px 0 4px 20px; }
-
-/* 과금 */
-.pricing-section { background: #fff; border-radius: 16px; padding: 36px; border: 1px solid #E5E7EB; margin-bottom: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
-.pricing-current { background: #F0FDF4; border-radius: 12px; padding: 20px 24px; margin: 16px 0; border: 1px solid #D1FAE5; }
-.pricing-current h3 { font-size: 14px; font-weight: 700; color: #00C73C; margin-bottom: 12px; }
-.pricing-future { background: #F8F9FD; border-radius: 12px; padding: 20px 24px; margin: 16px 0; border: 1px solid #E5E7EB; }
-.pricing-future h3 { font-size: 14px; font-weight: 700; color: #1A1A2E; margin-bottom: 12px; }
-.pricing-highlight { background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%); border-radius: 12px; padding: 18px 24px; margin: 16px 0; border: 1px solid #FCD34D; text-align: center; }
-.pricing-highlight h3 { font-size: 14px; font-weight: 700; color: #92400E; margin-bottom: 6px; }
-.pricing-highlight p { font-size: 14px; color: #78350F; margin: 0; line-height: 1.7; }
-
-/* CTA */
-.cta-box { background: linear-gradient(135deg, #1A1A2E 0%, #0F3460 100%); border-radius: 16px; padding: 32px; text-align: center; margin-top: 32px; }
-.cta-box h3 { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 10px; }
-.cta-box p { color: rgba(255,255,255,0.65); font-size: 14px; margin-bottom: 20px; }
-.cta-btn { display: inline-block; background: #00C73C; color: #fff; padding: 14px 32px; border-radius: 12px; font-weight: 700; font-size: 15px; text-decoration: none; transition: all 0.2s; }
-.cta-btn:hover { background: #00A832; transform: translateY(-1px); }
-
-footer { text-align: center; padding: 28px 20px; font-size: 13px; color: #9CA3AF; border-top: 1px solid #E5E7EB; background: #fff; }
-footer a { color: #9CA3AF; text-decoration: none; margin: 0 8px; }
-footer a:hover { text-decoration: underline; }
-@media (max-width: 600px) {
-  .tool-section, .pricing-section, .toc { padding: 24px 20px; }
-  .hero { padding: 36px 20px 32px; }
-  .toc-list { grid-template-columns: 1fr; }
-  .guide-table { font-size: 12px; }
-  .guide-table th, .guide-table td { padding: 8px 6px; }
-}
 .navbar-links a.new-badge { position: relative; margin-right: 12px; }
 .navbar-links a.new-badge::after {
   content: 'NEW';
   position: absolute;
-  top: 1px;
-  right: 1px;
-  font-size: 8px;
-  font-weight: 800;
+  top: 1px; right: 1px;
+  font-size: 8px; font-weight: 800;
   color: #fff;
   background: #FF4757;
   border-radius: 4px;
   padding: 1px 3px;
   line-height: 1.4;
 }
+
+/* ── Navbar Auth ── */
 .navbar-auth { display: flex; align-items: center; gap: 8px; }
-.navbar-login-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #6B7280; text-decoration: none; transition: all 0.15s; }
-.navbar-login-btn:hover { background: #F3F4F6; color: #1A1A2E; }
-.navbar-signup-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; background: #00C73C; color: #fff; text-decoration: none; transition: all 0.15s; }
-.navbar-signup-btn:hover { background: #00A830; }
-.navbar-user-name { font-size: 13px; font-weight: 600; color: #00C73C; text-decoration: none; }
-.navbar-mypage-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #6B7280; text-decoration: none; transition: all 0.15s; }
-.navbar-mypage-btn:hover { background: #F3F4F6; color: #1A1A2E; }
+.navbar-login-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--muted); background: none; border: none; text-decoration: none; transition: background 0.15s; }
+.navbar-login-btn:hover { background: #F3F4F6; color: var(--text); }
+.navbar-signup-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; color: #fff; background: var(--accent); border: none; text-decoration: none; transition: background 0.15s; }
+.navbar-signup-btn:hover { background: #e6541a; }
+.navbar-user-name { font-size: 13px; font-weight: 500; color: var(--text); }
+.navbar-mypage-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--muted); background: none; border: 1px solid var(--border); text-decoration: none; transition: background 0.15s; }
+.navbar-mypage-btn:hover { background: #F3F4F6; color: var(--text); }
+.navbar-logout-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--muted); background: none; border: none; cursor: pointer; transition: background 0.15s; }
+.navbar-logout-btn:hover { background: #F3F4F6; color: var(--text); }
+
+/* ── Hero (light) ── */
+.hero { background: var(--bg); padding: 52px 20px 44px; text-align: center; border-bottom: 1px solid var(--border); }
+.hero-badge { display: inline-block; background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(255,95,31,0.25); padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 18px; letter-spacing: 0.05em; }
+.hero h1 { font-size: clamp(20px, 4vw, 32px); font-weight: 700; color: var(--text); line-height: 1.4; margin-bottom: 14px; letter-spacing: -0.5px; }
+.hero h1 em { color: var(--accent); font-style: normal; }
+.hero p { color: var(--muted); font-size: 14px; max-width: 520px; margin: 0 auto; line-height: 1.8; }
+
+/* ── Container ── */
+.container { max-width: 740px; margin: 0 auto; padding: 40px 20px 80px; }
+
+/* ── TOC ── */
+.toc { background: var(--card); border-radius: var(--radius); padding: 28px 32px; border: 1px solid var(--border); margin-bottom: 24px; }
+.toc h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--text); }
+.toc-list { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.toc-list li a { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; text-decoration: none; color: #374151; font-size: 14px; font-weight: 500; transition: all 0.15s; border: 1px solid #F3F4F6; }
+.toc-list li a:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+.toc-list li a .toc-num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 8px; background: #F3F4F6; font-size: 11px; font-weight: 800; color: #9CA3AF; flex-shrink: 0; }
+.toc-list li a:hover .toc-num { background: var(--accent); color: #fff; }
+.toc-free { display: inline-block; background: #E8FFF0; color: #16a34a; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-left: 4px; }
+.toc-pro { display: inline-block; background: #F3E8FF; color: #8B5CF6; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-left: 4px; }
+
+/* ── Accordion (CSS-only details/summary) ── */
+.tool-accordion { margin-bottom: 16px; }
+.tool-accordion details { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
+.tool-accordion details[open] { border-color: var(--accent); }
+.tool-accordion summary { display: flex; align-items: center; gap: 12px; padding: 20px 24px; cursor: pointer; list-style: none; user-select: none; transition: background 0.15s; }
+.tool-accordion summary::-webkit-details-marker { display: none; }
+.tool-accordion summary::after {
+  content: '';
+  margin-left: auto;
+  width: 20px; height: 20px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") center/contain no-repeat;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.tool-accordion details[open] summary::after { transform: rotate(180deg); }
+.tool-accordion details[open] summary { border-bottom: 1px solid var(--border); }
+.tool-accordion summary:hover { background: #FAFBFE; }
+.tool-accordion summary h2 { font-size: 17px; font-weight: 700; color: var(--text); margin: 0; }
+.tool-badge-free { display: inline-block; background: #E8FFF0; color: #16a34a; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; }
+.tool-badge-pro { display: inline-block; background: #F3E8FF; color: #8B5CF6; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; }
+.tool-badge-new { display: inline-block; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; }
+.tool-body { padding: 28px 24px; }
+.tool-intro { font-size: 15px; color: var(--muted); line-height: 1.8; margin-bottom: 24px; }
+
+.sub-title { font-size: 16px; font-weight: 700; color: var(--text); margin: 28px 0 12px; padding-left: 12px; border-left: 3px solid var(--accent); }
+.sub-title:first-of-type { margin-top: 0; }
+
+/* ── Table ── */
+.guide-table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 13px; }
+.guide-table th { background: var(--bg); padding: 10px 12px; text-align: left; font-weight: 700; color: #374151; border-bottom: 2px solid var(--border); }
+.guide-table td { padding: 10px 12px; border-bottom: 1px solid #F3F4F6; color: #374151; vertical-align: top; }
+.guide-table tr:last-child td { border-bottom: none; }
+.guide-table .good { color: #16a34a; font-weight: 700; }
+.guide-table .bad { color: #EF4444; font-weight: 700; }
+
+/* ── Tip list ── */
+.tip-list { list-style: none; margin: 12px 0 20px; }
+.tip-list li { display: flex; gap: 10px; padding: 12px 16px; margin-bottom: 8px; background: var(--bg); border-radius: 10px; font-size: 14px; color: #374151; line-height: 1.7; }
+.tip-list li:last-child { margin-bottom: 0; }
+.tip-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 800; flex-shrink: 0; margin-top: 2px; }
+
+/* ── Scenario ── */
+.scenario-card { background: var(--bg); border-radius: 12px; padding: 16px 20px; margin: 8px 0; border: 1px solid var(--border); font-size: 14px; color: #374151; line-height: 1.7; }
+.scenario-card strong { color: var(--text); }
+
+/* ── Mistake box ── */
+.mistake-box { background: #FFF7ED; border-left: 4px solid var(--accent); border-radius: 0 12px 12px 0; padding: 16px 20px; margin: 8px 0; font-size: 14px; color: #92400E; line-height: 1.7; }
+
+/* ── Workflow ── */
+.workflow-section { background: var(--card); border-radius: var(--radius); padding: 36px; border: 1px solid var(--border); margin-bottom: 16px; }
+.workflow-section .tool-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.workflow-section .tool-header h2 { font-size: 20px; font-weight: 700; color: var(--text); }
+.workflow-section .tool-intro { font-size: 15px; color: var(--muted); line-height: 1.8; margin-bottom: 24px; }
+.workflow-box { background: var(--bg); border-radius: 14px; padding: 24px; margin: 16px 0; border: 1px solid var(--border); }
+.workflow-box h3 { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 16px; }
+.workflow-step { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+.workflow-step:last-child { margin-bottom: 0; }
+.step-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 56px; height: 26px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 800; flex-shrink: 0; }
+.step-text { font-size: 14px; color: #374151; line-height: 1.6; }
+.step-arrow { text-align: center; color: var(--accent); font-size: 16px; margin: 4px 0 4px 20px; }
+
+/* ── Pricing ── */
+.pricing-section { background: var(--card); border-radius: var(--radius); padding: 36px; border: 1px solid var(--border); margin-bottom: 16px; }
+.pricing-section .tool-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.pricing-section .tool-header h2 { font-size: 20px; font-weight: 700; color: var(--text); }
+.pricing-current { background: var(--bg); border-radius: 12px; padding: 20px 24px; margin: 16px 0; border: 1px solid var(--border); }
+.pricing-current h3 { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }
+.pricing-future { background: var(--bg); border-radius: 12px; padding: 20px 24px; margin: 16px 0; border: 1px solid var(--border); }
+.pricing-future h3 { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
+.pricing-highlight { background: var(--accent-soft); border-radius: 12px; padding: 18px 24px; margin: 16px 0; border: 1px solid rgba(255,95,31,0.25); text-align: center; }
+.pricing-highlight h3 { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+.pricing-highlight p { font-size: 14px; color: var(--text); margin: 0; line-height: 1.7; }
+
+/* ── CTA ── */
+.cta-box { background: var(--card); border: 2px solid var(--accent); border-radius: var(--radius); padding: 32px; text-align: center; margin-top: 32px; }
+.cta-box h3 { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+.cta-box p { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+.cta-btn { display: inline-block; background: var(--accent); color: #fff; padding: 14px 32px; border-radius: 12px; font-weight: 700; font-size: 15px; text-decoration: none; transition: all 0.2s; }
+.cta-btn:hover { background: #e6541a; transform: translateY(-1px); }
+
+/* ── Footer ── */
+footer { text-align: center; padding: 28px 20px; font-size: 13px; color: #9CA3AF; border-top: 1px solid var(--border); background: var(--card); }
+footer a { color: #9CA3AF; text-decoration: none; margin: 0 8px; }
+footer a:hover { text-decoration: underline; }
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .tool-body, .pricing-section, .toc, .workflow-section { padding: 24px 20px; }
+  .tool-accordion summary { padding: 16px 18px; }
+  .hero { padding: 36px 20px 32px; }
+  .toc-list { grid-template-columns: 1fr; }
+  .guide-table { font-size: 12px; }
+  .guide-table th, .guide-table td { padding: 8px 6px; }
+}
 </style>
 <link rel="stylesheet" href="/navbar-mobile.css">
 </head>
@@ -186,13 +230,13 @@ footer a:hover { text-decoration: underline; }
 <nav class="navbar">
   <a href="/" class="navbar-logo"><span>뚝</span>딱툴</a>
   <div class="navbar-links">
-    <a href="guide.html" style="color:#00C73C; font-weight:700;">사용법</a>
+    <a href="guide.html" style="color:var(--accent); font-weight:700;">사용법</a>
     <a href="/">제목</a>
     <a href="hook-generator.html">후킹</a>
     <a href="threads.html">스레드</a>
     <a href="blog-writer.html" class="pro-badge">블로그 글</a>
     <a href="blog-image.html" class="pro-badge">이미지</a>
-    
+
     <a href="blog-image-pro.html" class="pro-badge">프리미엄</a>
     <a href="card-news.html" class="pro-badge">카드뉴스</a>
     <a href="keyword-finder.html" class="new-badge">황금키워드</a>
@@ -203,9 +247,9 @@ footer a:hover { text-decoration: underline; }
 </nav>
 
 <div class="hero">
-  <div class="hero-badge">📖 사용법 가이드</div>
+  <div class="hero-badge">사용법 가이드</div>
   <h1>뚝딱툴 <em>200% 활용법</em></h1>
-  <p>5가지 도구를 제대로 쓰는 법<br>입력 꿀팁부터 추천 워크플로우까지</p>
+  <p>5가지 도구를 제대로 쓰는 법 — 입력 꿀팁부터 추천 워크플로우까지</p>
 </div>
 
 <div class="container">
@@ -222,408 +266,436 @@ footer a:hover { text-decoration: underline; }
       <li><a href="#tool-6"><span class="toc-num">6</span>카드뉴스 제작기<span class="toc-pro">PRO</span></a></li>
       <li><a href="#tool-7"><span class="toc-num">7</span>황금키워드 찾기<span class="toc-free">NEW</span></a></li>
       <li><a href="#workflow"><span class="toc-num">8</span>추천 워크플로우</a></li>
-      <li><a href="#pricing"><span class="toc-num">💰</span>과금 안내</a></li>
+      <li><a href="#pricing"><span class="toc-num">$</span>과금 안내</a></li>
     </ul>
   </div>
 
   <!-- 1. 블로그 제목 생성기 -->
-  <div class="tool-section" id="tool-1">
-    <div class="tool-header">
-      <h2>1. 블로그 제목 생성기</h2>
-      <span class="tool-badge-free">무료</span>
-    </div>
-    <p class="tool-intro">업종과 키워드만 입력하면, 네이버 블로그 상위 노출에 최적화된 <strong>클릭을 부르는 제목 12가지 패턴</strong>을 자동으로 만들어드립니다.</p>
+  <div class="tool-accordion" id="tool-1">
+    <details open>
+      <summary>
+        <h2>1. 블로그 제목 생성기</h2>
+        <span class="tool-badge-free">무료</span>
+      </summary>
+      <div class="tool-body">
+        <p class="tool-intro">업종과 키워드만 입력하면, 네이버 블로그 상위 노출에 최적화된 <strong>클릭을 부르는 제목 12가지 패턴</strong>을 자동으로 만들어드립니다.</p>
 
-    <h3 class="sub-title">입력 필드</h3>
-    <table class="guide-table">
-      <tr><th>필드</th><th>필수</th><th>설명</th></tr>
-      <tr><td><strong>업종 선택</strong></td><td>선택</td><td>웨딩/결혼, 요식업/카페, 온라인 강의/교육, 뷰티/피부/헤어, 부동산/인테리어, 헬스/운동, 마케팅/블로그, 기타</td></tr>
-      <tr><td><strong>핵심 키워드</strong></td><td>필수</td><td>블로그 글의 핵심 주제 (30자 이내). 업종 선택 시 추천 태그가 표시됩니다</td></tr>
-    </table>
+        <h3 class="sub-title">입력 필드</h3>
+        <table class="guide-table">
+          <tr><th>필드</th><th>필수</th><th>설명</th></tr>
+          <tr><td><strong>업종 선택</strong></td><td>선택</td><td>웨딩/결혼, 요식업/카페, 온라인 강의/교육, 뷰티/피부/헤어, 부동산/인테리어, 헬스/운동, 마케팅/블로그, 기타</td></tr>
+          <tr><td><strong>핵심 키워드</strong></td><td>필수</td><td>블로그 글의 핵심 주제 (30자 이내). 업종 선택 시 추천 태그가 표시됩니다</td></tr>
+        </table>
 
-    <h3 class="sub-title">좋은 입력 vs 나쁜 입력</h3>
-    <table class="guide-table">
-      <tr><th>구분</th><th>예시</th><th>이유</th></tr>
-      <tr><td class="good">좋은 예</td><td>"카페 창업 비용"</td><td>구체적인 2~3단어 조합 (롱테일 키워드)</td></tr>
-      <tr><td class="good">좋은 예</td><td>"강남 웨딩홀 가격 비교"</td><td>지역 + 주제 + 의도가 명확</td></tr>
-      <tr><td class="good">좋은 예</td><td>"직장인 점심 다이어트"</td><td>타겟 + 상황 + 주제가 담겨 있음</td></tr>
-      <tr><td class="bad">나쁜 예</td><td>"카페"</td><td>너무 광범위 — AI가 방향을 잡기 어려움</td></tr>
-      <tr><td class="bad">나쁜 예</td><td>"마케팅"</td><td>한 단어만으로는 어떤 마케팅인지 알 수 없음</td></tr>
-    </table>
+        <h3 class="sub-title">좋은 입력 vs 나쁜 입력</h3>
+        <table class="guide-table">
+          <tr><th>구분</th><th>예시</th><th>이유</th></tr>
+          <tr><td class="good">좋은 예</td><td>"카페 창업 비용"</td><td>구체적인 2~3단어 조합 (롱테일 키워드)</td></tr>
+          <tr><td class="good">좋은 예</td><td>"강남 웨딩홀 가격 비교"</td><td>지역 + 주제 + 의도가 명확</td></tr>
+          <tr><td class="good">좋은 예</td><td>"직장인 점심 다이어트"</td><td>타겟 + 상황 + 주제가 담겨 있음</td></tr>
+          <tr><td class="bad">나쁜 예</td><td>"카페"</td><td>너무 광범위 — AI가 방향을 잡기 어려움</td></tr>
+          <tr><td class="bad">나쁜 예</td><td>"마케팅"</td><td>한 단어만으로는 어떤 마케팅인지 알 수 없음</td></tr>
+        </table>
 
-    <h3 class="sub-title">꿀팁 5개</h3>
-    <ul class="tip-list">
-      <li><span class="tip-num">1</span><span><strong>키워드는 2~4단어 조합이 최적.</strong> "블로그"보다 "자영업자 블로그 마케팅"처럼 구체적으로 입력할수록 경쟁이 낮고 검색 의도에 맞는 제목이 나옵니다.</span></li>
-      <li><span class="tip-num">2</span><span><strong>업종을 먼저 선택하세요.</strong> 추천 키워드 태그가 뜨는데, 클릭해서 시작하면 감을 잡기 쉽습니다.</span></li>
-      <li><span class="tip-num">3</span><span><strong>12가지 패턴 중 2~3개를 골라 살짝 수정하세요.</strong> "2개월 만에 매출 2배" 같은 표현은 실제 내용에 맞게 바꿔주는 게 좋습니다.</span></li>
-      <li><span class="tip-num">4</span><span><strong>같은 키워드로 여러 번 생성해 보세요.</strong> AI가 매번 다른 제목을 만들어줍니다. 2~3번 돌려서 가장 좋은 것을 고르세요.</span></li>
-      <li><span class="tip-num">5</span><span><strong>핵심 키워드를 제목 맨 앞에 두세요.</strong> 네이버는 앞쪽 단어에 더 높은 가중치를 줍니다.</span></li>
-    </ul>
+        <h3 class="sub-title">꿀팁 5개</h3>
+        <ul class="tip-list">
+          <li><span class="tip-num">1</span><span><strong>키워드는 2~4단어 조합이 최적.</strong> "블로그"보다 "자영업자 블로그 마케팅"처럼 구체적으로 입력할수록 경쟁이 낮고 검색 의도에 맞는 제목이 나옵니다.</span></li>
+          <li><span class="tip-num">2</span><span><strong>업종을 먼저 선택하세요.</strong> 추천 키워드 태그가 뜨는데, 클릭해서 시작하면 감을 잡기 쉽습니다.</span></li>
+          <li><span class="tip-num">3</span><span><strong>12가지 패턴 중 2~3개를 골라 살짝 수정하세요.</strong> "2개월 만에 매출 2배" 같은 표현은 실제 내용에 맞게 바꿔주는 게 좋습니다.</span></li>
+          <li><span class="tip-num">4</span><span><strong>같은 키워드로 여러 번 생성해 보세요.</strong> AI가 매번 다른 제목을 만들어줍니다. 2~3번 돌려서 가장 좋은 것을 고르세요.</span></li>
+          <li><span class="tip-num">5</span><span><strong>핵심 키워드를 제목 맨 앞에 두세요.</strong> 네이버는 앞쪽 단어에 더 높은 가중치를 줍니다.</span></li>
+        </ul>
 
-    <h3 class="sub-title">활용 시나리오</h3>
-    <div class="scenario-card"><strong>미용실 원장:</strong> "손상모 펌" 키워드로 제목 12개 생성 → "손상모 펌, 진짜 해도 될까? 12년차 원장이 솔직하게 답합니다" 선택 → 내 경험에 맞게 수정</div>
-    <div class="scenario-card"><strong>카페 사장:</strong> "카페 시그니처 메뉴" 키워드로 생성 → 위협형 패턴 "이 메뉴 없으면 카페 매출 반토막? 시그니처 메뉴의 비밀" 선택</div>
-    <div class="scenario-card"><strong>프리랜서 디자이너:</strong> "포트폴리오 만들기" 키워드로 생성 → 호기심형 "포트폴리오 vs 경력서, 클라이언트가 진짜 보는 건?" 활용</div>
+        <h3 class="sub-title">활용 시나리오</h3>
+        <div class="scenario-card"><strong>미용실 원장:</strong> "손상모 펌" 키워드로 제목 12개 생성 → "손상모 펌, 진짜 해도 될까? 12년차 원장이 솔직하게 답합니다" 선택 → 내 경험에 맞게 수정</div>
+        <div class="scenario-card"><strong>카페 사장:</strong> "카페 시그니처 메뉴" 키워드로 생성 → 위협형 패턴 "이 메뉴 없으면 카페 매출 반토막? 시그니처 메뉴의 비밀" 선택</div>
+        <div class="scenario-card"><strong>프리랜서 디자이너:</strong> "포트폴리오 만들기" 키워드로 생성 → 호기심형 "포트폴리오 vs 경력서, 클라이언트가 진짜 보는 건?" 활용</div>
 
-    <h3 class="sub-title">자주 하는 실수</h3>
-    <div class="mistake-box">
-      <strong>키워드를 너무 짧게 넣기:</strong> "다이어트"만 넣으면 범위가 너무 넓습니다.<br>
-      <strong>생성된 제목을 수정 없이 그대로 쓰기:</strong> 실제 글 내용에 맞게 꼭 다듬어주세요.<br>
-      <strong>키워드를 여러 개 억지로 넣기:</strong> 네이버 알고리즘은 키워드 도배를 저품질로 판단합니다. 핵심 1~2개만.
-    </div>
+        <h3 class="sub-title">자주 하는 실수</h3>
+        <div class="mistake-box">
+          <strong>키워드를 너무 짧게 넣기:</strong> "다이어트"만 넣으면 범위가 너무 넓습니다.<br>
+          <strong>생성된 제목을 수정 없이 그대로 쓰기:</strong> 실제 글 내용에 맞게 꼭 다듬어주세요.<br>
+          <strong>키워드를 여러 개 억지로 넣기:</strong> 네이버 알고리즘은 키워드 도배를 저품질로 판단합니다. 핵심 1~2개만.
+        </div>
 
-    <h3 class="sub-title">결과 구성</h3>
-    <table class="guide-table">
-      <tr><th>챕터</th><th>패턴</th><th>성격</th></tr>
-      <tr><td>Chapter 1. 긍정</td><td>이득+숫자형, 성공 사례형, 전문가 가이드형, 방법+체크리스트형</td><td>"이걸 알면 이득"</td></tr>
-      <tr><td>Chapter 2. 위협</td><td>모르면 손해형, 공통점 경고형, 의심하라형, 공동의 적형</td><td>"모르면 손해"</td></tr>
-      <tr><td>Chapter 3. 호기심</td><td>가치 입증형, 상식 파괴형, 질문&비교형, 타깃 호출형</td><td>"궁금해서 클릭"</td></tr>
-    </table>
+        <h3 class="sub-title">결과 구성</h3>
+        <table class="guide-table">
+          <tr><th>챕터</th><th>패턴</th><th>성격</th></tr>
+          <tr><td>Chapter 1. 긍정</td><td>이득+숫자형, 성공 사례형, 전문가 가이드형, 방법+체크리스트형</td><td>"이걸 알면 이득"</td></tr>
+          <tr><td>Chapter 2. 위협</td><td>모르면 손해형, 공통점 경고형, 의심하라형, 공동의 적형</td><td>"모르면 손해"</td></tr>
+          <tr><td>Chapter 3. 호기심</td><td>가치 입증형, 상식 파괴형, 질문&비교형, 타깃 호출형</td><td>"궁금해서 클릭"</td></tr>
+        </table>
+      </div>
+    </details>
   </div>
 
   <!-- 2. 후킹문구 생성기 -->
-  <div class="tool-section" id="tool-2">
-    <div class="tool-header">
-      <h2>2. 후킹문구 생성기</h2>
-      <span class="tool-badge-free">무료</span>
-    </div>
-    <p class="tool-intro">업종과 키워드를 입력하면, 심리학 기반 <strong>스크롤 멈추는 후킹문구 15개</strong>를 즉시 생성합니다. 인스타 릴스, 블로그 첫 줄, 유튜브 쇼츠, 전단지 헤드라인 등 어디서든 쓸 수 있습니다.</p>
+  <div class="tool-accordion" id="tool-2">
+    <details>
+      <summary>
+        <h2>2. 후킹문구 생성기</h2>
+        <span class="tool-badge-free">무료</span>
+      </summary>
+      <div class="tool-body">
+        <p class="tool-intro">업종과 키워드를 입력하면, 심리학 기반 <strong>스크롤 멈추는 후킹문구 15개</strong>를 즉시 생성합니다. 인스타 릴스, 블로그 첫 줄, 유튜브 쇼츠, 전단지 헤드라인 등 어디서든 쓸 수 있습니다.</p>
 
-    <h3 class="sub-title">입력 필드</h3>
-    <table class="guide-table">
-      <tr><th>필드</th><th>필수</th><th>설명</th></tr>
-      <tr><td><strong>업종</strong></td><td>필수</td><td>직접 입력하거나 예시 태그 클릭 (30자 이내)</td></tr>
-      <tr><td><strong>키워드 / 주제</strong></td><td>필수</td><td>홍보하고 싶은 내용 (30자 이내)</td></tr>
-    </table>
+        <h3 class="sub-title">입력 필드</h3>
+        <table class="guide-table">
+          <tr><th>필드</th><th>필수</th><th>설명</th></tr>
+          <tr><td><strong>업종</strong></td><td>필수</td><td>직접 입력하거나 예시 태그 클릭 (30자 이내)</td></tr>
+          <tr><td><strong>키워드 / 주제</strong></td><td>필수</td><td>홍보하고 싶은 내용 (30자 이내)</td></tr>
+        </table>
 
-    <h3 class="sub-title">좋은 입력 vs 나쁜 입력</h3>
-    <table class="guide-table">
-      <tr><th>구분</th><th>업종</th><th>키워드</th><th>이유</th></tr>
-      <tr><td class="good">좋은 예</td><td>"미용실"</td><td>"탈모 관리"</td><td>업종과 키워드가 구체적으로 맞물림</td></tr>
-      <tr><td class="good">좋은 예</td><td>"필라테스"</td><td>"체형 교정"</td><td>서비스 특성이 분명</td></tr>
-      <tr><td class="bad">나쁜 예</td><td>"사업"</td><td>"성공"</td><td>너무 추상적</td></tr>
-      <tr><td class="bad">나쁜 예</td><td>"카페 베이커리 식당"</td><td>"전부 다"</td><td>한 번에 하나에 집중하세요</td></tr>
-    </table>
+        <h3 class="sub-title">좋은 입력 vs 나쁜 입력</h3>
+        <table class="guide-table">
+          <tr><th>구분</th><th>업종</th><th>키워드</th><th>이유</th></tr>
+          <tr><td class="good">좋은 예</td><td>"미용실"</td><td>"탈모 관리"</td><td>업종과 키워드가 구체적으로 맞물림</td></tr>
+          <tr><td class="good">좋은 예</td><td>"필라테스"</td><td>"체형 교정"</td><td>서비스 특성이 분명</td></tr>
+          <tr><td class="bad">나쁜 예</td><td>"사업"</td><td>"성공"</td><td>너무 추상적</td></tr>
+          <tr><td class="bad">나쁜 예</td><td>"카페 베이커리 식당"</td><td>"전부 다"</td><td>한 번에 하나에 집중하세요</td></tr>
+        </table>
 
-    <h3 class="sub-title">꿀팁 5개</h3>
-    <ul class="tip-list">
-      <li><span class="tip-num">1</span><span><strong>조합을 바꿔가며 여러 번 생성하세요.</strong> 100가지 이상의 풀에서 랜덤으로 15개가 선정됩니다.</span></li>
-      <li><span class="tip-num">2</span><span><strong>문구 뒤에 내 사업의 구체적 숫자를 붙이면 효과 2배.</strong> 예: "10명 중 9명이 모르는 탈모 관리법 (우리 매장 3개월 데이터)"</span></li>
-      <li><span class="tip-num">3</span><span><strong>인스타 릴스 첫 자막, 카드뉴스 첫 장에 그대로 넣으세요.</strong> 0.3초 안에 스크롤을 멈추게 하는 것이 목적입니다.</span></li>
-      <li><span class="tip-num">4</span><span><strong>한글 조사가 자동 처리됩니다.</strong> "필라테스가", "필라테스를" 등 자연스럽게 붙습니다.</span></li>
-      <li><span class="tip-num">5</span><span><strong>[복사] 버튼으로 바로 복사!</strong> 개별 복사 또는 [전체 복사]로 15개를 한번에 가져갈 수 있습니다.</span></li>
-    </ul>
+        <h3 class="sub-title">꿀팁 5개</h3>
+        <ul class="tip-list">
+          <li><span class="tip-num">1</span><span><strong>조합을 바꿔가며 여러 번 생성하세요.</strong> 100가지 이상의 풀에서 랜덤으로 15개가 선정됩니다.</span></li>
+          <li><span class="tip-num">2</span><span><strong>문구 뒤에 내 사업의 구체적 숫자를 붙이면 효과 2배.</strong> 예: "10명 중 9명이 모르는 탈모 관리법 (우리 매장 3개월 데이터)"</span></li>
+          <li><span class="tip-num">3</span><span><strong>인스타 릴스 첫 자막, 카드뉴스 첫 장에 그대로 넣으세요.</strong> 0.3초 안에 스크롤을 멈추게 하는 것이 목적입니다.</span></li>
+          <li><span class="tip-num">4</span><span><strong>한글 조사가 자동 처리됩니다.</strong> "필라테스가", "필라테스를" 등 자연스럽게 붙습니다.</span></li>
+          <li><span class="tip-num">5</span><span><strong>[복사] 버튼으로 바로 복사!</strong> 개별 복사 또는 [전체 복사]로 15개를 한번에 가져갈 수 있습니다.</span></li>
+        </ul>
 
-    <h3 class="sub-title">활용 시나리오</h3>
-    <div class="scenario-card"><strong>네일샵 원장:</strong> "네일샵" + "여름 네일" → 생성된 문구를 인스타 릴스 첫 줄에 사용</div>
-    <div class="scenario-card"><strong>1인 강사:</strong> "코칭" + "수강생 모집" → 카카오톡 채널 메시지 헤드라인으로 활용</div>
-    <div class="scenario-card"><strong>부동산 중개사:</strong> "부동산" + "전세 사기 예방" → 블로그 글 첫 문장 후킹으로 사용</div>
+        <h3 class="sub-title">활용 시나리오</h3>
+        <div class="scenario-card"><strong>네일샵 원장:</strong> "네일샵" + "여름 네일" → 생성된 문구를 인스타 릴스 첫 줄에 사용</div>
+        <div class="scenario-card"><strong>1인 강사:</strong> "코칭" + "수강생 모집" → 카카오톡 채널 메시지 헤드라인으로 활용</div>
+        <div class="scenario-card"><strong>부동산 중개사:</strong> "부동산" + "전세 사기 예방" → 블로그 글 첫 문장 후킹으로 사용</div>
 
-    <h3 class="sub-title">자주 하는 실수</h3>
-    <div class="mistake-box">
-      <strong>업종 칸에 여러 업종을 한꺼번에 넣기:</strong> "카페 식당 꽃집" 이렇게 넣으면 문구가 어색해집니다. 하나씩만.<br>
-      <strong>키워드를 문장으로 넣기:</strong> "우리 가게 매출을 올리고 싶어요" 대신 "매출 올리기"처럼 핵심 단어만.<br>
-      <strong>생성된 문구를 제목으로 쓰기:</strong> 후킹문구는 제목이 아니라 <strong>첫 줄</strong> 용도입니다.
-    </div>
+        <h3 class="sub-title">자주 하는 실수</h3>
+        <div class="mistake-box">
+          <strong>업종 칸에 여러 업종을 한꺼번에 넣기:</strong> "카페 식당 꽃집" 이렇게 넣으면 문구가 어색해집니다. 하나씩만.<br>
+          <strong>키워드를 문장으로 넣기:</strong> "우리 가게 매출을 올리고 싶어요" 대신 "매출 올리기"처럼 핵심 단어만.<br>
+          <strong>생성된 문구를 제목으로 쓰기:</strong> 후킹문구는 제목이 아니라 <strong>첫 줄</strong> 용도입니다.
+        </div>
+      </div>
+    </details>
   </div>
 
   <!-- 3. 스레드 글 생성기 -->
-  <div class="tool-section" id="tool-3">
-    <div class="tool-header">
-      <h2>3. 스레드 글 생성기</h2>
-      <span class="tool-badge-free">무료</span>
-    </div>
-    <p class="tool-intro">소재만 입력하면 <strong>터지는 Threads(스레드) 글 3개</strong>를 AI가 뚝딱 만들어줍니다. 글 유형과 말투를 선택할 수 있어서, 내 브랜드 느낌에 맞는 글이 나옵니다.</p>
+  <div class="tool-accordion" id="tool-3">
+    <details>
+      <summary>
+        <h2>3. 스레드 글 생성기</h2>
+        <span class="tool-badge-free">무료</span>
+      </summary>
+      <div class="tool-body">
+        <p class="tool-intro">소재만 입력하면 <strong>터지는 Threads(스레드) 글 3개</strong>를 AI가 뚝딱 만들어줍니다. 글 유형과 말투를 선택할 수 있어서, 내 브랜드 느낌에 맞는 글이 나옵니다.</p>
 
-    <h3 class="sub-title">입력 필드</h3>
-    <table class="guide-table">
-      <tr><th>필드</th><th>필수</th><th>설명</th></tr>
-      <tr><td><strong>글 유형</strong></td><td>필수</td><td>정보형 / 공감형 / 반전형 / 궁금증형</td></tr>
-      <tr><td><strong>말투</strong></td><td>필수</td><td>친구체 / 해요체 / 단문체 / 격식체</td></tr>
-      <tr><td><strong>업종/직종</strong></td><td>선택</td><td>예: 카페, 강사, 마케터</td></tr>
-      <tr><td><strong>타겟 독자</strong></td><td>선택</td><td>예: 30대 직장인, 초보 창업자</td></tr>
-      <tr><td><strong>주제/소재</strong></td><td>필수</td><td>예: 번아웃 극복, 단골 만들기</td></tr>
-      <tr><td><strong>내 경험/메모</strong></td><td>선택</td><td>짧게라도 적으면 글의 방향이 정확해져요</td></tr>
-    </table>
+        <h3 class="sub-title">입력 필드</h3>
+        <table class="guide-table">
+          <tr><th>필드</th><th>필수</th><th>설명</th></tr>
+          <tr><td><strong>글 유형</strong></td><td>필수</td><td>정보형 / 공감형 / 반전형 / 궁금증형</td></tr>
+          <tr><td><strong>말투</strong></td><td>필수</td><td>친구체 / 해요체 / 단문체 / 격식체</td></tr>
+          <tr><td><strong>업종/직종</strong></td><td>선택</td><td>예: 카페, 강사, 마케터</td></tr>
+          <tr><td><strong>타겟 독자</strong></td><td>선택</td><td>예: 30대 직장인, 초보 창업자</td></tr>
+          <tr><td><strong>주제/소재</strong></td><td>필수</td><td>예: 번아웃 극복, 단골 만들기</td></tr>
+          <tr><td><strong>내 경험/메모</strong></td><td>선택</td><td>짧게라도 적으면 글의 방향이 정확해져요</td></tr>
+        </table>
 
-    <h3 class="sub-title">글 유형 & 말투</h3>
-    <table class="guide-table">
-      <tr><th>글 유형</th><th>특징</th><th>추천 상황</th></tr>
-      <tr><td><strong>정보형</strong></td><td>"N가지 팁" 숫자 리스트</td><td>전문 지식 공유, 노하우 전달</td></tr>
-      <tr><td><strong>공감형</strong></td><td>감정을 짚고 경험담으로 위로</td><td>고객 고충 공감, 신뢰 구축</td></tr>
-      <tr><td><strong>반전형</strong></td><td>상식을 뒤엎는 한 방</td><td>화제성 콘텐츠, 의견 표출</td></tr>
-      <tr><td><strong>궁금증형</strong></td><td>스토리 절반만 공개</td><td>참여 유도, 팔로워 늘리기</td></tr>
-    </table>
-    <table class="guide-table">
-      <tr><th>말투</th><th>느낌</th><th>예시</th></tr>
-      <tr><td><strong>친구체</strong></td><td>편한 반말</td><td>"이거 진짜 대박이야"</td></tr>
-      <tr><td><strong>해요체</strong></td><td>따뜻하고 부드럽게</td><td>"한번 해보세요, 달라져요"</td></tr>
-      <tr><td><strong>단문체</strong></td><td>짧고 건조. SNS 리듬</td><td>"멈췄다. 생각했다. 바꿨다."</td></tr>
-      <tr><td><strong>격식체</strong></td><td>전문가 느낌</td><td>"3가지 핵심을 정리하겠습니다"</td></tr>
-    </table>
+        <h3 class="sub-title">글 유형 & 말투</h3>
+        <table class="guide-table">
+          <tr><th>글 유형</th><th>특징</th><th>추천 상황</th></tr>
+          <tr><td><strong>정보형</strong></td><td>"N가지 팁" 숫자 리스트</td><td>전문 지식 공유, 노하우 전달</td></tr>
+          <tr><td><strong>공감형</strong></td><td>감정을 짚고 경험담으로 위로</td><td>고객 고충 공감, 신뢰 구축</td></tr>
+          <tr><td><strong>반전형</strong></td><td>상식을 뒤엎는 한 방</td><td>화제성 콘텐츠, 의견 표출</td></tr>
+          <tr><td><strong>궁금증형</strong></td><td>스토리 절반만 공개</td><td>참여 유도, 팔로워 늘리기</td></tr>
+        </table>
+        <table class="guide-table">
+          <tr><th>말투</th><th>느낌</th><th>예시</th></tr>
+          <tr><td><strong>친구체</strong></td><td>편한 반말</td><td>"이거 진짜 대박이야"</td></tr>
+          <tr><td><strong>해요체</strong></td><td>따뜻하고 부드럽게</td><td>"한번 해보세요, 달라져요"</td></tr>
+          <tr><td><strong>단문체</strong></td><td>짧고 건조. SNS 리듬</td><td>"멈췄다. 생각했다. 바꿨다."</td></tr>
+          <tr><td><strong>격식체</strong></td><td>전문가 느낌</td><td>"3가지 핵심을 정리하겠습니다"</td></tr>
+        </table>
 
-    <h3 class="sub-title">꿀팁 5개</h3>
-    <ul class="tip-list">
-      <li><span class="tip-num">1</span><span><strong>"메모" 칸을 적극 활용하세요.</strong> "처음엔 반신반의했는데 한 달 뒤 달라짐" 이 한 줄만으로도 글 퀄리티가 확 올라갑니다.</span></li>
-      <li><span class="tip-num">2</span><span><strong>결과 3개(안 1, 2, 3)를 비교하세요.</strong> 탭을 눌러 비교 후 가장 마음에 드는 것을 고르세요.</span></li>
-      <li><span class="tip-num">3</span><span><strong>업종/직종과 타겟 독자를 채우면 맞춤도가 올라갑니다.</strong> "누가 누구에게 하는 말인지" 명확해집니다.</span></li>
-      <li><span class="tip-num">4</span><span><strong>[랜덤] 버튼으로 영감 받기.</strong> 소재가 안 떠오를 때 예시를 보고 내 상황에 맞게 수정하세요.</span></li>
-      <li><span class="tip-num">5</span><span><strong>단문체 + 반전형 = 바이럴 최강 조합.</strong> 짧은 호흡 + 상식 뒤집기는 댓글과 공유를 부릅니다.</span></li>
-    </ul>
+        <h3 class="sub-title">꿀팁 5개</h3>
+        <ul class="tip-list">
+          <li><span class="tip-num">1</span><span><strong>"메모" 칸을 적극 활용하세요.</strong> "처음엔 반신반의했는데 한 달 뒤 달라짐" 이 한 줄만으로도 글 퀄리티가 확 올라갑니다.</span></li>
+          <li><span class="tip-num">2</span><span><strong>결과 3개(안 1, 2, 3)를 비교하세요.</strong> 탭을 눌러 비교 후 가장 마음에 드는 것을 고르세요.</span></li>
+          <li><span class="tip-num">3</span><span><strong>업종/직종과 타겟 독자를 채우면 맞춤도가 올라갑니다.</strong> "누가 누구에게 하는 말인지" 명확해집니다.</span></li>
+          <li><span class="tip-num">4</span><span><strong>[랜덤] 버튼으로 영감 받기.</strong> 소재가 안 떠오를 때 예시를 보고 내 상황에 맞게 수정하세요.</span></li>
+          <li><span class="tip-num">5</span><span><strong>단문체 + 반전형 = 바이럴 최강 조합.</strong> 짧은 호흡 + 상식 뒤집기는 댓글과 공유를 부릅니다.</span></li>
+        </ul>
 
-    <h3 class="sub-title">활용 시나리오</h3>
-    <div class="scenario-card"><strong>카페 사장:</strong> 정보형 + 친구체 → "카페에서 단골 만드는 3가지 방법" → 바로 Threads에 게시</div>
-    <div class="scenario-card"><strong>프리랜서 디자이너:</strong> 공감형 + 해요체 → "프리랜서 2년 차, 번아웃 올 때 이렇게 극복했어요" → 공감대 형성</div>
-    <div class="scenario-card"><strong>온라인 강사:</strong> 궁금증형 + 단문체 → "수강생 0명에서 50명. 광고 한 번 안 썼다." → 팔로우 유도</div>
+        <h3 class="sub-title">활용 시나리오</h3>
+        <div class="scenario-card"><strong>카페 사장:</strong> 정보형 + 친구체 → "카페에서 단골 만드는 3가지 방법" → 바로 Threads에 게시</div>
+        <div class="scenario-card"><strong>프리랜서 디자이너:</strong> 공감형 + 해요체 → "프리랜서 2년 차, 번아웃 올 때 이렇게 극복했어요" → 공감대 형성</div>
+        <div class="scenario-card"><strong>온라인 강사:</strong> 궁금증형 + 단문체 → "수강생 0명에서 50명. 광고 한 번 안 썼다." → 팔로우 유도</div>
 
-    <h3 class="sub-title">자주 하는 실수</h3>
-    <div class="mistake-box">
-      <strong>주제/소재를 너무 넓게 잡기:</strong> "마케팅"보다 "인스타 팔로워보다 중요한 것"처럼 좁혀주세요.<br>
-      <strong>메모 칸을 비워두기:</strong> 내 경험/에피소드를 한 줄이라도 넣어야 "나만의 글"이 됩니다.<br>
-      <strong>수정 없이 그대로 올리기:</strong> 내 계정에 맞는 CTA를 추가하면 반응이 더 좋아집니다.
-    </div>
+        <h3 class="sub-title">자주 하는 실수</h3>
+        <div class="mistake-box">
+          <strong>주제/소재를 너무 넓게 잡기:</strong> "마케팅"보다 "인스타 팔로워보다 중요한 것"처럼 좁혀주세요.<br>
+          <strong>메모 칸을 비워두기:</strong> 내 경험/에피소드를 한 줄이라도 넣어야 "나만의 글"이 됩니다.<br>
+          <strong>수정 없이 그대로 올리기:</strong> 내 계정에 맞는 CTA를 추가하면 반응이 더 좋아집니다.
+        </div>
+      </div>
+    </details>
   </div>
 
   <!-- 4. 블로그 글 생성기 -->
-  <div class="tool-section" id="tool-4">
-    <div class="tool-header">
-      <h2>4. 블로그 글 생성기</h2>
-      <span class="tool-badge-pro">PRO</span>
-    </div>
-    <p class="tool-intro">업종과 주제만 입력하면 <strong>네이버 홈피드, 네이버 SEO, 구글 SEO에 최적화된 상위노출 블로그 글</strong>을 AI가 자동으로 작성합니다. 제목, 도입부, 본문, 해시태그, 내부링크 추천까지 한 번에.</p>
+  <div class="tool-accordion" id="tool-4">
+    <details>
+      <summary>
+        <h2>4. 블로그 글 생성기</h2>
+        <span class="tool-badge-pro">PRO</span>
+      </summary>
+      <div class="tool-body">
+        <p class="tool-intro">업종과 주제만 입력하면 <strong>네이버 홈피드, 네이버 SEO, 구글 SEO에 최적화된 상위노출 블로그 글</strong>을 AI가 자동으로 작성합니다. 제목, 도입부, 본문, 해시태그, 내부링크 추천까지 한 번에.</p>
 
-    <h3 class="sub-title">입력 필드</h3>
-    <table class="guide-table">
-      <tr><th>필드</th><th>필수</th><th>설명</th></tr>
-      <tr><td><strong>글 유형</strong></td><td>필수</td><td>네이버 홈피드 / 네이버 SEO / 구글 SEO</td></tr>
-      <tr><td><strong>톤 선택</strong></td><td>필수</td><td>친근한 구어체 / 전문가 톤 / 스토리텔링 / 간결 실용체</td></tr>
-      <tr><td><strong>마무리 CTA</strong></td><td>필수</td><td>상담/예약 유도 / 방문 유도 / 공감 마무리 / 직접 입력</td></tr>
-      <tr><td><strong>업종/입장</strong></td><td>필수</td><td>예: 미용실 원장, 카페 사장 (30자 이내)</td></tr>
-      <tr><td><strong>주제/키워드</strong></td><td>필수</td><td>예: 손톱 관리법, 다이어트 식단 (30자 이내)</td></tr>
-      <tr><td><strong>지역</strong></td><td>선택</td><td>예: 강남, 홍대, 부산 서면 (20자 이내)</td></tr>
-      <tr><td><strong>추가 요청사항</strong></td><td>필수</td><td>나만의 경험, 느낌, 후기를 적어주세요</td></tr>
-    </table>
+        <h3 class="sub-title">입력 필드</h3>
+        <table class="guide-table">
+          <tr><th>필드</th><th>필수</th><th>설명</th></tr>
+          <tr><td><strong>글 유형</strong></td><td>필수</td><td>네이버 홈피드 / 네이버 SEO / 구글 SEO</td></tr>
+          <tr><td><strong>톤 선택</strong></td><td>필수</td><td>친근한 구어체 / 전문가 톤 / 스토리텔링 / 간결 실용체</td></tr>
+          <tr><td><strong>마무리 CTA</strong></td><td>필수</td><td>상담/예약 유도 / 방문 유도 / 공감 마무리 / 직접 입력</td></tr>
+          <tr><td><strong>업종/입장</strong></td><td>필수</td><td>예: 미용실 원장, 카페 사장 (30자 이내)</td></tr>
+          <tr><td><strong>주제/키워드</strong></td><td>필수</td><td>예: 손톱 관리법, 다이어트 식단 (30자 이내)</td></tr>
+          <tr><td><strong>지역</strong></td><td>선택</td><td>예: 강남, 홍대, 부산 서면 (20자 이내)</td></tr>
+          <tr><td><strong>추가 요청사항</strong></td><td>필수</td><td>나만의 경험, 느낌, 후기를 적어주세요</td></tr>
+        </table>
 
-    <h3 class="sub-title">글 유형 · 톤 · CTA 상세</h3>
-    <table class="guide-table">
-      <tr><th>글 유형</th><th>특징</th><th>추천 상황</th></tr>
-      <tr><td><strong>네이버 홈피드</strong></td><td>홈 탭 AI 추천 노출용</td><td>네이버 앱 홈 탭 노출</td></tr>
-      <tr><td><strong>네이버 SEO</strong></td><td>네이버 검색(VIEW) 상위노출</td><td>네이버 검색 상단 노출</td></tr>
-      <tr><td><strong>구글 SEO</strong></td><td>구글 검색 상위노출. FAQ 포함</td><td>구글 유입 확대</td></tr>
-    </table>
-    <table class="guide-table">
-      <tr><th>톤</th><th>느낌</th><th>추천</th></tr>
-      <tr><td><strong>친근한 구어체</strong></td><td>~거든요, ~더라고요</td><td>자영업자 블로그, 후기</td></tr>
-      <tr><td><strong>전문가 톤</strong></td><td>~합니다 (신뢰감)</td><td>전문 분야, 가이드</td></tr>
-      <tr><td><strong>스토리텔링</strong></td><td>에피소드 중심</td><td>경험담, 창업 스토리</td></tr>
-      <tr><td><strong>간결 실용체</strong></td><td>핵심만, 수식어 제거</td><td>리스트형, 비교 리뷰</td></tr>
-    </table>
+        <h3 class="sub-title">글 유형 · 톤 · CTA 상세</h3>
+        <table class="guide-table">
+          <tr><th>글 유형</th><th>특징</th><th>추천 상황</th></tr>
+          <tr><td><strong>네이버 홈피드</strong></td><td>홈 탭 AI 추천 노출용</td><td>네이버 앱 홈 탭 노출</td></tr>
+          <tr><td><strong>네이버 SEO</strong></td><td>네이버 검색(VIEW) 상위노출</td><td>네이버 검색 상단 노출</td></tr>
+          <tr><td><strong>구글 SEO</strong></td><td>구글 검색 상위노출. FAQ 포함</td><td>구글 유입 확대</td></tr>
+        </table>
+        <table class="guide-table">
+          <tr><th>톤</th><th>느낌</th><th>추천</th></tr>
+          <tr><td><strong>친근한 구어체</strong></td><td>~거든요, ~더라고요</td><td>자영업자 블로그, 후기</td></tr>
+          <tr><td><strong>전문가 톤</strong></td><td>~합니다 (신뢰감)</td><td>전문 분야, 가이드</td></tr>
+          <tr><td><strong>스토리텔링</strong></td><td>에피소드 중심</td><td>경험담, 창업 스토리</td></tr>
+          <tr><td><strong>간결 실용체</strong></td><td>핵심만, 수식어 제거</td><td>리스트형, 비교 리뷰</td></tr>
+        </table>
 
-    <h3 class="sub-title">업종/입장과 대상(타겟 독자) 입력 가이드</h3>
-    <p style="font-size:14px; color:#6B7280; margin-bottom:16px; line-height:1.8;">이 두 필드가 글의 방향을 결정합니다. <strong>"누가(업종/입장) 누구에게(대상) 쓴 글인지"</strong>가 명확할수록 AI가 정확한 글을 만들어줍니다.</p>
+        <h3 class="sub-title">업종/입장과 대상(타겟 독자) 입력 가이드</h3>
+        <p style="font-size:14px; color:var(--muted); margin-bottom:16px; line-height:1.8;">이 두 필드가 글의 방향을 결정합니다. <strong>"누가(업종/입장) 누구에게(대상) 쓴 글인지"</strong>가 명확할수록 AI가 정확한 글을 만들어줍니다.</p>
 
-    <table class="guide-table">
-      <tr><th>필드</th><th>역할</th><th>입력 방법</th></tr>
-      <tr><td><strong>업종/입장</strong></td><td>글쓴이의 입장 설정</td><td>"미용실 원장", "카페 사장", "뷰티 블로거" 처럼 <strong>업종 + 역할</strong>을 함께 적으세요. "미용실"보다 "미용실 원장"이 훨씬 좋습니다.</td></tr>
-      <tr><td><strong>대상</strong></td><td>글을 읽을 독자 설정</td><td>"두피케어 받고 싶어서 검색 중인 30대 직장인 여성"처럼 <strong>욕구 + 연령대 + 상황</strong>을 구체적으로 적으세요.</td></tr>
-    </table>
+        <table class="guide-table">
+          <tr><th>필드</th><th>역할</th><th>입력 방법</th></tr>
+          <tr><td><strong>업종/입장</strong></td><td>글쓴이의 입장 설정</td><td>"미용실 원장", "카페 사장", "뷰티 블로거" 처럼 <strong>업종 + 역할</strong>을 함께 적으세요. "미용실"보다 "미용실 원장"이 훨씬 좋습니다.</td></tr>
+          <tr><td><strong>대상</strong></td><td>글을 읽을 독자 설정</td><td>"두피케어 받고 싶어서 검색 중인 30대 직장인 여성"처럼 <strong>욕구 + 연령대 + 상황</strong>을 구체적으로 적으세요.</td></tr>
+        </table>
 
-    <table class="guide-table">
-      <tr><th>구분</th><th>업종/입장</th><th>대상</th><th>결과</th></tr>
-      <tr><td class="good">좋은 예</td><td>"필라테스 강사"</td><td>"허리 통증으로 운동 시작하려는 40대 주부"</td><td>독자의 고민에 맞는 전문 글</td></tr>
-      <tr><td class="good">좋은 예</td><td>"인테리어 업체 대표"</td><td>"신혼집 꾸미는데 예산 걱정되는 30대 부부"</td><td>예산 중심의 실용 가이드</td></tr>
-      <tr><td class="bad">나쁜 예</td><td>"사장"</td><td>(빈칸)</td><td>방향 없는 일반적 글</td></tr>
-      <tr><td class="bad">나쁜 예</td><td>"블로거"</td><td>"모든 사람"</td><td>타겟 없는 글 = 아무도 안 읽는 글</td></tr>
-    </table>
+        <table class="guide-table">
+          <tr><th>구분</th><th>업종/입장</th><th>대상</th><th>결과</th></tr>
+          <tr><td class="good">좋은 예</td><td>"필라테스 강사"</td><td>"허리 통증으로 운동 시작하려는 40대 주부"</td><td>독자의 고민에 맞는 전문 글</td></tr>
+          <tr><td class="good">좋은 예</td><td>"인테리어 업체 대표"</td><td>"신혼집 꾸미는데 예산 걱정되는 30대 부부"</td><td>예산 중심의 실용 가이드</td></tr>
+          <tr><td class="bad">나쁜 예</td><td>"사장"</td><td>(빈칸)</td><td>방향 없는 일반적 글</td></tr>
+          <tr><td class="bad">나쁜 예</td><td>"블로거"</td><td>"모든 사람"</td><td>타겟 없는 글 = 아무도 안 읽는 글</td></tr>
+        </table>
 
-    <h3 class="sub-title">프리셋 저장 기능 (업종/입장 + 대상 저장)</h3>
-    <p style="font-size:14px; color:#6B7280; margin-bottom:16px; line-height:1.8;">자주 쓰는 업종/입장, 대상, 지역 조합을 <strong>최대 5개까지 저장</strong>해두고 원클릭으로 불러올 수 있습니다.</p>
-    <ul class="tip-list">
-      <li><span class="tip-num">1</span><span><strong>저장하기:</strong> 업종/입장과 대상을 입력한 뒤 <strong>[+ 저장]</strong> 버튼을 클릭하면 프리셋으로 저장됩니다.</span></li>
-      <li><span class="tip-num">2</span><span><strong>불러오기:</strong> 저장된 프리셋 칩을 클릭하면 업종/입장, 대상, 지역이 한 번에 자동 입력됩니다.</span></li>
-      <li><span class="tip-num">3</span><span><strong>삭제하기:</strong> 프리셋 칩 옆의 <strong>[×]</strong> 버튼으로 삭제할 수 있습니다.</span></li>
-    </ul>
-    <div class="scenario-card"><strong>활용 예시:</strong> "미용실 원장 · 두피케어 검색 중인 30대 직장인 여성 · 강남" 프리셋 저장 → 매번 키워드만 바꿔가며 빠르게 글 생성</div>
+        <h3 class="sub-title">프리셋 저장 기능 (업종/입장 + 대상 저장)</h3>
+        <p style="font-size:14px; color:var(--muted); margin-bottom:16px; line-height:1.8;">자주 쓰는 업종/입장, 대상, 지역 조합을 <strong>최대 5개까지 저장</strong>해두고 원클릭으로 불러올 수 있습니다.</p>
+        <ul class="tip-list">
+          <li><span class="tip-num">1</span><span><strong>저장하기:</strong> 업종/입장과 대상을 입력한 뒤 <strong>[+ 저장]</strong> 버튼을 클릭하면 프리셋으로 저장됩니다.</span></li>
+          <li><span class="tip-num">2</span><span><strong>불러오기:</strong> 저장된 프리셋 칩을 클릭하면 업종/입장, 대상, 지역이 한 번에 자동 입력됩니다.</span></li>
+          <li><span class="tip-num">3</span><span><strong>삭제하기:</strong> 프리셋 칩 옆의 <strong>[x]</strong> 버튼으로 삭제할 수 있습니다.</span></li>
+        </ul>
+        <div class="scenario-card"><strong>활용 예시:</strong> "미용실 원장 · 두피케어 검색 중인 30대 직장인 여성 · 강남" 프리셋 저장 → 매번 키워드만 바꿔가며 빠르게 글 생성</div>
 
-    <h3 class="sub-title">좋은 입력 vs 나쁜 입력</h3>
-    <table class="guide-table">
-      <tr><th>구분</th><th>업종/입장</th><th>추가 요청사항</th><th>이유</th></tr>
-      <tr><td class="good">좋은 예</td><td>"미용실 원장"</td><td>"12년 경력, 저온 디지털펌 전문, 산성 약제 사용"</td><td>입장+경력+전문성 풍부</td></tr>
-      <tr><td class="good">좋은 예</td><td>"카페 사장"</td><td>"통장 잔고 200만원까지 떨어졌을 때 단골이 살려줬음"</td><td>스토리+구체적 숫자</td></tr>
-      <tr><td class="bad">나쁜 예</td><td>"사장"</td><td>(빈칸)</td><td>어떤 사장인지 모름</td></tr>
-      <tr><td class="bad">나쁜 예</td><td>"블로거"</td><td>"잘 써주세요"</td><td>추상적, 참고 정보 없음</td></tr>
-    </table>
+        <h3 class="sub-title">좋은 입력 vs 나쁜 입력</h3>
+        <table class="guide-table">
+          <tr><th>구분</th><th>업종/입장</th><th>추가 요청사항</th><th>이유</th></tr>
+          <tr><td class="good">좋은 예</td><td>"미용실 원장"</td><td>"12년 경력, 저온 디지털펌 전문, 산성 약제 사용"</td><td>입장+경력+전문성 풍부</td></tr>
+          <tr><td class="good">좋은 예</td><td>"카페 사장"</td><td>"통장 잔고 200만원까지 떨어졌을 때 단골이 살려줬음"</td><td>스토리+구체적 숫자</td></tr>
+          <tr><td class="bad">나쁜 예</td><td>"사장"</td><td>(빈칸)</td><td>어떤 사장인지 모름</td></tr>
+          <tr><td class="bad">나쁜 예</td><td>"블로거"</td><td>"잘 써주세요"</td><td>추상적, 참고 정보 없음</td></tr>
+        </table>
 
-    <h3 class="sub-title">꿀팁 5개</h3>
-    <ul class="tip-list">
-      <li><span class="tip-num">1</span><span><strong>"추가 요청사항"이 글의 품질을 결정합니다.</strong> 내 경험, 경력, 에피소드, 손님 반응 등을 넣을수록 "나만의 글"이 됩니다. 많이 적을수록 좋습니다.</span></li>
-      <li><span class="tip-num">2</span><span><strong>"업종/입장"은 역할까지 구체적으로.</strong> "미용실"이 아니라 "미용실 원장"으로, "카페"가 아니라 "카페 사장"으로.</span></li>
-      <li><span class="tip-num">3</span><span><strong>예시 캐러셀을 먼저 확인하세요.</strong> 홈피드/네이버SEO/구글SEO 별로 어떤 글이 나오는지 미리 확인.</span></li>
-      <li><span class="tip-num">4</span><span><strong>지역을 넣으면 지역 키워드가 자연스럽게 포함됩니다.</strong> 지역 검색 노출에 유리합니다.</span></li>
-      <li><span class="tip-num">5</span><span><strong>생성 후 "이 글에 맞는 이미지 생성하기" 버튼을 누르세요.</strong> 글이 이미지 생성기로 자동 전달됩니다.</span></li>
-    </ul>
+        <h3 class="sub-title">꿀팁 5개</h3>
+        <ul class="tip-list">
+          <li><span class="tip-num">1</span><span><strong>"추가 요청사항"이 글의 품질을 결정합니다.</strong> 내 경험, 경력, 에피소드, 손님 반응 등을 넣을수록 "나만의 글"이 됩니다. 많이 적을수록 좋습니다.</span></li>
+          <li><span class="tip-num">2</span><span><strong>"업종/입장"은 역할까지 구체적으로.</strong> "미용실"이 아니라 "미용실 원장"으로, "카페"가 아니라 "카페 사장"으로.</span></li>
+          <li><span class="tip-num">3</span><span><strong>예시 캐러셀을 먼저 확인하세요.</strong> 홈피드/네이버SEO/구글SEO 별로 어떤 글이 나오는지 미리 확인.</span></li>
+          <li><span class="tip-num">4</span><span><strong>지역을 넣으면 지역 키워드가 자연스럽게 포함됩니다.</strong> 지역 검색 노출에 유리합니다.</span></li>
+          <li><span class="tip-num">5</span><span><strong>생성 후 "이 글에 맞는 이미지 생성하기" 버튼을 누르세요.</strong> 글이 이미지 생성기로 자동 전달됩니다.</span></li>
+        </ul>
 
-    <h3 class="sub-title">활용 시나리오</h3>
-    <div class="scenario-card"><strong>필라테스 강사:</strong> 네이버 SEO + 전문가 톤 + 상담유도 → "체형 교정 필라테스" → 3개월 변화 과정 기록형 글 생성</div>
-    <div class="scenario-card"><strong>맛집 블로거:</strong> 네이버 SEO + 친근한 구어체 + 공감 마무리 → "강남 파스타 맛집" + 지역 "강남" → 비교 리뷰형 글</div>
-    <div class="scenario-card"><strong>인테리어 업체:</strong> 구글 SEO + 전문가 톤 + 상담유도 → "소형 아파트 리모델링 비용" → FAQ 포함 종합 가이드</div>
+        <h3 class="sub-title">활용 시나리오</h3>
+        <div class="scenario-card"><strong>필라테스 강사:</strong> 네이버 SEO + 전문가 톤 + 상담유도 → "체형 교정 필라테스" → 3개월 변화 과정 기록형 글 생성</div>
+        <div class="scenario-card"><strong>맛집 블로거:</strong> 네이버 SEO + 친근한 구어체 + 공감 마무리 → "강남 파스타 맛집" + 지역 "강남" → 비교 리뷰형 글</div>
+        <div class="scenario-card"><strong>인테리어 업체:</strong> 구글 SEO + 전문가 톤 + 상담유도 → "소형 아파트 리모델링 비용" → FAQ 포함 종합 가이드</div>
 
-    <h3 class="sub-title">자주 하는 실수</h3>
-    <div class="mistake-box">
-      <strong>추가 요청사항을 비우거나 "잘 써주세요"만 쓰기:</strong> 내 경력, 에피소드, 숫자를 넣어야 차별화됩니다.<br>
-      <strong>글 유형을 고민 없이 선택하기:</strong> 홈피드=체류시간, SEO=검색키워드. 목적에 맞게 선택하세요.<br>
-      <strong>읽어보지 않고 바로 발행하기:</strong> 반드시 한 번 읽고 수정한 뒤 발행하세요.
-    </div>
+        <h3 class="sub-title">자주 하는 실수</h3>
+        <div class="mistake-box">
+          <strong>추가 요청사항을 비우거나 "잘 써주세요"만 쓰기:</strong> 내 경력, 에피소드, 숫자를 넣어야 차별화됩니다.<br>
+          <strong>글 유형을 고민 없이 선택하기:</strong> 홈피드=체류시간, SEO=검색키워드. 목적에 맞게 선택하세요.<br>
+          <strong>읽어보지 않고 바로 발행하기:</strong> 반드시 한 번 읽고 수정한 뒤 발행하세요.
+        </div>
 
-    <h3 class="sub-title">결과 구성</h3>
-    <table class="guide-table">
-      <tr><th>항목</th><th>설명</th></tr>
-      <tr><td>제목</td><td>SEO 최적화된 블로그 제목</td></tr>
-      <tr><td>설명문 <span style="color:#00C73C; font-size:11px;">(네이버 SEO)</span></td><td>검색 결과 설명문</td></tr>
-      <tr><td>메타 디스크립션 <span style="color:#2E86FF; font-size:11px;">(구글 SEO)</span></td><td>구글 검색 결과 설명</td></tr>
-      <tr><td>도입부</td><td>후킹 첫 문단</td></tr>
-      <tr><td>본문</td><td>소제목+내용 (사진 마커 포함)</td></tr>
-      <tr><td>FAQ <span style="color:#2E86FF; font-size:11px;">(구글 SEO)</span></td><td>자주 묻는 질문과 답변</td></tr>
-      <tr><td>마무리</td><td>CTA에 맞는 마무리</td></tr>
-      <tr><td>해시태그</td><td>노출에 유리한 해시태그</td></tr>
-      <tr><td>함께 보면 좋은 글</td><td>내부링크 추천</td></tr>
-    </table>
+        <h3 class="sub-title">결과 구성</h3>
+        <table class="guide-table">
+          <tr><th>항목</th><th>설명</th></tr>
+          <tr><td>제목</td><td>SEO 최적화된 블로그 제목</td></tr>
+          <tr><td>설명문 <span style="color:var(--accent); font-size:11px;">(네이버 SEO)</span></td><td>검색 결과 설명문</td></tr>
+          <tr><td>메타 디스크립션 <span style="color:#2E86FF; font-size:11px;">(구글 SEO)</span></td><td>구글 검색 결과 설명</td></tr>
+          <tr><td>도입부</td><td>후킹 첫 문단</td></tr>
+          <tr><td>본문</td><td>소제목+내용 (사진 마커 포함)</td></tr>
+          <tr><td>FAQ <span style="color:#2E86FF; font-size:11px;">(구글 SEO)</span></td><td>자주 묻는 질문과 답변</td></tr>
+          <tr><td>마무리</td><td>CTA에 맞는 마무리</td></tr>
+          <tr><td>해시태그</td><td>노출에 유리한 해시태그</td></tr>
+          <tr><td>함께 보면 좋은 글</td><td>내부링크 추천</td></tr>
+        </table>
+      </div>
+    </details>
   </div>
 
   <!-- 5. 블로그 이미지 생성기 -->
-  <div class="tool-section" id="tool-5">
-    <div class="tool-header">
-      <h2>5. 블로그 이미지 생성기</h2>
-      <span class="tool-badge-pro">PRO</span>
-    </div>
-    <p class="tool-intro">블로그 글을 붙여넣거나 주제를 입력하면, <strong>문맥에 맞는 AI 이미지를 자동 생성</strong>하고 <strong>썸네일에 텍스트까지 합성</strong>해줍니다.</p>
+  <div class="tool-accordion" id="tool-5">
+    <details>
+      <summary>
+        <h2>5. 블로그 이미지 생성기</h2>
+        <span class="tool-badge-pro">PRO</span>
+      </summary>
+      <div class="tool-body">
+        <p class="tool-intro">블로그 글을 붙여넣거나 주제를 입력하면, <strong>문맥에 맞는 AI 이미지를 자동 생성</strong>하고 <strong>썸네일에 텍스트까지 합성</strong>해줍니다.</p>
 
-    <h3 class="sub-title">입력 방식 (2가지 탭)</h3>
-    <table class="guide-table">
-      <tr><th colspan="3" style="background:#E8FFF0; color:#00C73C;">탭 1: 글에서 생성 (추천)</th></tr>
-      <tr><td><strong>블로그 글 붙여넣기</strong></td><td>필수</td><td>(사진: ...) 마커가 포함된 글이면 각 위치에 맞는 이미지가 생성됩니다</td></tr>
-      <tr><td><strong>이미지 마커 편집</strong></td><td>자동</td><td>글에서 자동 감지, 수정/삭제/추가 가능 (최대 10개)</td></tr>
-      <tr><td><strong>썸네일 텍스트</strong></td><td>필수</td><td>대표이미지에 합성될 텍스트 (30자 이내)</td></tr>
-    </table>
-    <table class="guide-table">
-      <tr><th colspan="3" style="background:#F8F9FD;">탭 2: 직접 입력</th></tr>
-      <tr><td><strong>블로그 주제</strong></td><td>필수</td><td>예: 강남 카페 인테리어 (200자 이내)</td></tr>
-      <tr><td><strong>분위기/스타일</strong></td><td>필수</td><td>밝고 깔끔한 / 따뜻하고 아늑한 / 전문적인 / 감성적인</td></tr>
-      <tr><td><strong>썸네일 텍스트</strong></td><td>필수</td><td>대표이미지에 합성될 텍스트 (30자 이내)</td></tr>
-    </table>
+        <h3 class="sub-title">입력 방식 (2가지 탭)</h3>
+        <table class="guide-table">
+          <tr><th colspan="3" style="background:var(--accent-soft); color:var(--accent);">탭 1: 글에서 생성 (추천)</th></tr>
+          <tr><td><strong>블로그 글 붙여넣기</strong></td><td>필수</td><td>(사진: ...) 마커가 포함된 글이면 각 위치에 맞는 이미지가 생성됩니다</td></tr>
+          <tr><td><strong>이미지 마커 편집</strong></td><td>자동</td><td>글에서 자동 감지, 수정/삭제/추가 가능 (최대 10개)</td></tr>
+          <tr><td><strong>썸네일 텍스트</strong></td><td>필수</td><td>대표이미지에 합성될 텍스트 (30자 이내)</td></tr>
+        </table>
+        <table class="guide-table">
+          <tr><th colspan="3" style="background:var(--bg);">탭 2: 직접 입력</th></tr>
+          <tr><td><strong>블로그 주제</strong></td><td>필수</td><td>예: 강남 카페 인테리어 (200자 이내)</td></tr>
+          <tr><td><strong>분위기/스타일</strong></td><td>필수</td><td>밝고 깔끔한 / 따뜻하고 아늑한 / 전문적인 / 감성적인</td></tr>
+          <tr><td><strong>썸네일 텍스트</strong></td><td>필수</td><td>대표이미지에 합성될 텍스트 (30자 이내)</td></tr>
+        </table>
 
-    <h3 class="sub-title">꿀팁 5개</h3>
-    <ul class="tip-list">
-      <li><span class="tip-num">1</span><span><strong>블로그 글 생성기와 연동해서 쓰세요.</strong> 결과 하단 [이 글에 맞는 이미지 생성하기] 버튼으로 글이 자동 전달됩니다.</span></li>
-      <li><span class="tip-num">2</span><span><strong>마커는 수정, 삭제, 추가가 가능합니다.</strong> 자동 감지된 마커가 마음에 안 들면 수정하세요.</span></li>
-      <li><span class="tip-num">3</span><span><strong>썸네일 텍스트는 10~15자가 최적입니다.</strong> 짧고 임팩트 있게 쓰는 게 좋습니다.</span></li>
-      <li><span class="tip-num">4</span><span><strong>직접 입력 모드는 글 없이도 사용 가능.</strong> 주제와 분위기만 선택하면 8장의 이미지가 생성됩니다.</span></li>
-      <li><span class="tip-num">5</span><span><strong>마음에 안 들면 [전체 재생성].</strong> 1크레딧으로 새로운 이미지를 다시 생성할 수 있습니다.</span></li>
-    </ul>
+        <h3 class="sub-title">꿀팁 5개</h3>
+        <ul class="tip-list">
+          <li><span class="tip-num">1</span><span><strong>블로그 글 생성기와 연동해서 쓰세요.</strong> 결과 하단 [이 글에 맞는 이미지 생성하기] 버튼으로 글이 자동 전달됩니다.</span></li>
+          <li><span class="tip-num">2</span><span><strong>마커는 수정, 삭제, 추가가 가능합니다.</strong> 자동 감지된 마커가 마음에 안 들면 수정하세요.</span></li>
+          <li><span class="tip-num">3</span><span><strong>썸네일 텍스트는 10~15자가 최적입니다.</strong> 짧고 임팩트 있게 쓰는 게 좋습니다.</span></li>
+          <li><span class="tip-num">4</span><span><strong>직접 입력 모드는 글 없이도 사용 가능.</strong> 주제와 분위기만 선택하면 8장의 이미지가 생성됩니다.</span></li>
+          <li><span class="tip-num">5</span><span><strong>마음에 안 들면 [전체 재생성].</strong> 1크레딧으로 새로운 이미지를 다시 생성할 수 있습니다.</span></li>
+        </ul>
 
-    <h3 class="sub-title">활용 시나리오</h3>
-    <div class="scenario-card"><strong>미용실 원장:</strong> 블로그 글 생성기에서 "손상모 펌" 글 작성 → [이미지 생성하기] → 시술 전후 이미지 자동 생성 → 다운로드해서 블로그에 첨부</div>
-    <div class="scenario-card"><strong>카페 사장:</strong> 직접 입력 모드 → "카페 시그니처 메뉴, 카라멜라떼" → 분위기 "따뜻하고 아늑한" → 인스타/블로그용 이미지 8장 생성</div>
+        <h3 class="sub-title">활용 시나리오</h3>
+        <div class="scenario-card"><strong>미용실 원장:</strong> 블로그 글 생성기에서 "손상모 펌" 글 작성 → [이미지 생성하기] → 시술 전후 이미지 자동 생성 → 다운로드해서 블로그에 첨부</div>
+        <div class="scenario-card"><strong>카페 사장:</strong> 직접 입력 모드 → "카페 시그니처 메뉴, 카라멜라떼" → 분위기 "따뜻하고 아늑한" → 인스타/블로그용 이미지 8장 생성</div>
 
-    <h3 class="sub-title">자주 하는 실수</h3>
-    <div class="mistake-box">
-      <strong>썸네일 텍스트를 너무 길게 쓰기:</strong> 30자까지 가능하지만, 10~15자가 보기 좋습니다.<br>
-      <strong>마커 없는 글을 붙여넣기:</strong> (사진: ...) 마커를 직접 추가하거나, 블로그 글 생성기에서 만든 글을 사용하세요.<br>
-      <strong>다운로드 안 하기:</strong> 생성된 이미지는 영구 보관되지 않으니 반드시 [다운로드]로 저장하세요.
-    </div>
+        <h3 class="sub-title">자주 하는 실수</h3>
+        <div class="mistake-box">
+          <strong>썸네일 텍스트를 너무 길게 쓰기:</strong> 30자까지 가능하지만, 10~15자가 보기 좋습니다.<br>
+          <strong>마커 없는 글을 붙여넣기:</strong> (사진: ...) 마커를 직접 추가하거나, 블로그 글 생성기에서 만든 글을 사용하세요.<br>
+          <strong>다운로드 안 하기:</strong> 생성된 이미지는 영구 보관되지 않으니 반드시 [다운로드]로 저장하세요.
+        </div>
+      </div>
+    </details>
   </div>
 
   <!-- 6. 카드뉴스 제작기 -->
-  <div class="tool-section" id="tool-6">
-    <div class="tool-header">
-      <h2>6. 카드뉴스 제작기</h2>
-      <span class="tool-badge-pro">PRO</span>
-    </div>
-    <p class="tool-intro">블로그 글이나 텍스트를 붙여넣으면 <strong>인스타그램용 카드뉴스를 AI가 자동으로 제작</strong>합니다. 테마, 브랜드 컬러 선택 후 ZIP으로 한 번에 다운로드.</p>
+  <div class="tool-accordion" id="tool-6">
+    <details>
+      <summary>
+        <h2>6. 카드뉴스 제작기</h2>
+        <span class="tool-badge-pro">PRO</span>
+      </summary>
+      <div class="tool-body">
+        <p class="tool-intro">블로그 글이나 텍스트를 붙여넣으면 <strong>인스타그램용 카드뉴스를 AI가 자동으로 제작</strong>합니다. 테마, 브랜드 컬러 선택 후 ZIP으로 한 번에 다운로드.</p>
 
-    <h3 class="sub-title">입력 필드</h3>
-    <table class="guide-table">
-      <tr><td><strong>텍스트 입력</strong></td><td>필수</td><td>블로그 글 또는 카드뉴스로 만들 텍스트를 붙여넣기</td></tr>
-      <tr><td><strong>테마 선택</strong></td><td>필수</td><td>9종 테마 중 선택 (모던, 클래식, 비비드, 파스텔 등)</td></tr>
-      <tr><td><strong>브랜드 컬러</strong></td><td>선택</td><td>메인 컬러, 서브 컬러 2색 지정 가능</td></tr>
-      <tr><td><strong>SNS 핸들</strong></td><td>선택</td><td>카드뉴스 하단에 표시될 SNS 계정명 (예: @myshop)</td></tr>
-    </table>
+        <h3 class="sub-title">입력 필드</h3>
+        <table class="guide-table">
+          <tr><td><strong>텍스트 입력</strong></td><td>필수</td><td>블로그 글 또는 카드뉴스로 만들 텍스트를 붙여넣기</td></tr>
+          <tr><td><strong>테마 선택</strong></td><td>필수</td><td>9종 테마 중 선택 (모던, 클래식, 비비드, 파스텔 등)</td></tr>
+          <tr><td><strong>브랜드 컬러</strong></td><td>선택</td><td>메인 컬러, 서브 컬러 2색 지정 가능</td></tr>
+          <tr><td><strong>SNS 핸들</strong></td><td>선택</td><td>카드뉴스 하단에 표시될 SNS 계정명 (예: @myshop)</td></tr>
+        </table>
 
-    <h3 class="sub-title">꿀팁 5개</h3>
-    <ul class="tip-list">
-      <li><span class="tip-num">1</span><span><strong>블로그 글 생성기와 연동하세요.</strong> 글 생성 후 바로 카드뉴스로 변환하면 원소스 멀티유즈가 됩니다.</span></li>
-      <li><span class="tip-num">2</span><span><strong>텍스트는 짧고 핵심만.</strong> 카드뉴스는 한 장에 1~2문장이 적정. 긴 글도 AI가 자동 요약합니다.</span></li>
-      <li><span class="tip-num">3</span><span><strong>브랜드 컬러를 설정하세요.</strong> 브랜드 일관성이 있는 카드뉴스는 전문적으로 보입니다.</span></li>
-      <li><span class="tip-num">4</span><span><strong>SNS 핸들을 넣으세요.</strong> 카드뉴스가 공유될 때 자연스럽게 계정이 노출됩니다.</span></li>
-      <li><span class="tip-num">5</span><span><strong>ZIP 다운로드 후 인스타에 바로 업로드.</strong> 4:5 비율(1080x1350)로 인스타그램에 최적화되어 있습니다.</span></li>
-    </ul>
+        <h3 class="sub-title">꿀팁 5개</h3>
+        <ul class="tip-list">
+          <li><span class="tip-num">1</span><span><strong>블로그 글 생성기와 연동하세요.</strong> 글 생성 후 바로 카드뉴스로 변환하면 원소스 멀티유즈가 됩니다.</span></li>
+          <li><span class="tip-num">2</span><span><strong>텍스트는 짧고 핵심만.</strong> 카드뉴스는 한 장에 1~2문장이 적정. 긴 글도 AI가 자동 요약합니다.</span></li>
+          <li><span class="tip-num">3</span><span><strong>브랜드 컬러를 설정하세요.</strong> 브랜드 일관성이 있는 카드뉴스는 전문적으로 보입니다.</span></li>
+          <li><span class="tip-num">4</span><span><strong>SNS 핸들을 넣으세요.</strong> 카드뉴스가 공유될 때 자연스럽게 계정이 노출됩니다.</span></li>
+          <li><span class="tip-num">5</span><span><strong>ZIP 다운로드 후 인스타에 바로 업로드.</strong> 4:5 비율(1080x1350)로 인스타그램에 최적화되어 있습니다.</span></li>
+        </ul>
 
-    <h3 class="sub-title">활용 시나리오</h3>
-    <div class="scenario-card"><strong>요가 강사:</strong> "초보자를 위한 홈요가 5동작" 글 작성 → 카드뉴스 변환 → 인스타그램에 캐러셀로 업로드 → 저장수 폭발</div>
-    <div class="scenario-card"><strong>쇼핑몰 대표:</strong> 신상품 소개 텍스트 → 브랜드 컬러 적용 → 카드뉴스 → 인스타 + 카카오 채널에 동시 발행</div>
+        <h3 class="sub-title">활용 시나리오</h3>
+        <div class="scenario-card"><strong>요가 강사:</strong> "초보자를 위한 홈요가 5동작" 글 작성 → 카드뉴스 변환 → 인스타그램에 캐러셀로 업로드 → 저장수 폭발</div>
+        <div class="scenario-card"><strong>쇼핑몰 대표:</strong> 신상품 소개 텍스트 → 브랜드 컬러 적용 → 카드뉴스 → 인스타 + 카카오 채널에 동시 발행</div>
 
-    <h3 class="sub-title">자주 하는 실수</h3>
-    <div class="mistake-box">
-      <strong>텍스트를 너무 많이 넣기:</strong> 카드뉴스는 비주얼 콘텐츠입니다. 핵심만 넣고 나머지는 블로그 링크로 유도하세요.<br>
-      <strong>테마를 매번 바꾸기:</strong> 같은 테마 + 브랜드 컬러로 통일해야 팔로워가 내 콘텐츠를 인식합니다.
-    </div>
+        <h3 class="sub-title">자주 하는 실수</h3>
+        <div class="mistake-box">
+          <strong>텍스트를 너무 많이 넣기:</strong> 카드뉴스는 비주얼 콘텐츠입니다. 핵심만 넣고 나머지는 블로그 링크로 유도하세요.<br>
+          <strong>테마를 매번 바꾸기:</strong> 같은 테마 + 브랜드 컬러로 통일해야 팔로워가 내 콘텐츠를 인식합니다.
+        </div>
+      </div>
+    </details>
   </div>
 
   <!-- 7. 황금키워드 찾기 -->
-  <div class="tool-section" id="tool-7">
-    <div class="tool-header">
-      <h2>7. 황금키워드 찾기</h2>
-      <span class="tool-badge-free" style="background:#ff5f1f; color:#fff;">NEW</span>
-    </div>
-    <p class="tool-intro">내 분야, 타겟 독자 정보를 입력하면 <strong>AI + 네이버 데이터 분석</strong>으로 검색량은 높고 경쟁은 낮은 <strong>황금키워드</strong>를 자동으로 찾아드립니다.</p>
+  <div class="tool-accordion" id="tool-7">
+    <details>
+      <summary>
+        <h2>7. 황금키워드 찾기</h2>
+        <span class="tool-badge-new">NEW</span>
+      </summary>
+      <div class="tool-body">
+        <p class="tool-intro">내 분야, 타겟 독자 정보를 입력하면 <strong>AI + 네이버 데이터 분석</strong>으로 검색량은 높고 경쟁은 낮은 <strong>황금키워드</strong>를 자동으로 찾아드립니다.</p>
 
-    <h3 class="sub-title">입력 필드</h3>
-    <table class="guide-table">
-      <tr><td><strong>내 분야</strong></td><td>필수</td><td>업종 또는 블로그 카테고리 (예: 웨딩컨설팅, 카페 창업, 육아/리빙)</td></tr>
-      <tr><td><strong>나는</strong></td><td>필수</td><td>본인의 역할 (예: 웨딩플래너, 카페 사장, 육아 블로거)</td></tr>
-      <tr><td><strong>타겟 독자</strong></td><td>필수</td><td>구체적인 페르소나를 200자까지 작성. 상세할수록 정확도 UP<br><span style="color:#9CA3AF;">예: 30대 초반 예비 신부. 결혼 준비가 처음이라 스드메, 웨딩홀, 비용이 가장 궁금한 상태.</span></td></tr>
-      <tr><td><strong>자주 받는 질문</strong></td><td>선택</td><td>한 줄에 하나씩, 무제한. 많이 쓸수록 시드키워드가 풍부해짐</td></tr>
-      <tr><td><strong>직접 추가할 키워드</strong></td><td>선택</td><td>AI가 모르는 업계 용어 직접 입력 (쉼표/줄바꿈 구분)</td></tr>
-    </table>
+        <h3 class="sub-title">입력 필드</h3>
+        <table class="guide-table">
+          <tr><td><strong>내 분야</strong></td><td>필수</td><td>업종 또는 블로그 카테고리 (예: 웨딩컨설팅, 카페 창업, 육아/리빙)</td></tr>
+          <tr><td><strong>나는</strong></td><td>필수</td><td>본인의 역할 (예: 웨딩플래너, 카페 사장, 육아 블로거)</td></tr>
+          <tr><td><strong>타겟 독자</strong></td><td>필수</td><td>구체적인 페르소나를 200자까지 작성. 상세할수록 정확도 UP<br><span style="color:#9CA3AF;">예: 30대 초반 예비 신부. 결혼 준비가 처음이라 스드메, 웨딩홀, 비용이 가장 궁금한 상태.</span></td></tr>
+          <tr><td><strong>자주 받는 질문</strong></td><td>선택</td><td>한 줄에 하나씩, 무제한. 많이 쓸수록 시드키워드가 풍부해짐</td></tr>
+          <tr><td><strong>직접 추가할 키워드</strong></td><td>선택</td><td>AI가 모르는 업계 용어 직접 입력 (쉼표/줄바꿈 구분)</td></tr>
+        </table>
 
-    <h3 class="sub-title">프로필 저장 기능</h3>
-    <ul class="tip-list">
-      <li><span class="tip-num">1</span><span><strong>분야, 역할, 타겟을 입력 후 [저장]</strong> → 프로필 이름을 지정하면 여러 개 저장 가능</span></li>
-      <li><span class="tip-num">2</span><span><strong>드롭다운에서 선택하면 자동 채워짐.</strong> 여러 직업/분야를 가진 분은 프로필을 전환하며 사용하세요.</span></li>
-    </ul>
+        <h3 class="sub-title">프로필 저장 기능</h3>
+        <ul class="tip-list">
+          <li><span class="tip-num">1</span><span><strong>분야, 역할, 타겟을 입력 후 [저장]</strong> → 프로필 이름을 지정하면 여러 개 저장 가능</span></li>
+          <li><span class="tip-num">2</span><span><strong>드롭다운에서 선택하면 자동 채워짐.</strong> 여러 직업/분야를 가진 분은 프로필을 전환하며 사용하세요.</span></li>
+        </ul>
 
-    <h3 class="sub-title">결과 읽는 법</h3>
-    <table class="guide-table">
-      <tr><td><strong>황금점수</strong></td><td>100점 만점. 80점 이상이면 즉시 글을 쓸 가치가 있는 키워드</td></tr>
-      <tr><td><strong>월간 검색수</strong></td><td>네이버에서 한 달간 검색되는 횟수. 1,000~5,000이 황금 구간</td></tr>
-      <tr><td><strong>경쟁도</strong></td><td>광고 경쟁 수준. "낮음"이 좋음</td></tr>
-      <tr><td><strong>포화도</strong></td><td>블로그 발행량 / 검색수. 5 이하면 블루오션</td></tr>
-      <tr><td><strong>트렌드</strong></td><td>최근 3개월 검색량 추세. "상승"이면 지금 선점하세요</td></tr>
-    </table>
+        <h3 class="sub-title">결과 읽는 법</h3>
+        <table class="guide-table">
+          <tr><td><strong>황금점수</strong></td><td>100점 만점. 80점 이상이면 즉시 글을 쓸 가치가 있는 키워드</td></tr>
+          <tr><td><strong>월간 검색수</strong></td><td>네이버에서 한 달간 검색되는 횟수. 1,000~5,000이 황금 구간</td></tr>
+          <tr><td><strong>경쟁도</strong></td><td>광고 경쟁 수준. "낮음"이 좋음</td></tr>
+          <tr><td><strong>포화도</strong></td><td>블로그 발행량 / 검색수. 5 이하면 블루오션</td></tr>
+          <tr><td><strong>트렌드</strong></td><td>최근 3개월 검색량 추세. "상승"이면 지금 선점하세요</td></tr>
+        </table>
 
-    <h3 class="sub-title">꿀팁 5개</h3>
-    <ul class="tip-list">
-      <li><span class="tip-num">1</span><span><strong>자주 받는 질문을 많이 쓰세요.</strong> 실제 고객 질문이 가장 좋은 시드키워드 소스입니다.</span></li>
-      <li><span class="tip-num">2</span><span><strong>포화도를 꼭 확인하세요.</strong> 검색량이 높아도 블로그 글이 5만 개면 상위 노출이 어렵습니다.</span></li>
-      <li><span class="tip-num">3</span><span><strong>[글쓰기] 버튼으로 바로 연결.</strong> 황금키워드를 찾으면 바로 블로그 글 생성기로 이동해서 글을 쓰세요.</span></li>
-      <li><span class="tip-num">4</span><span><strong>CSV 다운로드로 엑셀 분석.</strong> 전체 키워드를 다운받아 콘텐츠 캘린더를 짜는 데 활용하세요.</span></li>
-      <li><span class="tip-num">5</span><span><strong>직접 키워드 입력을 활용하세요.</strong> 업계 전문 용어나 신조어는 AI가 모를 수 있으니 직접 넣어주면 분석 정확도가 올라갑니다.</span></li>
-    </ul>
+        <h3 class="sub-title">꿀팁 5개</h3>
+        <ul class="tip-list">
+          <li><span class="tip-num">1</span><span><strong>자주 받는 질문을 많이 쓰세요.</strong> 실제 고객 질문이 가장 좋은 시드키워드 소스입니다.</span></li>
+          <li><span class="tip-num">2</span><span><strong>포화도를 꼭 확인하세요.</strong> 검색량이 높아도 블로그 글이 5만 개면 상위 노출이 어렵습니다.</span></li>
+          <li><span class="tip-num">3</span><span><strong>[글쓰기] 버튼으로 바로 연결.</strong> 황금키워드를 찾으면 바로 블로그 글 생성기로 이동해서 글을 쓰세요.</span></li>
+          <li><span class="tip-num">4</span><span><strong>CSV 다운로드로 엑셀 분석.</strong> 전체 키워드를 다운받아 콘텐츠 캘린더를 짜는 데 활용하세요.</span></li>
+          <li><span class="tip-num">5</span><span><strong>직접 키워드 입력을 활용하세요.</strong> 업계 전문 용어나 신조어는 AI가 모를 수 있으니 직접 넣어주면 분석 정확도가 올라갑니다.</span></li>
+        </ul>
 
-    <h3 class="sub-title">활용 시나리오</h3>
-    <div class="scenario-card"><strong>웨딩플래너:</strong> 분야 "웨딩컨설팅" + 타겟 "예비 신부" + 질문 10개 입력 → 황금키워드 TOP 10 확인 → 포화도 낮은 키워드로 주 2회 블로그 작성 → 3개월 뒤 상위 노출</div>
-    <div class="scenario-card"><strong>쇼핑 블로거:</strong> 분야 "생활용품 리뷰" + 직접 키워드 "쿠팡 추천, 다이소 꿀템" 추가 → 트렌드 상승 키워드 발견 → 선점 글 발행 → 어필리에이트 수익 UP</div>
+        <h3 class="sub-title">활용 시나리오</h3>
+        <div class="scenario-card"><strong>웨딩플래너:</strong> 분야 "웨딩컨설팅" + 타겟 "예비 신부" + 질문 10개 입력 → 황금키워드 TOP 10 확인 → 포화도 낮은 키워드로 주 2회 블로그 작성 → 3개월 뒤 상위 노출</div>
+        <div class="scenario-card"><strong>쇼핑 블로거:</strong> 분야 "생활용품 리뷰" + 직접 키워드 "쿠팡 추천, 다이소 꿀템" 추가 → 트렌드 상승 키워드 발견 → 선점 글 발행 → 어필리에이트 수익 UP</div>
 
-    <h3 class="sub-title">자주 하는 실수</h3>
-    <div class="mistake-box">
-      <strong>타겟 독자를 대충 쓰기:</strong> "주부" 대신 "30대 초반, 아이 2명, 이유식 시작 시기가 궁금한 워킹맘"처럼 구체적으로 쓰세요.<br>
-      <strong>검색량만 보기:</strong> 검색량이 높아도 경쟁도와 포화도를 함께 봐야 합니다. 황금점수가 종합 지표입니다.<br>
-      <strong>한 번만 쓰기:</strong> 같은 분야라도 질문을 바꾸면 다른 키워드가 나옵니다. 여러 번 분석해보세요.
-    </div>
+        <h3 class="sub-title">자주 하는 실수</h3>
+        <div class="mistake-box">
+          <strong>타겟 독자를 대충 쓰기:</strong> "주부" 대신 "30대 초반, 아이 2명, 이유식 시작 시기가 궁금한 워킹맘"처럼 구체적으로 쓰세요.<br>
+          <strong>검색량만 보기:</strong> 검색량이 높아도 경쟁도와 포화도를 함께 봐야 합니다. 황금점수가 종합 지표입니다.<br>
+          <strong>한 번만 쓰기:</strong> 같은 분야라도 질문을 바꾸면 다른 키워드가 나옵니다. 여러 번 분석해보세요.
+        </div>
+      </div>
+    </details>
   </div>
 
   <!-- 8. 추천 워크플로우 -->
-  <div class="tool-section" id="workflow">
+  <div class="workflow-section" id="workflow">
     <div class="tool-header">
       <h2>8. 추천 워크플로우</h2>
     </div>
