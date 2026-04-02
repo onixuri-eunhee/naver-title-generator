@@ -3127,10 +3127,14 @@
               var groupEnd = group[group.length - 1].start + group[group.length - 1].duration;
               var groupDur = Math.max(0.6, groupEnd - groupStart);
               var hasMediaAfter = gi < mediaCount;
+              var groupMediaIndex = mediaCount
+                ? Math.max(0, Math.min(mediaCount - 1, hasMediaAfter ? gi : gi - 1))
+                : null;
+              var hasMediaBackground = groupMediaIndex !== null;
               var brollDur = 0;
 
-              if (hasMediaAfter) {
-                brollDur = Math.min(2.6, Math.max(1.6, groupDur * 0.24));
+              if (hasMediaBackground) {
+                brollDur = Math.min(hasMediaAfter ? 2.6 : 2.1, Math.max(hasMediaAfter ? 1.6 : 1.2, groupDur * 0.24));
                 brollDur = Math.min(brollDur, Math.max(0.6, groupDur - 0.8));
               }
 
@@ -3139,9 +3143,6 @@
                 return sum + Math.max(0.2, item.duration);
               }, 0) || group.length;
               var localStart = groupStart;
-              var groupMediaIndex = mediaCount
-                ? Math.max(0, Math.min(mediaCount - 1, hasMediaAfter ? gi : gi - 1))
-                : null;
               var groupMediaStart = groupMediaIndex === null ? null : groupStart;
 
               for (var si = 0; si < group.length; si++) {
@@ -3161,10 +3162,10 @@
                 localStart += sentenceDur;
               }
 
-              if (hasMediaAfter && brollDur > 0.45) {
+              if (hasMediaBackground && brollDur > 0.45) {
                 sceneList.push({
                   type: 'broll',
-                  mediaIndex: gi,
+                  mediaIndex: groupMediaIndex,
                   start: groupStart + textWindowDur,
                   duration: brollDur,
                   mediaStart: groupStart
@@ -3187,6 +3188,32 @@
                 scene.mediaStart = typeof scene.mediaStart === 'number' ? scene.mediaStart : scene.start;
                 lastMediaAnchor = scene.mediaStart;
                 lastMediaIndex = scene.mediaIndex;
+              }
+            }
+
+            sceneList.sort(function(a, b) { return a.start - b.start; });
+            for (var fixIdx = 0; fixIdx < sceneList.length - 1; fixIdx++) {
+              var currentEnd = sceneList[fixIdx].start + sceneList[fixIdx].duration;
+              var nextStart = sceneList[fixIdx + 1].start;
+              if (nextStart > currentEnd) {
+                sceneList[fixIdx].duration += nextStart - currentEnd;
+              }
+            }
+            if (sceneList.length) {
+              var lastScene = sceneList[sceneList.length - 1];
+              var lastEnd = lastScene.start + lastScene.duration;
+              if (lastEnd < totalDur) {
+                if (lastScene.type === 'text' && lastScene.mediaIndex !== null && lastScene.mediaIndex !== undefined && totalDur - lastEnd > 0.45) {
+                  sceneList.push({
+                    type: 'broll',
+                    mediaIndex: lastScene.mediaIndex,
+                    start: lastEnd,
+                    duration: totalDur - lastEnd,
+                    mediaStart: lastScene.mediaStart
+                  });
+                } else {
+                  lastScene.duration += totalDur - lastEnd;
+                }
               }
             }
 
