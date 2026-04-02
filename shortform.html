@@ -3092,6 +3092,9 @@
                 return sum + Math.max(0.2, item.duration);
               }, 0) || group.length;
               var localStart = groupStart;
+              var groupMediaIndex = mediaCount
+                ? Math.max(0, Math.min(mediaCount - 1, hasMediaAfter ? gi : gi - 1))
+                : null;
 
               for (var si = 0; si < group.length; si++) {
                 var sentenceScene = group[si];
@@ -3103,7 +3106,8 @@
                   type: 'text',
                   text: sentenceScene.text,
                   start: localStart,
-                  duration: sentenceDur
+                  duration: sentenceDur,
+                  mediaIndex: groupMediaIndex
                 });
                 localStart += sentenceDur;
               }
@@ -3132,8 +3136,6 @@
             var pct = 25 + (elapsed / duration) * 70;
             updateRenderProgress(pct, '렌더링 중... ' + Math.round(elapsed) + '/' + Math.round(duration) + '초');
 
-            drawDarkBackground(ctx, CANVAS_W, CANVAS_H);
-
             var currentScene = scenes[scenes.length - 1];
             for (var si = 0; si < scenes.length; si++) {
               if (elapsed < scenes[si].start + scenes[si].duration) {
@@ -3152,6 +3154,15 @@
             if (currentScene.type === 'broll' && validImages[currentScene.mediaIndex]) {
               drawBrollScene(ctx, validImages[currentScene.mediaIndex], elapsed, currentScene.start, currentScene.duration, CANVAS_W, CANVAS_H);
             } else if (currentScene.type === 'text') {
+              if (currentScene.mediaIndex !== null && currentScene.mediaIndex !== undefined && validImages[currentScene.mediaIndex]) {
+                drawBrollScene(ctx, validImages[currentScene.mediaIndex], elapsed, currentScene.start, currentScene.duration, CANVAS_W, CANVAS_H);
+                ctx.save();
+                ctx.fillStyle = 'rgba(5, 10, 20, 0.48)';
+                ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+                ctx.restore();
+              } else {
+                drawDarkBackground(ctx, CANVAS_W, CANVAS_H);
+              }
               var fontSize = Math.round(CANVAS_W * 0.044);
               var lineHeight = fontSize * 1.7;
               ctx.font = 'bold ' + fontSize + 'px "Noto Sans KR", sans-serif';
@@ -3173,6 +3184,8 @@
               ctx.fillStyle = ACCENT;
               ctx.fillRect((CANVAS_W - barW) / 2, startY + totalTextH + 40, barW, 4);
               ctx.restore();
+            } else {
+              drawDarkBackground(ctx, CANVAS_W, CANVAS_H);
             }
 
             if (currentScene.type === 'broll') {
