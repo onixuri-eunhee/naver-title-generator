@@ -23,23 +23,35 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/navbar-mobile.css">
 <style>
+  :root {
+    --bg: #FAFBFE;
+    --card: #FFFFFF;
+    --border: #E5E7EB;
+    --text: #1A1A2E;
+    --muted: #6B7280;
+    --accent: #ff5f1f;
+    --accent-soft: rgba(255,95,31,0.12);
+    --purple: #8B5CF6;
+    --purple-deep: #6D28D9;
+    --radius: 16px;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Noto Sans KR', sans-serif; background: #F8F9FD; color: #1A1A2E; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); }
 
   /* 네비게이션 */
   .navbar {
-    background: #fff; border-bottom: 1px solid #E5E7EB; padding: 0 20px;
+    background: #fff; border-bottom: 1px solid var(--border); padding: 0 20px;
     display: flex; align-items: center; justify-content: space-between;
     height: 52px; position: sticky; top: 0; z-index: 100;
   }
-  .navbar-logo { font-size: 18px; font-weight: 900; color: #1A1A2E; text-decoration: none; }
+  .navbar-logo { font-size: 18px; font-weight: 900; color: var(--text); text-decoration: none; }
   .navbar-logo span { color: #00C73C; }
   .navbar-links { display: flex; gap: 4px; }
   .navbar-links a {
     padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
-    color: #6B7280; text-decoration: none; transition: background 0.15s, color 0.15s; position: relative;
+    color: var(--muted); text-decoration: none; transition: background 0.15s, color 0.15s; position: relative;
   }
-  .navbar-links a:hover { background: #F3F4F6; color: #1A1A2E; }
+  .navbar-links a:hover { background: #F3F4F6; color: var(--text); }
   .navbar-links a.new-badge { position: relative; margin-right: 12px; }
   .navbar-links a.new-badge::after {
     content: 'NEW'; position: absolute; top: 1px; right: 1px;
@@ -49,40 +61,57 @@
   .navbar-links a.pro-badge::after {
     content: 'PRO'; position: absolute; top: 1px; right: 1px;
     font-size: 8px; font-weight: 800; color: #fff;
-    background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+    background: linear-gradient(135deg, var(--purple), var(--purple-deep));
     border-radius: 4px; padding: 1px 3px; line-height: 1.4;
   }
 
+  /* 히어로 — 라이트 */
   header {
-    background: linear-gradient(135deg, #1A1A2E, #16213E, #0F3460);
-    color: #fff; text-align: center; padding: 54px 20px 48px;
+    background: var(--bg); text-align: center; padding: 48px 20px 20px;
   }
-  header h1 { font-size: 28px; font-weight: 800; margin-bottom: 10px; }
-  header h1 span { color: #8B5CF6; }
-  header p { font-size: 15px; color: rgba(255,255,255,0.7); max-width: 480px; margin: 0 auto; line-height: 1.7; }
+  header h1 { font-size: 30px; font-weight: 900; color: var(--text); margin-bottom: 10px; }
+  header h1 span { color: var(--purple); }
+  header p { font-size: 15px; color: var(--muted); max-width: 480px; margin: 0 auto; line-height: 1.7; }
 
-  .container { max-width: 720px; margin: -28px auto 0; padding: 0 16px 60px; position: relative; z-index: 1; }
+  /* 무료 체험 배너 */
+  .free-banner {
+    max-width: 720px; margin: 16px auto 0; padding: 0 16px;
+  }
+  .free-banner-inner {
+    background: var(--accent-soft); border: 1px solid rgba(255,95,31,0.2);
+    border-radius: 12px; padding: 14px 20px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px; color: #92400E; line-height: 1.6;
+  }
+  .free-banner-inner .banner-icon { font-size: 20px; flex-shrink: 0; }
+  .free-banner-inner strong { color: var(--accent); font-weight: 700; }
+
+  .container { max-width: 720px; margin: 24px auto 0; padding: 0 16px 60px; position: relative; z-index: 1; }
 
   /* 상품 카드 */
   .product-card {
-    background: #fff; border-radius: 20px; border: 2px solid #E5E7EB;
+    background: var(--card); border-radius: var(--radius); border: 1.5px solid var(--border);
     padding: 36px 32px; margin-bottom: 24px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
     transition: border-color 0.2s;
   }
-  .product-card:hover { border-color: #8B5CF6; }
+  .product-card:hover { border-color: var(--purple); }
 
   .product-badge {
     display: inline-block; font-size: 11px; font-weight: 700; color: #fff;
-    background: linear-gradient(135deg, #8B5CF6, #6D28D9); border-radius: 6px;
+    background: linear-gradient(135deg, var(--purple), var(--purple-deep)); border-radius: 6px;
     padding: 4px 10px; letter-spacing: 0.05em; margin-bottom: 14px;
   }
 
   .product-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+  .product-price-row { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
   .product-price {
-    font-size: 36px; font-weight: 900; color: #8B5CF6; margin-bottom: 4px;
+    font-size: 36px; font-weight: 900; color: var(--purple);
   }
-  .product-price small { font-size: 16px; font-weight: 600; color: #6B7280; }
+  .product-price small { font-size: 16px; font-weight: 600; color: var(--muted); }
+  .product-unit-price {
+    font-size: 13px; font-weight: 600; color: var(--accent);
+    background: var(--accent-soft); padding: 3px 10px; border-radius: 6px;
+  }
   .product-unit { font-size: 13px; color: #9CA3AF; margin-bottom: 24px; }
 
   /* 수량 선택 */
@@ -90,16 +119,16 @@
   .qty-label { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
   .qty-row { display: flex; align-items: center; gap: 12px; }
   .qty-btn {
-    width: 44px; height: 44px; border-radius: 12px; border: 1.5px solid #E5E7EB;
-    background: #fff; font-size: 20px; font-weight: 700; color: #1A1A2E;
+    width: 44px; height: 44px; border-radius: 12px; border: 1.5px solid var(--border);
+    background: #fff; font-size: 20px; font-weight: 700; color: var(--text);
     cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
   }
-  .qty-btn:hover { border-color: #8B5CF6; background: #F5F3FF; }
+  .qty-btn:hover { border-color: var(--purple); background: #F5F3FF; }
   .qty-btn:disabled { opacity: 0.35; cursor: not-allowed; }
   .qty-value {
     font-size: 22px; font-weight: 800; min-width: 48px; text-align: center;
   }
-  .qty-detail { font-size: 13px; color: #6B7280; margin-left: 8px; }
+  .qty-detail { font-size: 13px; color: var(--muted); margin-left: 8px; }
 
   /* 합계 */
   .total-row {
@@ -107,32 +136,21 @@
     padding: 18px 0; border-top: 1.5px solid #F3F4F6; margin-bottom: 20px;
   }
   .total-label { font-size: 15px; font-weight: 700; color: #374151; }
-  .total-amount { font-size: 28px; font-weight: 900; color: #1A1A2E; }
-  .total-amount small { font-size: 14px; font-weight: 600; color: #6B7280; }
+  .total-amount { font-size: 28px; font-weight: 900; color: var(--text); }
+  .total-amount small { font-size: 14px; font-weight: 600; color: var(--muted); }
 
   /* 구매 버튼 */
   .buy-btn {
     width: 100%; padding: 16px; border: none; border-radius: 14px;
     font-size: 17px; font-weight: 800; color: #fff; cursor: pointer;
-    background: linear-gradient(135deg, #00C73C, #00A830);
-    box-shadow: 0 4px 16px rgba(0,199,60,0.25);
+    background: var(--accent);
     transition: all 0.2s;
   }
-  .buy-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,199,60,0.35); }
+  .buy-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(255,95,31,0.3); }
 
-  /* 오픈톡 보너스 */
-  .bonus-banner {
-    background: linear-gradient(135deg, #FFF7ED, #FEF3C7); border-radius: 16px;
-    border: 1.5px solid #FDE68A; padding: 20px 24px; margin-bottom: 24px;
-    display: flex; align-items: flex-start; gap: 12px;
-  }
-  .bonus-icon { font-size: 28px; flex-shrink: 0; }
-  .bonus-text { font-size: 14px; line-height: 1.7; color: #92400E; }
-  .bonus-text strong { color: #B45309; font-weight: 700; }
-
-  /* 차감 기준표 */
+  /* 크레딧 사용처 */
   .usage-table {
-    background: #fff; border-radius: 16px; border: 1.5px solid #E5E7EB;
+    background: var(--card); border-radius: var(--radius); border: 1.5px solid var(--border);
     padding: 28px; margin-bottom: 24px;
   }
   .usage-table h3 { font-size: 16px; font-weight: 800; margin-bottom: 16px; }
@@ -146,20 +164,44 @@
   }
   .usage-item .tool-name { font-size: 13px; font-weight: 600; color: #374151; }
   .usage-item .tool-cost {
-    font-size: 13px; font-weight: 800; color: #8B5CF6;
+    font-size: 13px; font-weight: 800; color: var(--purple);
     background: #F5F3FF; padding: 3px 10px; border-radius: 6px;
   }
 
-  /* FAQ */
+  /* 오픈톡 보너스 */
+  .bonus-banner {
+    background: linear-gradient(135deg, #FFF7ED, #FEF3C7); border-radius: var(--radius);
+    border: 1.5px solid #FDE68A; padding: 20px 24px; margin-bottom: 24px;
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .bonus-icon { font-size: 28px; flex-shrink: 0; }
+  .bonus-text { font-size: 14px; line-height: 1.7; color: #92400E; }
+  .bonus-text strong { color: #B45309; font-weight: 700; }
+
+  /* FAQ 아코디언 */
   .faq-section {
-    background: #fff; border-radius: 16px; border: 1.5px solid #E5E7EB;
+    background: var(--card); border-radius: var(--radius); border: 1.5px solid var(--border);
     padding: 28px; margin-bottom: 24px;
   }
   .faq-section h3 { font-size: 16px; font-weight: 800; margin-bottom: 16px; }
-  .faq-item { margin-bottom: 14px; }
-  .faq-item:last-child { margin-bottom: 0; }
-  .faq-q { font-size: 14px; font-weight: 700; color: #1A1A2E; margin-bottom: 4px; }
-  .faq-a { font-size: 13px; color: #6B7280; line-height: 1.7; }
+  .faq-item { border-bottom: 1px solid #F3F4F6; }
+  .faq-item:last-child { border-bottom: none; }
+  .faq-q {
+    font-size: 14px; font-weight: 700; color: var(--text);
+    padding: 14px 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+    user-select: none;
+  }
+  .faq-q::after {
+    content: '+'; font-size: 18px; font-weight: 600; color: var(--muted);
+    transition: transform 0.2s;
+  }
+  .faq-item.open .faq-q::after { content: '\2212'; }
+  .faq-a {
+    font-size: 13px; color: var(--muted); line-height: 1.7;
+    max-height: 0; overflow: hidden; transition: max-height 0.25s ease, padding 0.25s ease;
+    padding: 0 0 0 0;
+  }
+  .faq-item.open .faq-a { max-height: 120px; padding: 0 0 14px 0; }
 
   /* 모달 */
   .modal-overlay {
@@ -174,11 +216,11 @@
   }
   .modal-icon { font-size: 48px; margin-bottom: 16px; }
   .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
-  .modal-desc { font-size: 14px; color: #6B7280; line-height: 1.7; margin-bottom: 24px; }
+  .modal-desc { font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 24px; }
   .modal-close-btn {
     padding: 12px 32px; border: none; border-radius: 12px;
     font-size: 15px; font-weight: 700; color: #fff; cursor: pointer;
-    background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+    background: linear-gradient(135deg, var(--purple), var(--purple-deep));
   }
 
   footer {
@@ -187,9 +229,13 @@
   }
 
   @media (max-width: 600px) {
+    header { padding: 36px 16px 16px; }
+    header h1 { font-size: 24px; }
+    .free-banner { padding: 0 12px; }
     .container { padding: 0 12px 40px; }
     .product-card { padding: 28px 20px; }
     .product-price { font-size: 28px; }
+    .product-price-row { flex-wrap: wrap; gap: 8px; }
     .total-amount { font-size: 22px; }
     .usage-grid { grid-template-columns: 1fr; }
   }
@@ -220,13 +266,24 @@
   <p>크레딧을 충전하면 블로그 글, 이미지, 카드뉴스 등 PRO 도구를 자유롭게 사용할 수 있습니다</p>
 </header>
 
+<!-- 무료 체험 배너 -->
+<div class="free-banner">
+  <div class="free-banner-inner">
+    <span class="banner-icon">✨</span>
+    <span><strong>회원가입만 하면</strong> 블로그 글 3회 + 이미지 3회 무료! 충전 없이 먼저 체험해 보세요.</span>
+  </div>
+</div>
+
 <div class="container">
 
   <!-- 상품 카드 -->
   <div class="product-card">
     <div class="product-badge">CREDIT PACK</div>
     <div class="product-title">크레딧 충전</div>
-    <div class="product-price">9,900<small>원</small></div>
+    <div class="product-price-row">
+      <div class="product-price">9,900<small>원</small></div>
+      <div class="product-unit-price">1크레딧당 330원</div>
+    </div>
     <div class="product-unit">30크레딧 / 1세트</div>
 
     <div class="qty-section">
@@ -247,18 +304,9 @@
     <button type="button" class="buy-btn" id="buyBtn" onclick="handleBuy()">결제하기</button>
   </div>
 
-  <!-- 오픈톡 보너스 -->
-  <div class="bonus-banner">
-    <div class="bonus-icon">🎁</div>
-    <div class="bonus-text">
-      <strong>오픈톡방 회원 첫 구매 20% 추가!</strong><br>
-      1세트 구매 시 30 → 36크레딧, 5세트 구매 시 150 → 180크레딧으로 지급됩니다.
-    </div>
-  </div>
-
-  <!-- 차감 기준표 -->
+  <!-- 크레딧 사용처 -->
   <div class="usage-table">
-    <h3>크레딧 차감 기준</h3>
+    <h3>크레딧 사용처</h3>
     <div class="usage-grid">
       <div class="usage-item">
         <span class="tool-name">블로그 글 생성</span>
@@ -287,19 +335,28 @@
     </div>
   </div>
 
+  <!-- 오픈톡 보너스 -->
+  <div class="bonus-banner">
+    <div class="bonus-icon">🎁</div>
+    <div class="bonus-text">
+      <strong>오픈톡방 회원 첫 구매 20% 추가!</strong><br>
+      1세트 구매 시 30 → 36크레딧, 5세트 구매 시 150 → 180크레딧으로 지급됩니다.
+    </div>
+  </div>
+
   <!-- FAQ -->
   <div class="faq-section">
     <h3>자주 묻는 질문</h3>
     <div class="faq-item">
-      <div class="faq-q">Q. 크레딧 유효기간이 있나요?</div>
+      <div class="faq-q" onclick="toggleFaq(this)">Q. 크레딧 유효기간이 있나요?</div>
       <div class="faq-a">충전된 크레딧은 별도의 유효기간 없이 사용할 수 있습니다.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q">Q. 환불은 어떻게 하나요?</div>
+      <div class="faq-q" onclick="toggleFaq(this)">Q. 환불은 어떻게 하나요?</div>
       <div class="faq-a">미사용 크레딧에 한해 환불이 가능합니다. 자세한 내용은 <a href="/refund-policy.html" style="color:#8B5CF6;">환불규정</a>을 확인해주세요.</div>
     </div>
     <div class="faq-item">
-      <div class="faq-q">Q. 무료 체험은 없나요?</div>
+      <div class="faq-q" onclick="toggleFaq(this)">Q. 무료 체험은 없나요?</div>
       <div class="faq-a">회원가입 시 블로그 글 3회, 일반 이미지 3회를 무료로 이용할 수 있습니다.</div>
     </div>
   </div>
@@ -351,6 +408,11 @@ function closeModal() {
 document.getElementById('comingSoonModal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
+
+function toggleFaq(el) {
+  var item = el.parentElement;
+  item.classList.toggle('open');
+}
 </script>
 </body>
 </html>
