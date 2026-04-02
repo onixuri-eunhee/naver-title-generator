@@ -393,12 +393,12 @@
 
 </div>
 
-<!-- 결제 위젯 영역 -->
-<div class="modal-overlay" id="paymentModal">
-  <div class="modal-box" style="max-width:540px; text-align:left;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-      <div class="modal-title" style="margin:0;">결제하기</div>
-      <button type="button" onclick="closePaymentModal()" style="background:none; border:none; font-size:24px; cursor:pointer; color:var(--muted);">&times;</button>
+<!-- 결제 위젯 영역 (인라인) -->
+<div id="paymentSection" style="display:none; max-width:720px; margin:0 auto; padding:0 16px 60px;">
+  <div style="background:var(--card); border-radius:var(--radius); border:1.5px solid var(--border); padding:28px; margin-bottom:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <h3 style="font-size:18px; font-weight:800;">결제하기</h3>
+      <button type="button" onclick="closePaymentSection()" style="background:none; border:none; font-size:14px; cursor:pointer; color:var(--muted);">취소</button>
     </div>
     <div id="payment-widget"></div>
     <div id="agreement-widget" style="margin-top:16px;"></div>
@@ -459,10 +459,13 @@ async function handleBuy() {
 
   var amount = qty * unitPrice;
 
-  // 모달 먼저 표시 (위젯은 visible 컨테이너에만 렌더링 가능)
+  // 상품카드 숨기고 결제 섹션 표시
+  document.querySelector('.container').style.display = 'none';
+  var paySection = document.getElementById('paymentSection');
+  paySection.style.display = 'block';
   document.getElementById('payNowBtn').disabled = true;
-  document.getElementById('payNowBtn').textContent = '위젯 로딩 중...';
-  document.getElementById('paymentModal').classList.add('show');
+  document.getElementById('payNowBtn').textContent = '결제 수단을 불러오는 중...';
+  paySection.scrollIntoView({ behavior: 'smooth' });
 
   // 위젯 초기화 (v1 Payment Widget SDK)
   try {
@@ -473,10 +476,10 @@ async function handleBuy() {
     await paymentWidget.renderAgreement('#agreement-widget');
 
     document.getElementById('payNowBtn').disabled = false;
-    document.getElementById('payNowBtn').textContent = '결제 완료하기';
+    document.getElementById('payNowBtn').textContent = (qty * unitPrice).toLocaleString() + '원 결제하기';
   } catch (err) {
     console.error('Payment widget error:', err);
-    closePaymentModal();
+    closePaymentSection();
     alert('결제 위젯을 불러오는 데 실패했습니다: ' + (err.message || '알 수 없는 오류'));
   }
 }
@@ -507,16 +510,13 @@ async function confirmPayment() {
   }
 }
 
-function closePaymentModal() {
-  document.getElementById('paymentModal').classList.remove('show');
+function closePaymentSection() {
+  document.getElementById('paymentSection').style.display = 'none';
+  document.querySelector('.container').style.display = 'block';
   document.getElementById('payment-widget').innerHTML = '';
   document.getElementById('agreement-widget').innerHTML = '';
   paymentWidget = null;
 }
-
-document.getElementById('paymentModal').addEventListener('click', function(e) {
-  if (e.target === this) closePaymentModal();
-});
 
 function toggleFaq(el) {
   var item = el.parentElement;
