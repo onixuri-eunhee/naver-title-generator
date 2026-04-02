@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>결제 실패 — 뚝딱툴</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root { --accent: #ff5f1f; --text: #1A1A2E; --muted: #6B7280; --border: #E5E7EB; --bg: #FAFBFE; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .card {
+    background: #fff; border-radius: 20px; border: 1px solid var(--border);
+    padding: 48px 36px; max-width: 440px; width: 90%; text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  }
+  .icon { font-size: 56px; margin-bottom: 20px; }
+  h1 { font-size: 24px; font-weight: 900; color: var(--text); margin-bottom: 8px; }
+  .desc { font-size: 15px; color: var(--muted); line-height: 1.7; margin-bottom: 24px; }
+  .error-detail { font-size: 13px; color: #DC2626; background: #FFF0F1; border: 1px solid #FECACA; border-radius: 10px; padding: 12px 16px; margin-bottom: 24px; }
+  .btn {
+    display: inline-block; padding: 14px 32px; border-radius: 12px;
+    font-size: 15px; font-weight: 700; text-decoration: none;
+    transition: all 0.15s; margin: 4px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-outline { background: none; color: var(--muted); border: 1px solid var(--border); }
+  .btn-outline:hover { background: #F3F4F6; color: var(--text); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">😥</div>
+  <h1>결제에 실패했습니다</h1>
+  <p class="desc">아래 사유를 확인하시고 다시 시도해주세요</p>
+  <div class="error-detail" id="errorDetail">알 수 없는 오류</div>
+  <a href="/pricing.html" class="btn btn-primary">다시 시도하기</a>
+  <a href="/" class="btn btn-outline">홈으로</a>
+</div>
+
+<script>
+var params = new URLSearchParams(location.search);
+var code = params.get('code') || '';
+var message = params.get('message') || '결제가 취소되었거나 오류가 발생했습니다.';
+document.getElementById('errorDetail').textContent = message + (code ? ' (' + code + ')' : '');
+</script>
+</body>
+</html>

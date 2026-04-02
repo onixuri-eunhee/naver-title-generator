@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>결제 완료 — 뚝딱툴</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root { --accent: #ff5f1f; --text: #1A1A2E; --muted: #6B7280; --border: #E5E7EB; --bg: #FAFBFE; --purple: #8B5CF6; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .card {
+    background: #fff; border-radius: 20px; border: 1px solid var(--border);
+    padding: 48px 36px; max-width: 440px; width: 90%; text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  }
+  .icon { font-size: 56px; margin-bottom: 20px; }
+  h1 { font-size: 24px; font-weight: 900; color: var(--text); margin-bottom: 8px; }
+  .desc { font-size: 15px; color: var(--muted); line-height: 1.7; margin-bottom: 24px; }
+  .credit-box {
+    background: #F5F3FF; border: 1px solid #E9E5FF; border-radius: 14px;
+    padding: 20px; margin-bottom: 24px;
+  }
+  .credit-amount { font-size: 32px; font-weight: 900; color: var(--purple); }
+  .credit-amount small { font-size: 16px; font-weight: 600; }
+  .credit-total { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .btn {
+    display: inline-block; padding: 14px 32px; border-radius: 12px;
+    font-size: 15px; font-weight: 700; text-decoration: none;
+    transition: all 0.15s; margin: 4px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; border: none; cursor: pointer; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-outline { background: none; color: var(--muted); border: 1px solid var(--border); }
+  .btn-outline:hover { background: #F3F4F6; color: var(--text); }
+  .loading { display: block; }
+  .result { display: none; }
+  .error { display: none; color: #DC2626; font-size: 14px; margin-bottom: 16px; }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--purple); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="card">
+  <!-- 로딩 상태 -->
+  <div class="loading" id="loadingState">
+    <div class="spinner"></div>
+    <h1>결제 확인 중</h1>
+    <p class="desc">잠시만 기다려주세요...</p>
+  </div>
+
+  <!-- 성공 상태 -->
+  <div class="result" id="successState">
+    <div class="icon">🎉</div>
+    <h1>결제 완료!</h1>
+    <p class="desc">크레딧이 충전되었습니다</p>
+    <div class="credit-box">
+      <div class="credit-amount" id="creditAmount">+30 <small>크레딧</small></div>
+      <div class="credit-total" id="creditTotal">현재 잔액: 확인 중</div>
+    </div>
+    <a href="/blog-writer.html" class="btn btn-primary">블로그 글 쓰러 가기</a>
+    <a href="/mypage.html" class="btn btn-outline">마이페이지</a>
+  </div>
+
+  <!-- 에러 상태 -->
+  <div class="result" id="errorState">
+    <div class="icon">😥</div>
+    <h1>결제 처리 오류</h1>
+    <p class="desc error" id="errorMsg" style="display:block;"></p>
+    <a href="/pricing.html" class="btn btn-primary">다시 시도하기</a>
+    <a href="/" class="btn btn-outline">홈으로</a>
+  </div>
+</div>
+
+<script>
+(async function() {
+  var params = new URLSearchParams(location.search);
+  var paymentKey = params.get('paymentKey');
+  var orderId = params.get('orderId');
+  var amount = params.get('amount');
+
+  if (!paymentKey || !orderId || !amount) {
+    showError('결제 정보가 올바르지 않습니다.');
+    return;
+  }
+
+  try {
+    var headers = { 'Content-Type': 'application/json' };
+    var token = localStorage.getItem('ddukddak_token');
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+
+    var res = await fetch('/api/payment-confirm', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ paymentKey: paymentKey, orderId: orderId, amount: parseInt(amount, 10) }),
+    });
+
+    var data = await res.json();
+
+    if (res.ok && data.success) {
+      // 로컬스토리지 유저 크레딧 갱신
+      try {
+        var user = JSON.parse(localStorage.getItem('ddukddak_user'));
+        if (user) { user.credits = data.totalCredits; localStorage.setItem('ddukddak_user', JSON.stringify(user)); }
+      } catch(e) {}
+
+      document.getElementById('creditAmount').innerHTML = '+' + data.credits + ' <small>크레딧</small>';
+      document.getElementById('creditTotal').textContent = '현재 잔액: ' + data.totalCredits + ' 크레딧';
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('successState').style.display = 'block';
+    } else {
+      showError(data.error || '결제 승인에 실패했습니다.');
+    }
+  } catch (err) {
+    showError('서버와 통신 중 오류가 발생했습니다.');
+  }
+
+  function showError(msg) {
+    document.getElementById('errorMsg').textContent = msg;
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorState').style.display = 'block';
+  }
+})();
+</script>
+</body>
+</html>

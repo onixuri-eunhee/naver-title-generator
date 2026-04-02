@@ -393,13 +393,16 @@
 
 </div>
 
-<!-- 모달 -->
-<div class="modal-overlay" id="comingSoonModal">
-  <div class="modal-box">
-    <div class="modal-icon">🚀</div>
-    <div class="modal-title">결제 기능 준비 중</div>
-    <div class="modal-desc">현재 4월 24일 정식 오픈을 앞두고 결제 시스템을 준비하고 있습니다. 오픈 전까지 모든 도구를 무료로 이용하실 수 있습니다!</div>
-    <button type="button" class="modal-close-btn" onclick="closeModal()">확인</button>
+<!-- 결제 위젯 영역 -->
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal-box" style="max-width:540px; text-align:left;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <div class="modal-title" style="margin:0;">결제하기</div>
+      <button type="button" onclick="closePaymentModal()" style="background:none; border:none; font-size:24px; cursor:pointer; color:var(--muted);">&times;</button>
+    </div>
+    <div id="payment-widget"></div>
+    <div id="agreement-widget" style="margin-top:16px;"></div>
+    <button type="button" class="buy-btn" id="payNowBtn" onclick="confirmPayment()" style="margin-top:20px;">결제 완료하기</button>
   </div>
 </div>
 
@@ -411,12 +414,16 @@
   <div>&copy; 2026 어나더핸즈. All rights reserved.</div>
 </footer>
 
+<script src="https://js.tosspayments.com/v2/standard"></script>
 <script src="admin-mode.js"></script>
 <script src="auth-ui.js"></script>
 <script>
 var qty = 1;
 var unitPrice = 9900;
 var unitCredit = 30;
+var paymentWidget = null;
+var paymentMethodWidget = null;
+var agreementWidget = null;
 
 function changeQty(delta) {
   qty = Math.max(1, Math.min(5, qty + delta));
@@ -427,16 +434,92 @@ function changeQty(delta) {
   document.getElementById('qtyPlus').disabled = qty >= 5;
 }
 
-function handleBuy() {
-  document.getElementById('comingSoonModal').classList.add('show');
+function generateOrderId() {
+  var now = new Date();
+  var ts = now.getFullYear().toString() +
+    String(now.getMonth() + 1).padStart(2, '0') +
+    String(now.getDate()).padStart(2, '0') +
+    String(now.getHours()).padStart(2, '0') +
+    String(now.getMinutes()).padStart(2, '0') +
+    String(now.getSeconds()).padStart(2, '0');
+  var rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return 'DDT-' + ts + '-' + rand;
 }
 
-function closeModal() {
-  document.getElementById('comingSoonModal').classList.remove('show');
+async function handleBuy() {
+  // 로그인 확인
+  var token = localStorage.getItem('ddukddak_token');
+  if (!token) {
+    alert('로그인 후 이용해주세요.');
+    location.href = '/login.html';
+    return;
+  }
+
+  var amount = qty * unitPrice;
+
+  // 위젯 초기화
+  try {
+    var tossPayments = TossPayments('test_gck_DLJOpm5QrIwmRWv4MagNVPNdxbWn');
+    paymentWidget = tossPayments.widgets({ customerKey: token.substring(0, 50) });
+
+    await paymentWidget.setAmount({ currency: 'KRW', value: amount });
+
+    await paymentWidget.renderPaymentMethods({
+      selector: '#payment-widget',
+      variantKey: 'DEFAULT',
+    });
+
+    await paymentWidget.renderAgreement({
+      selector: '#agreement-widget',
+      variantKey: 'AGREEMENT',
+    });
+
+    document.getElementById('paymentModal').classList.add('show');
+  } catch (err) {
+    console.error('Payment widget error:', err);
+    alert('결제 위젯을 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.');
+  }
 }
 
-document.getElementById('comingSoonModal').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
+async function confirmPayment() {
+  if (!paymentWidget) return;
+
+  var btn = document.getElementById('payNowBtn');
+  btn.disabled = true;
+  btn.textContent = '결제 처리 중...';
+
+  var orderId = generateOrderId();
+  var amount = qty * unitPrice;
+
+  try {
+    await paymentWidget.requestPayment({
+      orderId: orderId,
+      orderName: '뚝딱툴 크레딧 ' + (qty * unitCredit) + '크레딧',
+      successUrl: location.origin + '/payment-success.html',
+      failUrl: location.origin + '/payment-fail.html',
+    });
+  } catch (err) {
+    // 사용자가 결제 취소한 경우
+    if (err.code === 'USER_CANCEL') {
+      // 아무것도 안 함
+    } else {
+      console.error('Payment request error:', err);
+      alert(err.message || '결제 요청 중 오류가 발생했습니다.');
+    }
+    btn.disabled = false;
+    btn.textContent = '결제 완료하기';
+  }
+}
+
+function closePaymentModal() {
+  document.getElementById('paymentModal').classList.remove('show');
+  document.getElementById('payment-widget').innerHTML = '';
+  document.getElementById('agreement-widget').innerHTML = '';
+  paymentWidget = null;
+}
+
+document.getElementById('paymentModal').addEventListener('click', function(e) {
+  if (e.target === this) closePaymentModal();
 });
 
 function toggleFaq(el) {
