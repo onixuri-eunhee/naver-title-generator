@@ -414,7 +414,7 @@
   <div>&copy; 2026 어나더핸즈. All rights reserved.</div>
 </footer>
 
-<script src="https://js.tosspayments.com/v2/standard"></script>
+<script src="https://js.tosspayments.com/v1/payment-widget"></script>
 <script src="admin-mode.js"></script>
 <script src="auth-ui.js"></script>
 <script>
@@ -459,21 +459,13 @@ async function handleBuy() {
 
   var amount = qty * unitPrice;
 
-  // 위젯 초기화
+  // 위젯 초기화 (v1 Payment Widget SDK)
   try {
-    var clientKey = document.querySelector('meta[name="toss-client-key"]')?.content || 'test_gck_DLJOpm5QrIwmRWv4MagNVPNdxbWn';
-    var tossPayments = TossPayments(clientKey);
-    paymentWidget = tossPayments.widgets({ customerKey: TossPayments.ANONYMOUS });
+    var clientKey = 'test_gck_DLJOpm5QrIwmRWv4MagNVPNdxbWn';
+    paymentWidget = PaymentWidget(clientKey, PaymentWidget.ANONYMOUS);
 
-    await paymentWidget.setAmount({ currency: 'KRW', value: amount });
-
-    await paymentWidget.renderPaymentMethods({
-      selector: '#payment-widget',
-    });
-
-    await paymentWidget.renderAgreement({
-      selector: '#agreement-widget',
-    });
+    await paymentWidget.renderPaymentMethods('#payment-widget', { value: amount });
+    await paymentWidget.renderAgreement('#agreement-widget');
 
     document.getElementById('paymentModal').classList.add('show');
   } catch (err) {
@@ -490,7 +482,6 @@ async function confirmPayment() {
   btn.textContent = '결제 처리 중...';
 
   var orderId = generateOrderId();
-  var amount = qty * unitPrice;
 
   try {
     await paymentWidget.requestPayment({
@@ -500,10 +491,7 @@ async function confirmPayment() {
       failUrl: location.origin + '/payment-fail.html',
     });
   } catch (err) {
-    // 사용자가 결제 취소한 경우
-    if (err.code === 'USER_CANCEL') {
-      // 아무것도 안 함
-    } else {
+    if (err.code !== 'USER_CANCEL') {
       console.error('Payment request error:', err);
       alert(err.message || '결제 요청 중 오류가 발생했습니다.');
     }
