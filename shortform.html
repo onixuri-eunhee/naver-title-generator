@@ -2917,8 +2917,9 @@
             ctx.restore();
           }
 
-      function drawBrollScene(ctx, visual, elapsed, sceneStart, sceneDuration, w, h) {
-        var segElapsed = elapsed - sceneStart;
+      function drawBrollScene(ctx, visual, elapsed, sceneStart, sceneDuration, w, h, mediaStart) {
+        var playbackStart = typeof mediaStart === 'number' ? mediaStart : sceneStart;
+        var segElapsed = elapsed - playbackStart;
         var zoomProgress = segElapsed / sceneDuration;
         if (visual && visual.kind === 'video' && visual.element.duration && isFinite(visual.element.duration)) {
           var localTime = segElapsed % visual.element.duration;
@@ -3141,6 +3142,7 @@
               var groupMediaIndex = mediaCount
                 ? Math.max(0, Math.min(mediaCount - 1, hasMediaAfter ? gi : gi - 1))
                 : null;
+              var groupMediaStart = groupMediaIndex === null ? null : groupStart;
 
               for (var si = 0; si < group.length; si++) {
                 var sentenceScene = group[si];
@@ -3153,7 +3155,8 @@
                   text: sentenceScene.text,
                   start: localStart,
                   duration: sentenceDur,
-                  mediaIndex: groupMediaIndex
+                  mediaIndex: groupMediaIndex,
+                  mediaStart: groupMediaStart
                 });
                 localStart += sentenceDur;
               }
@@ -3163,8 +3166,27 @@
                   type: 'broll',
                   mediaIndex: gi,
                   start: groupStart + textWindowDur,
-                  duration: brollDur
+                  duration: brollDur,
+                  mediaStart: groupStart
                 });
+              }
+            }
+
+            var lastMediaIndex = null;
+            var lastMediaAnchor = null;
+            for (var sceneIdx = 0; sceneIdx < sceneList.length; sceneIdx++) {
+              var scene = sceneList[sceneIdx];
+              if (scene.mediaIndex === null || scene.mediaIndex === undefined) {
+                lastMediaIndex = null;
+                lastMediaAnchor = null;
+                continue;
+              }
+              if (scene.mediaIndex === lastMediaIndex && lastMediaAnchor !== null) {
+                scene.mediaStart = lastMediaAnchor;
+              } else {
+                scene.mediaStart = typeof scene.mediaStart === 'number' ? scene.mediaStart : scene.start;
+                lastMediaAnchor = scene.mediaStart;
+                lastMediaIndex = scene.mediaIndex;
               }
             }
 
@@ -3198,10 +3220,10 @@
             var sceneFade = Math.min(fadeIn, fadeOut);
 
             if (currentScene.type === 'broll' && validImages[currentScene.mediaIndex]) {
-              drawBrollScene(ctx, validImages[currentScene.mediaIndex], elapsed, currentScene.start, currentScene.duration, CANVAS_W, CANVAS_H);
+              drawBrollScene(ctx, validImages[currentScene.mediaIndex], elapsed, currentScene.start, currentScene.duration, CANVAS_W, CANVAS_H, currentScene.mediaStart);
             } else if (currentScene.type === 'text') {
               if (currentScene.mediaIndex !== null && currentScene.mediaIndex !== undefined && validImages[currentScene.mediaIndex]) {
-                drawBrollScene(ctx, validImages[currentScene.mediaIndex], elapsed, currentScene.start, currentScene.duration, CANVAS_W, CANVAS_H);
+                drawBrollScene(ctx, validImages[currentScene.mediaIndex], elapsed, currentScene.start, currentScene.duration, CANVAS_W, CANVAS_H, currentScene.mediaStart);
                 ctx.save();
                 ctx.fillStyle = 'rgba(5, 10, 20, 0.48)';
                 ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
