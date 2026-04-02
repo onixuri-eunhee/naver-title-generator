@@ -1521,6 +1521,7 @@
       var STT_RECORDING_AUDIO_BITS_PER_SECOND = 64000;
       var DIRECT_STT_ENDPOINT = 'https://naver-title-generator-production.up.railway.app/api/shortform-stt';
       var DIRECT_BROLL_ENDPOINT = 'https://naver-title-generator-production.up.railway.app/api/shortform-broll';
+      var DIRECT_REMOTION_RENDER_ENDPOINT = 'https://naver-title-generator-production.up.railway.app/api/shortform-remotion-render';
 
       var els = {
         signupBanner: document.getElementById('signupBanner'),
@@ -1612,6 +1613,10 @@
       function getBrollEndpoint() {
         var isLocal = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname || '');
         return isLocal ? '/api/shortform-broll' : DIRECT_BROLL_ENDPOINT;
+      }
+
+      function getRemotionRenderEndpoint() {
+        return DIRECT_REMOTION_RENDER_ENDPOINT;
       }
 
       function getSttProbeMode() {
@@ -2720,6 +2725,15 @@
         els.renderProgressLabel.textContent = label || (Math.round(pct) + '%');
       }
 
+      function blobToDataUrl(blob) {
+        return new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function() { resolve(String(reader.result || '')); };
+          reader.onerror = function() { reject(reader.error || new Error('오디오 인코딩 실패')); };
+          reader.readAsDataURL(blob);
+        });
+      }
+
       function resetRenderUI() {
         els.renderError.textContent = '';
         els.renderInfo.textContent = '';
@@ -2807,486 +2821,62 @@
         els.renderStartBtn.disabled = true;
         els.renderCancelBtn.style.display = '';
         els.renderProgressWrap.classList.add('show');
-        updateRenderProgress(5, '이미지 로딩 중...');
+        updateRenderProgress(5, 'Remotion 렌더 준비 중...');
 
         var aborted = false;
         state.renderAbort = function() { aborted = true; };
 
         try {
-          var mediaItems = state.brollItems.filter(function(item) { return item && (item.url || item.thumbnail); });
-          var images = await preloadMedia(mediaItems);
+          var mediaItems = state.brollItems.filter(function(item) { return item && item.url; });
+          if (!mediaItems.length) {
+            throw new Error('B-roll 소재가 필요합니다.');
+          }
+
+          var trimStart = Math.max(0, state.trimStart || 0);
+          var trimEnd = state.trimEnd === null || state.trimEnd === undefined ? null : Math.max(0, state.trimEnd || 0);
+          var audioDuration = 0;
+          if (els.audioPlayer && Number.isFinite(els.audioPlayer.duration)) {
+            audioDuration = els.audioPlayer.duration;
+          }
+          if (!audioDuration && state.sttSegments.length) {
+            audioDuration = state.sttSegments[state.sttSegments.length - 1].end || 0;
+          }
+          if (!audioDuration) {
+            audioDuration = state.estimatedSeconds || 30;
+          }
+          if (trimEnd !== null && trimEnd <= trimStart) {
+            trimEnd = null;
+          }
+
+          updateRenderProgress(20, '오디오 업로드 중...');
+          var audioBase64 = await blobToDataUrl(state.audioBlob);
           if (aborted) throw new Error('취소됨');
-          updateRenderProgress(15, '오디오 디코딩 중...');
 
-          var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          var arrayBuffer = await state.audioBlob.arrayBuffer();
-          var audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-          if (aborted) { audioCtx.close(); throw new Error('취소됨'); }
-
-          var trimStart = Math.min(Math.max(0, state.trimStart || 0), Math.max(0, audioBuffer.duration - 0.1));
-          var trimEnd = Math.min(Math.max(trimStart + 0.1, state.trimEnd || audioBuffer.duration), audioBuffer.duration);
-          var trimmedAudioBuffer = createTrimmedAudioBuffer(audioCtx, audioBuffer, trimStart, trimEnd);
-          var duration = trimmedAudioBuffer.duration;
-          var renderSegments = getTrimmedSegments(state.sttSegments, trimStart, trimEnd);
-          var renderWords = getTrimmedWords(state.sttWords, trimStart, trimEnd);
-          updateRenderProgress(25, '렌더링 시작...');
-
-          var CANVAS_W = 1080, CANVAS_H = 1920;
-          var canvas = document.createElement('canvas');
-          canvas.width = CANVAS_W; canvas.height = CANVAS_H;
-          var ctx = canvas.getContext('2d');
-
-          var canvasStream = canvas.captureStream(30);
-          var audioDest = audioCtx.createMediaStreamDestination();
-          var source = audioCtx.createBufferSource();
-          source.buffer = trimmedAudioBuffer;
-          source.connect(audioDest);
-          source.connect(audioCtx.destination);
-
-          var combined = new MediaStream([
-            canvasStream.getVideoTracks()[0],
-            audioDest.stream.getAudioTracks()[0]
-          ]);
-
-          var mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-            ? 'video/webm;codecs=vp9,opus'
-            : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
-              ? 'video/webm;codecs=vp8,opus'
-              : 'video/webm';
-          var recorder = new MediaRecorder(combined, { mimeType: mimeType, videoBitsPerSecond: 4000000 });
-          var chunks = [];
-          recorder.ondataavailable = function(e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
-
-          var renderDone = new Promise(function(resolve, reject) {
-            recorder.onstop = function() {
-              var blob = new Blob(chunks, { type: mimeType });
-              resolve(blob);
-            };
-            recorder.onerror = function(e) { reject(e.error || new Error('MediaRecorder 오류')); };
+          updateRenderProgress(42, 'Remotion 서버 렌더 요청 중...');
+          var response = await fetch(getRemotionRenderEndpoint(), {
+            method: 'POST',
+            headers: createHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({
+              script: state.script,
+              visuals: mediaItems,
+              estimatedSeconds: state.estimatedSeconds || 30,
+              audioDurationSec: audioDuration,
+              trimStartSec: trimStart,
+              trimEndSec: trimEnd,
+              audioMimeType: state.audioMimeType || state.audioBlob.type || 'audio/webm',
+              audioFileName: state.audioFileName || '',
+              audioBase64: audioBase64
+            })
           });
-
-          recorder.start(100);
-          source.start(0);
-          var startTime = audioCtx.currentTime;
-
-          /* ── 모션 그래픽 씬 구성 ── */
-          var validImages = images.filter(Boolean);
-          var scenes = buildMotionScenes(state.script, validImages, duration, renderSegments, renderWords);
-          var ACCENT = '#ff5f1f';
-          var ACCENT2 = '#10B981';
-          var BG_GRAD_1 = '#1A1A2E';
-          var BG_GRAD_2 = '#16213E';
-          var motionSettings = getMotionSettings();
-
-          function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
-          function easeInOutQuad(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
-          function clamp01(v) { return Math.max(0, Math.min(1, v)); }
-
-          function drawDarkBackground(ctx, w, h) {
-            var grad = ctx.createLinearGradient(0, 0, w, h);
-            grad.addColorStop(0, BG_GRAD_1);
-            grad.addColorStop(0.5, BG_GRAD_2);
-            grad.addColorStop(1, '#0F3460');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, w, h);
-          }
-
-          function drawTextLine(ctx, text, x, y, fontSize, color, alpha, offsetY) {
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.font = 'bold ' + fontSize + 'px "Noto Sans KR", sans-serif';
-            ctx.fillStyle = color;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(text, x, y + offsetY);
-            ctx.restore();
-          }
-
-          function drawNumberBadge(ctx, num, x, y, size, color, alpha) {
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.beginPath();
-            ctx.arc(x, y, size, 0, Math.PI * 2);
-            ctx.fillStyle = color;
-            ctx.fill();
-            ctx.font = 'bold ' + Math.round(size * 1.1) + 'px "Noto Sans KR", sans-serif';
-            ctx.fillStyle = '#fff';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(String(num), x, y + 1);
-            ctx.restore();
-          }
-
-      function drawBrollScene(ctx, visual, elapsed, sceneStart, sceneDuration, w, h, mediaStart) {
-        var playbackStart = typeof mediaStart === 'number' ? mediaStart : sceneStart;
-        var segElapsed = elapsed - playbackStart;
-        var zoomProgress = segElapsed / sceneDuration;
-        if (visual && visual.kind === 'video' && visual.element.duration && isFinite(visual.element.duration)) {
-          var localTime = segElapsed % visual.element.duration;
-          if (Math.abs((visual.element.currentTime || 0) - localTime) > 0.25) {
-            try { visual.element.currentTime = localTime; } catch (_) {}
-          }
-        }
-        var scale = visual && visual.kind === 'image' ? (1.0 + zoomProgress * 0.08) : 1.0;
-        ctx.save();
-        ctx.translate(w / 2, h / 2);
-        ctx.scale(scale, scale);
-        ctx.translate(-w / 2, -h / 2);
-        drawVisualCover(ctx, visual, w, h);
-        ctx.restore();
-        ctx.fillStyle = 'rgba(0,0,0,0.25)';
-        ctx.fillRect(0, 0, w, h);
-      }
-
-          function wrapText(ctx, text, maxWidth) {
-            var chars = text.split('');
-            var lines = []; var line = '';
-            for (var i = 0; i < chars.length; i++) {
-              var test = line + chars[i];
-              if (ctx.measureText(test).width > maxWidth && line) {
-                lines.push(line); line = chars[i];
-              } else { line = test; }
-            }
-            if (line) lines.push(line);
-            return lines;
-          }
-
-          function drawMotionText(ctx, textLines, cx, startY, fontSize, lineHeight, color, animProgress) {
-            for (var i = 0; i < textLines.length; i++) {
-              var lineDelay = motionSettings.mode === 'line' ? i * motionSettings.lineDelay : 0;
-              var lineProgress = clamp01((animProgress - lineDelay) / motionSettings.lineDuration);
-              var eased = easeOutCubic(lineProgress);
-              var alpha = eased;
-              var offsetY = (1 - eased) * 40;
-              drawTextLine(ctx, textLines[i], cx, startY + i * lineHeight, fontSize, color, alpha, offsetY);
-            }
-          }
-
-          function splitNarrationSentences(text) {
-            return String(text || '')
-              .split(/(?<=[.!?。！？])\s+|\n+/)
-              .map(function(sentence) { return sentence.trim(); })
-              .filter(Boolean);
-          }
-
-          function splitNarrationDisplayLines(text) {
-            var clauses = String(text || '')
-              .split(/(?<=[,，·])/)
-              .map(function(part) { return part.trim(); })
-              .filter(Boolean);
-            if (!clauses.length) clauses = [String(text || '').trim()].filter(Boolean);
-
-            var maxChars = 18;
-            var result = [];
-
-            clauses.forEach(function(clause) {
-              var compact = clause.replace(/\s+/g, ' ').trim();
-              if (!compact) return;
-              if (compact.length <= maxChars) {
-                result.push(compact);
-                return;
-              }
-
-              var buffer = '';
-              var pieces = compact.split(/\s+/);
-              if (pieces.length > 1) {
-                pieces.forEach(function(piece) {
-                  var candidate = buffer ? (buffer + ' ' + piece) : piece;
-                  if (candidate.length > maxChars && buffer) {
-                    result.push(buffer);
-                    buffer = piece;
-                  } else {
-                    buffer = candidate;
-                  }
-                });
-                if (buffer) result.push(buffer);
-                return;
-              }
-
-              for (var i = 0; i < compact.length; i += maxChars) {
-                result.push(compact.slice(i, i + maxChars));
-              }
-            });
-
-            return result.filter(Boolean);
-          }
-
-          function findSectionBoundaries(script, sttSegments, totalDur) {
-            var sections = [
-              (script.hook || '').trim(),
-              (script.point || '').trim(),
-              (script.cta || '').trim()
-            ].filter(Boolean);
-            if (sections.length === 0) return [{ start: 0, end: totalDur }];
-            if (!sttSegments.length) {
-              var charTotal = sections.reduce(function(s, t) { return s + t.length; }, 0) || 1;
-              var boundaries = []; var ct = 0;
-              for (var i = 0; i < sections.length; i++) {
-                var ratio = sections[i].length / charTotal;
-                boundaries.push({ start: ct, end: ct + totalDur * ratio, text: sections[i] });
-                ct += totalDur * ratio;
-              }
-              return boundaries;
-            }
-            var allSttText = sttSegments.map(function(s) { return s.text; }).join('');
-            var sectionTextsNorm = sections.map(function(t) { return t.replace(/\s+/g, ''); });
-            var sttTextsNorm = sttSegments.map(function(s) { return s.text.replace(/\s+/g, ''); });
-            var cumChars = [0];
-            for (var ci = 0; ci < sttTextsNorm.length; ci++) {
-              cumChars.push(cumChars[ci] + sttTextsNorm[ci].length);
-            }
-            var totalSttChars = cumChars[cumChars.length - 1] || 1;
-            var sectionCharLens = sectionTextsNorm.map(function(t) { return t.length; });
-            var totalScriptChars = sectionCharLens.reduce(function(a, b) { return a + b; }, 0) || 1;
-            var boundaries = [];
-            var charCursor = 0;
-            for (var si = 0; si < sections.length; si++) {
-              var sectionRatio = sectionCharLens[si] / totalScriptChars;
-              var sectionChars = Math.round(sectionRatio * totalSttChars);
-              var startChar = charCursor;
-              var endChar = Math.min(charCursor + sectionChars, totalSttChars);
-              var startSeg = 0; var endSeg = sttSegments.length - 1;
-              for (var j = 0; j < cumChars.length; j++) {
-                if (cumChars[j] <= startChar) startSeg = j;
-                if (cumChars[j] >= endChar) { endSeg = Math.max(0, j - 1); break; }
-              }
-              startSeg = Math.min(startSeg, sttSegments.length - 1);
-              endSeg = Math.min(endSeg, sttSegments.length - 1);
-              var tStart = si === 0 ? 0 : sttSegments[startSeg].start;
-              var tEnd = si === sections.length - 1 ? totalDur : (sttSegments[endSeg].end || sttSegments[endSeg].start + 0.5);
-              boundaries.push({ start: tStart, end: tEnd, text: sections[si] });
-              charCursor = endChar;
-            }
-            for (var bi = 1; bi < boundaries.length; bi++) {
-              if (boundaries[bi].start < boundaries[bi - 1].end) {
-                var mid = (boundaries[bi].start + boundaries[bi - 1].end) / 2;
-                boundaries[bi - 1].end = mid;
-                boundaries[bi].start = mid;
-              }
-            }
-            return boundaries;
-          }
-
-          function buildMotionScenes(script, mediaItems, totalDur, sttSegments, sttWords) {
-            var sections = findSectionBoundaries(script, sttWords && sttWords.length ? sttWords : sttSegments, totalDur);
-            var sentenceEntries = [];
-
-            for (var i = 0; i < sections.length; i++) {
-              var section = sections[i];
-              var sentences = splitNarrationSentences(section.text);
-              var displayLines = [];
-              for (var sentenceIndex = 0; sentenceIndex < sentences.length; sentenceIndex++) {
-                displayLines = displayLines.concat(splitNarrationDisplayLines(sentences[sentenceIndex]));
-              }
-              if (!displayLines.length) continue;
-              var sectionDur = Math.max(0.6, section.end - section.start);
-              var charTotal = displayLines.reduce(function(sum, sentence) {
-                return sum + sentence.replace(/\s+/g, '').length;
-              }, 0) || displayLines.length;
-              var localCursor = section.start;
-
-              for (var j = 0; j < displayLines.length; j++) {
-                var chars = displayLines[j].replace(/\s+/g, '').length || 1;
-                var remaining = Math.max(0.4, section.end - localCursor);
-                var duration = j === displayLines.length - 1
-                  ? remaining
-                  : Math.max(1.0, sectionDur * (chars / charTotal));
-                duration = Math.min(duration, remaining);
-                sentenceEntries.push({
-                  type: 'text',
-                  text: displayLines[j],
-                  start: localCursor,
-                  duration: duration
-                });
-                localCursor += duration;
-              }
-            }
-
-            if (!sentenceEntries.length) {
-              return [{ type: 'text', text: [script.hook, script.point, script.cta].filter(Boolean).join(' '), start: 0, duration: totalDur }];
-            }
-
-            var sceneList = [];
-            var mediaCount = Math.min((mediaItems || []).length, 5);
-            var groupCount = mediaCount ? Math.min(sentenceEntries.length, mediaCount + 1) : 1;
-            var groups = [];
-            var cursorIndex = 0;
-
-            for (var groupIndex = 0; groupIndex < groupCount; groupIndex++) {
-              var remainingItems = sentenceEntries.length - cursorIndex;
-              var remainingGroups = groupCount - groupIndex;
-              var takeCount = Math.max(1, Math.ceil(remainingItems / remainingGroups));
-              groups.push(sentenceEntries.slice(cursorIndex, cursorIndex + takeCount));
-              cursorIndex += takeCount;
-            }
-
-            for (var gi = 0; gi < groups.length; gi++) {
-              var group = groups[gi];
-              if (!group.length) continue;
-              var groupStart = group[0].start;
-              var groupEnd = group[group.length - 1].start + group[group.length - 1].duration;
-              var groupDur = Math.max(0.6, groupEnd - groupStart);
-              var hasMediaAfter = gi < mediaCount;
-              var groupMediaIndex = mediaCount
-                ? Math.max(0, Math.min(mediaCount - 1, hasMediaAfter ? gi : gi - 1))
-                : null;
-              var hasMediaBackground = groupMediaIndex !== null;
-              var brollDur = 0;
-
-              if (hasMediaBackground) {
-                brollDur = Math.min(hasMediaAfter ? 2.6 : 2.1, Math.max(hasMediaAfter ? 1.6 : 1.2, groupDur * 0.24));
-                brollDur = Math.min(brollDur, Math.max(0.6, groupDur - 0.8));
-              }
-
-              var textWindowDur = Math.max(0.4, groupDur - brollDur);
-              var totalSentenceDur = group.reduce(function(sum, item) {
-                return sum + Math.max(0.2, item.duration);
-              }, 0) || group.length;
-              var localStart = groupStart;
-              var groupMediaStart = groupMediaIndex === null ? null : groupStart;
-
-              for (var si = 0; si < group.length; si++) {
-                var sentenceScene = group[si];
-                var sentenceBaseDur = Math.max(0.2, sentenceScene.duration);
-                var sentenceDur = si === group.length - 1
-                  ? Math.max(0.2, groupStart + textWindowDur - localStart)
-                  : Math.max(0.45, textWindowDur * (sentenceBaseDur / totalSentenceDur));
-                sceneList.push({
-                  type: 'text',
-                  text: sentenceScene.text,
-                  start: localStart,
-                  duration: sentenceDur,
-                  mediaIndex: groupMediaIndex,
-                  mediaStart: groupMediaStart
-                });
-                localStart += sentenceDur;
-              }
-
-              if (hasMediaBackground && brollDur > 0.45) {
-                sceneList.push({
-                  type: 'broll',
-                  mediaIndex: groupMediaIndex,
-                  start: groupStart + textWindowDur,
-                  duration: brollDur,
-                  mediaStart: groupStart
-                });
-              }
-            }
-
-            var lastMediaIndex = null;
-            var lastMediaAnchor = null;
-            for (var sceneIdx = 0; sceneIdx < sceneList.length; sceneIdx++) {
-              var scene = sceneList[sceneIdx];
-              if (scene.mediaIndex === null || scene.mediaIndex === undefined) {
-                lastMediaIndex = null;
-                lastMediaAnchor = null;
-                continue;
-              }
-              if (scene.mediaIndex === lastMediaIndex && lastMediaAnchor !== null) {
-                scene.mediaStart = lastMediaAnchor;
-              } else {
-                scene.mediaStart = typeof scene.mediaStart === 'number' ? scene.mediaStart : scene.start;
-                lastMediaAnchor = scene.mediaStart;
-                lastMediaIndex = scene.mediaIndex;
-              }
-            }
-
-            sceneList.sort(function(a, b) { return a.start - b.start; });
-            for (var fixIdx = 0; fixIdx < sceneList.length - 1; fixIdx++) {
-              var currentEnd = sceneList[fixIdx].start + sceneList[fixIdx].duration;
-              var nextStart = sceneList[fixIdx + 1].start;
-              if (nextStart > currentEnd) {
-                sceneList[fixIdx].duration += nextStart - currentEnd;
-              }
-            }
-            if (sceneList.length) {
-              var lastScene = sceneList[sceneList.length - 1];
-              var lastEnd = lastScene.start + lastScene.duration;
-              if (lastEnd < totalDur) {
-                if (lastScene.type === 'text' && lastScene.mediaIndex !== null && lastScene.mediaIndex !== undefined && totalDur - lastEnd > 0.45) {
-                  sceneList.push({
-                    type: 'broll',
-                    mediaIndex: lastScene.mediaIndex,
-                    start: lastEnd,
-                    duration: totalDur - lastEnd,
-                    mediaStart: lastScene.mediaStart
-                  });
-                } else {
-                  lastScene.duration += totalDur - lastEnd;
-                }
-              }
-            }
-
-            return sceneList;
-          }
-
-          function drawFrame() {
-            if (aborted) { recorder.stop(); source.stop(); audioCtx.close(); return; }
-            var elapsed = audioCtx.currentTime - startTime;
-            if (elapsed >= duration) {
-              recorder.stop();
-              source.stop();
-              return;
-            }
-            var pct = 25 + (elapsed / duration) * 70;
-            updateRenderProgress(pct, '렌더링 중... ' + Math.round(elapsed) + '/' + Math.round(duration) + '초');
-
-            var currentScene = scenes[scenes.length - 1];
-            for (var si = 0; si < scenes.length; si++) {
-              if (elapsed < scenes[si].start + scenes[si].duration) {
-                currentScene = scenes[si];
-                break;
-              }
-            }
-
-            var sceneElapsed = elapsed - currentScene.start;
-            var sceneProgress = clamp01(sceneElapsed / currentScene.duration);
-            var FADE_DUR = 0.4;
-            var fadeIn = clamp01(sceneElapsed / FADE_DUR);
-            var fadeOut = clamp01((currentScene.duration - sceneElapsed) / FADE_DUR);
-            var sceneFade = Math.min(fadeIn, fadeOut);
-
-            if (currentScene.type === 'broll' && validImages[currentScene.mediaIndex]) {
-              drawBrollScene(ctx, validImages[currentScene.mediaIndex], elapsed, currentScene.start, currentScene.duration, CANVAS_W, CANVAS_H, currentScene.mediaStart);
-            } else if (currentScene.type === 'text') {
-              if (currentScene.mediaIndex !== null && currentScene.mediaIndex !== undefined && validImages[currentScene.mediaIndex]) {
-                drawBrollScene(ctx, validImages[currentScene.mediaIndex], elapsed, currentScene.start, currentScene.duration, CANVAS_W, CANVAS_H, currentScene.mediaStart);
-                ctx.save();
-                ctx.fillStyle = 'rgba(5, 10, 20, 0.48)';
-                ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-                ctx.restore();
-              } else {
-                drawDarkBackground(ctx, CANVAS_W, CANVAS_H);
-              }
-              var fontSize = Math.round(CANVAS_W * 0.044);
-              ctx.font = 'bold ' + fontSize + 'px "Noto Sans KR", sans-serif';
-              var textLine = currentScene.text;
-              var startY = CANVAS_H / 2;
-
-              var textAnimProgress = clamp01((sceneProgress - 0.1) / motionSettings.textWindow);
-              ctx.save();
-              ctx.globalAlpha = sceneFade;
-              drawMotionText(ctx, [textLine], CANVAS_W / 2, startY, fontSize, fontSize * 1.7, '#FFFFFF', textAnimProgress);
-              ctx.restore();
-
-              var accentBarAlpha = easeInOutQuad(clamp01((sceneProgress - 0.05) / 0.3)) * sceneFade;
-              ctx.save();
-              ctx.globalAlpha = accentBarAlpha;
-              var barW = CANVAS_W * 0.12;
-              ctx.fillStyle = ACCENT;
-              ctx.fillRect((CANVAS_W - barW) / 2, startY + 80, barW, 4);
-              ctx.restore();
-            } else {
-              drawDarkBackground(ctx, CANVAS_W, CANVAS_H);
-            }
-
-            requestAnimationFrame(drawFrame);
-          }
-          requestAnimationFrame(drawFrame);
-
-          var blob = await renderDone;
           if (aborted) throw new Error('취소됨');
-          audioCtx.close();
+          if (!response.ok) {
+            var errorText = await response.text();
+            throw new Error('Remotion 렌더 오류: ' + summarizeRawErrorText(errorText) + ' (HTTP ' + response.status + ')');
+          }
+
+          updateRenderProgress(92, '영상 파일 수신 중...');
+          var blob = await response.blob();
+          if (aborted) throw new Error('취소됨');
 
           state.renderBlob = blob;
           updateRenderProgress(100, '완료!');
@@ -3295,9 +2885,10 @@
           els.renderPreviewVideo.src = videoUrl;
           els.renderPreviewArea.classList.add('show');
           els.renderDownloadBtn.href = videoUrl;
+          els.renderDownloadBtn.download = 'shortform-remotion.mp4';
           els.renderDownloadWrap.classList.add('show');
           var sizeMB = (blob.size / 1024 / 1024).toFixed(1);
-          els.renderInfo.textContent = '영상 크기: ' + sizeMB + 'MB | 형식: WebM | 해상도: 1080x1920 | 오디오 트림 ' + trimStart.toFixed(1) + '초~' + trimEnd.toFixed(1) + '초 | 텍스트 ' + (motionSettings.mode === 'line' ? '한 줄씩' : '문단') + ' · ' + (state.motionSpeed === 'slow' ? '느리게' : state.motionSpeed === 'fast' ? '빠르게' : '보통');
+          els.renderInfo.textContent = '영상 크기: ' + sizeMB + 'MB | 형식: MP4 | 렌더: Remotion MVP | 오디오 트림 ' + trimStart.toFixed(1) + '초~' + (trimEnd === null ? audioDuration.toFixed(1) : trimEnd.toFixed(1)) + '초';
           updateStepCheck(els.step4Check, true);
         } catch (e) {
           if (e.message !== '취소됨') {

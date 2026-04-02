@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 
 let cachedServeUrl = null;
 const SHORTFORM_REMOTION_ID = 'ShortformRemotion';
+export const SHORTFORM_REMOTION_VERSION = 'v1-remotion-mvp';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
