@@ -233,7 +233,7 @@
   }
   header h1 {
     font-family: 'Noto Sans KR', sans-serif;
-    font-size: clamp(24px, 5vw, 42px);
+    font-size: clamp(24px, 5vw, 36px);
     font-weight: 900;
     color: var(--dark);
     letter-spacing: -0.5px;
@@ -357,6 +357,20 @@
   }
   .generate-btn:hover { background: #e6541a; }
   .generate-btn:active { transform: translateY(0); }
+
+  .error-box {
+    display: none;
+    background: #FFF0F1;
+    border: 1px solid #FECACA;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: #DC2626;
+    line-height: 1.5;
+  }
+  .error-box.show { display: block; animation: errorFadeIn 0.3s ease; }
+  @keyframes errorFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
 
   /* 결과 섹션 */
   .results { display: none; }
@@ -582,6 +596,9 @@
   @media(max-width: 640px) {
     .tools-grid-3 { grid-template-columns: 1fr; }
     .tools-grid-2 { grid-template-columns: 1fr; }
+    header { padding: 40px 16px 32px; }
+    .container { padding: 0 12px 32px; }
+    .input-section { padding: 20px 16px; }
   }
   .tool-card {
     background: #fff;
@@ -752,6 +769,7 @@
       <div class="hint-tags" id="hintTags"></div>
     </div>
 
+    <div class="error-box" id="errorBox"></div>
     <button class="generate-btn" id="generateBtn" onclick="generateTitles()">제목 12패턴 생성하기</button>
     <div id="remainingInfo" style="text-align:center; margin-top:10px; font-size:12px; color:#6B7280; display:none;">
       오늘 남은 AI 생성 횟수: <strong id="remainingCount">-</strong>회
@@ -1242,9 +1260,19 @@ function setLoading(loading) {
   }
 }
 
+function showError(msg) {
+  var el = document.getElementById('errorBox');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideError() {
+  document.getElementById('errorBox').classList.remove('show');
+}
+
 async function generateTitles() {
+  hideError();
   const kw = document.getElementById('keyword').value.trim();
-  if (!kw) { alert('키워드를 입력해주세요!'); return; }
+  if (!kw) { showError('키워드를 입력해주세요.'); return; }
 
   const catValue = document.getElementById('category').value;
   const category = categoryLabels[catValue] || '';
@@ -1260,7 +1288,7 @@ async function generateTitles() {
 
     if (resp.status === 429) {
       const errData = await resp.json();
-      alert(errData.error || '일일 사용 한도를 초과했습니다. 내일 다시 이용해주세요.');
+      showError(errData.error || '오늘 무료 사용 횟수를 모두 소진했습니다. 내일 다시 이용해주세요.');
       updateRemaining(0);
       // fallback으로 기존 템플릿 사용
       generateWithTemplates(kw);

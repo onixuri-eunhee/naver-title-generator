@@ -96,7 +96,7 @@
   header {
     background: var(--bg); text-align: center; padding: 48px 20px 20px;
   }
-  header h1 { font-size: 30px; font-weight: 900; color: var(--text); margin-bottom: 10px; }
+  header h1 { font-size: clamp(24px, 5vw, 36px); font-weight: 900; color: var(--text); margin-bottom: 10px; }
   header h1 span { color: var(--purple); }
   header p { font-size: 15px; color: var(--muted); max-width: 480px; margin: 0 auto; line-height: 1.7; }
 
@@ -257,7 +257,6 @@
 
   @media (max-width: 600px) {
     header { padding: 36px 16px 16px; }
-    header h1 { font-size: 24px; }
     .free-banner { padding: 0 12px; }
     .container { padding: 0 12px 40px; }
     .product-card { padding: 28px 20px; }
@@ -265,6 +264,10 @@
     .product-price-row { flex-wrap: wrap; gap: 8px; }
     .total-amount { font-size: 22px; }
     .usage-grid { grid-template-columns: 1fr; }
+    .bonus-banner { flex-direction: column; text-align: center; padding: 18px 16px; }
+    .faq-section { padding: 20px 16px; }
+    .usage-table { padding: 20px 16px; }
+    .modal-box { padding: 28px 20px; }
   }
 </style>
 </head>

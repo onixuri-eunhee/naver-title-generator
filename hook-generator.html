@@ -211,8 +211,8 @@ header {
 }
 header h1 {
   font-family: 'Noto Sans KR', sans-serif;
-  font-size: clamp(22px, 4.5vw, 38px);
-  font-weight: 700;
+  font-size: clamp(24px, 5vw, 36px);
+  font-weight: 900;
   color: var(--primary);
   letter-spacing: -0.5px;
   margin-bottom: 12px;
@@ -274,6 +274,21 @@ header p {
   transition: all 0.15s;
 }
 .tag:hover { border-color: var(--accent); color: var(--accent); background: rgba(255,95,31,0.06); }
+
+/* ERROR BOX */
+.error-box {
+  display: none;
+  background: #FFF0F1;
+  border: 1px solid #FECACA;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #DC2626;
+  line-height: 1.5;
+}
+.error-box.show { display: block; animation: errorFadeIn 0.3s ease; }
+@keyframes errorFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
 
 /* GENERATE BTN */
 .generate-btn {
@@ -443,6 +458,7 @@ footer a:hover { text-decoration: underline; }
       </div>
     </div>
 
+    <div class="error-box" id="errorBox"></div>
     <button class="generate-btn" id="generateBtn" onclick="generateHooks()">🔥 스크롤 멈추는 후킹문구 15개 생성하기</button>
     <div id="remainingInfo" style="text-align:center; margin-top:10px; font-size:12px; color:#9CA3AF; display:none;">
       오늘 남은 AI 생성 횟수: <strong id="remainingCount" style="color:var(--primary);">-</strong>회
@@ -758,6 +774,16 @@ function updateRemaining(remaining) {
   document.getElementById('remainingInfo').style.display = 'block';
 }
 
+// 에러 표시/숨기기
+function showError(msg) {
+  var el = document.getElementById('errorBox');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideError() {
+  document.getElementById('errorBox').classList.remove('show');
+}
+
 // 로딩 상태 관리
 function setLoading(loading) {
   const btn = document.getElementById('generateBtn');
@@ -788,8 +814,9 @@ function renderApiResults(results) {
 async function generateHooks() {
   const I = document.getElementById('industry').value.trim();
   const K = document.getElementById('keyword').value.trim();
-  if (!I) { alert('업종을 입력해주세요!'); return; }
-  if (!K) { alert('키워드 / 주제를 입력해주세요!'); return; }
+  hideError();
+  if (!I) { showError('업종을 입력해주세요.'); return; }
+  if (!K) { showError('키워드 / 주제를 입력해주세요.'); return; }
 
   setLoading(true);
 
@@ -802,7 +829,7 @@ async function generateHooks() {
 
     if (resp.status === 429) {
       const errData = await resp.json();
-      alert(errData.error || '일일 사용 한도를 초과했습니다. 내일 다시 이용해주세요.');
+      showError(errData.error || '오늘 무료 사용 횟수를 모두 소진했습니다. 내일 다시 이용해주세요.');
       updateRemaining(0);
       // fallback
       generateWithTemplates(I, K);

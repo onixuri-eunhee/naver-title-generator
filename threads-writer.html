@@ -166,7 +166,7 @@
     }
 
     .page-header { text-align: center; margin-bottom: 36px; }
-    .page-header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .page-header h1 { font-size: clamp(24px, 5vw, 36px); font-weight: 900; letter-spacing: -0.5px; margin-bottom: 8px; }
     .page-header p { font-size: 14px; color: var(--muted); line-height: 1.7; }
 
     .card {
@@ -246,6 +246,19 @@
     }
     .btn-generate:hover { opacity: 0.88; }
     .btn-generate:disabled { opacity: 0.4; cursor: not-allowed; }
+    .error-box {
+      display: none;
+      background: #FFF0F1;
+      border: 1px solid #FECACA;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: #DC2626;
+      line-height: 1.5;
+    }
+    .error-box.show { display: block; animation: errorFadeIn 0.3s ease; }
+    @keyframes errorFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
     .btn-random {
       padding: 14px;
       background: transparent;
@@ -437,6 +450,7 @@
     </div>
     <input type="text" id="topic" placeholder="주제/소재 (예: 번아웃 극복, 단골 만들기)" style="margin-bottom:10px;" />
     <textarea id="memo" placeholder="내 경험이나 메모 (선택 — 짧게 적어도 됩니다)"></textarea>
+    <div class="error-box" id="errorBox"></div>
     <div class="btn-row">
       <button class="btn-generate" id="generateBtn" onclick="generate()">✦ 생성하기</button>
       <button class="btn-random" onclick="fillRandom()">랜덤</button>
@@ -536,9 +550,20 @@
     '고백형': '1인칭 솔직 경험담. 날 것의 문체.',
   };
 
+  function showError(msg) {
+    var el = document.getElementById('errorBox');
+    el.textContent = msg;
+    el.classList.add('show');
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  function hideError() {
+    document.getElementById('errorBox').classList.remove('show');
+  }
+
   async function generate() {
+    hideError();
     const topic = document.getElementById('topic').value.trim();
-    if (!topic) { alert('주제/소재를 입력해주세요.'); return; }
+    if (!topic) { showError('주제/소재를 입력해주세요.'); return; }
 
     const industry = document.getElementById('industry').value.trim();
     const target   = document.getElementById('target').value.trim();
@@ -574,11 +599,11 @@ ${toneGuide[selectedTone]}
       const data = await res.json();
 
       if (res.status === 429) {
-        alert(data.error);
+        showError(data.error || '오늘 무료 사용 횟수를 모두 소진했습니다. 내일 다시 이용해주세요.');
         return;
       }
 
-      if (data.error) throw new Error(data.error.message || 'API 오류');
+      if (data.error) throw new Error(data.error.message || '글 생성 중 문제가 발생했습니다.');
 
       const raw = (data.content?.[0]?.text || '').trim();
       results = raw.split(/\n?---\n?/).map(s => s.trim()).filter(Boolean);
@@ -595,7 +620,7 @@ ${toneGuide[selectedTone]}
       }
 
     } catch (err) {
-      alert('오류: ' + err.message);
+      showError(err.message || '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       btn.disabled = false;
       document.getElementById('loading').classList.remove('show');
