@@ -400,8 +400,8 @@
       <h3 style="font-size:18px; font-weight:800;">결제하기</h3>
       <button type="button" onclick="closePaymentSection()" style="background:none; border:none; font-size:14px; cursor:pointer; color:var(--muted);">취소</button>
     </div>
-    <div id="payment-widget"></div>
-    <div id="agreement-widget" style="margin-top:16px;"></div>
+    <div id="payment-method"></div>
+    <div id="agreement"></div>
     <button type="button" class="buy-btn" id="payNowBtn" onclick="confirmPayment()" style="margin-top:20px;">결제 완료하기</button>
   </div>
 </div>
@@ -467,16 +467,22 @@ async function handleBuy() {
   document.getElementById('payNowBtn').textContent = '결제 수단을 불러오는 중...';
   paySection.scrollIntoView({ behavior: 'smooth' });
 
-  // 위젯 초기화 (v1 Payment Widget SDK)
+  // 위젯 초기화 (v1 Payment Widget SDK — 공식 샘플 기준)
   try {
     var clientKey = 'test_gck_DLJOpm5QrIwmRWv4MagNVPNdxbWn';
     paymentWidget = PaymentWidget(clientKey, PaymentWidget.ANONYMOUS);
 
-    await paymentWidget.renderPaymentMethods('#payment-widget', { value: amount });
-    await paymentWidget.renderAgreement('#agreement-widget');
+    var paymentMethodWidget = paymentWidget.renderPaymentMethods(
+      '#payment-method',
+      { value: amount },
+      { variantKey: 'DEFAULT' }
+    );
+    paymentWidget.renderAgreement('#agreement', { variantKey: 'AGREEMENT' });
 
-    document.getElementById('payNowBtn').disabled = false;
-    document.getElementById('payNowBtn').textContent = (qty * unitPrice).toLocaleString() + '원 결제하기';
+    paymentMethodWidget.on('ready', function() {
+      document.getElementById('payNowBtn').disabled = false;
+      document.getElementById('payNowBtn').textContent = (qty * unitPrice).toLocaleString() + '원 결제하기';
+    });
   } catch (err) {
     console.error('Payment widget error:', err);
     closePaymentSection();
@@ -513,8 +519,8 @@ async function confirmPayment() {
 function closePaymentSection() {
   document.getElementById('paymentSection').style.display = 'none';
   document.querySelector('.container').style.display = 'block';
-  document.getElementById('payment-widget').innerHTML = '';
-  document.getElementById('agreement-widget').innerHTML = '';
+  document.getElementById('payment-method').innerHTML = '';
+  document.getElementById('agreement').innerHTML = '';
   paymentWidget = null;
 }
 
