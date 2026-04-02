@@ -3,11 +3,14 @@
     "node": "20.x"
   },
   "scripts": {
-    "railway:shortform-stt": "node services/shortform-stt-service/server.js"
+    "railway:shortform-stt": "node services/shortform-stt-service/server.js",
+    "remotion:render-shortform": "node scripts/render-shortform-remotion.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1019.0",
     "@neondatabase/serverless": "^1.0.2",
+    "@remotion/bundler": "4.0.443",
+    "@remotion/renderer": "4.0.443",
     "@resvg/resvg-js": "^2.6.2",
     "@resvg/resvg-wasm": "^2.6.2",
     "@upstash/qstash": "^2",
@@ -15,6 +18,9 @@
     "@vercel/kv": "^3.0.0",
     "form-data": "^4.0.5",
     "openai": "^6.33.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.443",
     "satori": "^0.12.0"
   },
   "devDependencies": {
