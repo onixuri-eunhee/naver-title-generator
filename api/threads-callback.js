@@ -37,16 +37,35 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Invalid signature' });
   }
 
-  const { text } = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  const parsed = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  const { text, email } = parsed;
 
   if (!text) {
     return res.status(400).json({ error: 'No text provided' });
   }
 
   try {
-    const threadId = await publishToThreads(text);
+    let userId, accessToken;
 
-    // Update Redis record if message ID is available
+    if (email) {
+      // 일반 회원: Redis에서 토큰 조회
+      const threadsData = await getRedis().get(`threads:user:${email}`);
+      if (!threadsData) {
+        console.error(`Threads token not found for ${email}`);
+        return res.status(400).json({ error: 'Threads 연결이 만료되었습니다.' });
+      }
+      const data = typeof threadsData === 'string' ? JSON.parse(threadsData) : threadsData;
+      userId = data.userId;
+      accessToken = data.accessToken;
+    } else {
+      // 관리자: 환경변수
+      userId = process.env.THREADS_USER_ID;
+      accessToken = process.env.THREADS_ACCESS_TOKEN;
+    }
+
+    const threadId = await publishToThreads(text, userId, accessToken);
+
+    // Update Redis record
     const messageId = req.headers['upstash-message-id'];
     if (messageId) {
       const key = `schedule:threads:${messageId}`;
@@ -56,7 +75,7 @@ export default async function handler(req, res) {
         data.status = 'published';
         data.threadId = threadId;
         data.publishedAt = new Date().toISOString();
-        await getRedis().set(key, JSON.stringify(data), { ex: 86400 }); // keep for 24h
+        await getRedis().set(key, JSON.stringify(data), { ex: 86400 });
       }
     }
 

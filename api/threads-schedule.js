@@ -12,7 +12,7 @@ function getRedis() {
   return redis;
 }
 
-import { resolveAdmin, setCorsHeaders } from './_helpers.js';
+import { resolveAdmin, setCorsHeaders, extractToken, resolveSessionEmail } from './_helpers.js';
 
 export default async function handler(req, res) {
   setCorsHeaders(res, req);
@@ -21,8 +21,19 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const isAdmin = await resolveAdmin(req);
+
+  // 일반 회원: Threads 연결 확인
+  let email = null;
   if (!isAdmin) {
-    return res.status(403).json({ error: '관리자 인증 실패' });
+    const token = extractToken(req);
+    email = await resolveSessionEmail(token);
+    if (!email) {
+      return res.status(401).json({ error: '로그인이 필요합니다.' });
+    }
+    const threadsData = await getRedis().get(`threads:user:${email}`);
+    if (!threadsData) {
+      return res.status(403).json({ error: 'Threads 계정을 먼저 연결해주세요.' });
+    }
   }
 
   const { text, publishAt } = req.body || {};
@@ -50,28 +61,28 @@ export default async function handler(req, res) {
   try {
     const qstash = new Client({ token: process.env.QSTASH_TOKEN });
 
-    // Determine the base URL for the callback
     const baseUrl = process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : 'https://ddukddaktool.co.kr';
 
+    // email을 body에 포함 (관리자는 null → 콜백에서 환경변수 사용)
     const result = await qstash.publishJSON({
       url: `${baseUrl}/api/threads-callback`,
-      body: { text: text.trim() },
+      body: { text: text.trim(), email: isAdmin ? null : email },
       delay: delaySec,
     });
 
-    // Save schedule info to Redis
     const scheduleId = result.messageId;
     await getRedis().set(
       `schedule:threads:${scheduleId}`,
       JSON.stringify({
         text: text.trim(),
+        email: isAdmin ? null : email,
         publishAt,
         createdAt: now.toISOString(),
         status: 'scheduled',
       }),
-      { ex: delaySec + 3600 } // TTL: delay + 1 hour buffer
+      { ex: delaySec + 3600 }
     );
 
     return res.status(200).json({
