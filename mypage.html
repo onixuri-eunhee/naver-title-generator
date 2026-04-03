@@ -447,7 +447,9 @@ footer a:hover { text-decoration: underline; }
       if (res.ok) {
         loadThreadsStatus();
       }
-    } catch (err) {}
+    } catch (err) {
+      alert('연결 해제 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
   }
 
   function escapeHtml(str) {

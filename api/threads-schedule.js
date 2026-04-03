@@ -1,18 +1,5 @@
 import { Client } from '@upstash/qstash';
-import { Redis } from '@upstash/redis';
-
-let redis;
-function getRedis() {
-  if (!redis) {
-    redis = new Redis({
-      url: process.env.KV_REST_API_URL,
-      token: process.env.KV_REST_API_TOKEN,
-    });
-  }
-  return redis;
-}
-
-import { resolveAdmin, setCorsHeaders, extractToken, resolveSessionEmail } from './_helpers.js';
+import { resolveAdmin, setCorsHeaders, extractToken, resolveSessionEmail, getRedis } from './_helpers.js';
 
 export default async function handler(req, res) {
   setCorsHeaders(res, req);

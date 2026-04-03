@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { getRedis, extractToken, resolveSessionEmail, setCorsHeaders } from './_helpers.js';
 
 const THREADS_APP_ID = process.env.THREADS_APP_ID;
@@ -24,11 +25,12 @@ async function handleAuthorize(req, res) {
   const email = await resolveSessionEmail(token);
   if (!email) return res.status(401).json({ error: '로그인이 필요합니다.' });
 
-  // state에 세션 토큰 저장 (CSRF 방지)
-  await getRedis().set(`threads:oauth:${token}`, email, { ex: 600 }); // 10분 TTL
+  // 랜덤 nonce 생성 (세션 토큰 대신 사용하여 URL 노출 방지)
+  const nonce = crypto.randomUUID();
+  await getRedis().set(`threads:oauth:${nonce}`, email, { ex: 600 }); // 10분 TTL
 
   const scope = 'threads_basic,threads_content_publish';
-  const url = `https://threads.net/oauth/authorize?client_id=${THREADS_APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${scope}&response_type=code&state=${token}`;
+  const url = `https://threads.net/oauth/authorize?client_id=${THREADS_APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${scope}&response_type=code&state=${nonce}`;
 
   return res.redirect(302, url);
 }
