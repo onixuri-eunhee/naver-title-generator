@@ -1,15 +1,10 @@
-import { resolveAdmin, setCorsHeaders } from './_helpers.js';
+import { resolveAdmin, setCorsHeaders, getRedis, extractToken, resolveSessionEmail } from './_helpers.js';
 
 export default async function handler(req, res) {
   setCorsHeaders(res, req);
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  const isAdmin = await resolveAdmin(req);
-  if (!isAdmin) {
-    return res.status(403).json({ error: '관리자 인증 실패' });
-  }
 
   const { text } = req.body || {};
 
@@ -21,19 +16,51 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: '500자를 초과하는 글은 발행할 수 없습니다.' });
   }
 
+  // 1) 관리자: 환경변수 토큰
+  const isAdmin = await resolveAdmin(req);
+  if (isAdmin && process.env.THREADS_USER_ID && process.env.THREADS_ACCESS_TOKEN) {
+    try {
+      const threadId = await publishToThreads(
+        text.trim(),
+        process.env.THREADS_USER_ID,
+        process.env.THREADS_ACCESS_TOKEN
+      );
+      return res.status(200).json({ success: true, threadId });
+    } catch (err) {
+      console.error('Threads Publish Error (admin):', err);
+      return res.status(500).json({ error: 'Threads 발행 중 오류가 발생했습니다.' });
+    }
+  }
+
+  // 2) 일반 회원: Redis 토큰
+  const token = extractToken(req);
+  const email = await resolveSessionEmail(token);
+  if (!email) {
+    return res.status(401).json({ error: '로그인이 필요합니다.' });
+  }
+
+  const threadsData = await getRedis().get(`threads:user:${email}`);
+  if (!threadsData) {
+    return res.status(403).json({ error: 'Threads 계정을 먼저 연결해주세요. 마이페이지에서 연결할 수 있습니다.' });
+  }
+
+  const parsed = typeof threadsData === 'string' ? JSON.parse(threadsData) : threadsData;
+
   try {
-    const threadId = await publishToThreads(text.trim());
+    const threadId = await publishToThreads(text.trim(), parsed.userId, parsed.accessToken);
     return res.status(200).json({ success: true, threadId });
   } catch (err) {
-    console.error('Threads Publish Error:', err);
+    console.error('Threads Publish Error (user):', err);
+    // 토큰 만료 감지
+    if (err.message && err.message.includes('Invalid OAuth')) {
+      await getRedis().del(`threads:user:${email}`);
+      return res.status(401).json({ error: 'Threads 연결이 만료되었습니다. 마이페이지에서 다시 연결해주세요.' });
+    }
     return res.status(500).json({ error: 'Threads 발행 중 오류가 발생했습니다.' });
   }
 }
 
-export async function publishToThreads(text) {
-  const userId = process.env.THREADS_USER_ID;
-  const accessToken = process.env.THREADS_ACCESS_TOKEN;
-
+export async function publishToThreads(text, userId, accessToken) {
   if (!userId || !accessToken) {
     throw new Error('Threads API 설정이 완료되지 않았습니다.');
   }
