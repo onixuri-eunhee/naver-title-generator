@@ -10,10 +10,10 @@ export default async function handler(req, res) {
   setCorsHeaders(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const action = req.query.action || (req.query.code ? 'callback' : '');
+  const action = req.query.action || (req.query.code || req.query.error ? 'callback' : '');
 
   if (action === 'authorize') return handleAuthorize(req, res);
-  if (action === 'callback' || req.query.code) return handleCallback(req, res);
+  if (action === 'callback' || req.query.code || req.query.error) return handleCallback(req, res);
   if (action === 'status') return handleStatus(req, res);
   if (action === 'disconnect') return handleDisconnect(req, res);
 
