@@ -661,6 +661,9 @@ footer a:hover { text-decoration: underline; }
           <button class="copy-btn" id="copyBtn" onclick="copyResult()">복사</button>
           <button class="publish-btn" id="publishBtn" onclick="publishNow()" style="display:none;">즉시 발행</button>
           <button class="schedule-btn" id="scheduleBtn" onclick="openScheduleModal()" style="display:none;">예약 발행</button>
+          <div id="threadsHint" style="display:none; margin-top:8px; font-size:12px; color:#6B7280;">
+            <a href="mypage.html" style="color:#8B5CF6; text-decoration:underline;">마이페이지</a>에서 Threads 계정을 연결하면 바로 발행할 수 있어요
+          </div>
         </div>
       </div>
       <div class="result-text" id="resultText"></div>
@@ -894,8 +897,9 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) generate();
 });
 
-// --- Threads 발행 기능 (관리자 전용) ---
+// --- Threads 발행 기능 ---
 var isAdmin = false;
+var threadsConnected = false;
 
 function showToast(msg, type) {
   var t = document.getElementById('toast');
@@ -904,7 +908,7 @@ function showToast(msg, type) {
   setTimeout(function() { t.className = 'toast'; }, 3000);
 }
 
-// 관리자 감지 (loadRemaining에서 admin: true 확인)
+// 관리자 또는 Threads 연결 회원 감지
 var _origLoadRemaining = loadRemaining;
 loadRemaining = async function() {
   try {
@@ -920,11 +924,40 @@ loadRemaining = async function() {
   } catch(e) {
     document.getElementById('remainingCount').textContent = '';
   }
+
+  // Threads 연결 상태 확인 (비관리자)
+  if (!isAdmin) {
+    try {
+      var _t3 = ''; try { _t3 = localStorage.getItem('ddukddak_token') || ''; } catch(e) {}
+      if (_t3) {
+        var statusRes = await fetch('/api/threads-auth?action=status', {
+          headers: { 'Authorization': 'Bearer ' + _t3 }
+        });
+        var statusData = await statusRes.json();
+        if (statusData.connected) {
+          threadsConnected = true;
+          showPublishButtons();
+        }
+      }
+    } catch(e) {}
+  }
+
+  // 로그인 회원인데 Threads 미연결이면 힌트 표시
+  if (!isAdmin && !threadsConnected) {
+    var _t4 = ''; try { _t4 = localStorage.getItem('ddukddak_token') || ''; } catch(e) {}
+    if (_t4) {
+      var hint = document.getElementById('threadsHint');
+      if (hint) hint.style.display = '';
+    }
+  }
 };
 
 function showPublishButtons() {
   document.getElementById('publishBtn').style.display = '';
   document.getElementById('scheduleBtn').style.display = '';
+  // Threads 미연결 안내 숨기기
+  var hint = document.getElementById('threadsHint');
+  if (hint) hint.style.display = 'none';
 }
 
 async function publishNow() {
@@ -937,9 +970,13 @@ async function publishNow() {
   btn.textContent = '발행 중...';
 
   try {
+    var _tk = ''; try { _tk = localStorage.getItem('ddukddak_token') || ''; } catch(e) {}
+    var headers = { 'Content-Type': 'application/json' };
+    if (_tk) headers['Authorization'] = 'Bearer ' + _tk;
+
     var res = await fetch('/api/threads-publish', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify({ text: text })
     });
     var data = await res.json();
@@ -956,7 +993,6 @@ async function publishNow() {
 }
 
 function openScheduleModal() {
-  // Set default to 1 hour from now in KST
   var now = new Date();
   now.setHours(now.getHours() + 1);
   var local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
@@ -979,9 +1015,13 @@ async function confirmSchedule() {
   closeScheduleModal();
 
   try {
+    var _tk = ''; try { _tk = localStorage.getItem('ddukddak_token') || ''; } catch(e) {}
+    var headers = { 'Content-Type': 'application/json' };
+    if (_tk) headers['Authorization'] = 'Bearer ' + _tk;
+
     var res = await fetch('/api/threads-schedule', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify({ text: text, publishAt: publishAt })
     });
     var data = await res.json();
