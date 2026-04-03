@@ -8,6 +8,9 @@ RUN echo '{"type":"module"}' > package.json
 # 서비스 코드 복사
 COPY services/ ./services/
 
+# Remotion 컴포지션 복사
+COPY remotion/ ./remotion/
+
 # services/ 레벨에서 의존성 설치
 WORKDIR /app/services
 RUN npm install --omit=dev
