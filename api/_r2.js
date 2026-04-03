@@ -39,8 +39,8 @@ export async function uploadToR2(key, body, contentType = 'image/png') {
     ContentType: contentType,
   }));
 
-  // R2 Public Development URL
-  return `https://pub-cac85a1d3b8d486082bd1bff2fadcaed.r2.dev/${key}`;
+  // R2 Custom Domain
+  return `https://cdn.ddukddaktool.co.kr/${key}`;
 }
 
 /**
