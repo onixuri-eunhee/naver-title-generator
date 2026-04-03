@@ -5,6 +5,7 @@
     { "source": "/api/threads-publish", "destination": "/api/threads-publish" },
     { "source": "/api/threads-schedule", "destination": "/api/threads-schedule" },
     { "source": "/api/threads-callback", "destination": "/api/threads-callback" },
+    { "source": "/api/threads-auth", "destination": "/api/threads-auth" },
     { "source": "/api/titles", "destination": "/api/titles" },
     { "source": "/api/hooks", "destination": "/api/hooks" },
     { "source": "/api/generate", "destination": "/api/generate" },
