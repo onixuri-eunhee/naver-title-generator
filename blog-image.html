@@ -1001,12 +1001,15 @@ function renderThumbnailCanvas(canvas, imageUrl, text) {
     if (!text) return;
     text = text.substring(0, 30);
 
-    // 하단 그라데이션: transparent → rgba(0,0,0,0.7) (하단 50%)
+    // 전체 어두운 오버레이 (중앙 텍스트 가독성 확보)
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(0, 0, 1024, 1024);
+    // 하단 추가 그라데이션
     var gradient = ctx.createLinearGradient(0, 512, 0, 1024);
     gradient.addColorStop(0, 'transparent');
-    gradient.addColorStop(1, 'rgba(0,0,0,0.7)');
+    gradient.addColorStop(1, 'rgba(0,0,0,0.3)');
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 1024, 1024);
+    ctx.fillRect(0, 512, 1024, 512);
 
     document.fonts.ready.then(function() {
       // 10자 기준 폰트 크기 계산 (동일 크기 유지)
