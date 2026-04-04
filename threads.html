@@ -710,6 +710,12 @@ footer a:hover { text-decoration: underline; }
 
 <script src="admin-mode.js"></script>
 <script>
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML.replace(/\n/g, '<br>');
+}
+
 var selectedType = '정보형';
 var selectedTone = '친구체';
 var results = ['', '', ''];
@@ -733,8 +739,20 @@ function switchTab(idx) {
     t.classList.toggle('active', i === idx);
   });
   var text = results[idx] || '';
-  document.getElementById('resultText').textContent = text;
-  document.getElementById('charCount').textContent = text ? text.length + '자' : '';
+  var container = document.getElementById('resultText');
+  if (text.includes('[답글]')) {
+    var parts = text.split('[답글]');
+    var mainText = parts[0].trim();
+    var replyText = parts[1] ? parts[1].trim() : '';
+    container.innerHTML =
+      '<div style="margin-bottom:12px;">' + escapeHtml(mainText) + '</div>' +
+      '<div style="border-top:1px dashed #E5E7EB; padding-top:12px; color:#6B7280; font-size:0.92em;">' +
+      '<span style="display:inline-block;background:#ff5f1f;color:#fff;font-size:0.75em;padding:2px 8px;border-radius:8px;margin-bottom:8px;">답글</span><br>' +
+      escapeHtml(replyText) + '</div>';
+  } else {
+    container.textContent = text;
+  }
+  document.getElementById('charCount').textContent = text ? text.replace('[답글]','').length + '자' : '';
   var cb = document.getElementById('copyBtn');
   cb.textContent = '복사';
   cb.classList.remove('copied');
