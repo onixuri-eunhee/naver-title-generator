@@ -194,7 +194,14 @@ export default async function handler(req, res) {
 경험 한 줄을 섞되, 길게 풀지 마라. 짧은 팩트+짧은 경험이 핵심이다.
 마지막 줄에 댓글 유발 장치: 질문("이거 나만 그래?"), 의견 요청("어떻게 생각해?").`;
 
-    const charLimit = tone === '단문체' ? '짧게 써라. 임팩트만 남겨라.' : '300자 이내로 작성';
+    let charLimit;
+    if (tone === '단문체') {
+      charLimit = '짧게 써라. 임팩트만 남겨라.';
+    } else if (type === '궁금증형') {
+      charLimit = '본문 200~250자 + 답글 80~120자. 합산 280~370자.';
+    } else {
+      charLimit = '280자 이내로 작성. 짧고 임팩트 있게.';
+    }
 
     const userMessage = `업종: ${industry || '무관'}
 타겟: ${target || '일반'}
