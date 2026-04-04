@@ -22,19 +22,19 @@ export const config = { maxDuration: 300 };
  *   poster → Vertex AI Imagen 3 (GCP 크레딧)
  *   (GPT Image 1.5 — 비활성 폴백으로 유지)
  *
- * 인증: 관리자(서버 판별) OR 로그인 회원 (4/24까지 가입 시 1일 1회 무료)
+ * 인증: 관리자(서버 판별) OR 로그인 회원 (4/24까지 가입 시 1일 3회 무료)
  */
 
-const FREE_DAILY_LIMIT = 1;
+const FREE_DAILY_LIMIT = 3;
 const FREE_CUTOFF = '2026-04-24T23:59:59+09:00';
 const MAX_MARKERS = 8;
 const DIRECT_IMAGES = 8;
 
-// 크레딧 10배 스케일링 (소수점 회피: 0.7cr → 7단위, 1cr → 10단위)
+// 크레딧 10배 스케일링 (소수점 회피: 0.7cr → 7단위, 3cr → 30단위)
 const CREDIT_SCALE = 10;
-const FULL_COST = 10;         // 전체 생성/재생성: 1 크레딧
-const SINGLE_REGEN_COST = 7;  // 개별 1장 재생성: 0.7 크레딧
-const DAILY_LIMIT_SCALED = FREE_DAILY_LIMIT * CREDIT_SCALE;
+const FULL_COST = 30;         // 전체 생성/재생성: 3 크레딧
+const SINGLE_REGEN_COST = 21; // 개별 1장 재생성: 2.1 크레딧 (3 × 0.7)
+const DAILY_LIMIT_SCALED = FREE_DAILY_LIMIT * FULL_COST; // 90단위 = 3회 × 30
 
 let redis;
 function getRedis() {
@@ -365,14 +365,14 @@ async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
 
   const systemPrompt = `You are a blog image prompt engineer. Classify each marker into one of 6 types and generate the appropriate prompt or structured data.
 
-## BALANCED STRATEGY (핵심 규칙)
-${markers.length}장의 이미지를 다음 비율로 배분하세요:
-- photo: 3~4장 (사실적 사진 — 감성, 분위기, 제품, 풍경)
-- Satori 템플릿 (data/flow/checklist/venn): **최소 ${Math.min(4, Math.max(2, markers.length - 4))}장** (정보 시각화)
-- poster: 0~1장 (한글 타이포 포스터/배너)
+## STRICT ALLOCATION RULE (반드시 지켜야 할 배분 규칙)
+${markers.length}장의 이미지를 **정확히** 다음 비율로 배분하세요:
+- photo: **정확히 ${Math.min(5, markers.length)}장** (1번 썸네일 + 본문 사진 ${Math.min(4, markers.length - 1)}장)
+- Satori 템플릿 (data/flow/checklist/venn): **정확히 ${Math.min(3, Math.max(0, markers.length - 5))}장** (정보 시각화)
+- poster: 0장 (특별히 요청하지 않는 한 사용하지 않음)
 
-블로그 글의 앞뒤 문맥을 분석하여, 수치/비교/단계/목록/관계가 언급되는 곳에서 **적극적으로** Satori 유형을 선택하세요.
-단, 첫 번째 마커는 반드시 photo (대표이미지/썸네일)여야 합니다.
+이 비율은 **절대 규칙**입니다. 블로그 글에 숫자/비교/단계/목록 내용이 없더라도 반드시 3장은 Satori 유형으로 배정하세요.
+첫 번째 마커는 반드시 photo (대표이미지/썸네일)입니다.
 
 ## 6 IMAGE TYPES
 
