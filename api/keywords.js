@@ -228,10 +228,11 @@ function buildIntentMeta(intent = {}) {
 
 function extractIntentSignals(field, role, target, questions, userSeeds, seedKeywords) {
   const themeTexts = [field, role];
-  const userTexts = [field, target, questions, userSeeds];
+  // questions는 시드 생성(확장)에만 사용하고, 필터링 토큰에는 포함하지 않는다
+  const userTexts = [field, target, userSeeds];
   const aiSeedTexts = seedKeywords.slice(0, 12);
   const seedTexts = [userSeeds, ...aiSeedTexts];
-  const contextTexts = [target, questions];
+  const contextTexts = [target];
   const allowLocationIntent = [field, target, userSeeds].some(containsLocationToken);
 
   const broadTokens = uniqLimit(
