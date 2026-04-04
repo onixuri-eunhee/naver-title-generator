@@ -181,7 +181,9 @@ export default async function handler(req, res) {
 문단 사이 빈 줄 1개.`;
 
     let charLimit;
-    if (tone === '단문체') {
+    if (tone === '단문체' && type === '궁금증형') {
+      charLimit = '본문 120~150자 + 답글 50~80자. 극도로 짧게. 2단 구조 유지.';
+    } else if (tone === '단문체') {
       charLimit = '짧게 써라. 임팩트만 남겨라.';
     } else if (type === '궁금증형') {
       charLimit = '본문 200~250자 + 답글 80~120자. 합산 280~370자.';
