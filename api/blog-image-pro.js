@@ -490,6 +490,38 @@ ${markerContext}
     }
   }
 
+  // ── 배분 강제 보정: Satori 정확히 3장, photo 정확히 5장 (8장 기준) ──
+  const targetSatori = Math.min(3, Math.max(0, result.length - 5));
+  const currentSatori = result.filter((r, i) => i > 0 && satoriTypes.includes(r.type)).length;
+
+  if (currentSatori > targetSatori) {
+    // Satori가 너무 많으면 → 뒤에서부터 photo로 전환
+    let excess = currentSatori - targetSatori;
+    for (let i = result.length - 1; i > 0 && excess > 0; i--) {
+      if (satoriTypes.includes(result[i].type)) {
+        result[i].type = 'photo';
+        result[i].model = 'fluxr';
+        result[i].prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, photorealistic, clean composition, no text, no letters, photography style';
+        result[i].reason = '배분 보정 → photo';
+        excess--;
+      }
+    }
+  } else if (currentSatori < targetSatori) {
+    // Satori가 부족하면 → 뒤에서부터 photo를 checklist로 전환
+    let deficit = targetSatori - currentSatori;
+    for (let i = result.length - 1; i > 0 && deficit > 0; i--) {
+      if (result[i].type === 'photo') {
+        result[i].type = 'checklist';
+        result[i].model = 'satori';
+        result[i].prompt = { title: result[i].marker || '핵심 정리', subtitle: '', items: [{ text: '항목을 확인하세요', checked: true }] };
+        result[i].reason = '배분 보정 → Satori 체크리스트';
+        deficit--;
+      }
+    }
+  }
+
+  console.log(`[IMAGE-PRO] 배분 보정 완료: satori=${result.filter(r => satoriTypes.includes(r.type)).length}, photo=${result.filter(r => r.type === 'photo').length}, poster=${result.filter(r => r.type === 'poster').length}`);
+
   return result;
 }
 
