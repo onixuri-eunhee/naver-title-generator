@@ -12,7 +12,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: '발행할 텍스트가 없습니다.' });
   }
 
-  if (text.length > 500) {
+  // 궁금증형 2단 구조: [답글] 구분자 기준으로 분리 후 각각 체크
+  const mainText = text.includes('[답글]') ? text.split('[답글]')[0].trim() : text.trim();
+  if (mainText.length > 500) {
     return res.status(400).json({ error: '500자를 초과하는 글은 발행할 수 없습니다.' });
   }
 
@@ -65,17 +67,49 @@ export async function publishToThreads(text, userId, accessToken) {
     throw new Error('Threads API 설정이 완료되지 않았습니다.');
   }
 
+  // [답글] 구분자로 본문/답글 분리
+  let mainText = text;
+  let replyText = null;
+  if (text.includes('[답글]')) {
+    const parts = text.split('[답글]');
+    mainText = parts[0].trim();
+    replyText = parts[1] ? parts[1].trim() : null;
+  }
+
+  // Step 1: 본문 발행
+  const mainThreadId = await publishSingleThread(mainText, userId, accessToken);
+
+  // Step 2: 답글이 있으면 본문에 답글로 발행
+  if (replyText) {
+    try {
+      await publishSingleThread(replyText, userId, accessToken, mainThreadId);
+    } catch (err) {
+      console.error('Reply publish failed (main succeeded):', err);
+      // 본문은 이미 발행됨 — 답글 실패는 무시하지 않고 에러에 포함
+      throw new Error('본문은 발행되었으나 답글 발행에 실패했습니다: ' + err.message);
+    }
+  }
+
+  return mainThreadId;
+}
+
+async function publishSingleThread(text, userId, accessToken, replyToId) {
   // Step 1: Create media container
+  const createBody = {
+    media_type: 'TEXT',
+    text,
+    access_token: accessToken,
+  };
+  if (replyToId) {
+    createBody.reply_to_id = replyToId;
+  }
+
   const createRes = await fetch(
     `https://graph.threads.net/v1.0/${userId}/threads`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        media_type: 'TEXT',
-        text,
-        access_token: accessToken,
-      }),
+      body: JSON.stringify(createBody),
     }
   );
 

@@ -29,7 +29,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: '발행할 텍스트가 없습니다.' });
   }
 
-  if (text.length > 500) {
+  const mainText = text.includes('[답글]') ? text.split('[답글]')[0].trim() : text.trim();
+  if (mainText.length > 500) {
     return res.status(400).json({ error: '500자를 초과하는 글은 발행할 수 없습니다.' });
   }
 
