@@ -240,7 +240,7 @@ ${typeGuide[type] || typeGuide['정보형']}
     const [contentPart, reviewPart] = raw.split(/===검수===/);
     const splitParts = (contentPart || '').trim().split(/\n?---\n?/);
     console.log(`[THREADS] split parts count: ${splitParts.length}, lengths: ${splitParts.map(s => s.trim().length)}`);
-    const results = splitParts.map(s => s.trim().replace(/^(?:#\s*)?(?:(?:글|안)\s*\d+[번]?|\d+[번]?\s*(?:글|안))\s*\n?/i, '').trim()).filter(Boolean);
+    const results = splitParts.map(s => s.trim().replace(/^(?:#\s*)?(?:(?:글|안)\s*\d+[번]?|\d+[번]?\s*(?:글|안)|\d+[번]?)\s*\n?/i, '').trim()).filter(Boolean);
     while (results.length < 3) results.push('');
 
     // 글자수 서버 후처리
