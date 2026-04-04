@@ -182,7 +182,7 @@ export default async function handler(req, res) {
 
     let charLimit;
     if (tone === '단문체' && type === '궁금증형') {
-      charLimit = '본문 150~200자 + 답글 60~100자. 짧지만 2단 구조("[답글]" 구분자) 반드시 유지.';
+      charLimit = '본문 100자 이내 + 답글 50자 이내. 극도로 짧게. 2단 구조("[답글]" 구분자) 반드시 유지.';
     } else if (tone === '단문체') {
       charLimit = '짧게 써라. 임팩트만 남겨라.';
     } else if (type === '궁금증형') {
@@ -233,14 +233,21 @@ ${typeGuide[type] || typeGuide['정보형']}
 
     // 응답 파싱: 검수 섹션 분리 후 "---"로 split
     const raw = (data.content?.[0]?.text || '').trim();
+    console.log(`[THREADS] raw output (first 300): ${raw.slice(0, 300)}`);
+    console.log(`[THREADS] type=${type}, tone=${tone}, raw length=${raw.length}`);
 
     // ===검수=== 구분자로 글과 검수 결과 분리
     const [contentPart, reviewPart] = raw.split(/===검수===/);
-    const results = (contentPart || '').trim().split(/\n?---\n?/).map(s => s.trim()).filter(Boolean);
+    const splitParts = (contentPart || '').trim().split(/\n?---\n?/);
+    console.log(`[THREADS] split parts count: ${splitParts.length}, lengths: ${splitParts.map(s => s.trim().length)}`);
+    const results = splitParts.map(s => s.trim()).filter(Boolean);
     while (results.length < 3) results.push('');
 
-    // 글자수 서버 후처리: 단문체 100자 / 궁금증형 400자 / 기본 300자 하드리밋
-    const hardLimit = type === '궁금증형' ? 400 : (tone === '단문체' ? 100 : 300);
+    // 글자수 서버 후처리
+    let hardLimit = 300;
+    if (type === '궁금증형' && tone === '단문체') hardLimit = 200;
+    else if (type === '궁금증형') hardLimit = 400;
+    else if (tone === '단문체') hardLimit = 100;
     for (let i = 0; i < results.length; i++) {
       if (results[i].replace(/\s/g, '').length > hardLimit) {
         const lines = results[i].split('\n').filter(l => l.trim());
