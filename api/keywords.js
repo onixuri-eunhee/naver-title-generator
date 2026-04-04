@@ -53,14 +53,16 @@ async function resolveSessionEmail(token) {
 
 // ─── Claude Haiku: 시드키워드 생성 ───
 async function generateSeedKeywords(field, role, target, questions) {
-  const systemPrompt = `You are a Korean SEO keyword expert. Generate 20-30 seed keywords that the target audience would search on Naver.
+  const systemPrompt = `You are a Korean SEO keyword expert. Generate seed keywords that the target audience would search on Naver.
 
 ## RULES
 - Keywords must be in Korean
 - Mix of short-tail (2 words) and long-tail (3-5 words) keywords
 - Include informational keywords (방법, 추천, 비용, 후기, 비교, 차이)
 - Include question-type keywords (~하는 법, ~하는 방법, ~어디서)
+- Include evergreen keywords: 방법/과정형, 이유/원인형, 기준/비교형, 체크리스트형
 - Be specific to the field and target audience
+- If "자주 받는 질문" is provided, use them to EXPAND keyword range — generate related variations and broader keywords derived from those questions
 - Output short search queries only, never full sentences
 - Do not include punctuation such as ?, !, /, :, quotes, or arrows
 - Output ONLY a JSON array of strings, nothing else`;
@@ -896,13 +898,16 @@ export default async function handler(req, res) {
     let seedKeywords = await generateSeedKeywords(field, role, target, questions);
 
     // 사용자 직접 시드키워드 병합
+    const userSeedList = [];
     if (userSeeds) {
       const manual = userSeeds.split(/[,\n]/).map(s => s.trim()).filter(s => s.length > 0);
       for (const kw of manual) {
+        userSeedList.push(kw);
         if (!seedKeywords.includes(kw)) seedKeywords.push(kw);
       }
     }
-    console.log(`[KEYWORDS] Seeds (AI+manual): ${seedKeywords.length}`);
+    const userSeedSet = new Set(userSeedList.map(s => normalizeKoreanText(s).replace(/\s+/g, '')));
+    console.log(`[KEYWORDS] Seeds (AI+manual): ${seedKeywords.length}, userSeeds: ${userSeedList.length}`);
     const intentSeedKeywords = [...seedKeywords];
 
     // Phase 1.5: 자동완성으로 시드 확장
@@ -931,8 +936,13 @@ export default async function handler(req, res) {
       ...candidate,
       _intent: scoreRelevantKeyword(candidate.keyword, intentSignals),
     }));
+    // userSeeds에서 파생된 키워드는 관련성 필터 바이패스 (사용자가 직접 넣은 건 무조건 포함)
     const relevantCandidates = scoredCandidates
-      .filter(candidate => candidate._intent.relevant)
+      .filter(candidate => {
+        if (candidate._intent.relevant) return true;
+        const compactKw = normalizeKoreanText(candidate.keyword).replace(/\s+/g, '');
+        return userSeedSet.size > 0 && Array.from(userSeedSet).some(seed => compactKw.includes(seed) || seed.includes(compactKw));
+      })
       .sort((a, b) => b._intent.score - a._intent.score || b.monthlySearch - a.monthlySearch);
     const baseDisplayCandidates = scoredCandidates
       .filter(candidate =>
