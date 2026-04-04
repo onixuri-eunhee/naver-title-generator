@@ -53,19 +53,19 @@ async function resolveSessionEmail(token) {
 
 // ─── Claude Haiku: 시드키워드 생성 ───
 async function generateSeedKeywords(field, role, target, questions) {
-  const systemPrompt = `You are a Korean SEO keyword expert. Generate seed keywords that the target audience would search on Naver.
+  const systemPrompt = `당신은 네이버 블로그 SEO 키워드 전문가입니다. 타겟 독자가 네이버에서 실제로 검색할 법한 시드 키워드를 생성하세요.
 
-## RULES
-- Keywords must be in Korean
-- Mix of short-tail (2 words) and long-tail (3-5 words) keywords
-- Include informational keywords (방법, 추천, 비용, 후기, 비교, 차이)
-- Include question-type keywords (~하는 법, ~하는 방법, ~어디서)
-- Include evergreen keywords: 방법/과정형, 이유/원인형, 기준/비교형, 체크리스트형
-- Be specific to the field and target audience
-- If "자주 받는 질문" is provided, use them to EXPAND keyword range — generate related variations and broader keywords derived from those questions
-- Output short search queries only, never full sentences
-- Do not include punctuation such as ?, !, /, :, quotes, or arrows
-- Output ONLY a JSON array of strings, nothing else`;
+## 규칙
+- 모든 키워드는 한국어 검색어 형태로 출력
+- 숏테일(2단어)과 롱테일(3~5단어) 키워드를 섞을 것
+- 정보형 키워드 포함: 방법, 추천, 비용, 후기, 비교, 차이
+- 질문형 키워드 포함: ~하는 법, ~하는 방법, ~어디서
+- 에버그린 키워드 포함: 순서/과정형, 이유/원인형, 선택기준/비교형, 체크리스트형
+- 분야와 타겟 독자에 맞는 구체적 키워드 위주
+- "자주 받는 질문"이 있으면 그 질문에서 파생되는 다양한 키워드로 범위를 확장할 것 (축소 금지)
+- 짧은 검색 쿼리만 출력, 완전한 문장 금지
+- 구두점(?, !, /, :, 따옴표, 화살표) 사용 금지
+- 반드시 JSON 문자열 배열만 출력`;
 
   const userPrompt = `분야: ${field}
 역할: ${role}
@@ -794,7 +794,7 @@ function calculateGoldenScore(keyword, monthlySearch, pcSearch, mobileSearch, co
   const blogCountAvailable = blogCount >= 0; // -1이면 미수집
 
   // 1. 검색량 (25점) — 6단계 세분화
-  if (monthlySearch < 200) breakdown.search = 15;
+  if (monthlySearch < 200) breakdown.search = 8;
   else if (monthlySearch < 500) breakdown.search = 22;
   else if (monthlySearch < 2000) breakdown.search = 25;
   else if (monthlySearch < 5000) breakdown.search = 20;
@@ -813,9 +813,9 @@ function calculateGoldenScore(keyword, monthlySearch, pcSearch, mobileSearch, co
   else if (saturation <= 50) breakdown.saturation = 5;
   else breakdown.saturation = 0;
 
-  // 3. 경쟁도 (15점)
-  const compMap = { low: 15, medium: 8, high: 2 };
-  breakdown.competition = compMap[competition] || 8;
+  // 3. 경쟁도 (10점) — 광고 경쟁도이므로 배점 축소
+  const compMap = { low: 10, medium: 5, high: 1 };
+  breakdown.competition = compMap[competition] || 5;
 
   // 4. 트렌드 (15점) — 5단계 세분화
   const trend = trendInfo?.trend || 'unknown';
@@ -828,14 +828,16 @@ function calculateGoldenScore(keyword, monthlySearch, pcSearch, mobileSearch, co
   else if (trendChange >= -20) breakdown.trend = 3;
   else breakdown.trend = 0;
 
-  // 5. 보너스 (15점)
+  // 5. 보너스 (20점)
   breakdown.bonus = 0;
-  if (/하는\s*법|하는\s*방법|차이|비교|추천|어떻게|언제|얼마/.test(keyword)) breakdown.bonus += 4;
-  if (keyword.split(/\s+/).length >= 3) breakdown.bonus += 3;
+  if (/하는\s*법|하는\s*방법|차이|비교|추천|어떻게|언제|얼마/.test(keyword)) breakdown.bonus += 5;
+  if (keyword.split(/\s+/).length >= 3) breakdown.bonus += 4;
   // 모바일 비율 70% 이상이면 블로그 노출에 유리
   const totalSearch = (pcSearch || 0) + (mobileSearch || 0);
-  if (totalSearch > 0 && (mobileSearch || 0) / totalSearch >= 0.7) breakdown.bonus += 4;
-  breakdown.bonus = Math.min(breakdown.bonus, 15);
+  if (totalSearch > 0 && (mobileSearch || 0) / totalSearch >= 0.7) breakdown.bonus += 5;
+  // 에버그린 패턴 보너스
+  if (/순서|과정|체크리스트|확인사항|선택\s*기준|안\s*되는\s*이유|안\s*느는\s*이유/.test(keyword)) breakdown.bonus += 4;
+  breakdown.bonus = Math.min(breakdown.bonus, 20);
 
   const score = breakdown.search + breakdown.saturation + breakdown.competition + breakdown.trend + breakdown.bonus;
   const gradeInfo = getGrade(score);
