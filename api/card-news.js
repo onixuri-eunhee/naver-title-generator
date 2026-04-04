@@ -2,25 +2,7 @@ import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 import { logUsage } from './_db.js';
 import { themes } from './_card-news-themes.js';
-
-// satori, @resvg/resvg-wasm → 동적 import로 지연 로딩
-// (top-level static import는 Vercel Serverless에서 FUNCTION_INVOCATION_FAILED 유발)
-let _satori, _Resvg, _initWasm;
-async function getSatori() {
-  if (!_satori) {
-    const mod = await import('satori');
-    _satori = mod.default || mod;
-  }
-  return _satori;
-}
-async function getResvg() {
-  if (!_Resvg || !_initWasm) {
-    const mod = await import('@resvg/resvg-wasm');
-    _Resvg = mod.Resvg;
-    _initWasm = mod.initWasm;
-  }
-  return { Resvg: _Resvg, initWasm: _initWasm };
-}
+import { h, lines, _F, getSatori, getResvg, initResvgWasm, loadFonts } from './_satori-renderer.js';
 
 export const config = { maxDuration: 180 };
 
@@ -77,53 +59,8 @@ function getTTLUntilMidnightKST() {
   return Math.max(seconds, 60);
 }
 
-// ─── WASM + 폰트 로딩 (콜드 스타트 시 1회) ───
-let fontRegular, fontBold, wasmInited = false;
-
-const BASE_URL = 'https://ddukddaktool.co.kr';
-
-async function initResvgWasm() {
-  if (wasmInited) return;
-  const { initWasm } = await getResvg();
-  const resp = await fetch(`${BASE_URL}/assets/resvg.wasm`);
-  const wasmBuf = await resp.arrayBuffer();
-  await initWasm(wasmBuf);
-  wasmInited = true;
-}
-
-async function loadFonts() {
-  if (!fontRegular) {
-    const [rResp, bResp] = await Promise.all([
-      fetch(`${BASE_URL}/assets/NotoSansKR-Regular.subset.ttf`),
-      fetch(`${BASE_URL}/assets/NotoSansKR-Bold.subset.ttf`),
-    ]);
-    fontRegular = Buffer.from(await rResp.arrayBuffer());
-    fontBold = Buffer.from(await bResp.arrayBuffer());
-  }
-  return [
-    { name: 'Noto Sans KR', data: fontRegular, weight: 400, style: 'normal' },
-    { name: 'Noto Sans KR', data: fontBold, weight: 700, style: 'normal' },
-  ];
-}
-
-// ─── 레이아웃 (인라인) ───
-const _F = 'Noto Sans KR';
+// ─── 레이아웃 (h, lines, _F는 _satori-renderer.js에서 import) ───
 const _W = 1080, _H = 1350, _P = 100;
-function h(type, props, ...children) {
-  const flat = children.flat().filter(Boolean);
-  return { type, props: { ...props, children: flat.length === 1 ? flat[0] : flat.length === 0 ? undefined : flat } };
-}
-// \n을 줄바꿈으로 렌더링 (Satori는 텍스트 \n을 무시하므로 줄별 div로 분리)
-function lines(text, style) {
-  if (!text) return null;
-  const parts = String(text).split('\n').filter(Boolean);
-  const isCentered = style.textAlign === 'center';
-  const baseStyle = { display: 'flex', ...style };
-  if (parts.length <= 1) return h('div', { style: baseStyle }, text || '');
-  return h('div', { style: { ...baseStyle, flexDirection: 'column', alignItems: isCentered ? 'center' : 'flex-start' } },
-    ...parts.map(line => h('div', { style: { display: 'flex', justifyContent: isCentered ? 'center' : 'flex-start' } }, line))
-  );
-}
 const layouts = {
   cover: (s, t) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.bgDark, padding: _P } },
     // 배경 장식 (깊이감)

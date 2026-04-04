@@ -902,8 +902,8 @@ function renderResults(images, thumbnailText) {
     card.className = 'image-card' + (isThumbnail ? ' thumbnail' : '');
     card.id = 'image-card-' + i;
 
-    var typeIcons = { photo: '\ud83d\udcf7', infographic_data: '\ud83d\udcca', infographic_flow: '\ud83d\udd04', poster: '\ud83c\udfad' };
-    var typeLabels = { photo: '사진', infographic_data: '데이터 차트', infographic_flow: '흐름도', poster: '포스터' };
+    var typeIcons = { photo: '\ud83d\udcf7', infographic_data: '\ud83d\udcca', infographic_flow: '\ud83d\udd04', checklist: '\u2705', venn: '\u2b55', poster: '\ud83c\udfad' };
+    var typeLabels = { photo: '사진', infographic_data: '비교표', infographic_flow: '흐름도', checklist: '체크리스트', venn: '관계도', poster: '포스터' };
     var itemType = item.type || 'photo';
     var itemModel = item.model || 'fluxr';
     var isInfographic = itemType !== 'photo';

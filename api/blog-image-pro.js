@@ -3,6 +3,8 @@ import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 import { replaceUrlsWithR2, uploadImageUrlToR2 } from './_r2.js';
 import { logUsage } from './_db.js';
 import crypto from 'crypto';
+import { renderToBase64 } from './_satori-renderer.js';
+import { renderTemplate } from './_satori-templates.js';
 
 export const config = { maxDuration: 300 };
 
@@ -11,10 +13,14 @@ export const config = { maxDuration: 300 };
  * 자동 모델 라우팅: Haiku가 이미지 유형 판단 → 최적 모델 선택
  *
  * 모델 라우팅:
- *   photo → FLUX Realism (fal-ai/flux-realism)
- *   infographic_data → GPT Image 1.5 high (gpt-image-1.5, quality: high)
- *   infographic_flow → Vertex AI Imagen 3 (GCP 크레딧)
+ *   photo(썸네일 1번) → FLUX Realism (fal-ai/flux-realism)
+ *   photo(본문 2번~) → Vertex AI Imagen 3 (GCP 크레딧, "no text")
+ *   infographic_data → Satori 비교표 템플릿 (서버 렌더링)
+ *   infographic_flow → Satori 흐름도 템플릿 (서버 렌더링)
+ *   checklist → Satori 체크리스트 템플릿 (서버 렌더링)
+ *   venn → Satori 벤다이어그램 템플릿 (서버 렌더링)
  *   poster → Vertex AI Imagen 3 (GCP 크레딧)
+ *   (GPT Image 1.5 — 비활성 폴백으로 유지)
  *
  * 인증: 관리자(서버 판별) OR 로그인 회원 (4/24까지 가입 시 1일 1회 무료)
  */
@@ -324,7 +330,7 @@ ${blogText.substring(0, 6000)}`;
 }
 
 // 모델 라우팅: type → API 호출
-async function generateByModel(model, prompt) {
+async function generateByModel(model, prompt, type) {
   switch (model) {
     case 'fluxr':
       return await callFluxRealism(prompt);
@@ -332,6 +338,11 @@ async function generateByModel(model, prompt) {
       return await callGptImageHigh(prompt);
     case 'nb2':
       return await callVertexImagen3(prompt);
+    case 'satori': {
+      const data = typeof prompt === 'string' ? JSON.parse(prompt) : prompt;
+      const { vnode, w, h } = renderTemplate(type, data);
+      return await renderToBase64(vnode, w, h);
+    }
     default:
       return await callFluxRealism(prompt);
   }
@@ -352,82 +363,68 @@ async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
     return `마커 ${i + 1}: "${mk.text}"${mk.altText ? ` (alt: "${mk.altText}")` : ''}${mk.section ? `\n  소속 섹션: "${mk.section}"` : ''}\n  글 위치: ${mk.position}\n  앞 문맥 (200자): "${before}"\n  뒤 문맥 (200자): "${after}"`;
   }).join('\n\n');
 
-  const systemPrompt = `You are a blog image prompt engineer with automatic model routing.
-Classify each marker into ONE of 4 types, select the best AI model, and generate the prompt.
+  const systemPrompt = `You are a blog image prompt engineer. Classify each marker into one of 6 types and generate the appropriate prompt or structured data.
 
-## CRITICAL: PHOTO-FIRST RULE
-DEFAULT is ALWAYS "photo". These images will have text overlaid by the frontend — so images MUST be clean photos WITHOUT embedded text.
+## BALANCED STRATEGY (핵심 규칙)
+${markers.length}장의 이미지를 다음 비율로 배분하세요:
+- photo: 3~4장 (사실적 사진 — 감성, 분위기, 제품, 풍경)
+- Satori 템플릿 (data/flow/checklist/venn): **최소 ${Math.min(4, Math.max(2, markers.length - 4))}장** (정보 시각화)
+- poster: 0~1장 (한글 타이포 포스터/배너)
 
-Only use infographic_data/infographic_flow/poster when the marker text EXPLICITLY contains these EXACT trigger words:
-- infographic_data: 차트, 그래프, 통계표, 비교표, 수치 비교, 데이터 시각화
-- infographic_flow: 흐름도, 타임라인, 로드맵, 프로세스 도식, 단계도
-- poster: 포스터, 배너, 공지문
+블로그 글의 앞뒤 문맥을 분석하여, 수치/비교/단계/목록/관계가 언급되는 곳에서 **적극적으로** Satori 유형을 선택하세요.
+단, 첫 번째 마커는 반드시 photo (대표이미지/썸네일)여야 합니다.
 
-If the marker describes a concept, product, scene, mood, activity, food, place, or anything visual → ALWAYS use "photo".
-Even if the blog discusses data/statistics, the IMAGE should be a photo unless the marker EXPLICITLY asks for a chart.
+## 6 IMAGE TYPES
 
-## 4 IMAGE TYPES & MODEL ROUTING
-
-### 1. photo → model: "fluxr" (DEFAULT — use this 90%+ of the time)
-For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 사물, 개념 시각화
-- FIRST marker MUST be "photo" (대표이미지)
+### 1. photo → model: "fluxr" (사실적 사진)
+For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 감성/분위기
 - Describe subjects, lighting, angle, mood as cinematic/editorial photography
-- Signs/menus in scene → describe as blurred
-- Camera: overhead, macro, wide-angle, 45-degree, eye-level
+- Signs/menus → describe as blurred
 - End with: ", photorealistic, clean composition, no text, no letters, photography style"
+- prompt: 영어 80-150 words
 
-### 2. infographic_data → model: "gpth" (ONLY when marker explicitly says 차트/그래프/비교표)
-For: data-heavy visuals with numbers, percentages, charts, tables, comparisons (GPT Image 1.5 high)
+### 2. infographic_data → model: "satori" (비교표/차트)
+For: 수치 비교, 통계, 가격, 순위, 비율, 장단점 등 **숫자가 있는 비교**
+- prompt: JSON 객체를 문자열로: {"title":"한국어 제목","subtitle":"범위","source":"출처","items":[{"label":"항목","value":"85","unit":"%"}]}
+- items 3~6개. value는 숫자 문자열. 블로그 문맥에서 실제 데이터 추출
 
-**CHART RULES (infographic_data — MUST follow all, 2:3 vertical layout):**
-(A) DATA LABELS: Show numeric value on every data point (bar tips, pie segments, line nodes)
-(B) AXIS UNITS: Y-axis includes unit (e.g. "비용(만원)"), X-axis full Korean labels, subtle grid lines
-(C) COMPOSITION: Chart fills 70%+ of image, no floating empty space
-(D) SOURCE: Footer with data source/year (e.g. "Source: 한국소비자원 2024")
-(E) COLOR: Key data bold saturated, secondary muted gray. Legend at right or bottom
-(F) PADDING: 15% top + 10% bottom padding. Title/chart must not touch edges
-(G) TITLE: Two-level — large bold Korean main title + smaller subtitle (year/scope)
+### 3. infographic_flow → model: "satori" (흐름도/프로세스)
+For: 절차, 순서, 단계, 타임라인, 준비 과정 등 **순서가 있는 프로세스**
+- prompt: JSON 객체를 문자열로: {"title":"한국어 제목","subtitle":"부제","steps":[{"label":"단계명","description":"설명"}]}
+- steps 3~6개
 
-### 3. infographic_flow → model: "nb2" (ONLY when marker explicitly says 흐름도/타임라인/로드맵)
-For: 타임라인, 로드맵, 단계, 흐름도, 프로세스, 한글 텍스트 위주 설명
-- Describe as top-to-bottom or left-to-right flow with numbered Korean labels
-- Use arrows/connectors between steps, soft gradient background, 3-5 step nodes
-- Include Korean text in quotes. Color: main step bold, sub-step muted
+### 4. checklist → model: "satori" (체크리스트)
+For: 준비물, 필수 항목, 팁 모음, 주의사항, 확인 사항 등 **나열형 정보**
+- prompt: JSON 객체를 문자열로: {"title":"한국어 제목","subtitle":"부제","items":[{"text":"항목 내용","checked":true}]}
+- items 4~8개
 
-### 4. poster → model: "nb2" (ONLY when marker explicitly says 포스터/배너/공지문)
-For: 한글 타이포그래피, 공지, 텍스트 위주 포스터, 배너
-- Large centered Korean headline in quotes, supporting subtitle below
-- Bold typography, high contrast background, minimal decoration
-- Specify font style (sans-serif, bold), 2-3 colors max
+### 5. venn → model: "satori" (벤다이어그램/관계도)
+For: 개념 비교, 공통점/차이점, A vs B, 겹치는 영역 등 **관계/교집합**
+- prompt: JSON 객체를 문자열로: {"title":"한국어 제목","subtitle":"부제","sets":[{"label":"집합A","description":"설명"}],"overlap":"공통점"}
+- sets 2~3개
 
-## PROMPT RULES (CRITICAL)
+### 6. poster → model: "nb2" (포스터/배너)
+For: 한글 타이포그래피, 공지, 배너
+- Large Korean headline in quotes, bold typography, 2-3 colors
+- prompt: 영어 80-150 words
 
-### Rule 1: prompt MUST be 100% English
-- NO Korean except image-text in double quotes (e.g. "월별 매출 추이" as title)
-- ABSOLUTE PROHIBITION on Korean outside quotes
+## SATORI 유형 선택 가이드 (적극 발굴)
+다음 신호가 문맥에 있으면 해당 유형 우선:
+- 숫자/가격/비율/순위/퍼센트 → infographic_data
+- "먼저/그다음/마지막으로", 순서/단계/과정/절차 → infographic_flow
+- "준비물/필수/체크/확인/주의/팁" → checklist
+- "A와 B의 차이", "공통점", 개념 비교 (숫자 없이) → venn
 
-### Rule 2: Photo prompts
-- photo type: suffix defined above — always include it
-- Do NOT add Korean text to photo prompts
+## PROMPT RULES
+1. photo/poster → prompt는 100% 영어. photo는 "no text, no letters" 필수
+2. satori 유형 → prompt는 JSON 객체를 **문자열화**하여 넣으세요
+3. 블로그 문맥에서 실제 정보를 추출 (임의 데이터 금지)
 
-### Rule 3: Infographic/poster types
-- Include Korean text in quotes within the prompt. Describe layout, structure, colors
-- Do NOT add "no text" — text IS the point
-- infographic_data: MUST follow ALL CHART RULES (A)~(G) above
-
-### Rule 4: Prompt length
-- Each prompt: 80-150 English words
-- Be specific: composition, colors, layout, lighting, style
-
-### Rule 5: Context accuracy
-- Read marker text + before/after context carefully. Prompt must match the marker's meaning
-- Maintain Korean/East Asian aesthetic
-
-${isRegenerate ? '\nREGENERATION MODE: Generate MORE SPECIFIC prompts with different compositions and visual approaches.' : ''}
+${isRegenerate ? '\nREGENERATION: 다른 구성/시각으로 새로 생성하세요.' : ''}
 
 ## OUTPUT FORMAT
 Return ONLY a valid JSON array. Each element:
-{"type":"[photo|infographic_data|infographic_flow|poster]","model":"[fluxr|gpth|nb2]","reason":"[한국어 1문장]","prompt":"[영어 전용 80-150 words]"}`;
+{"type":"[photo|infographic_data|infographic_flow|checklist|venn|poster]","model":"[fluxr|satori|nb2]","reason":"[한국어 1문장]","prompt":"[영어 프롬프트 또는 JSON 문자열]"}`;
 
   const userPrompt = `블로그 제목: "${blogTitle}"
 블로그 전체 주제 (첫 300자): ${blogSummary}${blogStructure ? `\n글 구조: ${blogStructure}` : ''}
@@ -448,23 +445,35 @@ ${markerContext}
   }
 
   // 후처리: 안전장치
-  const validTypes = ['photo', 'infographic_data', 'infographic_flow', 'poster'];
-  const modelMap = { photo: 'fluxr', infographic_data: 'gpth', infographic_flow: 'nb2', poster: 'nb2' };
+  const validTypes = ['photo', 'infographic_data', 'infographic_flow', 'checklist', 'venn', 'poster'];
+  const satoriTypes = ['infographic_data', 'infographic_flow', 'checklist', 'venn'];
+
+  function getModel(type) {
+    if (satoriTypes.includes(type)) return 'satori';
+    if (type === 'poster') return 'nb2';
+    return 'fluxr';
+  }
 
   for (let idx = 0; idx < result.length; idx++) {
     const item = result[idx];
+    if (!validTypes.includes(item.type)) item.type = 'photo';
+    item.model = getModel(item.type);
 
-    // 잘못된 type 보정
-    if (!validTypes.includes(item.type)) {
-      item.type = 'photo';
+    // satori 모델: prompt가 JSON이어야 함 → 파싱 검증
+    if (item.model === 'satori') {
+      try {
+        const parsed = typeof item.prompt === 'string' ? JSON.parse(item.prompt) : item.prompt;
+        item.prompt = parsed;
+      } catch {
+        console.warn(`[IMAGE-PRO] Satori JSON parse failed for marker ${idx + 1}, fallback to photo`);
+        item.type = 'photo';
+        item.model = 'fluxr';
+        if (!item.prompt || typeof item.prompt !== 'string') {
+          item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, photorealistic, clean composition, no text, no letters, photography style';
+        }
+      }
     }
 
-    // Haiku 분류 신뢰 — COST GUARD 제거 (퀄리티 우선)
-
-    // model이 type과 불일치하면 강제 보정
-    item.model = modelMap[item.type];
-
-    // prompt 누락 시 기본값
     if (!item.prompt) {
       item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, photorealistic, clean composition, shallow depth of field, no text, photography style';
       item.type = 'photo';
@@ -476,8 +485,8 @@ ${markerContext}
   if (result[0].type !== 'photo') {
     result[0].type = 'photo';
     result[0].model = 'fluxr';
-    if (!result[0].prompt.includes('no text')) {
-      result[0].prompt += ', photorealistic, clean composition, shallow depth of field, no text, photography style';
+    if (typeof result[0].prompt !== 'string' || !result[0].prompt.includes('no text')) {
+      result[0].prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, photorealistic, clean composition, shallow depth of field, no text, photography style';
     }
   }
 
@@ -491,37 +500,48 @@ async function callHaikuSingleMarkerPro(blogText, marker, targetType) {
   const firstLine = blogText.split('\n').find(l => l.trim()) || '';
   const blogTitle = firstLine.trim().substring(0, 80);
 
+  const satoriTypes = ['infographic_data', 'infographic_flow', 'checklist', 'venn'];
+  const isSatoriType = satoriTypes.includes(targetType);
+  const isPhotoType = targetType === 'photo';
+
   const typeInstructions = {
     photo: `Cinematic/editorial photo prompt.
 - Describe subjects, lighting, angle, mood
 - Signs/menus → describe as blurred
 - End with: ", photorealistic, clean composition, no text, no letters, photography style"`,
-    infographic_data: `Data visualization for GPT Image (2:3 vertical layout).
-CHART RULES: (A) Data labels on every point (B) Y-axis units, X-axis Korean labels (C) Chart fills 70%+ (D) Source footer (E) Bold key data, muted secondary (F) 15% top + 10% bottom padding (G) Two-level Korean title`,
-    infographic_flow: `Flow/timeline for Nano Banana 2.
-- Top-to-bottom or left-to-right flow, numbered Korean labels
-- Arrows/connectors, soft gradient background, 3-5 step nodes
-- Include Korean text in quotes`,
-    poster: `Poster/banner for Nano Banana 2.
+    infographic_data: `비교표 데이터 시각화 (Satori 렌더러).
+- Output JSON: {"title":"한국어 제목","subtitle":"범위","source":"출처","items":[{"label":"항목","value":"숫자","unit":"단위"}]}
+- 3-6 items. 블로그 문맥에서 실제 데이터 추출`,
+    infographic_flow: `흐름도/프로세스 (Satori 렌더러).
+- Output JSON: {"title":"한국어 제목","subtitle":"부제","steps":[{"label":"단계명","description":"설명"}]}
+- 3-6 steps`,
+    checklist: `체크리스트 (Satori 렌더러).
+- Output JSON: {"title":"한국어 제목","subtitle":"부제","items":[{"text":"항목 내용","checked":true}]}
+- 4-8 items`,
+    venn: `벤다이어그램 관계도 (Satori 렌더러).
+- Output JSON: {"title":"한국어 제목","subtitle":"부제","sets":[{"label":"집합명","description":"설명"}],"overlap":"공통점"}
+- 2-3 sets`,
+    poster: `Poster/banner for Imagen 3.
 - Large centered Korean headline in quotes, subtitle below
 - Bold typography, high contrast background, 2-3 colors max`,
   };
 
   const instruction = typeInstructions[targetType] || typeInstructions.photo;
-  const isPhotoType = targetType === 'photo';
 
-  const systemPrompt = `You are a blog image prompt engineer. Generate ONE new prompt for SINGLE IMAGE REGENERATION.
-Type: ${targetType}. Create a COMPLETELY DIFFERENT composition and visual approach.
+  const systemPrompt = `You are a blog image prompt engineer. Generate ONE new ${isSatoriType ? 'JSON data object' : 'prompt'} for SINGLE IMAGE REGENERATION.
+Type: ${targetType}. Create a COMPLETELY DIFFERENT ${isSatoriType ? 'data set' : 'composition and visual approach'}.
 
 ${instruction}
 
 Rules:
-- prompt 100% English${isPhotoType ? '' : ' (Korean text only inside double quotes for infographic/poster)'}
+${isSatoriType
+    ? '- Output JSON object as a string value'
+    : `- prompt 100% English${isPhotoType ? '' : ' (Korean text only inside double quotes)'}
 - 80-150 English words
 - Maintain Korean/East Asian aesthetic
-${isPhotoType ? '- Do NOT add Korean text' : '- Do NOT add "no text" — text IS the point'}
+${isPhotoType ? '- Do NOT add Korean text' : '- Do NOT add "no text" — text IS the point'}`}
 
-Output: Return ONLY a JSON object: {"prompt": "English prompt 80-150 words..."}`;
+Output: Return ONLY a JSON object: {"prompt": ${isSatoriType ? '"{\\"title\\":\\"...\\",\\"items\\":[...]}"' : '"English prompt 80-150 words..."'}}`;
 
   const userPrompt = `블로그 제목: "${blogTitle}"
 블로그 요약: ${blogSummary}
@@ -703,31 +723,38 @@ export default async function handler(req, res) {
       }
 
       try {
-        const url = await generateByModel(targetModel, finalPrompt);
+        const url = await generateByModel(targetModel, finalPrompt, targetType);
         if (!url) throw new Error('No image URL');
         // R2 업로드 (non-fatal)
         const userId = (sessionEmail || getClientIp(req) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
         const r2Url = await uploadImageUrlToR2(url, `images-pro/${userId}/${getKSTDate()}/${Math.random().toString(36).substring(2, 10)}.png`);
         return res.status(200).json({
           mode: 'regenerate_single',
-          image: { url, marker: markerText || '', prompt: finalPrompt, type: targetType, model: targetModel, r2Url },
+          image: { url, marker: markerText || '', prompt: typeof finalPrompt === 'object' ? JSON.stringify(finalPrompt) : finalPrompt, type: targetType, model: targetModel, r2Url },
           remaining,
           limit: FREE_DAILY_LIMIT,
         });
       } catch (err) {
         console.error(`[IMAGE-PRO] Single regen ${targetModel} error:`, err.message);
-        // fallback: FLUX Realism
+        // fallback: satori → Imagen 3, 그 외 → FLUX Realism
         if (targetModel !== 'fluxr') {
           try {
-            const fbPrompt = (finalPrompt || '').replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
-              ', no text, no letters, photography style';
-            const url = await callFluxRealism(fbPrompt);
+            let fbPrompt, fbModel;
+            if (targetModel === 'satori') {
+              fbModel = 'nb2';
+              fbPrompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, photorealistic, clean composition, no text, no letters, photography style';
+            } else {
+              fbModel = 'fluxr';
+              fbPrompt = (typeof finalPrompt === 'string' ? finalPrompt : '').replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
+                ', no text, no letters, photography style';
+            }
+            const url = await generateByModel(fbModel, fbPrompt, 'photo');
             if (url) {
               const userId = (sessionEmail || getClientIp(req) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
               const r2Url = await uploadImageUrlToR2(url, `images-pro/${userId}/${getKSTDate()}/${Math.random().toString(36).substring(2, 10)}.png`);
               return res.status(200).json({
                 mode: 'regenerate_single',
-                image: { url, marker: markerText || '', prompt: fbPrompt, type: 'photo', model: 'fluxr', r2Url },
+                image: { url, marker: markerText || '', prompt: fbPrompt, type: 'photo', model: fbModel, r2Url },
                 remaining,
                 limit: FREE_DAILY_LIMIT,
               });
@@ -834,53 +861,66 @@ export default async function handler(req, res) {
         console.log(`[IMAGE-PRO] AI 추천 마커 감지 (${markersNotInText}/${markers.length} not in text) → photo 전용 모드`);
       }
 
-      // ===== Haiku 4-type 분석 (마커 수 무관) =====
+      // ===== Haiku 6-type BALANCED 분석 =====
       let analysisResult;
 
-      // AI 추천 마커: Haiku 4-type 분석 건너뛰고 마커 텍스트 기반 라우팅
-      // 트리거 단어로 모델 결정 → Haiku에 번역만 요청 (빠르고 안정적)
+      // AI 추천 마커: 트리거 단어 기반 라우팅 → Haiku에 번역/JSON 생성 요청
       if (isSuggestedMarkers) {
-        const TRIGGER_GPTH = /차트|그래프|통계표|비교표|수치\s*비교|데이터\s*시각화/;
-        const TRIGGER_NB2 = /흐름도|타임라인|로드맵|프로세스|단계도|포스터|배너|공지문/;
+        const TRIGGER_DATA = /차트|그래프|통계표|비교표|수치\s*비교|데이터\s*시각화|가격\s*비교|순위/;
+        const TRIGGER_FLOW = /흐름도|타임라인|로드맵|프로세스|단계도|절차|순서|과정/;
+        const TRIGGER_CHECK = /체크리스트|준비물|필수\s*항목|확인\s*사항|주의사항|팁\s*모음/;
+        const TRIGGER_VENN = /벤다이어그램|관계도|공통점|차이점|비교\s*분석/;
+        const TRIGGER_POSTER = /포스터|배너|공지문/;
 
         function detectModelFromMarker(text) {
-          if (TRIGGER_GPTH.test(text)) return { type: 'infographic_data', model: 'gpth' };
-          if (TRIGGER_NB2.test(text)) return { type: 'infographic_flow', model: 'nb2' };
+          if (TRIGGER_DATA.test(text)) return { type: 'infographic_data', model: 'satori' };
+          if (TRIGGER_FLOW.test(text)) return { type: 'infographic_flow', model: 'satori' };
+          if (TRIGGER_CHECK.test(text)) return { type: 'checklist', model: 'satori' };
+          if (TRIGGER_VENN.test(text)) return { type: 'venn', model: 'satori' };
+          if (TRIGGER_POSTER.test(text)) return { type: 'poster', model: 'nb2' };
           return { type: 'photo', model: 'fluxr' };
         }
 
         const routingInfo = markers.map(mk => ({ ...detectModelFromMarker(mk.text), marker: mk.text }));
-        const photoMarkers = routingInfo.filter(r => r.model === 'fluxr');
-        const nonPhotoMarkers = routingInfo.filter(r => r.model !== 'fluxr');
+        const satoriCount = routingInfo.filter(r => r.model === 'satori').length;
+        const photoCount = routingInfo.filter(r => r.model === 'fluxr').length;
 
-        console.log(`[IMAGE-PRO] AI 추천 마커 라우팅: photo=${photoMarkers.length}, gpth=${nonPhotoMarkers.filter(r=>r.model==='gpth').length}, nb2=${nonPhotoMarkers.filter(r=>r.model==='nb2').length}`);
+        console.log(`[IMAGE-PRO] AI 추천 마커 라우팅: photo=${photoCount}, satori=${satoriCount}, nb2=${routingInfo.filter(r=>r.model==='nb2').length}`);
 
         const firstLine = blogText.split('\n').find(l => l.trim()) || '';
         const blogTitle = firstLine.trim().substring(0, 80);
         const markerTexts = markers.map(mk => mk.text);
 
-        // photo 마커: 사진 프롬프트 생성
-        // non-photo 마커: 인포그래픽/차트/포스터 프롬프트 생성
         const promptInstruction = markerTexts.map((t, i) => {
           const r = routingInfo[i];
-          if (r.model === 'fluxr') return `${i + 1}. ${t} [PHOTO: describe as realistic photography with lighting, angle, composition. End with ", photorealistic, clean composition, no text, no letters, photography style"]`;
-          if (r.model === 'gpth') return `${i + 1}. ${t} [CHART: describe as data visualization with Korean labels in quotes, chart type, colors, layout. Include data source footer]`;
-          return `${i + 1}. ${t} [INFOGRAPHIC: describe as flow/timeline/poster with Korean text in quotes, layout direction, step nodes, colors]`;
+          if (r.model === 'fluxr') return `${i + 1}. ${t} [PHOTO: describe as realistic photography. End with ", photorealistic, clean composition, no text, no letters, photography style"]`;
+          if (r.type === 'infographic_data') return `${i + 1}. ${t} [DATA: output JSON {"title":"한국어","subtitle":"범위","source":"출처","items":[{"label":"항목","value":"숫자","unit":"단위"}]} 3-6 items]`;
+          if (r.type === 'infographic_flow') return `${i + 1}. ${t} [FLOW: output JSON {"title":"한국어","subtitle":"","steps":[{"label":"단계명","description":"설명"}]} 3-6 steps]`;
+          if (r.type === 'checklist') return `${i + 1}. ${t} [CHECKLIST: output JSON {"title":"한국어","subtitle":"","items":[{"text":"항목","checked":true}]} 4-8 items]`;
+          if (r.type === 'venn') return `${i + 1}. ${t} [VENN: output JSON {"title":"한국어","subtitle":"","sets":[{"label":"집합","description":"설명"}],"overlap":"공통점"} 2-3 sets]`;
+          return `${i + 1}. ${t} [POSTER: describe as poster with Korean text in quotes, layout, colors]`;
         }).join('\n');
 
         try {
           const translateRaw = await callClaude(
-            'You are a Korean-to-English translator for image generation. For each item, follow the instruction in brackets [PHOTO/CHART/INFOGRAPHIC] to generate the appropriate English prompt (1-2 sentences). Output ONLY a valid JSON array of English prompt strings.',
-            `Blog topic: "${blogTitle}"\n\nTranslate these image descriptions:\n${promptInstruction}`,
-            2000
+            'You are a Korean blog image content generator. For each item, follow the instruction in brackets. For [PHOTO/POSTER]: generate English prompt (1-2 sentences). For [DATA/FLOW/CHECKLIST/VENN]: generate a valid JSON object string with Korean text. Output ONLY a valid JSON array of strings.',
+            `Blog topic: "${blogTitle}"\n\nGenerate content for these image descriptions:\n${promptInstruction}`,
+            3000
           );
           const translateJsonStr = extractJsonArray(translateRaw);
           const translatedPrompts = translateJsonStr ? JSON.parse(translateJsonStr) : null;
           if (translatedPrompts && translatedPrompts.length === markers.length) {
-            analysisResult = translatedPrompts.map((prompt, i) => ({
-              marker: markers[i].text, type: routingInfo[i].type, model: routingInfo[i].model,
-              reason: `AI 추천 마커 → ${routingInfo[i].type}`, prompt,
-            }));
+            analysisResult = translatedPrompts.map((prompt, i) => {
+              const r = routingInfo[i];
+              let parsedPrompt = prompt;
+              if (r.model === 'satori') {
+                try { parsedPrompt = typeof prompt === 'string' ? JSON.parse(prompt) : prompt; } catch { /* 문자열 유지 */ }
+              }
+              return {
+                marker: markers[i].text, type: r.type, model: r.model,
+                reason: `AI 추천 마커 → ${r.type}`, prompt: parsedPrompt,
+              };
+            });
           } else {
             throw new Error('Translation count mismatch');
           }
@@ -948,7 +988,14 @@ export default async function handler(req, res) {
         return { ...found, marker: mk.text, originalIndex: i };
       });
 
-      // 2장씩 배치 생성 (rate limit 방지)
+      // photo 라우팅: 첫 번째(썸네일)만 FLUX Realism, 나머지 photo는 Imagen 3
+      for (let i = 1; i < orderedItems.length; i++) {
+        if (orderedItems[i].type === 'photo' && orderedItems[i].model === 'fluxr') {
+          orderedItems[i].model = 'nb2';
+        }
+      }
+
+      // 배치 생성 (4장씩, rate limit 방지)
       console.log(`[IMAGE-PRO] Generating ${orderedItems.length} images with auto-routing (batch=4)...`);
 
       const imageResults = [];
@@ -958,34 +1005,41 @@ export default async function handler(req, res) {
         const batchResults = await Promise.all(
           batch.map(async (item) => {
             const modelName = item.model || 'fluxr';
-            const modelLabel = { fluxr: 'FLUX Realism', gpth: 'GPT Image high', nb2: 'Nano Banana 2' }[modelName] || modelName;
+            const modelLabel = { fluxr: 'FLUX Realism', gpth: 'GPT Image high', nb2: 'Imagen 3', satori: 'Satori 템플릿' }[modelName] || modelName;
             try {
-              const url = await generateByModel(modelName, item.prompt);
+              const url = await generateByModel(modelName, item.prompt, item.type);
               console.log(`[IMAGE-PRO] ✓ "${item.marker}" → ${modelLabel} (${item.type})`);
               return {
-                url, marker: item.marker, prompt: item.prompt,
+                url, marker: item.marker, prompt: typeof item.prompt === 'object' ? JSON.stringify(item.prompt) : item.prompt,
                 type: item.type, model: modelName, reason: item.reason,
                 originalIndex: item.originalIndex,
               };
             } catch (err) {
               console.error(`[IMAGE-PRO] ✗ "${item.marker}" → ${modelLabel} FAILED:`, err.message);
-              // 1회 재시도 (모든 모델)
+              // Satori 실패 → Imagen 3로 대체 (사진 프롬프트 생성)
+              // 그 외 실패 → FLUX Realism 폴백
               await new Promise(r => setTimeout(r, 1000));
               try {
-                let retryPrompt = item.prompt;
-                let retryModel = modelName;
-                if (modelName !== 'fluxr') {
-                  retryPrompt = item.prompt.replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
-                    ', no text, no letters, photography style';
+                let retryPrompt;
+                let retryModel;
+                if (modelName === 'satori') {
+                  // Satori 실패: Imagen 3 사진으로 대체
+                  retryModel = 'nb2';
+                  retryPrompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, photorealistic, clean composition, no text, no letters, photography style';
+                } else if (modelName !== 'fluxr') {
                   retryModel = 'fluxr';
+                  retryPrompt = (typeof item.prompt === 'string' ? item.prompt : '').replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
+                    ', no text, no letters, photography style';
+                } else {
+                  retryModel = 'fluxr';
+                  retryPrompt = item.prompt;
                 }
-                const url = await generateByModel(retryModel, retryPrompt);
-                console.log(`[IMAGE-PRO] ↩ "${item.marker}" retry ${retryModel === modelName ? 'same model' : 'FLUX Realism'} OK`);
+                const url = await generateByModel(retryModel, retryPrompt, 'photo');
+                console.log(`[IMAGE-PRO] ↩ "${item.marker}" retry → ${retryModel === 'nb2' ? 'Imagen 3' : 'FLUX Realism'} OK`);
                 return {
                   url, marker: item.marker, prompt: retryPrompt,
-                  type: retryModel === 'fluxr' ? 'photo' : item.type,
-                  model: retryModel,
-                  reason: retryModel !== modelName ? `${modelLabel} 실패 → FLUX Realism 대체` : item.reason,
+                  type: 'photo', model: retryModel,
+                  reason: `${modelLabel} 실패 → ${retryModel === 'nb2' ? 'Imagen 3' : 'FLUX Realism'} 대체`,
                   originalIndex: item.originalIndex,
                 };
               } catch (retryErr) {
