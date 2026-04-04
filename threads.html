@@ -666,7 +666,7 @@ footer a:hover { text-decoration: underline; }
           </div>
         </div>
       </div>
-      <div class="result-text" id="resultText"></div>
+      <textarea class="result-text" id="resultText" rows="12" style="width:100%;resize:vertical;border:1px solid #E5E7EB;outline:none;font-family:inherit;"></textarea>
       <div class="char-count" id="charCount"></div>
     </div>
   </div>
@@ -733,29 +733,30 @@ function selectTone(btn) {
   selectedTone = btn.dataset.tone;
 }
 
+function saveCurrentEdit() {
+  var el = document.getElementById('resultText');
+  if (el && activeTab >= 0 && activeTab < results.length) {
+    results[activeTab] = el.value;
+  }
+}
+
 function switchTab(idx) {
+  saveCurrentEdit();
   activeTab = idx;
   document.querySelectorAll('.result-tab').forEach(function(t, i) {
     t.classList.toggle('active', i === idx);
   });
   var text = results[idx] || '';
   var container = document.getElementById('resultText');
-  if (text.includes('[답글]')) {
-    var parts = text.split('[답글]');
-    var mainText = parts[0].trim();
-    var replyText = parts[1] ? parts[1].trim() : '';
-    container.innerHTML =
-      '<div style="margin-bottom:12px;">' + escapeHtml(mainText) + '</div>' +
-      '<div style="border-top:1px dashed #E5E7EB; padding-top:12px; color:#6B7280; font-size:0.92em;">' +
-      '<span style="display:inline-block;background:#ff5f1f;color:#fff;font-size:0.75em;padding:2px 8px;border-radius:8px;margin-bottom:8px;">답글</span><br>' +
-      escapeHtml(replyText) + '</div>';
-  } else {
-    container.textContent = text;
-  }
-  document.getElementById('charCount').textContent = text ? text.replace('[답글]','').length + '자' : '';
+  container.value = text;
+  updateCharCount(text);
   var cb = document.getElementById('copyBtn');
   cb.textContent = '복사';
   cb.classList.remove('copied');
+}
+
+function updateCharCount(text) {
+  document.getElementById('charCount').textContent = text ? text.replace('[답글]','').length + '자' : '';
 }
 
 var randomData = [
@@ -1055,6 +1056,11 @@ async function confirmSchedule() {
 }
 
 loadRemaining();
+
+document.getElementById('resultText').addEventListener('input', function() {
+  results[activeTab] = this.value;
+  updateCharCount(this.value);
+});
 </script>
 <!-- 예약 발행 모달 -->
 <div class="schedule-modal-overlay" id="scheduleModal">
