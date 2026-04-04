@@ -239,8 +239,8 @@ ${typeGuide[type] || typeGuide['정보형']}
     const results = (contentPart || '').trim().split(/\n?---\n?/).map(s => s.trim()).filter(Boolean);
     while (results.length < 3) results.push('');
 
-    // 글자수 서버 후처리: 단문체 100자 / 기본 300자 하드리밋
-    const hardLimit = tone === '단문체' ? 100 : 300;
+    // 글자수 서버 후처리: 단문체 100자 / 궁금증형 400자 / 기본 300자 하드리밋
+    const hardLimit = type === '궁금증형' ? 400 : (tone === '단문체' ? 100 : 300);
     for (let i = 0; i < results.length; i++) {
       if (results[i].replace(/\s/g, '').length > hardLimit) {
         const lines = results[i].split('\n').filter(l => l.trim());
