@@ -666,7 +666,18 @@ footer a:hover { text-decoration: underline; }
           </div>
         </div>
       </div>
-      <textarea class="result-text" id="resultText" rows="12" style="width:100%;resize:vertical;border:1px solid #E5E7EB;outline:none;font-family:inherit;"></textarea>
+      <div id="resultSingle">
+        <textarea class="result-text" id="resultText" rows="10" style="width:100%;resize:vertical;border:1px solid #E5E7EB;outline:none;font-family:inherit;"></textarea>
+      </div>
+      <div id="resultDouble" style="display:none;">
+        <div style="margin-bottom:4px;font-size:0.8em;color:#6B7280;font-weight:600;">본문</div>
+        <textarea class="result-text" id="resultMain" rows="7" style="width:100%;resize:vertical;border:1px solid #E5E7EB;outline:none;font-family:inherit;margin-bottom:8px;"></textarea>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="display:inline-block;background:#ff5f1f;color:#fff;font-size:0.72em;padding:2px 8px;border-radius:8px;">답글</span>
+          <span style="font-size:0.75em;color:#9CA3AF;">발행 시 본문의 답글로 자동 등록됩니다</span>
+        </div>
+        <textarea class="result-text" id="resultReply" rows="4" style="width:100%;resize:vertical;border:1px solid #E5E7EB;outline:none;font-family:inherit;"></textarea>
+      </div>
       <div class="char-count" id="charCount"></div>
     </div>
   </div>
@@ -734,9 +745,16 @@ function selectTone(btn) {
 }
 
 function saveCurrentEdit() {
-  var el = document.getElementById('resultText');
-  if (el && activeTab >= 0 && activeTab < results.length) {
-    results[activeTab] = el.value;
+  if (activeTab < 0 || activeTab >= results.length) return;
+  var singleEl = document.getElementById('resultText');
+  var mainEl = document.getElementById('resultMain');
+  var replyEl = document.getElementById('resultReply');
+  if (document.getElementById('resultDouble').style.display !== 'none') {
+    var main = (mainEl.value || '').trim();
+    var reply = (replyEl.value || '').trim();
+    results[activeTab] = reply ? main + '\n[답글]\n' + reply : main;
+  } else {
+    results[activeTab] = singleEl.value;
   }
 }
 
@@ -747,8 +765,19 @@ function switchTab(idx) {
     t.classList.toggle('active', i === idx);
   });
   var text = results[idx] || '';
-  var container = document.getElementById('resultText');
-  container.value = text;
+  var singleWrap = document.getElementById('resultSingle');
+  var doubleWrap = document.getElementById('resultDouble');
+  if (text.includes('[답글]')) {
+    var parts = text.split('[답글]');
+    document.getElementById('resultMain').value = parts[0].trim();
+    document.getElementById('resultReply').value = parts[1] ? parts[1].trim() : '';
+    singleWrap.style.display = 'none';
+    doubleWrap.style.display = 'block';
+  } else {
+    document.getElementById('resultText').value = text;
+    singleWrap.style.display = 'block';
+    doubleWrap.style.display = 'none';
+  }
   updateCharCount(text);
   var cb = document.getElementById('copyBtn');
   cb.textContent = '복사';
@@ -1060,6 +1089,14 @@ loadRemaining();
 document.getElementById('resultText').addEventListener('input', function() {
   results[activeTab] = this.value;
   updateCharCount(this.value);
+});
+document.getElementById('resultMain').addEventListener('input', function() {
+  saveCurrentEdit();
+  updateCharCount(results[activeTab]);
+});
+document.getElementById('resultReply').addEventListener('input', function() {
+  saveCurrentEdit();
+  updateCharCount(results[activeTab]);
 });
 </script>
 <!-- 예약 발행 모달 -->
