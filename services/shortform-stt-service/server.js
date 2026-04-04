@@ -239,8 +239,12 @@ async function handleRemotionRenderRequest({ rawBody, req }) {
       inputProps: {
         script: body.script,
         visuals,
+        sttSegments: Array.isArray(body.sttSegments) ? body.sttSegments : [],
+        sttWords: Array.isArray(body.sttWords) ? body.sttWords : [],
         estimatedSeconds: Number(body.estimatedSeconds) || 30,
         audioDurationSec: Number(body.audioDurationSec) || Number(body.estimatedSeconds) || 30,
+        motionSpeed: typeof body.motionSpeed === 'string' ? body.motionSpeed : 'normal',
+        textRevealMode: typeof body.textRevealMode === 'string' ? body.textRevealMode : 'line',
         trimStartSec: Math.max(0, Number(body.trimStartSec) || 0),
         trimEndSec: body.trimEndSec === null || body.trimEndSec === undefined || body.trimEndSec === ''
           ? null
