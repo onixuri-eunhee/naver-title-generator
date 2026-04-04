@@ -910,7 +910,7 @@ export default async function handler(req, res) {
       }
     }
     const userSeedSet = new Set(userSeedList.map(s => normalizeKoreanText(s).replace(/\s+/g, '')));
-    console.log(`[KEYWORDS] Seeds (AI+manual): ${seedKeywords.length}, userSeeds: ${userSeedList.length}`);
+    const userSeedArray = userSeedSet.size > 0 ? Array.from(userSeedSet) : [];
     const intentSeedKeywords = [...seedKeywords];
 
     // Phase 1.5: 자동완성으로 시드 확장
@@ -944,7 +944,7 @@ export default async function handler(req, res) {
       .filter(candidate => {
         if (candidate._intent.relevant) return true;
         const compactKw = normalizeKoreanText(candidate.keyword).replace(/\s+/g, '');
-        return userSeedSet.size > 0 && Array.from(userSeedSet).some(seed => compactKw.includes(seed) || seed.includes(compactKw));
+        return userSeedArray.length > 0 && userSeedArray.some(seed => compactKw.includes(seed) || seed.includes(compactKw));
       })
       .sort((a, b) => b._intent.score - a._intent.score || b.monthlySearch - a.monthlySearch);
     const baseDisplayCandidates = scoredCandidates

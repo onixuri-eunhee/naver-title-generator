@@ -1,8 +1,5 @@
 FROM node:20-bookworm
 
-ARG CACHE_BUST=2026-04-04-v3
-RUN echo "cache-bust: $CACHE_BUST"
-
 WORKDIR /app
 
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium

@@ -233,14 +233,11 @@ ${typeGuide[type] || typeGuide['정보형']}
 
     // 응답 파싱: 검수 섹션 분리 후 "---"로 split
     const raw = (data.content?.[0]?.text || '').trim();
-    console.log(`[THREADS] raw output (first 300): ${raw.slice(0, 300)}`);
-    console.log(`[THREADS] type=${type}, tone=${tone}, raw length=${raw.length}`);
 
-    // ===검수=== 구분자로 글과 검수 결과 분리
     const [contentPart, reviewPart] = raw.split(/===검수===/);
     const splitParts = (contentPart || '').trim().split(/\n?---\n?/);
-    console.log(`[THREADS] split parts count: ${splitParts.length}, lengths: ${splitParts.map(s => s.trim().length)}`);
-    const results = splitParts.map(s => s.trim().replace(/^(?:#\s*)?(?:(?:글|안)\s*\d+[번]?|\d+[번]?\s*(?:글|안)|\d+[번]?)\s*\n?/i, '').trim()).filter(Boolean);
+    const META_LABEL_RE = /^[#\s]*(글|안)\s*\d+[번]?\s*\n/;
+    const results = splitParts.map(s => s.trim().replace(META_LABEL_RE, '').trim()).filter(Boolean);
     while (results.length < 3) results.push('');
 
     // 글자수 서버 후처리
