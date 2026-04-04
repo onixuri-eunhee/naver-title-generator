@@ -2,6 +2,7 @@ import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 import { replaceUrlsWithR2, uploadImageUrlToR2 } from './_r2.js';
 import { logUsage } from './_db.js';
+import crypto from 'crypto';
 
 export const config = { maxDuration: 300 };
 
@@ -12,8 +13,8 @@ export const config = { maxDuration: 300 };
  * 모델 라우팅:
  *   photo → FLUX Realism (fal-ai/flux-realism)
  *   infographic_data → GPT Image 1.5 high (gpt-image-1.5, quality: high)
- *   infographic_flow → Nano Banana 2 (fal-ai/nano-banana-2)
- *   poster → Nano Banana 2 (fal-ai/nano-banana-2)
+ *   infographic_flow → Vertex AI Imagen 3 (GCP 크레딧)
+ *   poster → Vertex AI Imagen 3 (GCP 크레딧)
  *
  * 인증: 관리자(서버 판별) OR 로그인 회원 (4/24까지 가입 시 1일 1회 무료)
  */
@@ -168,32 +169,72 @@ async function callGptImageHigh(prompt) {
   }
 }
 
-// Nano Banana 2 — 타임라인/로드맵/한글 텍스트/포스터 (30초 타임아웃)
-async function callNanoBanana2(prompt) {
+// ─── Vertex AI Imagen 3 (GCP 크레딧 활용) ───
+const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const GOOGLE_CLOUD_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
+let _vertexTokenCache = { token: null, expiresAt: 0 };
+
+function _parseServiceAccount() {
+  const raw = process.env.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON || '';
+  try { const p = JSON.parse(raw); return p?.client_email && p?.private_key ? p : null; } catch { return null; }
+}
+
+function _base64url(input) {
+  const b = typeof input === 'string' ? Buffer.from(input) : input;
+  return b.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function _getVertexToken() {
+  const now = Math.floor(Date.now() / 1000);
+  if (_vertexTokenCache.token && _vertexTokenCache.expiresAt - 60 > now) return _vertexTokenCache.token;
+
+  const sa = _parseServiceAccount();
+  if (!sa) throw new Error('Google 서비스 계정 환경변수가 없습니다');
+
+  const header = _base64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const claims = _base64url(JSON.stringify({ iss: sa.client_email, scope: GOOGLE_CLOUD_SCOPE, aud: GOOGLE_OAUTH_TOKEN_URL, exp: now + 3600, iat: now }));
+  const sig = crypto.createSign('RSA-SHA256').update(`${header}.${claims}`).end().sign(sa.private_key.replace(/\\n/g, '\n'));
+  const jwt = `${header}.${claims}.${_base64url(sig)}`;
+
+  const res = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
+  });
+  const data = await res.json();
+  if (!res.ok || !data.access_token) throw new Error(`Google token failed: ${res.status}`);
+  _vertexTokenCache = { token: data.access_token, expiresAt: now + (data.expires_in || 3600) };
+  return data.access_token;
+}
+
+async function callVertexImagen3(prompt) {
+  const token = await _getVertexToken();
+  const projectId = process.env.GOOGLE_VERTEX_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || 'ddukddaktool';
+  const location = process.env.GOOGLE_VERTEX_LOCATION || 'us-central1';
+  const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/imagen-3.0-generate-002:predict`;
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
   try {
-    const response = await fetch('https://fal.run/fal-ai/nano-banana-2', {
+    const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        Authorization: `Key ${process.env.FAL_KEY}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt,
-        image_size: { width: 1024, height: 1024 },
-        num_images: 1,
+        instances: [{ prompt }],
+        parameters: { sampleCount: 1, aspectRatio: '1:1', outputOptions: { mimeType: 'image/png' } },
       }),
       signal: controller.signal,
     });
     clearTimeout(timeout);
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
-    if (data.detail) console.warn('[IMAGE-PRO] Nano Banana 2 warning:', data.detail);
-    return data.images?.[0]?.url || null;
+    const data = await res.json();
+    if (!res.ok) throw new Error(`Imagen 3 error: ${res.status} ${JSON.stringify(data).slice(0, 200)}`);
+
+    const b64 = data.predictions?.[0]?.bytesBase64Encoded;
+    if (!b64) throw new Error('Imagen 3: no image in response');
+    return `data:image/png;base64,${b64}`;
   } catch (err) {
     clearTimeout(timeout);
-    if (err.name === 'AbortError') throw new Error('Nano Banana 2 30s timeout');
+    if (err.name === 'AbortError') throw new Error('Vertex AI Imagen 30s timeout');
     throw err;
   }
 }
@@ -290,7 +331,7 @@ async function generateByModel(model, prompt) {
     case 'gpth':
       return await callGptImageHigh(prompt);
     case 'nb2':
-      return await callNanoBanana2(prompt);
+      return await callVertexImagen3(prompt);
     default:
       return await callFluxRealism(prompt);
   }
