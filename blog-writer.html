@@ -3016,6 +3016,10 @@
 
       var parsed = safeParseJson(rawText);
 
+      if (!parsed.body || parsed.body.trim().length < 50) {
+        throw new Error('본문이 제대로 생성되지 않았습니다. 다시 시도해주세요.');
+      }
+
       replaceAIVocabulary(parsed);
       renderResult(parsed);
       hasImproved = true;
@@ -3245,6 +3249,11 @@
             });
           }
         });
+      }
+
+      // 본문 비어있으면 재생성 유도
+      if (!parsed.body || parsed.body.trim().length < 50) {
+        throw new Error('본문이 제대로 생성되지 않았습니다. 다시 시도해주세요.');
       }
 
       // AI 전형 어휘 자동 치환
