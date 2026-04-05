@@ -29,7 +29,7 @@ export default async function handler(req, res) {
         target: String(p.target || '').slice(0, 200),
         location: String(p.location || '').slice(0, 200),
       }));
-      await redis.set(key, sanitized);
+      await redis.set(key, sanitized, { ex: 365 * 24 * 60 * 60 });
       return res.status(200).json({ presets: sanitized });
     }
   } catch (e) {

@@ -15,9 +15,9 @@
 
 ### PRO 도구 (크레딧 차감)
 - [블로그 글 작성기](https://ddukddaktool.co.kr/blog-writer.html): 네이버 홈피드, 네이버 SEO, 구글 SEO에 최적화된 블로그 글 AI 자동 생성. AI 검수기(7개 기준 90점 만점)와 자동수정 기능 포함. 1크레딧/회.
-- [블로그 이미지 생성기](https://ddukddaktool.co.kr/blog-image-pro.html): 블로그 글을 붙여넣으면 AI가 문맥에 맞는 고품질 이미지 자동 생성. 3크레딧/회.
-- [프리미엄 이미지 생성기](https://ddukddaktool.co.kr/blog-image-pro.html): AI가 이미지 유형(사진, 차트, 흐름도, 포스터)을 자동 판단해 고품질 이미지 생성. 3크레딧/회.
-- [카드뉴스 제작기](https://ddukddaktool.co.kr/card-news.html): 글을 붙여넣으면 AI가 인스타그램용 카드뉴스 자동 제작. 테마 선택, 브랜드 컬러, ZIP 다운로드 지원.
+- [프리미엄 이미지 생성기](https://ddukddaktool.co.kr/blog-image-pro.html): 블로그 글을 분석해 이미지 유형(사진, 차트, 흐름도, 포스터)을 자동 판단, 고품질 이미지 8장 생성. 3크레딧/회.
+- [카드뉴스 제작기](https://ddukddaktool.co.kr/card-news.html): 글을 붙여넣으면 AI가 인스타그램용 카드뉴스 자동 제작. 14종 테마, 브랜드 컬러, ZIP 다운로드 지원. 1크레딧/회.
+- [황금키워드 분석기](https://ddukddaktool.co.kr/keyword-finder.html): 업종·타겟 입력 시 검색량, 포화도, 경쟁도를 분석해 블루오션 키워드 발굴. 1크레딧/회.
 
 ## 가격 정책
 - 회원가입 무료, 블로그 글 5회/일, 프리미엄 이미지·카드뉴스·황금키워드 3회/일 무료 (4/25 오픈 전)
@@ -25,13 +25,13 @@
 - 글 1크레딧, 프리미엄이미지 3크레딧, 카드뉴스 1크레딧, 황금키워드 1크레딧, 숏폼 5크레딧
 
 ## 칼럼
-- [블로그 마케팅 실전 칼럼](https://ddukddaktool.co.kr/column.html): 19년 경력 마케터가 직접 쓰는 블로그 마케팅 노하우 32편
+- [블로그 마케팅 실전 칼럼](https://ddukddaktool.co.kr/column.html): 19년차 웨딩플래너이자 14년차 사업가가 직접 쓰는 블로그 마케팅 노하우 33편
 
 ## 가이드
 - [사용법 가이드](https://ddukddaktool.co.kr/guide.html): 뚝딱툴 도구별 200% 활용법
 
 ## 기술 정보
-- AI 모델: Claude Sonnet 4 (블로그 글), FLUX Schnell (기본 이미지), GPT Image 1.5 / FLUX Realism / Nano Banana 2 (프리미엄 이미지)
+- AI 모델: Claude Sonnet 4 (블로그 글), FLUX Realism (프리미엄 썸네일), Vertex AI Imagen 3 (본문/포스터 이미지), Satori (비교표/흐름도/체크리스트/벤다이어그램)
 - 플랫폼: 웹 기반 SaaS (데스크톱, 모바일 반응형)
 - 결제: 크레딧 충전 방식
 
