@@ -3504,12 +3504,38 @@
     throw new Error('AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.');
   }
 
-  // ─── 프리셋 저장/불러오기 ───
+  // ─── 프리셋 저장/불러오기 (서버 동기화) ───
+  var _presetsCache = null;
   function getPresets() {
+    if (_presetsCache) return _presetsCache;
     try { return JSON.parse(localStorage.getItem('ddukddak_presets') || '[]'); } catch(e) { return []; }
   }
   function savePresetsToStorage(presets) {
+    _presetsCache = presets;
     try { localStorage.setItem('ddukddak_presets', JSON.stringify(presets)); } catch(e) {}
+    syncPresetsToServer(presets);
+  }
+  function syncPresetsToServer(presets) {
+    var token = localStorage.getItem('ddukddak_token');
+    if (!token) return;
+    fetch('/api/presets', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ presets: presets })
+    }).catch(function() {});
+  }
+  function loadPresetsFromServer() {
+    var token = localStorage.getItem('ddukddak_token');
+    if (!token) { renderPresets(); return; }
+    fetch('/api/presets', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (Array.isArray(data.presets) && data.presets.length > 0) {
+        _presetsCache = data.presets;
+        try { localStorage.setItem('ddukddak_presets', JSON.stringify(data.presets)); } catch(e) {}
+      }
+      renderPresets();
+    }).catch(function() { renderPresets(); });
   }
   function renderPresets() {
     var container = document.getElementById('preset-chips');
@@ -3553,7 +3579,7 @@
     savePresetsToStorage(presets);
     renderPresets();
   }
-  renderPresets();
+  loadPresetsFromServer();
 
   // ─── 대상 textarea 자동 높이 조절 ───
   var targetEl = document.getElementById('target');
