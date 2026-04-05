@@ -166,7 +166,7 @@ Authorization: Bearer {token}
   photo → FLUX Realism
   infographic_data → GPT Image 1.5
   infographic_flow/poster → Nano Banana 2
-→ 무료 1회/일, 5크레딧
+→ 무료 3회/일, 3크레딧
 → suggest_markers: AI가 글에서 이미지 삽입 위치 자동 추천
 ```
 
