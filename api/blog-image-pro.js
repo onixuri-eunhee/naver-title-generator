@@ -700,9 +700,8 @@ export default async function handler(req, res) {
 
     if (newCount > DAILY_LIMIT_SCALED) {
       await getRedis().decrby(rateLimitKey, creditCost);
-      const label = reqMode === 'regenerate_single' ? '개별 재생성' : '프리미엄 이미지';
       return res.status(429).json({
-        error: `${label} 일일 무료 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
+        error: `프리미엄 이미지 일일 무료 크레딧을 모두 사용했습니다. 내일 다시 이용해주세요.`,
         remaining: 0,
       });
     }

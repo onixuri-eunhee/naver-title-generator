@@ -3296,22 +3296,6 @@
     return lines.join('\n');
   }
 
-  // ─── 클립보드 복사 (모바일 폴백 포함) ───
-  function clipCopy(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      return navigator.clipboard.writeText(text).catch(function() { return _fallbackCopy(text); });
-    }
-    return _fallbackCopy(text);
-  }
-  function _fallbackCopy(text) {
-    var ta = document.createElement('textarea');
-    ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0';
-    document.body.appendChild(ta); ta.focus(); ta.select();
-    try { document.execCommand('copy'); } catch(e) {}
-    document.body.removeChild(ta);
-    return Promise.resolve();
-  }
-
   // ─── 개별 섹션 복사 ───
   function copySection(id, btn) {
     var el = document.getElementById(id);
@@ -3535,12 +3519,14 @@
 
   // ─── 프리셋 저장/불러오기 (서버 동기화) ───
   var _presetsCache = null;
+  var _userHasSaved = false;
   function getPresets() {
     if (_presetsCache) return _presetsCache;
     try { return JSON.parse(localStorage.getItem('ddukddak_presets') || '[]'); } catch(e) { return []; }
   }
   function savePresetsToStorage(presets) {
     _presetsCache = presets;
+    _userHasSaved = true;
     try { localStorage.setItem('ddukddak_presets', JSON.stringify(presets)); } catch(e) {}
     syncPresetsToServer(presets);
   }
@@ -3559,7 +3545,7 @@
     fetch('/api/presets', {
       headers: { 'Authorization': 'Bearer ' + token }
     }).then(function(r) { return r.json(); }).then(function(data) {
-      if (Array.isArray(data.presets) && data.presets.length > 0) {
+      if (!_userHasSaved && Array.isArray(data.presets) && data.presets.length > 0) {
         _presetsCache = data.presets;
         try { localStorage.setItem('ddukddak_presets', JSON.stringify(data.presets)); } catch(e) {}
       }
@@ -3666,7 +3652,8 @@
       renderCnThemes();
     } catch(e) {
       console.warn('[카드뉴스 테마 로드 실패]', e);
-      renderCnThemes();
+      var wrap = document.getElementById('cnThemeScroll');
+      wrap.innerHTML = '<div style="padding:8px 4px;font-size:12px;color:#DC2626;">테마 로드 실패. 새로고침 후 다시 시도해주세요.</div>';
     }
   })();
 
@@ -3891,6 +3878,7 @@
     }
   }
 </script>
+<script src="utils.js"></script>
 <script src="auth-ui.js"></script>
 
 </body>
