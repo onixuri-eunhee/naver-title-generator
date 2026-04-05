@@ -3622,27 +3622,23 @@
   // ─── 카드뉴스 변환 ───
   // ═══════════════════════════════════════
   var cnSlideCount = 6;
-  var cnSelectedTheme = 'cafe';
+  var cnSelectedTheme = 'charcoal';
   var cnImageDataArr = [];
 
-  // 테마 데이터 (프론트용 미리보기)
-  var CN_THEMES = {
-    cafe:    { name: '카페·베이커리', colors: ['#8B6914','#F5F0E8','#D4A843'] },
-    beauty:  { name: '뷰티·살롱',     colors: ['#C2185B','#FFF0F5','#E91E90'] },
-    fitness: { name: '피트니스·헬스', colors: ['#1B1B1B','#F0F0F0','#AAFF00'] },
-    food:    { name: '요식업·맛집',   colors: ['#D32F2F','#FFF8F0','#FF6D3A'] },
-    edu:     { name: '교육·강의',     colors: ['#1A3A6B','#EEF2F9','#3B7DDD'] },
-    realty:  { name: '부동산·인테리어', colors: ['#2E7D5B','#EFF6F2','#43B88C'] },
-    clean:   { name: '클린·미니멀',   colors: ['#0D9488','#F0FDFA','#2DD4BF'] },
-    dark:    { name: '다크·프리미엄', colors: ['#C9A84C','#2A2A2A','#E8C65A'] },
-    vivid:   { name: '비비드·활기',   colors: ['#7C3AED','#FFF9E6','#FACC15'] },
-  };
+  // 테마 데이터 (서버에서 불러옴)
+  var CN_THEMES = {};
 
   // 테마 칩 렌더
-  (function renderCnThemes() {
+  function renderCnThemes() {
     var wrap = document.getElementById('cnThemeScroll');
+    var themeKeys = Object.keys(CN_THEMES);
+    if (!themeKeys.length) {
+      wrap.innerHTML = '<div style="padding:8px 4px;font-size:12px;color:#9CA3AF;">테마 불러오는 중...</div>';
+      return;
+    }
+    if (!CN_THEMES[cnSelectedTheme]) cnSelectedTheme = themeKeys[0];
     var html = '';
-    Object.keys(CN_THEMES).forEach(function(key) {
+    themeKeys.forEach(function(key) {
       var t = CN_THEMES[key];
       var active = key === cnSelectedTheme ? ' active' : '';
       html += '<div class="cn-theme-chip' + active + '" data-theme="' + key + '" onclick="selectCnTheme(this)">';
@@ -3655,6 +3651,19 @@
       html += '</div>';
     });
     wrap.innerHTML = html;
+  }
+  // 서버에서 테마 로드
+  (async function loadCnThemes() {
+    try {
+      var resp = await fetch('/api/card-news-themes', { cache: 'no-store' });
+      if (!resp.ok) throw new Error('theme fetch failed');
+      var data = await resp.json();
+      CN_THEMES = data.themes || {};
+      renderCnThemes();
+    } catch(e) {
+      console.warn('[카드뉴스 테마 로드 실패]', e);
+      renderCnThemes();
+    }
   })();
 
   function selectCnSlides(btn) {
