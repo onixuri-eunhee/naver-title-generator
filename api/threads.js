@@ -205,7 +205,7 @@ ${typeGuide[type] || typeGuide['정보형']}
 [작업 지시]
 서로 다른 첫 줄과 구성으로 스레드 글 3개 작성.
 각 글의 첫문장을 유형 가이드의 첫문장 공식으로 먼저 완성한 뒤 본문을 써라.
-각 글은 "---"로만 구분.
+각 글은 "---"로만 구분. "글1", "안1" 같은 라벨/번호를 붙이지 마라. 본문만 출력.
 글 3개 작성 후 "===검수===" 구분자를 넣고 맞춤법 자체 검수.`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -236,7 +236,7 @@ ${typeGuide[type] || typeGuide['정보형']}
 
     const [contentPart, reviewPart] = raw.split(/===검수===/);
     const splitParts = (contentPart || '').trim().split(/\n?---\n?/);
-    const META_LABEL_RE = /^[#\s]*(글|안)\s*\d+[번]?\s*\n/;
+    const META_LABEL_RE = /^[#\s]*(글|안|버전|Version)\s*\d+[번.:)\-]?\s*\n?/i;
     const results = splitParts.map(s => s.trim().replace(META_LABEL_RE, '').trim()).filter(Boolean);
     while (results.length < 3) results.push('');
 
