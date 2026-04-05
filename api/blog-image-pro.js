@@ -33,7 +33,7 @@ const DIRECT_IMAGES = 8;
 // 크레딧 10배 스케일링 (소수점 회피: 0.7cr → 7단위, 3cr → 30단위)
 const CREDIT_SCALE = 10;
 const FULL_COST = 30;         // 전체 생성/재생성: 3 크레딧
-const SINGLE_REGEN_COST = 21; // 개별 1장 재생성: 2.1 크레딧 (3 × 0.7)
+const SINGLE_REGEN_COST = 10; // 개별 1장 재생성: 1 크레딧
 const DAILY_LIMIT_SCALED = FREE_DAILY_LIMIT * FULL_COST; // 90단위 = 3회 × 30
 
 let redis;
@@ -692,8 +692,7 @@ export default async function handler(req, res) {
   let remaining = isAdmin ? 999 : FREE_DAILY_LIMIT;
   let rateLimitKey = null;
 
-  // 개별 재생성은 테스트 기간 무료 (프론트에서 이미지당 1회 제한)
-  if (reqMode !== 'regenerate_single' && !isAdmin) {
+  if (!isAdmin) {
     const ip = getClientIp(req);
     rateLimitKey = getTodayKeyPro(ip);
     const newCount = await getRedis().incrby(rateLimitKey, creditCost);
@@ -701,8 +700,9 @@ export default async function handler(req, res) {
 
     if (newCount > DAILY_LIMIT_SCALED) {
       await getRedis().decrby(rateLimitKey, creditCost);
+      const label = reqMode === 'regenerate_single' ? '개별 재생성' : '프리미엄 이미지';
       return res.status(429).json({
-        error: `프리미엄 이미지 일일 무료 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
+        error: `${label} 일일 무료 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
         remaining: 0,
       });
     }

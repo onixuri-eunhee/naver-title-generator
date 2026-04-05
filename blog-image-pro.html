@@ -505,8 +505,8 @@ footer a:hover { text-decoration: underline; }
     <div class="card">
       <h2 style="font-size:16px; font-weight:700; margin-bottom:16px;">생성된 이미지</h2>
       <div class="image-grid" id="imageGrid"></div>
-      <button class="generate-btn" id="regenAllBtn" onclick="regenerateAll()" style="margin-top:20px; background:linear-gradient(135deg,#D97706,#B45309);">전체 재생성</button>
-      <p style="text-align:center; font-size:12px; color:#9CA3AF; margin-top:8px;">개별 이미지는 "다시 생성" 버튼으로 1회 무료 재생성할 수 있습니다.</p>
+      <button class="generate-btn" id="regenAllBtn" onclick="regenerateAll()" style="margin-top:20px; background:linear-gradient(135deg,#D97706,#B45309);">전체 재생성 (3크레딧)</button>
+      <p style="text-align:center; font-size:12px; color:#9CA3AF; margin-top:8px;">개별 이미지는 "다시 생성" 버튼으로 1장당 1크레딧에 재생성할 수 있습니다.</p>
     </div>
   </div>
 
@@ -1081,7 +1081,7 @@ async function regenerateAll() {
       generatedImages = data.images.map(function(img, i) {
         return { url: img.url, marker: img.marker, prompt: img.prompt, type: img.type || 'photo', model: img.model || 'fluxr', reason: img.reason || '', layout: img.layout || null, index: i };
       });
-      regenUsed = {}; // 전체 재생성 시 개별 재생성 카운트 초기화
+      // 전체 재생성 완료
       renderResults(generatedImages, thumbText);
       if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
     } else {
@@ -1096,11 +1096,9 @@ async function regenerateAll() {
   btn.textContent = '전체 재생성';
 }
 
-// ─── 개별 1장 재생성 ───
-var regenUsed = {}; // {이미지인덱스: true} — 이미지당 1회 제한
+// ─── 개별 1장 재생성 (1크레딧/장) ───
 
 async function regenerateSingle(index) {
-  if (regenUsed[index]) return;
   var item = generatedImages[index];
   if (!item) return;
 
@@ -1159,8 +1157,7 @@ async function regenerateSingle(index) {
 
       if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
 
-      regenUsed[index] = true;
-      if (regenBtn) { regenBtn.textContent = '재생성 완료'; regenBtn.disabled = true; }
+      if (regenBtn) { regenBtn.textContent = '다시 생성 (1cr)'; regenBtn.disabled = false; }
     } else {
       if (regenBtn) { regenBtn.textContent = '다시 생성'; regenBtn.disabled = false; }
       showError(currentMode === 'parse' ? 'errorBox1' : 'errorBox2', data.error || '재생성에 실패했습니다.');
