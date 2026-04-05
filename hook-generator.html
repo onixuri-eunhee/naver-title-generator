@@ -861,8 +861,23 @@ async function generateHooks() {
   setTimeout(() => results.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
 }
 
+function clipCopy(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).catch(function() { return _fallbackCopy(text); });
+  }
+  return _fallbackCopy(text);
+}
+function _fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  return Promise.resolve();
+}
+
 function copyOne(btn, text) {
-  navigator.clipboard.writeText(text).then(() => {
+  clipCopy(text).then(() => {
     btn.textContent = '복사됨';
     btn.classList.add('copied');
     setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('copied'); }, 1500);
@@ -872,7 +887,7 @@ function copyOne(btn, text) {
 function copyAll() {
   const items = document.querySelectorAll('.hook-text');
   const all = Array.from(items).map((el, i) => `${i+1}. ${el.textContent}`).join('\n');
-  navigator.clipboard.writeText(all).then(() => {
+  clipCopy(all).then(() => {
     const btn = document.querySelector('.copy-all-btn');
     btn.textContent = '전체 복사 완료!';
     setTimeout(() => { btn.textContent = '📋 전체 복사'; }, 2000);
