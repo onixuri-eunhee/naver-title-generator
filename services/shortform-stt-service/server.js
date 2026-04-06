@@ -166,8 +166,7 @@ async function convertToWav(inputBuffer, inputMimeType) {
     return { buffer: wavBuffer, mimeType: 'audio/wav', fileName: 'audio.wav' };
   } catch (err) {
     console.error('[AUDIO] WAV conversion failed:', err.message);
-    console.warn('[AUDIO] Falling back to original audio (may cause rendering issues)');
-    return { buffer: inputBuffer, mimeType: inputMimeType, fileName: 'audio.webm' };
+    throw new Error('오디오 변환 실패: ' + err.message + '. 다른 형식(MP3, M4A)으로 업로드하거나 다시 녹음해주세요.');
   } finally {
     try { await fs.unlink(inputPath); } catch (_) {}
     try { await fs.unlink(outputPath); } catch (_) {}
@@ -277,7 +276,7 @@ async function handleRemotionRenderRequest({ rawBody, req }) {
       trimEndSec: body.trimEndSec === null || body.trimEndSec === undefined || body.trimEndSec === ''
         ? null
         : Math.max(0, Number(body.trimEndSec)),
-      audioSrc: `${baseUrl}/internal/remotion-audio/${audioToken}`,
+      audioSrc: `${baseUrl}/internal/remotion-audio/${audioToken}.wav`,
     };
     console.log('[REMOTION-RENDER] Starting render:', {
       audioDurationSec: inputProps.audioDurationSec,
@@ -349,7 +348,7 @@ const server = http.createServer(async function(req, res) {
   }
 
   if (reqUrl.pathname.startsWith('/internal/remotion-audio/')) {
-    const token = reqUrl.pathname.split('/').pop();
+    const token = reqUrl.pathname.split('/').pop().replace(/\.\w+$/, '');
     serveTempAudio(req, res, token);
     return;
   }
