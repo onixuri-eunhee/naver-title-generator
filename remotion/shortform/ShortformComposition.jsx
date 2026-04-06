@@ -132,7 +132,8 @@ const BackgroundLayer = ({visual, durationInFrames}) => {
 const TextLayer = ({scene, motionSpeed, textRevealMode}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
-  const currentTimeSec = frame / fps;
+  const localTimeSec = frame / fps;
+  const currentTimeSec = localTimeSec + (scene.startSec || 0);
 
   const enter = spring({
     fps,
