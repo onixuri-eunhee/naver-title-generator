@@ -677,11 +677,19 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
     return null;
   }
 
-  const tasks = brollSuggestions.slice(0, maxAssets).map(function(suggestion, index) {
-    return generateWithFallback(suggestion, index);
-  });
+  const BATCH_SIZE = 3;
+  const allSuggestions = brollSuggestions.slice(0, maxAssets);
+  const items = [];
 
-  const items = (await Promise.all(tasks)).filter(Boolean);
+  for (let i = 0; i < allSuggestions.length; i += BATCH_SIZE) {
+    const batch = allSuggestions.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map(function(suggestion, batchIndex) {
+        return generateWithFallback(suggestion, i + batchIndex);
+      })
+    );
+    batchResults.forEach(function(result) { if (result) items.push(result); });
+  }
   if (items.length === 0) {
     const reason = failures.length ? ` (${failures.slice(0, 2).join(' | ')})` : '';
     throw new HttpError(502, 'B-roll 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' + reason);
