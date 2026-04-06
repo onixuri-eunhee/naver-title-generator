@@ -2852,6 +2852,15 @@
           if (aborted) throw new Error('취소됨');
 
           updateRenderProgress(42, 'Remotion 서버 렌더 요청 중...');
+          console.log('[shortform] render request:', {
+            audioDurationSec: audioDuration,
+            estimatedSeconds: state.estimatedSeconds,
+            trimStart: trimStart,
+            trimEnd: trimEnd,
+            sttSegments: state.sttSegments?.length,
+            sttWords: state.sttWords?.length,
+            visuals: mediaItems?.length,
+          });
           var response = await fetch(getRemotionRenderEndpoint(), {
             method: 'POST',
             headers: createHeaders({ 'Content-Type': 'application/json' }),

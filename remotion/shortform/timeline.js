@@ -448,6 +448,9 @@ export function buildShortformTimeline(inputProps) {
     : Math.max(0, Number(rawTrimEndSec));
 
   const sourceDuration = audioDurationSec > 0 ? audioDurationSec : estimatedSeconds;
+  if (audioDurationSec <= 0) {
+    console.warn('[timeline] audioDurationSec is', audioDurationSec, '— falling back to estimatedSeconds:', estimatedSeconds);
+  }
   const effectiveDurationSec = Math.max(
     1,
     trimEndSec !== null
