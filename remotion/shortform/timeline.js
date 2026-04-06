@@ -102,10 +102,12 @@ function normalizeVisuals(visuals) {
 
 function buildVisualSpans(visuals, durationSec) {
   if (!visuals.length) return [];
+  const overlapSec = 0.3;
   const spanSec = durationSec / visuals.length;
   return visuals.map((visual, index) => {
-    const startSec = index * spanSec;
-    const endSec = index === visuals.length - 1 ? durationSec : (index + 1) * spanSec;
+    const rawStart = index * spanSec;
+    const startSec = index === 0 ? 0 : Math.max(0, rawStart - overlapSec);
+    const endSec = index === visuals.length - 1 ? durationSec : Math.min(durationSec, (index + 1) * spanSec + overlapSec);
     return {
       ...visual,
       startSec,
@@ -307,6 +309,43 @@ function createScene({id, text, startSec, endSec, displayLines, wordLines, secti
   };
 }
 
+const MAX_DISPLAY_LINES = 2;
+
+function splitSceneByLines(scene) {
+  if (!scene.wordLines || scene.wordLines.length <= MAX_DISPLAY_LINES) return [scene];
+
+  const chunks = [];
+  for (let i = 0; i < scene.wordLines.length; i += MAX_DISPLAY_LINES) {
+    chunks.push(scene.wordLines.slice(i, i + MAX_DISPLAY_LINES));
+  }
+
+  const allWords = scene.wordLines.flatMap((line) => line.words || []);
+  const totalWords = allWords.length || 1;
+  const sceneDuration = scene.endSec - scene.startSec;
+
+  let cursor = scene.startSec;
+  return chunks.map((chunkLines, ci) => {
+    const chunkWords = chunkLines.flatMap((line) => line.words || []);
+    const wordRatio = chunkWords.length / totalWords;
+    const chunkDuration = ci === chunks.length - 1
+      ? scene.endSec - cursor
+      : sceneDuration * wordRatio;
+    const chunkStart = cursor;
+    const chunkEnd = Math.min(scene.endSec, cursor + chunkDuration);
+    cursor = chunkEnd;
+
+    return createScene({
+      id: `${scene.id}-chunk-${ci}`,
+      text: chunkLines.map((l) => l.text).join(' '),
+      startSec: chunkStart,
+      endSec: chunkEnd,
+      displayLines: chunkLines.map((l) => l.text),
+      wordLines: chunkLines,
+      sectionIndex: scene.sectionIndex,
+    });
+  });
+}
+
 function buildWordTimedScenes(words, sectionRanges, durationSec) {
   const sentences = groupWordsIntoSentences(words);
   if (!sentences.length) return [];
@@ -333,6 +372,7 @@ function buildWordTimedScenes(words, sectionRanges, durationSec) {
         sectionIndex: getSectionIndexForTime(sectionRanges, midpoint),
       });
     })
+    .flatMap((scene) => splitSceneByLines(scene))
     .filter((scene) => scene.durationInFrames > 0);
 }
 

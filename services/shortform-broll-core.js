@@ -663,13 +663,18 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
       }
     }
 
-    try {
-      return await callImagen3Image(imgPrompt, imgKey);
-    } catch (error) {
-      console.error('[SHORTFORM-BROLL] Asset ' + index + ' failed completely:', error.message);
-      failures.push(`asset${index}:${error.message}`);
-      return null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await callImagen3Image(imgPrompt, imgKey);
+      } catch (error) {
+        console.warn('[SHORTFORM-BROLL] Imagen attempt ' + (attempt + 1) + ' for asset ' + index + ' failed:', error.message);
+        if (attempt === 1) {
+          failures.push(`asset${index}:${error.message}`);
+          return null;
+        }
+      }
     }
+    return null;
   }
 
   const tasks = brollSuggestions.slice(0, maxAssets).map(function(suggestion, index) {
