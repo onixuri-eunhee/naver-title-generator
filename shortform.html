@@ -1516,7 +1516,7 @@
         isRendering: false
       };
 
-      var STT_MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+      var STT_MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
       var STT_RECORDING_AUDIO_BITS_PER_SECOND = 64000;
       var DIRECT_STT_ENDPOINT = 'https://naver-title-generator-production.up.railway.app/api/shortform-stt';
       var DIRECT_BROLL_ENDPOINT = 'https://naver-title-generator-production.up.railway.app/api/shortform-broll';
@@ -2220,7 +2220,7 @@
         var blob = encodeWavFromFloat32(merged, 44100);
         if (blob.size > STT_MAX_UPLOAD_BYTES) {
           clearAudioSelection();
-          showBox(els.audioError, '녹음 파일이 너무 큽니다. 30초 이내로 다시 녹음해주세요. 현재 ' + formatFileSize(blob.size));
+          showBox(els.audioError, '녹음 파일이 너무 큽니다. 90초 이내로 다시 녹음해주세요. 현재 ' + formatFileSize(blob.size));
           els.recordStatus.textContent = '녹음 파일이 커서 업로드할 수 없습니다.';
           return;
         }
@@ -2272,7 +2272,7 @@
 
       function applyAudioBlob(blob, fileName, mimeType, sourceLabel) {
         if (blob.size > STT_MAX_UPLOAD_BYTES) {
-          showBox(els.audioError, sourceLabel + ' 파일이 너무 큽니다. STT 업로드 한도는 4MB이며 현재 ' + formatFileSize(blob.size) + '입니다.');
+          showBox(els.audioError, sourceLabel + ' 파일이 너무 큽니다. STT 업로드 한도는 20MB이며 현재 ' + formatFileSize(blob.size) + '입니다.');
           return;
         }
         revokeAudioUrl();
@@ -2448,7 +2448,7 @@
           return;
         }
         if (file.size > STT_MAX_UPLOAD_BYTES) {
-          showBox(els.audioError, '파일 용량은 최대 4MB까지 업로드할 수 있습니다. mp3/m4a로 압축하거나 30초 이내로 잘라주세요. 현재 ' + formatFileSize(file.size) + '입니다.');
+          showBox(els.audioError, '파일 용량은 최대 20MB까지 업로드할 수 있습니다. mp3/m4a로 압축하거나 30초 이내로 잘라주세요. 현재 ' + formatFileSize(file.size) + '입니다.');
           event.target.value = '';
           return;
         }
