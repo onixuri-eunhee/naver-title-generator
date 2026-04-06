@@ -25,45 +25,38 @@ function splitLongToken(token, maxChars) {
   return chunks;
 }
 
+function findBestBreak(text, maxChars) {
+  if (text.length <= maxChars) return text.length;
+  const searchEnd = Math.min(text.length, maxChars + 2);
+  const chunk = text.slice(0, searchEnd);
+  let bestPos = -1;
+  const breakPattern = /(?<=[,，·.!?。！？])\s*|(?<=\s)/g;
+  let match;
+  while ((match = breakPattern.exec(chunk)) !== null) {
+    if (match.index > 0 && match.index <= maxChars) bestPos = match.index;
+  }
+  if (bestPos > maxChars * 0.4) return bestPos;
+  const spacePos = text.lastIndexOf(' ', maxChars);
+  if (spacePos > maxChars * 0.4) return spacePos + 1;
+  return maxChars;
+}
+
 function splitDisplayLines(text) {
   const source = toCleanText(text);
   if (!source) return [];
 
-  const clauses = source
-    .split(/(?<=[,，·])/)
-    .map((part) => toCleanText(part))
-    .filter(Boolean);
-
-  const units = clauses.length ? clauses : [source];
   const lines = [];
+  let remaining = source;
 
-  units.forEach((unit) => {
-    if (unit.length <= MAX_LINE_CHARS) {
-      lines.push(unit);
-      return;
+  while (remaining.length > 0) {
+    if (remaining.length <= MAX_LINE_CHARS) {
+      lines.push(remaining);
+      break;
     }
-
-    const tokens = unit.split(/\s+/).filter(Boolean);
-    if (tokens.length <= 1) {
-      lines.push(...splitLongToken(unit, MAX_LINE_CHARS));
-      return;
-    }
-
-    let buffer = '';
-    tokens.forEach((token) => {
-      const candidate = buffer ? `${buffer} ${token}` : token;
-      if (candidate.length > MAX_LINE_CHARS && buffer) {
-        lines.push(buffer);
-        buffer = token;
-      } else if (candidate.length > MAX_LINE_CHARS) {
-        lines.push(...splitLongToken(candidate, MAX_LINE_CHARS));
-        buffer = '';
-      } else {
-        buffer = candidate;
-      }
-    });
-
-    if (buffer) lines.push(buffer);
+    const breakAt = findBestBreak(remaining, MAX_LINE_CHARS);
+    lines.push(remaining.slice(0, breakAt).trim());
+    remaining = remaining.slice(breakAt).trim();
+  }
   });
 
   return lines.filter(Boolean);

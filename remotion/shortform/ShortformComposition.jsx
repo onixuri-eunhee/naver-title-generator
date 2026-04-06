@@ -116,17 +116,22 @@ function getKenBurnsPreset(url) {
 }
 
 const CROSSFADE_FRAMES = 8;
+const VIDEO_FADEOUT_FRAMES = 18;
 
 const BackgroundLayer = ({visual, durationInFrames}) => {
   const frame = useCurrentFrame();
+  const isVideo = visual?.type === 'video';
 
-  const fadeIn = interpolate(frame, [0, CROSSFADE_FRAMES], [0, 1], {
+  const fadeInFrames = CROSSFADE_FRAMES;
+  const fadeOutFrames = isVideo ? VIDEO_FADEOUT_FRAMES : CROSSFADE_FRAMES;
+
+  const fadeIn = interpolate(frame, [0, fadeInFrames], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
   const fadeOut = interpolate(
     frame,
-    [Math.max(0, durationInFrames - CROSSFADE_FRAMES), durationInFrames],
+    [Math.max(0, durationInFrames - fadeOutFrames), durationInFrames],
     [1, 0],
     { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
   );
@@ -136,7 +141,7 @@ const BackgroundLayer = ({visual, durationInFrames}) => {
     return <AbsoluteFill style={{...fallbackStyle, opacity}} />;
   }
 
-  if (visual.type === 'video') {
+  if (isVideo) {
     return (
       <AbsoluteFill style={{opacity}}>
         <OffthreadVideo src={visual.url} muted loop style={backgroundStyle} />
