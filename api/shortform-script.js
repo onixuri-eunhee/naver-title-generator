@@ -29,11 +29,11 @@ const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다.
   "hook": "string",
   "points": ["string", "string", "string"],
   "cta": "string",
-  "brollSuggestions": ["short english phrase", "short english phrase", "short english phrase", "short english phrase", "short english phrase"]
+  "brollSuggestions": ["phrase1", "phrase2", "phrase3", "phrase4", "phrase5", "phrase6", "phrase7", "phrase8", "phrase9", "phrase10", "phrase11", "phrase12"]
 }
 
 [brollSuggestions 규칙]
-- 정확히 5개
+- 정확히 12개
 - 영어로 작성
 - 각 항목은 짧은 B-roll 이미지 설명
 - 예: "close-up of hands typing on laptop"

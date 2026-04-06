@@ -2471,18 +2471,25 @@
       }
 
       function buildBrollPayload() {
-        var targetCount = 3;
-        if (state.estimatedSeconds >= 40) targetCount = 4;
-        if (state.estimatedSeconds >= 65) targetCount = 5;
+        var duration = state.audioDuration || state.estimatedSeconds || 30;
+        var targetCount = 5;
+        if (duration >= 31) targetCount = 8;
+        if (duration >= 61) targetCount = 12;
+        var defaultSuggestions = [
+          'person speaking to camera', 'close-up of smartphone scrolling',
+          'detail shot of everyday workspace', 'wide shot of modern city street',
+          'hands organizing notes on desk', 'aerial view of busy intersection',
+          'close-up of coffee cup on wooden table', 'person walking through corridor',
+          'laptop screen with charts and data', 'sunlight through office window',
+          'hands holding a book open', 'minimalist desk setup with plant'
+        ];
         var suggestions = state.brollSuggestions && state.brollSuggestions.length >= 3
           ? state.brollSuggestions
-          : [
-            'person speaking to camera',
-            'close-up of smartphone scrolling',
-            'detail shot of everyday workspace',
-            'wide shot of modern city street',
-            'hands organizing notes on desk'
-          ];
+          : defaultSuggestions;
+        // 부족하면 기본으로 채우기
+        while (suggestions.length < targetCount) {
+          suggestions.push(defaultSuggestions[suggestions.length % defaultSuggestions.length]);
+        }
         var scriptContext = [state.script.hook, state.script.point, state.script.cta].filter(Boolean).join('\n\n').trim();
         return {
           brollSuggestions: suggestions.slice(0, targetCount),

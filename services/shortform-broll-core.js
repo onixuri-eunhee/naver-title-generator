@@ -645,12 +645,23 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
 
   const userId = getSafeUserId(userEmail, ip);
   const failures = [];
-  const tasks = brollSuggestions.slice(0, 5).map(function(suggestion, index) {
-    if (index === 0) {
-      const heroPrompt = buildVisualPrompt(suggestion, scriptContext, 'video');
-      return createHeroMotionWithFallback(heroPrompt, userId).catch(error => {
-        console.error('[SHORTFORM-BROLL] Hero motion failed:', error.message);
-        failures.push(`hero:${error.message}`);
+  const maxAssets = Math.min(brollSuggestions.length, 12);
+  // Veo 영상 슬롯: index 0 (hero) + 매 4번째 (index 4, 8, ...)
+  function isVideoSlot(i) { return i === 0 || (i > 0 && i % 4 === 0); }
+
+  const tasks = brollSuggestions.slice(0, maxAssets).map(function(suggestion, index) {
+    if (isVideoSlot(index) && hasVeoConfig()) {
+      const videoPrompt = buildVisualPrompt(suggestion, scriptContext, 'video');
+      if (index === 0) {
+        return createHeroMotionWithFallback(videoPrompt, userId).catch(error => {
+          console.error('[SHORTFORM-BROLL] Hero motion failed:', error.message);
+          failures.push(`hero:${error.message}`);
+          return null;
+        });
+      }
+      return createClipWithFallback(videoPrompt, userId, index).catch(error => {
+        console.error('[SHORTFORM-BROLL] Clip ' + index + ' failed:', error.message);
+        failures.push(`clip${index}:${error.message}`);
         return null;
       });
     }
