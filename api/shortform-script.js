@@ -139,21 +139,23 @@ function toSentence(value) {
 }
 
 function normalizeBrollSuggestions(items) {
+  const MAX_SUGGESTIONS = 12;
   const normalized = Array.isArray(items)
-    ? items.map(item => toSentence(item)).filter(Boolean).slice(0, 5)
+    ? items.map(item => toSentence(item)).filter(Boolean).slice(0, MAX_SUGGESTIONS)
     : [];
 
-  if (normalized.length === 5) return normalized;
+  if (normalized.length >= MAX_SUGGESTIONS) return normalized;
 
   const fallback = [
-    'person speaking to camera',
-    'close-up of smartphone scrolling',
-    'detail shot of everyday workspace',
-    'wide shot of modern city street',
-    'hands organizing notes on desk',
+    'person speaking to camera', 'close-up of smartphone scrolling',
+    'detail shot of everyday workspace', 'wide shot of modern city street',
+    'hands organizing notes on desk', 'aerial view of busy intersection',
+    'close-up of coffee cup on wooden table', 'person walking through corridor',
+    'laptop screen with charts and data', 'sunlight through office window',
+    'hands holding a book open', 'minimalist desk setup with plant',
   ];
 
-  return [...normalized, ...fallback].slice(0, 5);
+  return [...normalized, ...fallback].slice(0, MAX_SUGGESTIONS);
 }
 
 function buildScriptPayload(parsed) {
