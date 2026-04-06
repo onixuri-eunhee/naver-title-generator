@@ -86,17 +86,9 @@ function normalizeSections(script) {
   return [hook, ...derivedPoints, cta].filter(Boolean);
 }
 
-function getTargetVisualCount(seconds) {
-  if (seconds < 40) return 3;
-  if (seconds < 65) return 4;
-  return 5;
-}
-
-function normalizeVisuals(visuals, durationSec) {
-  const targetCount = getTargetVisualCount(durationSec);
+function normalizeVisuals(visuals) {
   return (Array.isArray(visuals) ? visuals : [])
     .filter((item) => item && item.url)
-    .slice(0, targetCount)
     .map((item, index) => ({
       type: item.type === 'video' ? 'video' : 'image',
       url: String(item.url),
@@ -460,7 +452,7 @@ export function buildShortformTimeline(inputProps) {
 
   const sections = normalizeSections(inputProps?.script || {});
   const lines = sections.flatMap((section) => splitDisplayLines(section));
-  const visuals = normalizeVisuals(inputProps?.visuals, effectiveDurationSec);
+  const visuals = normalizeVisuals(inputProps?.visuals);
   const visualSpans = buildVisualSpans(visuals, effectiveDurationSec);
   const sectionRanges = buildSectionRanges(sections, effectiveDurationSec);
 
