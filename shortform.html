@@ -1245,6 +1245,28 @@
         </div>
 
         <div class="input-group">
+          <label class="input-label">영상 길이</label>
+          <div class="tone-options" id="durationOptions">
+            <label class="tone-option">
+              <input type="radio" name="targetDuration" value="30" checked>
+              <span class="tone-pill"><span>30초</span></span>
+            </label>
+            <label class="tone-option">
+              <input type="radio" name="targetDuration" value="45">
+              <span class="tone-pill"><span>45초</span></span>
+            </label>
+            <label class="tone-option">
+              <input type="radio" name="targetDuration" value="60">
+              <span class="tone-pill"><span>60초</span></span>
+            </label>
+            <label class="tone-option">
+              <input type="radio" name="targetDuration" value="90">
+              <span class="tone-pill"><span>90초</span></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="input-group">
           <label class="input-label" for="blogTextInput">블로그 글 붙여넣기 <span style="font-weight:400; color:#6B7280;">(선택)</span></label>
           <textarea id="blogTextInput" placeholder="원문이 있으면 붙여넣어 주세요. 없으면 키워드만으로도 생성됩니다."></textarea>
         </div>
@@ -2072,6 +2094,7 @@
               topic: keyword,
               input: keyword,
               tone: getSelectedTone(),
+              targetDurationSec: Number(document.querySelector('input[name="targetDuration"]:checked')?.value || 30),
               blogText: els.blogTextInput.value.trim(),
               sourceText: els.blogTextInput.value.trim(),
               sourceType: els.blogTextInput.value.trim() ? 'blog' : 'keyword'

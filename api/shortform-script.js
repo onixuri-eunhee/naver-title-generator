@@ -60,9 +60,18 @@ function getTTLUntilMidnightKST() {
   return Math.max(seconds, 60);
 }
 
-function buildUserPrompt(topic, blogText, tone) {
+function buildUserPrompt(topic, blogText, tone, targetDurationSec) {
+  const durationGuide = {
+    30: '전체 대본을 약 150자(한국어 기준)로 작성하세요. Hook 1문장 + Point 1~2개(각 1~2문장) + CTA 1문장.',
+    45: '전체 대본을 약 225자(한국어 기준)로 작성하세요. Hook 1~2문장 + Point 2개(각 2문장) + CTA 1문장.',
+    60: '전체 대본을 약 300자(한국어 기준)로 작성하세요. Hook 2문장 + Point 2~3개(각 2~3문장) + CTA 1~2문장.',
+    90: '전체 대본을 약 450자(한국어 기준)로 작성하세요. Hook 2~3문장 + Point 3개(각 3문장) + CTA 2문장.',
+  };
+  const guide = durationGuide[targetDurationSec] || durationGuide[30];
+
   const inputSummary = [
     `tone: ${tone}`,
+    `targetDuration: ${targetDurationSec}초`,
     topic ? `topic: ${topic}` : null,
     blogText ? `blogText:\n${blogText}` : null,
   ].filter(Boolean).join('\n\n');
@@ -70,12 +79,13 @@ function buildUserPrompt(topic, blogText, tone) {
   return `${inputSummary}
 
 위 입력을 바탕으로 숏폼 영상 대본을 작성하세요.
+- ★ 영상 길이 목표: ${targetDurationSec}초. ${guide}
 - Hook, Point, CTA가 각각 뚜렷해야 합니다.
 - Point는 최대 3개까지만 작성하세요.
-- 각 Point는 독립된 핵심 메시지여야 하며, 문장 수는 2~3문장이어야 합니다.
+- 각 Point는 독립된 핵심 메시지여야 하며, 문장 수는 위 가이드를 따르세요.
 - 너무 긴 서론 없이 바로 몰입되게 시작하세요.
 - CTA는 부담스럽지 않게 마무리하세요.
-- brollSuggestions는 대본 내용에 맞춰 영어로 작성하세요.`;
+- brollSuggestions는 대본 내용에 맞춰 영어로 12개 작성하세요.`;
 }
 
 function extractClaudeText(data) {
@@ -184,7 +194,7 @@ function buildScriptPayload(parsed) {
   };
 }
 
-async function callClaude(topic, blogText, tone) {
+async function callClaude(topic, blogText, tone, targetDurationSec) {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY is not configured.');
   }
@@ -201,7 +211,7 @@ async function callClaude(topic, blogText, tone) {
       max_tokens: 2000,
       temperature: 0.7,
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: buildUserPrompt(topic, blogText, tone) }],
+      messages: [{ role: 'user', content: buildUserPrompt(topic, blogText, tone, targetDurationSec) }],
     }),
   });
 
@@ -254,6 +264,7 @@ export default async function handler(req, res) {
     const topic = toSentence(body.topic);
     const blogText = String(body.blogText || '').trim();
     const tone = body.tone === 'professional' ? 'professional' : 'casual';
+    const targetDurationSec = [30, 45, 60, 90].includes(Number(body.targetDurationSec)) ? Number(body.targetDurationSec) : 30;
 
     if (!topic && !blogText) {
       return res.status(400).json({ error: 'topic 또는 blogText 중 하나는 필요합니다.' });
@@ -281,7 +292,7 @@ export default async function handler(req, res) {
       }
     }
 
-    const script = await callClaude(topic, blogText, tone);
+    const script = await callClaude(topic, blogText, tone, targetDurationSec);
     await logUsage(email, 'shortform-script', tone, getClientIp(req));
 
     const currentCount = rateLimitKey ? ((await getRedis().get(rateLimitKey)) || 0) : 0;
