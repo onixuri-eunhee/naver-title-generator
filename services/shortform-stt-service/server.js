@@ -335,6 +335,7 @@ const server = http.createServer(async function(req, res) {
       remotionVersion: SHORTFORM_REMOTION_VERSION,
       hasOpenAIKey: !!((process.env.OPENAI_API_KEY || '').trim()),
       hasFalKey: !!((process.env.FAL_KEY || '').trim()),
+      hasImagen3: !!(process.env.GOOGLE_VERTEX_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || '').trim(),
       hasSeedanceKey: !!((process.env.SEEDANCE_API_KEY || '').trim()),
       hasVeoProject: !!((process.env.GOOGLE_VERTEX_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || '').trim()),
       hasVeoServiceAccount: !!((process.env.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_VERTEX_SERVICE_ACCOUNT_JSON_BASE64 || process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 || '').trim()),

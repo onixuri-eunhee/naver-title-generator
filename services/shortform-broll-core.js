@@ -383,32 +383,34 @@ async function persistVideoResult(videoPayload, key) {
   return uploadRemoteAssetToR2(sourceUrl, key, 'video/mp4', 'video/');
 }
 
-async function callFluxImage(prompt, key) {
-  if (!process.env.FAL_KEY) throw new Error('FAL_KEY is missing');
+async function callImagen3Image(prompt, key) {
+  const token = await getGoogleAccessToken();
+  const projectId = getVeoProjectId();
+  const location = (process.env.GOOGLE_VERTEX_LOCATION || 'us-central1').trim();
+  const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/imagen-3.0-generate-002:predict`;
 
-  const response = await fetchWithTimeout(FLUX_REALISM_ENDPOINT, {
+  const response = await fetchWithTimeout(url, {
     method: 'POST',
     headers: {
-      Authorization: `Key ${process.env.FAL_KEY}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      prompt,
-      image_size: FLUX_IMAGE_SIZE,
-      num_images: 1,
-      num_inference_steps: 28,
-      guidance_scale: 3.5,
-      safety_tolerance: '5',
+      instances: [{ prompt }],
+      parameters: { sampleCount: 1, aspectRatio: '9:16', outputOptions: { mimeType: 'image/png' } },
     }),
   }, 30000);
-  const resultData = await parseJsonResponse(response);
-  if (!response.ok) throw new Error(`FLUX image failed: ${response.status} ${JSON.stringify(resultData)}`);
+  const data = await parseJsonResponse(response);
+  if (!response.ok) throw new Error(`Imagen 3 failed: ${response.status} ${JSON.stringify(data).slice(0, 200)}`);
 
-  const imageUrl = resultData?.images?.[0]?.url || findFirstUrl(resultData);
-  if (!imageUrl) throw new Error('FLUX image URL not found in result');
-  const r2Url = await uploadImageUrlToR2(imageUrl, key);
+  const b64 = data?.predictions?.[0]?.bytesBase64Encoded;
+  if (!b64) throw new Error('Imagen 3: no image in response');
+
+  const imageBuffer = Buffer.from(b64, 'base64');
+  const r2Url = await uploadToR2(key, imageBuffer, 'image/png');
   if (!r2Url) throw new Error('R2 image upload failed');
-  return { type: 'image', url: imageUrl, r2Url, prompt, provider: 'flux-realism' };
+  console.log('[SHORTFORM-BROLL] Imagen 3 hero image uploaded:', r2Url);
+  return { type: 'image', url: r2Url, r2Url, prompt, provider: 'imagen-3' };
 }
 
 async function pollVeoOperation(operationName, accessToken, location) {
@@ -565,14 +567,14 @@ async function callSeedanceVideo(prompt, key) {
 
 async function createClipWithFallback(prompt, userId, clipNumber) {
   if (!(process.env.SEEDANCE_API_KEY || '').trim()) {
-    return callFluxImage(prompt, createR2Key(userId, `clip${clipNumber}-fallback.png`));
+    return callImagen3Image(prompt, createR2Key(userId, `clip${clipNumber}-fallback.png`));
   }
 
   try {
     return await callSeedanceVideo(prompt, createR2Key(userId, `clip${clipNumber}.mp4`));
   } catch (error) {
     console.error(`[SHORTFORM-BROLL] Seedance clip ${clipNumber} failed, falling back to Grok image:`, error.message);
-    return callFluxImage(prompt, createR2Key(userId, `clip${clipNumber}-fallback.png`));
+    return callImagen3Image(prompt, createR2Key(userId, `clip${clipNumber}-fallback.png`));
   }
 }
 
@@ -581,7 +583,7 @@ async function createHeroMotionWithFallback(prompt, userId) {
   const heroImageKey = createR2Key(userId, 'hero-fallback.png');
 
   if (!hasVeoConfig()) {
-    const fallback = await callFluxImage(prompt, heroImageKey);
+    const fallback = await callImagen3Image(prompt, heroImageKey);
     return {
       ...fallback,
       fallbackFrom: 'veo3-lite',
@@ -593,7 +595,7 @@ async function createHeroMotionWithFallback(prompt, userId) {
     return await callVeoHeroVideo(prompt, heroVideoKey);
   } catch (error) {
     console.error('[SHORTFORM-BROLL] Veo hero clip failed, falling back to Flux image:', error.message);
-    const fallback = await callFluxImage(prompt, heroImageKey);
+    const fallback = await callImagen3Image(prompt, heroImageKey);
     return {
       ...fallback,
       fallbackFrom: 'veo3-lite',
@@ -655,7 +657,7 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
 
     const prompt = buildVisualPrompt(suggestion, scriptContext, 'image');
     const key = createR2Key(userId, `image${index}.png`);
-    return callFluxImage(prompt, key).catch(error => {
+    return callImagen3Image(prompt, key).catch(error => {
       console.error('[SHORTFORM-BROLL] Image ' + index + ' failed:', error.message);
       failures.push(`image${index}:${error.message}`);
       return null;
