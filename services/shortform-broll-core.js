@@ -649,30 +649,31 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
   // Veo 영상 슬롯: index 0 (hero) + 매 4번째 (index 4, 8, ...)
   function isVideoSlot(i) { return i === 0 || (i > 0 && i % 4 === 0); }
 
-  const tasks = brollSuggestions.slice(0, maxAssets).map(function(suggestion, index) {
+  async function generateWithFallback(suggestion, index) {
+    const imgPrompt = buildVisualPrompt(suggestion, scriptContext, 'image');
+    const imgKey = createR2Key(userId, `image${index}.png`);
+
     if (isVideoSlot(index) && hasVeoConfig()) {
       const videoPrompt = buildVisualPrompt(suggestion, scriptContext, 'video');
-      if (index === 0) {
-        return createHeroMotionWithFallback(videoPrompt, userId).catch(error => {
-          console.error('[SHORTFORM-BROLL] Hero motion failed:', error.message);
-          failures.push(`hero:${error.message}`);
-          return null;
-        });
+      try {
+        if (index === 0) return await createHeroMotionWithFallback(videoPrompt, userId);
+        return await createClipWithFallback(videoPrompt, userId, index);
+      } catch (error) {
+        console.warn('[SHORTFORM-BROLL] Video slot ' + index + ' failed, falling back to Imagen:', error.message);
       }
-      return createClipWithFallback(videoPrompt, userId, index).catch(error => {
-        console.error('[SHORTFORM-BROLL] Clip ' + index + ' failed:', error.message);
-        failures.push(`clip${index}:${error.message}`);
-        return null;
-      });
     }
 
-    const prompt = buildVisualPrompt(suggestion, scriptContext, 'image');
-    const key = createR2Key(userId, `image${index}.png`);
-    return callImagen3Image(prompt, key).catch(error => {
-      console.error('[SHORTFORM-BROLL] Image ' + index + ' failed:', error.message);
-      failures.push(`image${index}:${error.message}`);
+    try {
+      return await callImagen3Image(imgPrompt, imgKey);
+    } catch (error) {
+      console.error('[SHORTFORM-BROLL] Asset ' + index + ' failed completely:', error.message);
+      failures.push(`asset${index}:${error.message}`);
       return null;
-    });
+    }
+  }
+
+  const tasks = brollSuggestions.slice(0, maxAssets).map(function(suggestion, index) {
+    return generateWithFallback(suggestion, index);
   });
 
   const items = (await Promise.all(tasks)).filter(Boolean);

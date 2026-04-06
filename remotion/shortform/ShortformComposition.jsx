@@ -115,16 +115,30 @@ function getKenBurnsPreset(url) {
   return KEN_BURNS_PRESETS[Math.abs(hash) % KEN_BURNS_PRESETS.length];
 }
 
+const CROSSFADE_FRAMES = 8;
+
 const BackgroundLayer = ({visual, durationInFrames}) => {
   const frame = useCurrentFrame();
 
+  const fadeIn = interpolate(frame, [0, CROSSFADE_FRAMES], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+  const fadeOut = interpolate(
+    frame,
+    [Math.max(0, durationInFrames - CROSSFADE_FRAMES), durationInFrames],
+    [1, 0],
+    { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+  );
+  const opacity = Math.min(fadeIn, fadeOut);
+
   if (!visual) {
-    return <AbsoluteFill style={fallbackStyle} />;
+    return <AbsoluteFill style={{...fallbackStyle, opacity}} />;
   }
 
   if (visual.type === 'video') {
     return (
-      <AbsoluteFill>
+      <AbsoluteFill style={{opacity}}>
         <OffthreadVideo src={visual.url} muted loop style={backgroundStyle} />
       </AbsoluteFill>
     );
@@ -141,6 +155,7 @@ const BackgroundLayer = ({visual, durationInFrames}) => {
   return (
     <AbsoluteFill
       style={{
+        opacity,
         transform: `scale(${scale}) translate(${translateX}px, ${translateY}px)`,
       }}
     >
