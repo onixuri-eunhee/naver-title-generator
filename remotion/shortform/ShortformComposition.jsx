@@ -99,6 +99,22 @@ function getWordVisualState(word, currentTimeSec, fadeDurationSec) {
   };
 }
 
+const KEN_BURNS_PRESETS = [
+  {scaleFrom: 1.0, scaleTo: 1.12, xFrom: 0, xTo: -15, yFrom: 0, yTo: -10},
+  {scaleFrom: 1.12, scaleTo: 1.0, xFrom: -10, xTo: 10, yFrom: -8, yTo: 8},
+  {scaleFrom: 1.0, scaleTo: 1.10, xFrom: 10, xTo: -5, yFrom: 5, yTo: -5},
+  {scaleFrom: 1.08, scaleTo: 1.0, xFrom: 0, xTo: 12, yFrom: -10, yTo: 0},
+  {scaleFrom: 1.0, scaleTo: 1.14, xFrom: -8, xTo: 0, yFrom: 8, yTo: -8},
+];
+
+function getKenBurnsPreset(url) {
+  let hash = 0;
+  for (let i = 0; i < (url || '').length; i++) {
+    hash = ((hash << 5) - hash + (url || '').charCodeAt(i)) | 0;
+  }
+  return KEN_BURNS_PRESETS[Math.abs(hash) % KEN_BURNS_PRESETS.length];
+}
+
 const BackgroundLayer = ({visual, durationInFrames}) => {
   const frame = useCurrentFrame();
 
@@ -114,14 +130,18 @@ const BackgroundLayer = ({visual, durationInFrames}) => {
     );
   }
 
-  const scale = interpolate(frame, [0, durationInFrames], [1, 1.06], {
+  const kb = getKenBurnsPreset(visual.url);
+  const progress = interpolate(frame, [0, durationInFrames], [0, 1], {
     extrapolateRight: 'clamp',
   });
+  const scale = kb.scaleFrom + (kb.scaleTo - kb.scaleFrom) * progress;
+  const translateX = kb.xFrom + (kb.xTo - kb.xFrom) * progress;
+  const translateY = kb.yFrom + (kb.yTo - kb.yFrom) * progress;
 
   return (
     <AbsoluteFill
       style={{
-        transform: `scale(${scale})`,
+        transform: `scale(${scale}) translate(${translateX}px, ${translateY}px)`,
       }}
     >
       <Img src={visual.url} style={backgroundStyle} />
