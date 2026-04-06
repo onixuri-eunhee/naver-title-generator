@@ -160,7 +160,7 @@ async function convertToWav(inputBuffer, inputMimeType) {
 
   try {
     await fs.writeFile(inputPath, inputBuffer);
-    await execFileAsync('ffmpeg', ['-y', '-i', inputPath, '-ar', '44100', '-ac', '1', outputPath], { timeout: 30000 });
+    await execFileAsync('ffmpeg', ['-y', '-err_detect', 'ignore_err', '-f', 'webm', '-i', inputPath, '-ar', '44100', '-ac', '1', outputPath], { timeout: 30000 });
     const wavBuffer = await fs.readFile(outputPath);
     console.log('[AUDIO] Converted WebM→WAV:', inputBuffer.length, '→', wavBuffer.length, 'bytes');
     return { buffer: wavBuffer, mimeType: 'audio/wav', fileName: 'audio.wav' };
