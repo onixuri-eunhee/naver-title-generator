@@ -148,6 +148,28 @@ function cleanupExpiredAudioEntries() {
   }
 }
 
+async function convertToWav(inputBuffer, inputMimeType) {
+  const needsConvert = /webm|ogg|opus/i.test(inputMimeType || '');
+  if (!needsConvert) return { buffer: inputBuffer, mimeType: inputMimeType, fileName: 'audio.wav' };
+
+  const { execFile } = await import('child_process');
+  const { promisify } = await import('util');
+  const execFileAsync = promisify(execFile);
+  const inputPath = path.join('/tmp', `audio-in-${randomUUID()}.webm`);
+  const outputPath = path.join('/tmp', `audio-out-${randomUUID()}.wav`);
+
+  try {
+    await fs.writeFile(inputPath, inputBuffer);
+    await execFileAsync('ffmpeg', ['-y', '-i', inputPath, '-ar', '44100', '-ac', '1', outputPath], { timeout: 30000 });
+    const wavBuffer = await fs.readFile(outputPath);
+    console.log('[AUDIO] Converted WebM→WAV:', inputBuffer.length, '→', wavBuffer.length, 'bytes');
+    return { buffer: wavBuffer, mimeType: 'audio/wav', fileName: 'audio.wav' };
+  } finally {
+    try { await fs.unlink(inputPath); } catch (_) {}
+    try { await fs.unlink(outputPath); } catch (_) {}
+  }
+}
+
 function storeTempAudio({ buffer, mimeType, fileName }) {
   cleanupExpiredAudioEntries();
   const token = randomUUID();
@@ -226,10 +248,11 @@ async function handleRemotionRenderRequest({ rawBody, req }) {
     return { status: 400, body: { error: 'visuals가 필요합니다.' } };
   }
 
+  const converted = await convertToWav(audio.buffer, audio.mimeType || 'audio/webm');
   const audioToken = storeTempAudio({
-    buffer: audio.buffer,
-    mimeType: audio.mimeType || 'audio/webm',
-    fileName: normalizeAudioFileName(body.audioFileName, audio.mimeType),
+    buffer: converted.buffer,
+    mimeType: converted.mimeType,
+    fileName: converted.fileName,
   });
   const baseUrl = getBaseUrl(req);
   const outputLocation = path.join('/tmp', `shortform-remotion-${randomUUID()}.mp4`);
