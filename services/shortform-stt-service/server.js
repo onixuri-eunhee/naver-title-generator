@@ -235,22 +235,33 @@ async function handleRemotionRenderRequest({ rawBody, req }) {
   const outputLocation = path.join('/tmp', `shortform-remotion-${randomUUID()}.mp4`);
 
   try {
+    const inputProps = {
+      script: body.script,
+      visuals,
+      sttSegments: Array.isArray(body.sttSegments) ? body.sttSegments : [],
+      sttWords: Array.isArray(body.sttWords) ? body.sttWords : [],
+      estimatedSeconds: Number(body.estimatedSeconds) || 30,
+      audioDurationSec: Number(body.audioDurationSec) || Number(body.estimatedSeconds) || 30,
+      motionSpeed: typeof body.motionSpeed === 'string' ? body.motionSpeed : 'normal',
+      textRevealMode: typeof body.textRevealMode === 'string' ? body.textRevealMode : 'line',
+      trimStartSec: Math.max(0, Number(body.trimStartSec) || 0),
+      trimEndSec: body.trimEndSec === null || body.trimEndSec === undefined || body.trimEndSec === ''
+        ? null
+        : Math.max(0, Number(body.trimEndSec)),
+      audioSrc: `${baseUrl}/internal/remotion-audio/${audioToken}`,
+    };
+    console.log('[REMOTION-RENDER] Starting render:', {
+      audioDurationSec: inputProps.audioDurationSec,
+      estimatedSeconds: inputProps.estimatedSeconds,
+      trimStartSec: inputProps.trimStartSec,
+      trimEndSec: inputProps.trimEndSec,
+      sttSegments: inputProps.sttSegments?.length || 0,
+      sttWords: inputProps.sttWords?.length || 0,
+      visuals: inputProps.visuals?.length || 0,
+      audioSrc: inputProps.audioSrc ? 'present' : 'missing',
+    });
     await renderShortformRemotion({
-      inputProps: {
-        script: body.script,
-        visuals,
-        sttSegments: Array.isArray(body.sttSegments) ? body.sttSegments : [],
-        sttWords: Array.isArray(body.sttWords) ? body.sttWords : [],
-        estimatedSeconds: Number(body.estimatedSeconds) || 30,
-        audioDurationSec: Number(body.audioDurationSec) || Number(body.estimatedSeconds) || 30,
-        motionSpeed: typeof body.motionSpeed === 'string' ? body.motionSpeed : 'normal',
-        textRevealMode: typeof body.textRevealMode === 'string' ? body.textRevealMode : 'line',
-        trimStartSec: Math.max(0, Number(body.trimStartSec) || 0),
-        trimEndSec: body.trimEndSec === null || body.trimEndSec === undefined || body.trimEndSec === ''
-          ? null
-          : Math.max(0, Number(body.trimEndSec)),
-        audioSrc: `${baseUrl}/internal/remotion-audio/${audioToken}`,
-      },
+      inputProps,
       outputLocation,
     });
 
@@ -265,6 +276,9 @@ async function handleRemotionRenderRequest({ rawBody, req }) {
         'X-Shortform-Render-Version': SHORTFORM_REMOTION_VERSION,
       },
     };
+  } catch (renderErr) {
+    console.error('[REMOTION-RENDER] Failed:', renderErr.message, renderErr.stack);
+    throw renderErr;
   } finally {
     tempAudioStore.delete(audioToken);
     await fs.rm(outputLocation, { force: true }).catch(() => {});

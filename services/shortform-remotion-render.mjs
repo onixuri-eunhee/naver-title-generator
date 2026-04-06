@@ -57,6 +57,14 @@ export async function renderShortformRemotion({
     timeoutInMilliseconds: 120000,
   });
 
+  console.info('[shortform-remotion] composition:', {
+    id: composition.id,
+    durationInFrames: composition.durationInFrames,
+    fps: composition.fps,
+    width: composition.width,
+    height: composition.height,
+  });
+
   await renderMedia({
     serveUrl,
     composition,
