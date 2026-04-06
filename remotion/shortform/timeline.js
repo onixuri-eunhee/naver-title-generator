@@ -27,17 +27,13 @@ function splitLongToken(token, maxChars) {
 
 function findBestBreak(text, maxChars) {
   if (text.length <= maxChars) return text.length;
-  const searchEnd = Math.min(text.length, maxChars + 2);
-  const chunk = text.slice(0, searchEnd);
-  let bestPos = -1;
-  const breakPattern = /(?<=[,，·.!?。！？])\s*|(?<=\s)/g;
-  let match;
-  while ((match = breakPattern.exec(chunk)) !== null) {
-    if (match.index > 0 && match.index <= maxChars) bestPos = match.index;
+  var bestPos = -1;
+  for (var i = 1; i <= maxChars; i++) {
+    var ch = text[i - 1];
+    if (',，·.!?。！？'.indexOf(ch) !== -1) bestPos = i;
+    else if (ch === ' ') bestPos = i;
   }
   if (bestPos > maxChars * 0.4) return bestPos;
-  const spacePos = text.lastIndexOf(' ', maxChars);
-  if (spacePos > maxChars * 0.4) return spacePos + 1;
   return maxChars;
 }
 
@@ -57,7 +53,6 @@ function splitDisplayLines(text) {
     lines.push(remaining.slice(0, breakAt).trim());
     remaining = remaining.slice(breakAt).trim();
   }
-  });
 
   return lines.filter(Boolean);
 }
