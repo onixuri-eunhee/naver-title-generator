@@ -280,7 +280,13 @@ async function handleRemotionRenderRequest({ rawBody, req }) {
     };
   } catch (renderErr) {
     console.error('[REMOTION-RENDER] Failed:', renderErr.message, renderErr.stack);
-    throw renderErr;
+    tempAudioStore.delete(audioToken);
+    await fs.rm(outputLocation, { force: true }).catch(() => {});
+    return {
+      status: 500,
+      body: JSON.stringify({ error: '영상 렌더링 실패: ' + renderErr.message }),
+      contentType: 'application/json',
+    };
   } finally {
     tempAudioStore.delete(audioToken);
     await fs.rm(outputLocation, { force: true }).catch(() => {});

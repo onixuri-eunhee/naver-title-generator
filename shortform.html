@@ -2882,8 +2882,17 @@
           });
           if (aborted) throw new Error('취소됨');
           if (!response.ok) {
-            var errorText = await response.text();
-            throw new Error('Remotion 렌더 오류: ' + summarizeRawErrorText(errorText) + ' (HTTP ' + response.status + ')');
+            var errorText = '';
+            try {
+              var contentType = response.headers.get('content-type') || '';
+              if (contentType.includes('application/json')) {
+                var errJson = await response.json();
+                errorText = errJson.error || JSON.stringify(errJson);
+              } else {
+                errorText = await response.text();
+              }
+            } catch (_) { errorText = 'HTTP ' + response.status; }
+            throw new Error('Remotion 렌더 오류: ' + (errorText || 'HTTP ' + response.status));
           }
 
           updateRenderProgress(92, '영상 파일 수신 중...');
