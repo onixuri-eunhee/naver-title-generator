@@ -53,7 +53,7 @@ async function logUsage(userEmail, tool, mode, ip) {
   }
 }
 
-export const BROLL_VERSION = 'v7-veo-hero-fallback';
+export const BROLL_VERSION = 'v8-i2v-pipeline';
 
 const FLUX_REALISM_ENDPOINT = 'https://fal.run/fal-ai/flux-realism';
 const FLUX_IMAGE_SIZE = { width: 768, height: 1344 };
@@ -67,7 +67,7 @@ const EXTERNAL_FETCH_TIMEOUT_MS = 45000;
 const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_CLOUD_PLATFORM_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
 const DEFAULT_VEO_LOCATION = 'us-central1';
-const DEFAULT_VEO_MODEL = 'veo-3.0-fast-generate-001';
+const DEFAULT_VEO_MODEL = 'veo-3.1-lite-generate-001';
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -387,7 +387,7 @@ async function callImagen3Image(prompt, key) {
   const token = await getGoogleAccessToken();
   const projectId = getVeoProjectId();
   const location = (process.env.GOOGLE_VERTEX_LOCATION || 'us-central1').trim();
-  const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/imagen-3.0-generate-002:predict`;
+  const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/imagen-3.0-fast-generate-001:predict`;
 
   const response = await fetchWithTimeout(url, {
     method: 'POST',
@@ -409,8 +409,8 @@ async function callImagen3Image(prompt, key) {
   const imageBuffer = Buffer.from(b64, 'base64');
   const r2Url = await uploadToR2(key, imageBuffer, 'image/png');
   if (!r2Url) throw new Error('R2 image upload failed');
-  console.log('[SHORTFORM-BROLL] Imagen 3 hero image uploaded:', r2Url);
-  return { type: 'image', url: r2Url, r2Url, prompt, provider: 'imagen-3' };
+  console.log('[SHORTFORM-BROLL] Imagen 3 Fast image uploaded:', r2Url);
+  return { type: 'image', url: r2Url, r2Url, prompt, base64: b64, provider: 'imagen-3-fast' };
 }
 
 async function pollVeoOperation(operationName, accessToken, location) {
@@ -446,7 +446,7 @@ async function pollVeoOperation(operationName, accessToken, location) {
   throw new Error('Veo generation timed out');
 }
 
-async function callVeoHeroVideo(prompt, key) {
+async function callVeoI2V(prompt, key, imageBase64) {
   if (!hasVeoConfig()) throw new Error('Google Vertex Veo config is missing');
 
   const projectId = getVeoProjectId();
@@ -455,6 +455,14 @@ async function callVeoHeroVideo(prompt, key) {
   const accessToken = await getGoogleAccessToken();
   const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${modelId}:predictLongRunning`;
 
+  const instance = { prompt };
+  if (imageBase64) {
+    instance.image = {
+      bytesBase64Encoded: imageBase64,
+      mimeType: 'image/png',
+    };
+  }
+
   const response = await fetchWithTimeout(endpoint, {
     method: 'POST',
     headers: {
@@ -462,11 +470,7 @@ async function callVeoHeroVideo(prompt, key) {
       'Content-Type': 'application/json; charset=utf-8',
     },
     body: JSON.stringify({
-      instances: [
-        {
-          prompt,
-        },
-      ],
+      instances: [instance],
       parameters: {
         aspectRatio: '9:16',
         durationSeconds: VEO_CLIP_DURATION_SEC,
@@ -493,8 +497,13 @@ async function callVeoHeroVideo(prompt, key) {
     r2Url: asset.r2Url,
     prompt,
     durationSec: VEO_CLIP_DURATION_SEC,
-    provider: 'veo3-lite',
+    provider: 'veo-3.1-lite-i2v',
   };
+}
+
+/** @deprecated Use callVeoI2V instead. Kept for backward compatibility. */
+async function callVeoHeroVideo(prompt, key) {
+  return callVeoI2V(prompt, key, null);
 }
 
 async function fetchSeedanceStatus(id) {
@@ -578,32 +587,6 @@ async function createClipWithFallback(prompt, userId, clipNumber) {
   }
 }
 
-async function createHeroMotionWithFallback(prompt, userId) {
-  const heroVideoKey = createR2Key(userId, 'hero.mp4');
-  const heroImageKey = createR2Key(userId, 'hero-fallback.png');
-
-  if (!hasVeoConfig()) {
-    const fallback = await callImagen3Image(prompt, heroImageKey);
-    return {
-      ...fallback,
-      fallbackFrom: 'veo3-lite',
-      fallbackReason: 'Veo config is missing',
-    };
-  }
-
-  try {
-    return await callVeoHeroVideo(prompt, heroVideoKey);
-  } catch (error) {
-    console.error('[SHORTFORM-BROLL] Veo hero clip failed, falling back to Flux image:', error.message);
-    const fallback = await callImagen3Image(prompt, heroImageKey);
-    return {
-      ...fallback,
-      fallbackFrom: 'veo3-lite',
-      fallbackReason: error.message,
-    };
-  }
-}
-
 export async function handleShortformBrollRequest({ method, rawBody, userEmail, ip, query }) {
   const probeMode = typeof query?.probe === 'string' ? query.probe.trim().toLowerCase() : '';
 
@@ -646,26 +629,46 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
   const userId = getSafeUserId(userEmail, ip);
   const failures = [];
   const maxAssets = Math.min(brollSuggestions.length, 12);
-  // Veo 영상 슬롯: index 0 (hero) + 매 4번째 (index 4, 8, ...)
-  function isVideoSlot(i) { return i === 0 || (i > 0 && i % 4 === 0); }
+
+  // i2v 영상 슬롯: 첫 씬 + 마지막 씬 필수, 중간은 이미지 연속 2개 방지 교차 배치
+  // 30초(5): [0,2,4]->2~3  45초(7): [0,2,4,6]->3~4  60초(8): [0,2,5,7]->4  90초(12): [0,3,6,9,11]->5
+  function computeVideoSlots(total) {
+    if (total <= 1) return new Set([0]);
+    if (total <= 5) {
+      // 30초: 0,2,4 (첫, 중간, 끝) — 최대 3개 중 총 2개 보장
+      const slots = new Set([0, total - 1]);
+      for (let i = 2; i < total - 1; i += 2) slots.add(i);
+      return slots;
+    }
+    if (total <= 7) {
+      // 45초: 0,2,4,6
+      const slots = new Set([0, total - 1]);
+      for (let i = 2; i < total - 1; i += 2) slots.add(i);
+      return slots;
+    }
+    if (total <= 8) {
+      // 60초: 0,2,5,7
+      return new Set([0, 2, 5, total - 1]);
+    }
+    // 90초 (9~12): 0,3,6,9,last
+    const slots = new Set([0, total - 1]);
+    for (let i = 3; i < total - 1; i += 3) slots.add(i);
+    return slots;
+  }
+
+  const videoSlots = computeVideoSlots(maxAssets);
+  function isVideoSlot(i) { return videoSlots.has(i); }
 
   async function generateWithFallback(suggestion, index) {
     const imgPrompt = buildVisualPrompt(suggestion, scriptContext, 'image');
     const imgKey = createR2Key(userId, `image${index}.png`);
 
-    if (isVideoSlot(index) && hasVeoConfig()) {
-      const videoPrompt = buildVisualPrompt(suggestion, scriptContext, 'video');
-      try {
-        if (index === 0) return await createHeroMotionWithFallback(videoPrompt, userId);
-        return await createClipWithFallback(videoPrompt, userId, index);
-      } catch (error) {
-        console.warn('[SHORTFORM-BROLL] Video slot ' + index + ' failed, falling back to Imagen:', error.message);
-      }
-    }
-
+    // Step 1: Always generate image first (needed for both image-only and i2v slots)
+    let imageResult = null;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        return await callImagen3Image(imgPrompt, imgKey);
+        imageResult = await callImagen3Image(imgPrompt, imgKey);
+        break;
       } catch (error) {
         console.warn('[SHORTFORM-BROLL] Imagen attempt ' + (attempt + 1) + ' for asset ' + index + ' failed:', error.message);
         if (attempt === 1) {
@@ -674,10 +677,27 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
         }
       }
     }
-    return null;
+    if (!imageResult) return null;
+
+    // Step 2: If this is a video slot, convert the image to video via Veo i2v
+    if (isVideoSlot(index) && hasVeoConfig()) {
+      const videoPrompt = buildVisualPrompt(suggestion, scriptContext, 'video');
+      const videoKey = createR2Key(userId, `i2v${index}.mp4`);
+      try {
+        const videoResult = await callVeoI2V(videoPrompt, videoKey, imageResult.base64);
+        console.log('[SHORTFORM-BROLL] i2v slot ' + index + ' success');
+        return videoResult;
+      } catch (error) {
+        console.warn('[SHORTFORM-BROLL] i2v slot ' + index + ' failed, using image fallback (Ken Burns):', error.message);
+        // Return the already-generated image as fallback
+        return imageResult;
+      }
+    }
+
+    return imageResult;
   }
 
-  const BATCH_SIZE = 3;
+  const BATCH_SIZE = 2;
   const allSuggestions = brollSuggestions.slice(0, maxAssets);
   const items = [];
 

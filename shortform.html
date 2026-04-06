@@ -318,6 +318,7 @@
       color: var(--muted);
       max-width: 560px;
     }
+    .duration-credit { font-size: 12px; color: #6B7280; font-weight: 400; margin-left: 2px; }
     .remaining-panel {
       min-width: 180px;
       padding: 16px;
@@ -1181,8 +1182,9 @@
           <p>키워드 또는 블로그 글을 바탕으로 30초 분량 대본을 만들고, 본인 목소리 파일을 붙이면 STT와 B-roll 소재가 자동 준비됩니다. Round 1에서는 기획, 음성, 자막, 소재 생성까지 연결합니다.</p>
         </div>
         <div class="remaining-panel">
-          <div class="remaining-label">오늘 남은 생성 횟수</div>
+          <div class="remaining-label">보유 크레딧</div>
           <div class="remaining-value" id="remainingCount">확인 중...</div>
+          <div id="creditFreeNote" style="display:none; font-size:12px; color:var(--accent); margin-top:2px;">30초 무료 체험 1회 가능</div>
         </div>
       </div>
       <div class="workflow-intro">
@@ -1248,16 +1250,16 @@
           <label class="input-label">영상 길이</label>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <label style="flex:1; min-width:60px; display:flex; align-items:center; gap:6px; border:1.5px solid var(--border); border-radius:10px; padding:8px 12px; background:#fff; cursor:pointer; font-size:14px; font-weight:600; transition:border-color 0.15s, background 0.15s;" onclick="this.parentElement.querySelectorAll('label').forEach(l=>{l.style.borderColor='var(--border)';l.style.background='#fff'});this.style.borderColor='var(--accent)';this.style.background='#FFF6F1'">
-              <input type="radio" name="targetDuration" value="30" checked style="accent-color:var(--accent)"> 30초
+              <input type="radio" name="targetDuration" value="30" checked style="accent-color:var(--accent)"> 30초 <span class="duration-credit">7cr</span><span id="freeBadge" style="display:none; background:var(--accent); color:#fff; font-size:11px; padding:1px 6px; border-radius:9px; margin-left:4px;">무료</span>
             </label>
             <label style="flex:1; min-width:60px; display:flex; align-items:center; gap:6px; border:1.5px solid var(--border); border-radius:10px; padding:8px 12px; background:#fff; cursor:pointer; font-size:14px; font-weight:600; transition:border-color 0.15s, background 0.15s;" onclick="this.parentElement.querySelectorAll('label').forEach(l=>{l.style.borderColor='var(--border)';l.style.background='#fff'});this.style.borderColor='var(--accent)';this.style.background='#FFF6F1'">
-              <input type="radio" name="targetDuration" value="45" style="accent-color:var(--accent)"> 45초
+              <input type="radio" name="targetDuration" value="45" style="accent-color:var(--accent)"> 45초 <span class="duration-credit">10cr</span>
             </label>
             <label style="flex:1; min-width:60px; display:flex; align-items:center; gap:6px; border:1.5px solid var(--border); border-radius:10px; padding:8px 12px; background:#fff; cursor:pointer; font-size:14px; font-weight:600; transition:border-color 0.15s, background 0.15s;" onclick="this.parentElement.querySelectorAll('label').forEach(l=>{l.style.borderColor='var(--border)';l.style.background='#fff'});this.style.borderColor='var(--accent)';this.style.background='#FFF6F1'">
-              <input type="radio" name="targetDuration" value="60" style="accent-color:var(--accent)"> 60초
+              <input type="radio" name="targetDuration" value="60" style="accent-color:var(--accent)"> 60초 <span class="duration-credit">14cr</span>
             </label>
             <label style="flex:1; min-width:60px; display:flex; align-items:center; gap:6px; border:1.5px solid var(--border); border-radius:10px; padding:8px 12px; background:#fff; cursor:pointer; font-size:14px; font-weight:600; transition:border-color 0.15s, background 0.15s;" onclick="this.parentElement.querySelectorAll('label').forEach(l=>{l.style.borderColor='var(--border)';l.style.background='#fff'});this.style.borderColor='var(--accent)';this.style.background='#FFF6F1'">
-              <input type="radio" name="targetDuration" value="90" style="accent-color:var(--accent)"> 90초
+              <input type="radio" name="targetDuration" value="90" style="accent-color:var(--accent)"> 90초 <span class="duration-credit">18cr</span>
             </label>
           </div>
         </div>
@@ -1270,6 +1272,7 @@
         <div class="btn-row">
           <button type="button" class="primary-btn" id="generateScriptBtn">대본 생성</button>
         </div>
+        <div id="creditWarning" style="display:none; color:#DC2626; font-size:13px; text-align:center; margin-top:4px;"></div>
         <div class="helper-text">API: <code>POST /api/shortform-script</code></div>
         <div class="error-box" id="scriptError"></div>
 
@@ -1503,6 +1506,9 @@
         script: { hook: '', point: '', cta: '' },
         brollSuggestions: [],
         estimatedSeconds: 0,
+        creditCosts: { 30: 7, 45: 10, 60: 14, 90: 18 },
+        freeAvailable: false,
+        userCredits: undefined,
         step1Complete: false,
         step2Complete: false,
         step3Complete: false,
@@ -1667,25 +1673,42 @@
         if (!getToken()) els.signupBanner.style.display = 'block';
       }
 
-      function formatRemainingText(remaining, limit) {
-        if (typeof remaining !== 'number') return '확인 불가';
-        if (remaining >= 999) return '관리자 모드';
-        if (typeof limit === 'number' && limit === 0) return '사용 제한';
-        if (typeof limit === 'number' && limit > 0) return remaining + '/' + limit + '회';
-        return remaining + '회';
-      }
-
-      function updateRemainingUI(remaining, limit) {
-        els.remainingCount.textContent = formatRemainingText(remaining, limit);
-        if (remaining >= 999) {
+      function updateRemainingUI(credits) {
+        if (typeof credits !== 'number') {
+          els.remainingCount.textContent = '확인 불가';
+          return;
+        }
+        if (credits >= 99999) {
+          els.remainingCount.textContent = '관리자 모드';
           els.remainingCount.style.color = '#2563EB';
           return;
         }
-        if (typeof remaining === 'number' && remaining <= 1) {
-          els.remainingCount.style.color = '#DC2626';
+        els.remainingCount.textContent = credits + 'cr';
+        els.remainingCount.style.color = credits <= 7 ? '#DC2626' : 'var(--accent)';
+        state.userCredits = credits;
+        updateCreditWarning();
+      }
+
+      function updateCreditWarning() {
+        var sel = document.querySelector('input[name="targetDuration"]:checked');
+        var dur = sel ? Number(sel.value) : 30;
+        var cost = state.creditCosts[dur] || 7;
+        var warn = document.getElementById('creditWarning');
+        var freeBadge = document.getElementById('freeBadge');
+        var freeNote = document.getElementById('creditFreeNote');
+        if (state.freeAvailable && dur === 30) {
+          if (warn) warn.style.display = 'none';
+          if (freeBadge) freeBadge.style.display = '';
+          if (freeNote) freeNote.style.display = '';
           return;
         }
-        els.remainingCount.style.color = 'var(--accent)';
+        if (freeBadge) freeBadge.style.display = 'none';
+        if (freeNote) freeNote.style.display = 'none';
+        if (typeof state.userCredits === 'number' && state.userCredits < cost) {
+          if (warn) { warn.textContent = '크레딧이 부족합니다. ' + cost + 'cr 필요 (보유 ' + state.userCredits + 'cr)'; warn.style.display = ''; }
+        } else {
+          if (warn) warn.style.display = 'none';
+        }
       }
 
       async function loadRemaining() {
@@ -1696,11 +1719,14 @@
           });
           var data = await parseResponseJson(response);
           if (response.status === 401) {
-            updateRemainingUI(undefined, undefined);
+            updateRemainingUI(undefined);
             return;
           }
-          if (!response.ok) throw new Error(extractErrorMessage(data, response.status, '남은 횟수를 불러오지 못했습니다.'));
-          updateRemainingUI(toNumber(data && data.remaining), toNumber(data && data.limit));
+          if (!response.ok) throw new Error(extractErrorMessage(data, response.status, '크레딧을 불러오지 못했습니다.'));
+          state.freeAvailable = !!(data && data.freeAvailable);
+          state.userCredits = toNumber(data && data.credits);
+          if (data && data.creditCosts) state.creditCosts = data.creditCosts;
+          updateRemainingUI(state.userCredits);
         } catch (e) {
           els.remainingCount.textContent = '확인 실패';
           els.remainingCount.style.color = '#6B7280';
@@ -2102,8 +2128,13 @@
             openAuthModal();
             return;
           }
+          if (response.status === 402) {
+            var needed = (data && data.required) || '?';
+            showBox(els.scriptError, '크레딧이 부족합니다. ' + needed + 'cr이 필요합니다. <a href="/payment.html" style="color:var(--accent);font-weight:600;">충전하기</a>');
+            return;
+          }
           if (response.status === 429) {
-            showBox(els.scriptError, extractErrorMessage(data, response.status, '오늘 사용 횟수를 초과했습니다.'));
+            showBox(els.scriptError, extractErrorMessage(data, response.status, '사용 횟수를 초과했습니다.'));
             return;
           }
           if (!response.ok) throw new Error(extractErrorMessage(data, response.status, '대본 생성에 실패했습니다.'));
@@ -2118,7 +2149,12 @@
           updateEstimatedTime();
           markStep1Complete();
 
-          if (typeof data.remaining === 'number') updateRemainingUI(data.remaining, toNumber(data.limit));
+          if (data && data.credits) {
+            state.userCredits = data.credits.remaining;
+            state.freeAvailable = false;
+            updateRemainingUI(data.credits.remaining);
+            if (data.credits.wasFree) showBox(els.scriptError, '<span style="color:#16A34A;">무료 체험으로 생성되었습니다!</span>');
+          }
           if (state.step2Complete) {
             showBox(els.materialsHint, '대본이 바뀌어 Step 3를 다시 생성합니다.');
             queueReprocess();
@@ -3001,6 +3037,9 @@
       updateTrimSummary();
       updateLocks();
       loadRemaining();
+      document.querySelectorAll('input[name="targetDuration"]').forEach(function(radio) {
+        radio.addEventListener('change', function() { updateCreditWarning(); });
+      });
       showSignupBannerIfNeeded();
     })();
   </script>

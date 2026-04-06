@@ -1,9 +1,9 @@
 import { resolveAdmin, setCorsHeaders, extractToken, resolveSessionEmail, getRedis, getClientIp } from './_helpers.js';
-import { logUsage } from './_db.js';
+import { getDb, logUsage } from './_db.js';
 
 export const config = { maxDuration: 60 };
 
-const FREE_DAILY_LIMIT = 1;
+const SHORTFORM_CREDIT_COSTS = { 30: 7, 45: 10, 60: 14, 90: 18 };
 const MODEL = 'claude-sonnet-4-20250514';
 
 const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다. 사용자의 입력을 바탕으로 30~60초 분량의 숏폼 대본을 HPC(Hook-Point-CTA) 구조로 작성하세요.
@@ -38,27 +38,6 @@ const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다.
 - 각 항목은 짧은 B-roll 이미지 설명
 - 예: "close-up of hands typing on laptop"
 `;
-
-function getKSTDate() {
-  const now = new Date();
-  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  return kst.toISOString().slice(0, 10);
-}
-
-function getRateLimitKey(email) {
-  return `ratelimit:shortform-script:${email}:${getKSTDate()}`;
-}
-
-function getTTLUntilMidnightKST() {
-  const now = new Date();
-  const kstOffset = 9 * 60 * 60 * 1000;
-  const kstNow = new Date(now.getTime() + kstOffset);
-  const nextMidnight = new Date(kstNow);
-  nextMidnight.setUTCHours(0, 0, 0, 0);
-  nextMidnight.setUTCDate(nextMidnight.getUTCDate() + 1);
-  const seconds = Math.ceil((nextMidnight.getTime() - kstNow.getTime()) / 1000);
-  return Math.max(seconds, 60);
-}
 
 function buildUserPrompt(topic, blogText, tone, targetDurationSec) {
   const durationGuide = {
@@ -228,6 +207,22 @@ async function callClaude(topic, blogText, tone, targetDurationSec) {
   return buildScriptPayload(extractJsonObject(extractClaudeText(data)));
 }
 
+/**
+ * 숏폼 크레딧 환불 (다른 API에서 호출 가능)
+ * 에러 시 console.error만 — 환불 실패가 전체 요청을 깨트리면 안 됨
+ */
+export async function refundShortformCredits(email, creditCost, reason) {
+  try {
+    const sql = getDb();
+    await sql`UPDATE users SET credits = credits + ${creditCost}, updated_at = NOW()
+      WHERE email = ${email} RETURNING credits`;
+    await sql`INSERT INTO credit_ledger (user_email, amount, type, reason)
+      VALUES (${email}, ${creditCost}, 'refund', ${reason})`;
+  } catch (err) {
+    console.error('[SHORTFORM] refundShortformCredits failed:', err.message, { email, creditCost, reason });
+  }
+}
+
 export default async function handler(req, res) {
   setCorsHeaders(res, req);
 
@@ -239,21 +234,26 @@ export default async function handler(req, res) {
     try {
       const isAdmin = await resolveAdmin(req);
       if (isAdmin) {
-        return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
+        return res.status(200).json({ remaining: 999, admin: true, creditCosts: SHORTFORM_CREDIT_COSTS });
       }
 
       const email = await resolveSessionEmail(extractToken(req));
       if (!email) {
-        return res.status(200).json({ remaining: 0, limit: FREE_DAILY_LIMIT, loginRequired: true });
+        return res.status(200).json({ remaining: 0, loginRequired: true, creditCosts: SHORTFORM_CREDIT_COSTS });
       }
 
-      const count = (await getRedis().get(getRateLimitKey(email))) || 0;
+      // 무료 체험 사용 여부 확인
+      const freeUsed = await getRedis().get(`shortform-free:${email}`);
+      const sql = getDb();
+      const [user] = await sql`SELECT credits FROM users WHERE email = ${email}`;
+
       return res.status(200).json({
-        remaining: Math.max(FREE_DAILY_LIMIT - count, 0),
-        limit: FREE_DAILY_LIMIT,
+        freeAvailable: !freeUsed,
+        credits: user?.credits || 0,
+        creditCosts: SHORTFORM_CREDIT_COSTS,
       });
     } catch {
-      return res.status(200).json({ remaining: 0, limit: FREE_DAILY_LIMIT });
+      return res.status(200).json({ remaining: 0, creditCosts: SHORTFORM_CREDIT_COSTS });
     }
   }
 
@@ -261,8 +261,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  let rateLimitKey = null;
-  let rateLimitIncremented = false;
+  let creditCharged = false;
+  let creditCost = 0;
+  let email = null;
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
@@ -276,40 +277,73 @@ export default async function handler(req, res) {
     }
 
     const isAdmin = await resolveAdmin(req);
-    const email = await resolveSessionEmail(extractToken(req));
+    email = await resolveSessionEmail(extractToken(req));
     if (!isAdmin && !email) {
       return res.status(401).json({ error: '로그인이 필요합니다.' });
     }
 
-    if (!isAdmin) {
-      rateLimitKey = getRateLimitKey(email);
-      const newCount = await getRedis().incr(rateLimitKey);
-      rateLimitIncremented = true;
-      await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
+    let wasFree = false;
 
-      if (newCount > FREE_DAILY_LIMIT) {
-        await getRedis().decr(rateLimitKey);
-        rateLimitIncremented = false;
-        return res.status(429).json({
-          error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
-          remaining: 0,
-        });
+    if (!isAdmin) {
+      creditCost = SHORTFORM_CREDIT_COSTS[targetDurationSec] || SHORTFORM_CREDIT_COSTS[30];
+
+      // 30초 무료 체험 1회 확인
+      const freeKey = `shortform-free:${email}`;
+      const freeUsed = await getRedis().get(freeKey);
+
+      if (!freeUsed && targetDurationSec === 30) {
+        // 무료 체험 사용
+        wasFree = true;
+        await getRedis().set(freeKey, '1');
+      } else {
+        // 크레딧 차감 (원자적)
+        const sql = getDb();
+        const result = await sql`UPDATE users SET credits = credits - ${creditCost}, updated_at = NOW()
+          WHERE email = ${email} AND credits >= ${creditCost}
+          RETURNING credits`;
+
+        if (result.length === 0) {
+          return res.status(402).json({
+            error: '크레딧이 부족합니다. 충전 후 이용해주세요.',
+            required: creditCost,
+            code: 'INSUFFICIENT_CREDITS',
+          });
+        }
+
+        creditCharged = true;
+
+        // credit_ledger 기록
+        await sql`INSERT INTO credit_ledger (user_email, amount, type, reason)
+          VALUES (${email}, ${-creditCost}, 'usage', ${'shortform-script-' + targetDurationSec + 's'})`;
       }
     }
 
     const script = await callClaude(topic, blogText, tone, targetDurationSec);
     await logUsage(email, 'shortform-script', tone, getClientIp(req));
 
-    const currentCount = rateLimitKey ? ((await getRedis().get(rateLimitKey)) || 0) : 0;
-    const remaining = isAdmin ? 999 : Math.max(FREE_DAILY_LIMIT - currentCount, 0);
+    // 현재 잔액 조회
+    let remainingCredits = 0;
+    if (!isAdmin && email) {
+      try {
+        const sql = getDb();
+        const [user] = await sql`SELECT credits FROM users WHERE email = ${email}`;
+        remainingCredits = user?.credits || 0;
+      } catch (_) {}
+    }
 
-    return res.status(200).json({ script, remaining, limit: FREE_DAILY_LIMIT });
+    return res.status(200).json({
+      script,
+      credits: {
+        used: wasFree ? 0 : creditCost,
+        remaining: isAdmin ? 999 : remainingCredits,
+        wasFree,
+      },
+    });
   } catch (error) {
     console.error('shortform-script API Error:', error);
-    if (rateLimitIncremented && rateLimitKey) {
-      try {
-        await getRedis().decr(rateLimitKey);
-      } catch (_) {}
+    // 크레딧 차감 후 대본 생성 실패 시 자동 환불
+    if (creditCharged && email) {
+      await refundShortformCredits(email, creditCost, 'shortform-script-error-refund');
     }
     return res.status(500).json({ error: '숏폼 대본 생성 중 오류가 발생했습니다.' });
   }
