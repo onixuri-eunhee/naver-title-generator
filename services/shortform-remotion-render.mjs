@@ -74,6 +74,7 @@ export async function renderShortformRemotion({
     browserExecutable,
     chromeMode,
     overwrite: true,
+    timeoutInMilliseconds: 300000,
     chromiumOptions: {
       gl: 'angle',
     },
