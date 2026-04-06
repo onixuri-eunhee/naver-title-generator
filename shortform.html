@@ -2112,62 +2112,66 @@
         }
       }
 
-      function pickRecordingMimeType() {
-        if (typeof MediaRecorder === 'undefined') return '';
-        var candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
-        for (var i = 0; i < candidates.length; i++) {
-          if (MediaRecorder.isTypeSupported(candidates[i])) return candidates[i];
+      // ─── WAV 녹음 (Web Audio API) ───
+      function encodeWavFromFloat32(samples, sampleRate) {
+        var numChannels = 1;
+        var bitsPerSample = 16;
+        var byteRate = sampleRate * numChannels * bitsPerSample / 8;
+        var blockAlign = numChannels * bitsPerSample / 8;
+        var dataSize = samples.length * blockAlign;
+        var buffer = new ArrayBuffer(44 + dataSize);
+        var view = new DataView(buffer);
+        function writeStr(offset, str) { for (var i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); }
+        writeStr(0, 'RIFF');
+        view.setUint32(4, 36 + dataSize, true);
+        writeStr(8, 'WAVE');
+        writeStr(12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, byteRate, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, bitsPerSample, true);
+        writeStr(36, 'data');
+        view.setUint32(40, dataSize, true);
+        for (var i = 0; i < samples.length; i++) {
+          var s = Math.max(-1, Math.min(1, samples[i]));
+          view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
         }
-        return '';
+        return new Blob([buffer], { type: 'audio/wav' });
       }
 
       async function startRecording() {
         showBox(els.audioError, '');
         showBox(els.audioSuccess, '');
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           showBox(els.audioError, '이 브라우저에서는 녹음을 지원하지 않습니다. 오디오 파일 업로드를 사용해주세요.');
           return;
         }
         try {
-          if (state.mediaRecorder && state.mediaRecorder.state === 'recording') return;
-          var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          var mimeType = pickRecordingMimeType();
-          var recorderOptions = { audioBitsPerSecond: STT_RECORDING_AUDIO_BITS_PER_SECOND };
-          if (mimeType) recorderOptions.mimeType = mimeType;
+          if (state._wavRecording) return;
+          var stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 44100, channelCount: 1, echoCancellation: true, noiseSuppression: true } });
           state.mediaStream = stream;
-          state.recordChunks = [];
-          try {
-            state.mediaRecorder = new MediaRecorder(stream, recorderOptions);
-          } catch (_) {
-            state.mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream);
-          }
-          state.audioMimeType = mimeType || state.mediaRecorder.mimeType || 'audio/webm';
 
-          state.mediaRecorder.addEventListener('dataavailable', function(event) {
-            if (event.data && event.data.size > 0) state.recordChunks.push(event.data);
-          });
+          var audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
+          var source = audioCtx.createMediaStreamSource(stream);
+          var processor = audioCtx.createScriptProcessor(4096, 1, 1);
+          var chunks = [];
 
-          state.mediaRecorder.addEventListener('stop', function() {
-            stopMediaTracks();
-            clearInterval(state.recordTimer);
-            els.recordStatus.classList.remove('recording');
-            if (!state.recordChunks.length) {
-              els.recordStatus.textContent = '녹음된 데이터가 없습니다.';
-              return;
-            }
-            var blob = new Blob(state.recordChunks, { type: state.audioMimeType || 'audio/webm' });
-            if (blob.size > STT_MAX_UPLOAD_BYTES) {
-              clearAudioSelection();
-              showBox(els.audioError, '녹음 파일이 너무 큽니다. 30초 이내로 다시 녹음하거나 더 짧게 나눠주세요. 현재 ' + formatFileSize(blob.size) + '이며 STT 업로드 한도는 4MB입니다.');
-              els.recordStatus.textContent = '녹음 파일이 커서 업로드할 수 없습니다.';
-              return;
-            }
-            applyAudioBlob(blob, 'recording.' + guessExtensionFromMime(state.audioMimeType), state.audioMimeType, '브라우저 녹음');
-            els.recordStatus.textContent = '녹음이 완료되었습니다.';
-            els.recordStopBtn.disabled = true;
-            els.recordStartBtn.disabled = false;
-            els.recordResetBtn.disabled = false;
-          });
+          processor.onaudioprocess = function(e) {
+            var input = e.inputBuffer.getChannelData(0);
+            chunks.push(new Float32Array(input));
+          };
+          source.connect(processor);
+          processor.connect(audioCtx.destination);
+
+          state._wavRecording = true;
+          state._wavAudioCtx = audioCtx;
+          state._wavProcessor = processor;
+          state._wavSource = source;
+          state._wavChunks = chunks;
+          state.audioMimeType = 'audio/wav';
 
           state.recordStartedAt = Date.now();
           state.recordTimer = window.setInterval(function() {
@@ -2175,7 +2179,6 @@
             els.recordStatus.textContent = '녹음 중 · ' + formatSeconds(elapsed);
           }, 300);
 
-          state.mediaRecorder.start();
           els.recordStatus.textContent = '녹음 중 · 0:00';
           els.recordStatus.classList.add('recording');
           els.recordStartBtn.disabled = true;
@@ -2189,9 +2192,44 @@
       }
 
       function stopRecording() {
-        if (!state.mediaRecorder || state.mediaRecorder.state !== 'recording') return;
-        state.mediaRecorder.stop();
+        if (!state._wavRecording) return;
+        state._wavRecording = false;
+
+        try { state._wavProcessor.disconnect(); } catch (_) {}
+        try { state._wavSource.disconnect(); } catch (_) {}
+        try { state._wavAudioCtx.close(); } catch (_) {}
+
+        stopMediaTracks();
+        clearInterval(state.recordTimer);
+        els.recordStatus.classList.remove('recording');
+
+        var chunks = state._wavChunks || [];
+        if (!chunks.length) {
+          els.recordStatus.textContent = '녹음된 데이터가 없습니다.';
+          return;
+        }
+
+        var totalLength = chunks.reduce(function(sum, c) { return sum + c.length; }, 0);
+        var merged = new Float32Array(totalLength);
+        var offset = 0;
+        for (var i = 0; i < chunks.length; i++) {
+          merged.set(chunks[i], offset);
+          offset += chunks[i].length;
+        }
+
+        var blob = encodeWavFromFloat32(merged, 44100);
+        if (blob.size > STT_MAX_UPLOAD_BYTES) {
+          clearAudioSelection();
+          showBox(els.audioError, '녹음 파일이 너무 큽니다. 30초 이내로 다시 녹음해주세요. 현재 ' + formatFileSize(blob.size));
+          els.recordStatus.textContent = '녹음 파일이 커서 업로드할 수 없습니다.';
+          return;
+        }
+        state.audioMimeType = 'audio/wav';
+        applyAudioBlob(blob, 'recording.wav', 'audio/wav', '브라우저 녹음');
+        els.recordStatus.textContent = '녹음이 완료되었습니다.';
         els.recordStopBtn.disabled = true;
+        els.recordStartBtn.disabled = false;
+        els.recordResetBtn.disabled = false;
       }
 
       function stopMediaTracks() {
