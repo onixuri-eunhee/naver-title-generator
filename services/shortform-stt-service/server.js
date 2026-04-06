@@ -164,6 +164,10 @@ async function convertToWav(inputBuffer, inputMimeType) {
     const wavBuffer = await fs.readFile(outputPath);
     console.log('[AUDIO] Converted WebM→WAV:', inputBuffer.length, '→', wavBuffer.length, 'bytes');
     return { buffer: wavBuffer, mimeType: 'audio/wav', fileName: 'audio.wav' };
+  } catch (err) {
+    console.error('[AUDIO] WAV conversion failed:', err.message);
+    console.warn('[AUDIO] Falling back to original audio (may cause rendering issues)');
+    return { buffer: inputBuffer, mimeType: inputMimeType, fileName: 'audio.webm' };
   } finally {
     try { await fs.unlink(inputPath); } catch (_) {}
     try { await fs.unlink(outputPath); } catch (_) {}
@@ -303,8 +307,6 @@ async function handleRemotionRenderRequest({ rawBody, req }) {
     };
   } catch (renderErr) {
     console.error('[REMOTION-RENDER] Failed:', renderErr.message, renderErr.stack);
-    tempAudioStore.delete(audioToken);
-    await fs.rm(outputLocation, { force: true }).catch(() => {});
     return {
       status: 500,
       body: JSON.stringify({ error: '영상 렌더링 실패: ' + renderErr.message }),
