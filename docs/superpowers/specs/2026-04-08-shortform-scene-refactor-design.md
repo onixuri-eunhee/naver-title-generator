@@ -120,27 +120,50 @@ AI 재호출 없이 코드만으로 처리:
 4. **visualStyle 강제 주입**
    - AI가 생성한 visualStyle 무시, 선택된 컨셉의 기본값으로 교체
 
-## 5. B-roll 프롬프트 구조
+## 5. B-roll 자산 생성 전략
 
-### 변경 전 (buildVisualPrompt)
+### 핵심 원칙
 
+**퀄리티 우선.** 텍스트 카드 도입으로 자연스럽게 API 호출이 줄어들지만, broll 씬의 퀄리티는 유지/강화한다.
+
+### 씬 type별 처리
+
+| type | 자산 생성 | 비용 |
+|------|----------|------|
+| broll (영상 슬롯) | Imagen 3 이미지 → Veo i2v 영상 변환 | ~$0.06 |
+| broll (이미지 슬롯) | Imagen 3 이미지 → Remotion Ken Burns + 모션 오버레이 | ~$0.01 |
+| text | Remotion 텍스트 카드 (API 호출 없음) | $0 |
+
+### 자산 호출 수 비교 (30초 기준)
+
+```
+현재: Imagen 12개 생성 → 5개만 사용 (7개 낭비)
+변경: broll 5씬만 Imagen 호출 + text 2씬 호출 없음 = 총 5개 (58% 감소, 낭비 0)
+```
+
+### 영상 슬롯 배치
+
+기존 i2v 교차 배치 로직 유지 — 첫 씬 + 끝 씬 필수, 중간 교차.
+i2v 실패 시 Ken Burns 폴백 (기존 유지).
+
+### 프롬프트 구조 변경
+
+변경 전:
 ```
 {suggestion}
 Create a cinematic vertical 9:16 still image...
 Story context: {scriptContext}
 ```
 
-### 변경 후
-
+변경 후:
 ```
 {scene.visual}
 Vertical 9:16 still image for short-form video. No on-screen text.
 Style: {concept.visualStyle}
 ```
 
-- scriptContext 제거 (각 씬이 이미 대본과 매핑되어 있으므로 불필요)
+- scriptContext 제거 (씬↔대본 1:1 매핑으로 불필요)
 - visualStyle로 스타일 일관성 확보
-- 프롬프트 길이 단축 → 토큰 절약
 
 ## 6. 음성 파이프라인 변경
 
