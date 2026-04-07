@@ -1141,6 +1141,33 @@
       .step-lock { padding-top: 112px; }
       .record-guide { padding: 14px; }
     }
+    .subtitle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .subtitle-row:last-child { border-bottom: none; }
+    .subtitle-time {
+      font-size: 11px;
+      color: #6B7280;
+      min-width: 50px;
+      font-family: monospace;
+    }
+    .subtitle-text-input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: 'Noto Sans KR', sans-serif;
+      background: #FAFBFC;
+    }
+    .subtitle-text-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -1265,6 +1292,37 @@
         </div>
 
         <div class="input-group">
+          <label class="input-label">영상 컨셉</label>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <label style="flex:1; min-width:80px; display:flex; flex-direction:column; align-items:center; gap:2px; border:1.5px solid var(--accent); border-radius:10px; padding:10px 8px; background:#FFF6F1; cursor:pointer; font-size:13px; transition:border-color 0.15s, background 0.15s;" onclick="this.parentElement.querySelectorAll('label').forEach(l=>{l.style.borderColor='var(--border)';l.style.background='#fff'});this.style.borderColor='var(--accent)';this.style.background='#FFF6F1'">
+              <input type="radio" name="concept" value="cinematic" checked style="display:none">
+              <strong>시네마틱</strong>
+              <span style="color:#6B7280; font-size:11px;">따뜻한 영화 느낌</span>
+            </label>
+            <label style="flex:1; min-width:80px; display:flex; flex-direction:column; align-items:center; gap:2px; border:1.5px solid var(--border); border-radius:10px; padding:10px 8px; background:#fff; cursor:pointer; font-size:13px; transition:border-color 0.15s, background 0.15s;" onclick="this.parentElement.querySelectorAll('label').forEach(l=>{l.style.borderColor='var(--border)';l.style.background='#fff'});this.style.borderColor='var(--accent)';this.style.background='#FFF6F1'">
+              <input type="radio" name="concept" value="minimal" style="display:none">
+              <strong>미니멀</strong>
+              <span style="color:#6B7280; font-size:11px;">깔끔한 모던 스타일</span>
+            </label>
+            <label style="flex:1; min-width:80px; display:flex; flex-direction:column; align-items:center; gap:2px; border:1.5px solid var(--border); border-radius:10px; padding:10px 8px; background:#fff; cursor:pointer; font-size:13px; transition:border-color 0.15s, background 0.15s;" onclick="this.parentElement.querySelectorAll('label').forEach(l=>{l.style.borderColor='var(--border)';l.style.background='#fff'});this.style.borderColor='var(--accent)';this.style.background='#FFF6F1'">
+              <input type="radio" name="concept" value="dynamic" style="display:none">
+              <strong>다이나믹</strong>
+              <span style="color:#6B7280; font-size:11px;">강렬한 컬러 전환</span>
+            </label>
+            <label style="flex:1; min-width:80px; display:flex; flex-direction:column; align-items:center; gap:2px; border:1.5px solid var(--border); border-radius:10px; padding:10px 8px; background:#fff; cursor:pointer; font-size:13px; transition:border-color 0.15s, background 0.15s;" onclick="this.parentElement.querySelectorAll('label').forEach(l=>{l.style.borderColor='var(--border)';l.style.background='#fff'});this.style.borderColor='var(--accent)';this.style.background='#FFF6F1'">
+              <input type="radio" name="concept" value="natural" style="display:none">
+              <strong>내추럴</strong>
+              <span style="color:#6B7280; font-size:11px;">자연광 일상 분위기</span>
+            </label>
+            <label style="flex:1; min-width:80px; display:flex; flex-direction:column; align-items:center; gap:2px; border:1.5px solid var(--border); border-radius:10px; padding:10px 8px; background:#fff; cursor:pointer; font-size:13px; transition:border-color 0.15s, background 0.15s;" onclick="this.parentElement.querySelectorAll('label').forEach(l=>{l.style.borderColor='var(--border)';l.style.background='#fff'});this.style.borderColor='var(--accent)';this.style.background='#FFF6F1'">
+              <input type="radio" name="concept" value="random" style="display:none">
+              <strong>랜덤</strong>
+              <span style="color:#6B7280; font-size:11px;">매번 다른 스타일</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="input-group">
           <label class="input-label" for="blogTextInput">블로그 글 붙여넣기 <span style="font-weight:400; color:#6B7280;">(선택)</span></label>
           <textarea id="blogTextInput" placeholder="원문이 있으면 붙여넣어 주세요. 없으면 키워드만으로도 생성됩니다."></textarea>
         </div>
@@ -1319,28 +1377,21 @@
             <span class="step-number">02</span>
             <span class="step-label">Step 2</span>
           </div>
-          <h2 class="step-title">음성 녹음/업로드</h2>
-          <p class="step-description">브라우저에서 바로 녹음하거나, 이미 만들어 둔 본인 음성 파일을 올릴 수 있습니다.</p>
+          <h2 class="step-title">음성 선택</h2>
+          <p class="step-description">TTS로 자동 생성하거나, 본인 음성 파일을 업로드할 수 있습니다.</p>
         </div>
         <div class="step-check" id="step2Check">✓</div>
       </div>
       <div class="step-body">
         <fieldset id="step2Fieldset" style="border:none;">
-          <div class="record-guide">
-            <div class="record-guide-mark">!</div>
-            <p>유튜브는 AI 음성으로 만든 영상을 양산형 콘텐츠로 판단하여 수익화를 거부하거나 채널을 정지시킬 수 있습니다. 본인 목소리로 녹음하면 콘텐츠 안전성이 보장되고, 시청자 신뢰도도 높아집니다.</p>
-          </div>
-
           <div class="record-layout">
             <div class="record-panel">
-              <div class="panel-title">브라우저 녹음</div>
-              <div class="panel-desc">MediaRecorder API로 바로 녹음합니다. 조용한 공간에서 30초 내외로 읽어주세요.</div>
+              <div class="panel-title">TTS 자동 생성</div>
+              <div class="panel-desc">ElevenLabs AI 음성으로 대본을 읽어줍니다. 자연스러운 한국어 음성입니다.</div>
               <div class="btn-row">
-                <button type="button" class="primary-btn" id="recordStartBtn">녹음 시작</button>
-                <button type="button" class="secondary-btn" id="recordStopBtn" disabled>녹음 중지</button>
-                <button type="button" class="ghost-btn" id="recordResetBtn" disabled>다시 녹음</button>
+                <button type="button" class="primary-btn" id="ttsGenerateBtn">음성 생성</button>
               </div>
-              <div class="record-status" id="recordStatus">녹음 대기 중</div>
+              <div class="record-status" id="ttsStatus">대본이 준비되면 음성을 생성할 수 있습니다.</div>
             </div>
 
             <div class="upload-panel">
@@ -1425,6 +1476,19 @@
             </div>
           </div>
         </div>
+
+          <div id="subtitleEditSection" style="display:none; margin-top:16px;">
+            <div style="background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div>
+                  <strong style="font-size:15px;">자막 편집</strong>
+                  <div style="font-size:12px; color:#6B7280; margin-top:2px;">자막 텍스트와 줄바꿈을 수정할 수 있어요.</div>
+                </div>
+                <button type="button" class="primary-btn" id="confirmSubtitlesBtn" style="padding:8px 20px; font-size:13px;">확인 후 계속</button>
+              </div>
+              <div id="subtitleTimeline" style="max-height:400px; overflow-y:auto;"></div>
+            </div>
+          </div>
       </div>
     </section>
 
@@ -1919,7 +1983,20 @@
           if (Array.isArray(nested.brollSuggestions) && nested.brollSuggestions.length) brollSuggestions = nested.brollSuggestions;
         });
 
-        return { script: script, estimatedSeconds: estimatedSeconds, brollSuggestions: brollSuggestions };
+        var scenes = null;
+        var visualStyle = '';
+        var textCardTemplate = '';
+        var conceptKey = '';
+        candidates.forEach(function(candidate) {
+          if (!candidate || typeof candidate !== 'object') return;
+          var nested = candidate.hpc && typeof candidate.hpc === 'object' ? candidate.hpc : candidate;
+          if (!scenes && Array.isArray(nested.scenes) && nested.scenes.length) scenes = nested.scenes;
+          if (!visualStyle && nested.visualStyle) visualStyle = nested.visualStyle;
+          if (!textCardTemplate && nested.textCardTemplate) textCardTemplate = nested.textCardTemplate;
+          if (!conceptKey && nested.conceptKey) conceptKey = nested.conceptKey;
+        });
+
+        return { script: script, estimatedSeconds: estimatedSeconds, brollSuggestions: brollSuggestions, scenes: scenes, visualStyle: visualStyle, textCardTemplate: textCardTemplate, conceptKey: conceptKey };
       }
 
       function normalizeSttResponse(data) {
@@ -2025,6 +2102,62 @@
         }).join('');
       }
 
+      function formatSubtitleTime(sec) {
+        var m = Math.floor(sec / 60);
+        var s = Math.floor(sec % 60);
+        var ms = Math.floor((sec % 1) * 10);
+        return (m > 0 ? m + ':' : '') + (s < 10 && m > 0 ? '0' : '') + s + '.' + ms;
+      }
+
+      function renderSubtitleEditor(words) {
+        var container = document.getElementById('subtitleTimeline');
+        if (!container) return;
+        container.innerHTML = '';
+
+        // Group words into sentences (by punctuation or gap > 0.5s)
+        var sentences = [];
+        var bucket = [];
+        for (var i = 0; i < words.length; i++) {
+          bucket.push(words[i]);
+          var isEnd = /[.!?。！？]$/.test(words[i].text || words[i].word || '');
+          var hasGap = words[i + 1] && (words[i + 1].start - (words[i].end || words[i].start + 0.2)) > 0.5;
+          if (isEnd || hasGap || i === words.length - 1) {
+            var text = bucket.map(function(w) { return w.text || w.word || ''; }).join(' ').trim();
+            var start = bucket[0].start || 0;
+            sentences.push({ start: start, text: text, wordIndices: bucket.map(function(_, j) { return i - bucket.length + 1 + j; }) });
+            bucket = [];
+          }
+        }
+
+        sentences.forEach(function(sentence, idx) {
+          var row = document.createElement('div');
+          row.className = 'subtitle-row';
+          row.innerHTML = '<span class="subtitle-time">' + formatSubtitleTime(sentence.start) + '</span>' +
+            '<input type="text" class="subtitle-text-input" data-idx="' + idx + '" value="' + (sentence.text || '').replace(/"/g, '&quot;') + '">';
+          container.appendChild(row);
+        });
+
+        state.subtitleSentences = sentences;
+        document.getElementById('subtitleEditSection').style.display = '';
+      }
+
+      // Confirm subtitles button
+      var confirmSubBtn = document.getElementById('confirmSubtitlesBtn');
+      if (confirmSubBtn) {
+        confirmSubBtn.addEventListener('click', function() {
+          var inputs = document.querySelectorAll('.subtitle-text-input');
+          inputs.forEach(function(input) {
+            var idx = parseInt(input.dataset.idx);
+            if (state.subtitleSentences && state.subtitleSentences[idx]) {
+              state.subtitleSentences[idx].editedText = input.value;
+            }
+          });
+          document.getElementById('subtitleEditSection').style.display = 'none';
+          // Continue with rendering flow
+          if (typeof proceedAfterSubtitles === 'function') proceedAfterSubtitles();
+        });
+      }
+
       function renderBrollResults(items) {
         if (!items.length) {
           els.brollGrid.innerHTML = '<div class="empty-state" style="grid-column:1 / -1;">추천된 B-roll 소재가 없습니다.</div>';
@@ -2117,6 +2250,7 @@
               input: keyword,
               tone: getSelectedTone(),
               targetDurationSec: Number(document.querySelector('input[name="targetDuration"]:checked')?.value || 30),
+              concept: document.querySelector('input[name="concept"]:checked').value,
               blogText: els.blogTextInput.value.trim(),
               sourceText: els.blogTextInput.value.trim(),
               sourceType: els.blogTextInput.value.trim() ? 'blog' : 'keyword'
@@ -2145,6 +2279,10 @@
           state.script = normalized.script;
           state.estimatedSeconds = normalized.estimatedSeconds;
           state.brollSuggestions = normalized.brollSuggestions || [];
+          state.scenes = normalized.scenes || [];
+          state.visualStyle = normalized.visualStyle || '';
+          state.textCardTemplate = normalized.textCardTemplate || 'dark-gradient';
+          state.conceptKey = normalized.conceptKey || 'cinematic';
           renderScriptEditor(state.script);
           updateEstimatedTime();
           markStep1Complete();
@@ -2551,6 +2689,8 @@
         }
         var scriptContext = [state.script.hook, state.script.point, state.script.cta].filter(Boolean).join('\n\n').trim();
         return {
+          scenes: (state.scenes || []).filter(function(s) { return s.type === 'broll'; }),
+          visualStyle: state.visualStyle || '',
           brollSuggestions: suggestions.slice(0, targetCount),
           scriptContext: scriptContext
         };
@@ -2626,6 +2766,7 @@
           state.sttSegments = normalizeSttResponse(sttData || {});
           state.sttWords = normalizeSttWords(sttData || {});
           renderSttResults(state.sttSegments);
+          renderSubtitleEditor(state.sttWords || []);
           if (!sttProbeMode) {
             state.brollItems = normalizeBrollResponse(brollData || {});
             renderBrollResults(state.brollItems);
@@ -2669,6 +2810,48 @@
         els.recordStatus.textContent = '녹음 대기 중';
       });
       els.audioFileInput.addEventListener('change', handleAudioFileSelect);
+      // TTS 생성
+      var ttsBtn = document.getElementById('ttsGenerateBtn');
+      if (ttsBtn) {
+        ttsBtn.addEventListener('click', async function() {
+          var fullScript = [state.script.hook, state.script.point, state.script.cta].filter(Boolean).join('\n\n').trim();
+          if (!fullScript) {
+            showError('audioError', '먼저 대본을 생성해주세요.');
+            return;
+          }
+          ttsBtn.disabled = true;
+          var statusEl = document.getElementById('ttsStatus');
+          statusEl.textContent = '음성 생성 중...';
+          statusEl.className = 'record-status recording';
+          try {
+            var token = localStorage.getItem('ddukddak_token') || '';
+            var res = await fetch('/api/shortform-tts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+              body: JSON.stringify({ text: fullScript }),
+            });
+            if (!res.ok) {
+              var err = await res.json();
+              throw new Error(err.error || '음성 생성 실패');
+            }
+            var blob = await res.blob();
+            var audioUrl = URL.createObjectURL(blob);
+            var player = document.getElementById('audioPlayer');
+            player.src = audioUrl;
+            state.audioBlob = blob;
+            state.audioSource = 'tts';
+            document.getElementById('audioPreview').classList.add('show');
+            statusEl.textContent = '음성 생성 완료!';
+            statusEl.className = 'record-status';
+            onAudioReady();
+          } catch (e) {
+            statusEl.textContent = '음성 생성 실패: ' + e.message;
+            statusEl.className = 'record-status';
+          } finally {
+            ttsBtn.disabled = false;
+          }
+        });
+      }
       els.audioPlayer.addEventListener('loadedmetadata', function() {
         var duration = Number(els.audioPlayer.duration) || 0;
         if (!duration || !isFinite(duration)) return;
