@@ -26,6 +26,7 @@
     { "source": "/api/card-news", "destination": "/api/card-news" },
     { "source": "/api/shortform-script", "destination": "/api/shortform-script" },
     { "source": "/api/shortform-stt", "destination": "/api/shortform-stt" },
-    { "source": "/api/shortform-broll", "destination": "/api/shortform-broll" }
+    { "source": "/api/shortform-broll", "destination": "/api/shortform-broll" },
+    { "source": "/api/shortform-tts", "destination": "/api/shortform-tts" }
   ]
 }
