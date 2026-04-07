@@ -13,6 +13,8 @@ body { font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,sans-serif; b
 .header { background:#1e293b; border-bottom:1px solid #334155; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; }
 .header h1 { font-size:18px; }
 .header .badge { font-size:11px; background:#3b82f6; color:#fff; padding:2px 8px; border-radius:4px; margin-left:8px; }
+.header-right { display:flex; align-items:center; gap:12px; }
+.session-timer { font-size:11px; color:#94a3b8; }
 .container { max-width:1200px; margin:0 auto; padding:24px; }
 
 /* 인증 */
@@ -52,6 +54,16 @@ tr:hover { background:#1e293b80; }
 .pagination button.active { background:#3b82f6; border-color:#3b82f6; }
 .pagination button:disabled { opacity:0.3; cursor:not-allowed; }
 
+/* 크레딧 관리 */
+.credit-actions { display:flex; gap:8px; align-items:center; }
+.credit-actions input { width:80px; padding:4px 8px; border:1px solid #334155; border-radius:6px; background:#0f172a; color:#e2e8f0; font-size:12px; text-align:center; }
+.credit-actions button { padding:4px 10px; border:none; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; }
+.credit-actions .btn-add { background:#10b981; color:#fff; }
+.credit-actions .btn-sub { background:#ef4444; color:#fff; }
+.credit-result { font-size:11px; margin-left:8px; }
+.credit-result.ok { color:#4ade80; }
+.credit-result.err { color:#f87171; }
+
 /* 로그 */
 .log-row { display:flex; gap:12px; padding:6px 0; border-bottom:1px solid #1e293b20; font-size:12px; }
 .log-time { color:#64748b; min-width:140px; }
@@ -88,7 +100,10 @@ tr:hover { background:#1e293b80; }
       <h1>뚝딱툴 관리자</h1>
       <span class="badge">ADMIN</span>
     </div>
-    <button onclick="logout()" style="padding:6px 12px; border:1px solid #475569; border-radius:6px; background:transparent; color:#94a3b8; cursor:pointer; font-size:12px;">로그아웃</button>
+    <div class="header-right">
+      <span class="session-timer" id="sessionTimer"></span>
+      <button onclick="logout()" style="padding:6px 12px; border:1px solid #475569; border-radius:6px; background:transparent; color:#94a3b8; cursor:pointer; font-size:12px;">로그아웃</button>
+    </div>
   </div>
 
   <div class="container">
@@ -116,7 +131,7 @@ tr:hover { background:#1e293b80; }
       </div>
     </div>
 
-    <!-- 사용자 목록 -->
+    <!-- 사용자 목록 + 크레딧 관리 -->
     <div class="table-card">
       <h3>사용자 목록</h3>
       <div class="search-bar">
@@ -124,7 +139,7 @@ tr:hover { background:#1e293b80; }
         <button onclick="searchUsers()">검색</button>
       </div>
       <table>
-        <thead><tr><th>#</th><th>이메일</th><th>이름</th><th>전화번호</th><th>크레딧</th><th>가입일</th></tr></thead>
+        <thead><tr><th>#</th><th>이메일</th><th>이름</th><th>전화번호</th><th>크레딧</th><th>가입일</th><th>크레딧 관리</th></tr></thead>
         <tbody id="usersBody"></tbody>
       </table>
       <div class="pagination" id="usersPagination"></div>
@@ -139,17 +154,63 @@ tr:hover { background:#1e293b80; }
 </div>
 
 <script>
-var token = localStorage.getItem('ddukddak_token');
-var currentPage = 1;
+// XSS 방지: 모든 동적 텍스트를 이스케이프
+function esc(str) {
+  if (str == null) return '';
+  var d = document.createElement('div');
+  d.textContent = String(str);
+  return d.innerHTML;
+}
 
-// 토큰이 있으면 관리자 확인 후 대시보드 표시
-if (token) checkAdmin();
+var token = null;
+var currentPage = 1;
+var ADMIN_SESSION_LIMIT = 2 * 60 * 60 * 1000; // 2시간
+var adminLoginTime = null;
+var sessionInterval = null;
+
+// 저장된 admin 세션 복원
+(function initSession() {
+  var saved = sessionStorage.getItem('admin_session');
+  if (saved) {
+    try {
+      var s = JSON.parse(saved);
+      var elapsed = Date.now() - s.loginTime;
+      if (elapsed < ADMIN_SESSION_LIMIT) {
+        token = s.token;
+        adminLoginTime = s.loginTime;
+        checkAdmin();
+        return;
+      }
+    } catch(e) {}
+    sessionStorage.removeItem('admin_session');
+  }
+  document.getElementById('authScreen').classList.remove('hidden');
+})();
+
+function startSessionTimer() {
+  if (sessionInterval) clearInterval(sessionInterval);
+  sessionInterval = setInterval(function() {
+    if (!adminLoginTime) return;
+    var remaining = ADMIN_SESSION_LIMIT - (Date.now() - adminLoginTime);
+    if (remaining <= 0) {
+      logout();
+      alert('관리자 세션이 만료되었습니다. 다시 로그인해주세요.');
+      return;
+    }
+    var min = Math.floor(remaining / 60000);
+    var sec = Math.floor((remaining % 60000) / 1000);
+    document.getElementById('sessionTimer').textContent =
+      '세션 ' + min + ':' + (sec < 10 ? '0' : '') + sec;
+  }, 1000);
+}
 
 async function login() {
-  var email = document.getElementById('authEmail').value;
+  var email = document.getElementById('authEmail').value.trim();
   var pw = document.getElementById('authPassword').value;
   var errEl = document.getElementById('authError');
   errEl.classList.add('hidden');
+
+  if (!email || !pw) { errEl.textContent = '이메일과 비밀번호를 입력하세요.'; errEl.classList.remove('hidden'); return; }
 
   try {
     var res = await fetch('/api/auth?action=login', {
@@ -160,7 +221,9 @@ async function login() {
     var data = await res.json();
     if (!res.ok) { errEl.textContent = data.error; errEl.classList.remove('hidden'); return; }
     token = data.token;
-    localStorage.setItem('ddukddak_token', token);
+    adminLoginTime = Date.now();
+    // sessionStorage 사용 (탭 닫으면 자동 소멸, localStorage보다 안전)
+    sessionStorage.setItem('admin_session', JSON.stringify({ token: token, loginTime: adminLoginTime }));
     checkAdmin();
   } catch (e) {
     errEl.textContent = '서버 오류'; errEl.classList.remove('hidden');
@@ -175,25 +238,32 @@ async function checkAdmin() {
       document.getElementById('authError').textContent = '관리자 권한이 없습니다.';
       document.getElementById('authError').classList.remove('hidden');
       document.getElementById('authScreen').classList.remove('hidden');
+      sessionStorage.removeItem('admin_session');
       return;
     }
     document.getElementById('authScreen').classList.add('hidden');
     document.getElementById('dashboard').classList.remove('hidden');
+    startSessionTimer();
     loadDashboard();
   } catch (e) {
     document.getElementById('authScreen').classList.remove('hidden');
+    sessionStorage.removeItem('admin_session');
   }
 }
 
 function logout() {
-  localStorage.removeItem('ddukddak_token');
+  sessionStorage.removeItem('admin_session');
   token = null;
+  adminLoginTime = null;
+  if (sessionInterval) clearInterval(sessionInterval);
   document.getElementById('dashboard').classList.add('hidden');
   document.getElementById('authScreen').classList.remove('hidden');
+  document.getElementById('authEmail').value = '';
+  document.getElementById('authPassword').value = '';
 }
 
 function apiHeaders() {
-  return { 'Authorization': 'Bearer ' + token };
+  return { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
 }
 
 async function loadDashboard() {
@@ -224,7 +294,7 @@ async function loadStats() {
     });
 
     // 도구별 차트
-    var toolColors = { title:'#60a5fa', hook:'#fbbf24', thread:'#a78bfa', blog:'#34d399', image:'#f472b6', 'image-pro':'#fb7185', 'card-news':'#22d3ee' };
+    var toolColors = { title:'#60a5fa', hook:'#fbbf24', thread:'#a78bfa', blog:'#34d399', image:'#f472b6', 'image-pro':'#fb7185', 'card-news':'#22d3ee', keyword:'#f97316', shortform:'#8b5cf6' };
     new Chart(document.getElementById('toolChart'), {
       type: 'doughnut',
       data: {
@@ -243,7 +313,7 @@ async function loadStats() {
       },
       options: chartOpts()
     });
-  } catch (e) { console.error('Stats load error:', e); }
+  } catch (e) {}
 }
 
 function chartOpts() {
@@ -263,8 +333,6 @@ async function loadUsers(page) {
   var url = '/api/admin-dashboard?action=users&page=' + page + '&limit=20';
   if (search) url += '&search=' + encodeURIComponent(search);
 
-  function esc(str) { var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
-
   try {
     var res = await fetch(url, { headers: apiHeaders() });
     var data = await res.json();
@@ -274,7 +342,20 @@ async function loadUsers(page) {
     tbody.innerHTML = data.users.map(function(u, i) {
       var num = (data.pagination.page - 1) * data.pagination.limit + i + 1;
       var date = new Date(u.created_at).toLocaleDateString('ko-KR');
-      return '<tr><td>' + num + '</td><td>' + esc(u.email) + '</td><td>' + esc(u.name || '-') + '</td><td>' + esc(u.phone || '-') + '</td><td>' + esc(String(u.credits)) + '</td><td>' + esc(date) + '</td></tr>';
+      var emailEsc = esc(u.email);
+      return '<tr>' +
+        '<td>' + num + '</td>' +
+        '<td>' + emailEsc + '</td>' +
+        '<td>' + esc(u.name || '-') + '</td>' +
+        '<td>' + esc(u.phone || '-') + '</td>' +
+        '<td id="credit-' + num + '">' + esc(String(u.credits)) + '</td>' +
+        '<td>' + esc(date) + '</td>' +
+        '<td><div class="credit-actions">' +
+          '<input type="number" id="amt-' + num + '" value="10" min="1" max="9999">' +
+          '<button class="btn-add" onclick="adjustCredit(\'' + emailEsc + '\',' + num + ',1)">+</button>' +
+          '<button class="btn-sub" onclick="adjustCredit(\'' + emailEsc + '\',' + num + ',-1)">-</button>' +
+          '<span class="credit-result" id="cr-' + num + '"></span>' +
+        '</div></td></tr>';
     }).join('');
 
     // 페이지네이션
@@ -287,10 +368,37 @@ async function loadUsers(page) {
     }
     html += '<button ' + (pg.page >= pg.pages ? 'disabled' : 'onclick="loadUsers(' + (pg.page + 1) + ')"') + '>&gt;</button>';
     pgEl.innerHTML = html;
-  } catch (e) { console.error('Users load error:', e); }
+  } catch (e) {}
 }
 
 function searchUsers() { loadUsers(1); }
+
+async function adjustCredit(email, rowNum, direction) {
+  var amtInput = document.getElementById('amt-' + rowNum);
+  var resultEl = document.getElementById('cr-' + rowNum);
+  var amount = parseInt(amtInput.value, 10);
+  if (!amount || amount < 1) { resultEl.textContent = '1 이상'; resultEl.className = 'credit-result err'; return; }
+
+  var delta = amount * direction;
+  resultEl.textContent = '...';
+  resultEl.className = 'credit-result';
+
+  try {
+    var res = await fetch('/api/admin-dashboard?action=credit', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify({ email: email, delta: delta }),
+    });
+    var data = await res.json();
+    if (!res.ok) { resultEl.textContent = data.error || '실패'; resultEl.className = 'credit-result err'; return; }
+    document.getElementById('credit-' + rowNum).textContent = data.newCredits;
+    resultEl.textContent = (delta > 0 ? '+' : '') + delta + ' 완료';
+    resultEl.className = 'credit-result ok';
+    setTimeout(function() { resultEl.textContent = ''; }, 3000);
+  } catch (e) {
+    resultEl.textContent = '서버 오류'; resultEl.className = 'credit-result err';
+  }
+}
 
 async function loadLogs() {
   try {
@@ -304,11 +412,11 @@ async function loadLogs() {
       var tool = esc(log.tool || 'unknown');
       return '<div class="log-row">' +
         '<span class="log-time">' + esc(time) + '</span>' +
-        '<span class="log-tool">' + tool + (log.mode ? ':' + esc(log.mode) : '') + '</span>' +
+        '<span class="log-tool ' + tool + '">' + tool + (log.mode ? ':' + esc(log.mode) : '') + '</span>' +
         '<span class="log-email">' + esc(log.user_email || log.ip || '-') + '</span>' +
         '</div>';
     }).join('');
-  } catch (e) { console.error('Logs load error:', e); }
+  } catch (e) {}
 }
 </script>
 </body>

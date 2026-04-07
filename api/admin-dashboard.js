@@ -8,7 +8,7 @@ import { resolveAdmin, setCorsHeaders } from './_helpers.js';
 export default async function handler(req, res) {
   setCorsHeaders(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'GET only' });
+  if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'GET or POST only' });
 
   const isAdmin = await resolveAdmin(req);
   if (!isAdmin) return res.status(403).json({ error: '관리자 인증 실패' });
@@ -93,6 +93,22 @@ export default async function handler(req, res) {
         users,
         pagination: { page, limit, total: Number(total.count), pages: Math.ceil(Number(total.count) / limit) },
       });
+    }
+
+    if (action === 'credit') {
+      if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+      const { email, delta } = req.body || {};
+      if (!email || typeof delta !== 'number' || delta === 0) {
+        return res.status(400).json({ error: 'email과 delta(숫자)가 필요합니다.' });
+      }
+      if (Math.abs(delta) > 9999) {
+        return res.status(400).json({ error: '한 번에 최대 9999 크레딧까지 조정 가능합니다.' });
+      }
+      const [user] = await sql`SELECT credits FROM users WHERE email = ${email}`;
+      if (!user) return res.status(404).json({ error: '해당 사용자를 찾을 수 없습니다.' });
+      const newCredits = Math.max(0, Number(user.credits) + delta);
+      await sql`UPDATE users SET credits = ${newCredits} WHERE email = ${email}`;
+      return res.status(200).json({ email, delta, newCredits });
     }
 
     if (action === 'logs') {
