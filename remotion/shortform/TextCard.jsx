@@ -47,20 +47,20 @@ export const TextCard = ({ template, text, durationInFrames }) => {
   let scale = 1;
 
   if (t.animation === 'fadeSlideUp') {
-    opacity = interpolate(frame, [0, 15], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-    translateY = interpolate(frame, [0, 15], [40, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+    opacity = interpolate(frame, [0, 8], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+    translateY = interpolate(frame, [0, 8], [40, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   } else if (t.animation === 'scaleBounce') {
     var s = spring({ fps, frame, config: { damping: 12, stiffness: 200, mass: 0.8 } });
     scale = interpolate(s, [0, 1], [0.7, 1]);
-    opacity = interpolate(frame, [0, 8], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+    opacity = interpolate(frame, [0, 6], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   } else if (t.animation === 'softFade') {
-    opacity = interpolate(frame, [0, 20], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+    opacity = interpolate(frame, [0, 8], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   } else if (t.animation === 'typing') {
-    opacity = interpolate(frame, [0, 10], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+    opacity = interpolate(frame, [0, 6], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   }
 
   // fade out
-  var fadeOut = interpolate(frame, [Math.max(0, durationInFrames - 10), durationInFrames], [1, 0], {
+  var fadeOut = interpolate(frame, [Math.max(0, durationInFrames - 6), durationInFrames], [1, 0], {
     extrapolateLeft: 'clamp', extrapolateRight: 'clamp',
   });
   opacity = Math.min(opacity, fadeOut);

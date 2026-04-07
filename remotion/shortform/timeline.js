@@ -88,14 +88,31 @@ function normalizeVisuals(visuals) {
     }));
 }
 
+const TEXT_CARD_DURATION_SEC = 1.0;
+
 function buildVisualSpans(visuals, durationSec) {
   if (!visuals.length) return [];
   const overlapSec = 0.3;
-  const spanSec = durationSec / visuals.length;
+
+  const textCount = visuals.filter((v) => v.sceneType === 'text').length;
+  const brollCount = visuals.length - textCount;
+  const totalTextSec = textCount * TEXT_CARD_DURATION_SEC;
+  const brollSpanSec = brollCount > 0 ? (durationSec - totalTextSec) / brollCount : durationSec;
+
+  let cursor = 0;
   return visuals.map((visual, index) => {
-    const rawStart = index * spanSec;
-    const startSec = index === 0 ? 0 : Math.max(0, rawStart - overlapSec);
-    const endSec = index === visuals.length - 1 ? durationSec : Math.min(durationSec, (index + 1) * spanSec + overlapSec);
+    const isText = visual.sceneType === 'text';
+    const rawDuration = isText ? TEXT_CARD_DURATION_SEC : brollSpanSec;
+    const rawStart = cursor;
+    const rawEnd = index === visuals.length - 1 ? durationSec : cursor + rawDuration;
+
+    const prevIsText = index > 0 && visuals[index - 1].sceneType === 'text';
+    const nextIsText = index < visuals.length - 1 && visuals[index + 1].sceneType === 'text';
+
+    const startSec = (index === 0 || isText || prevIsText) ? rawStart : Math.max(0, rawStart - overlapSec);
+    const endSec = (index === visuals.length - 1 || isText || nextIsText) ? rawEnd : Math.min(durationSec, rawEnd + overlapSec);
+
+    cursor = rawEnd;
     return {
       ...visual,
       startSec,
