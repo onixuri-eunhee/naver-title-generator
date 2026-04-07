@@ -1388,6 +1388,25 @@
             <div class="record-panel">
               <div class="panel-title">TTS 자동 생성</div>
               <div class="panel-desc">ElevenLabs AI 음성으로 대본을 읽어줍니다. 자연스러운 한국어 음성입니다.</div>
+              <div style="margin-bottom:10px;">
+                <label for="ttsVoiceSelect" style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:6px;">음성 선택</label>
+                <select id="ttsVoiceSelect" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;cursor:pointer;">
+                  <optgroup label="여성 음성">
+                    <option value="EXAVITQu4vr4xnSDxMaL">Sarah — 부드럽고 따뜻한</option>
+                    <option value="9BWtsMINqrJLrRacOk9x">Aria — 밝고 에너지 있는</option>
+                    <option value="FGY2WhTYpPnrIDTdsKH5">Laura — 활기차고 쾌활한</option>
+                    <option value="cgSgspJ2msm6clMCkdW9">Jessica — 발랄하고 캐주얼한</option>
+                    <option value="XB0fDUnXU5powFXDhCwa">Charlotte — 세련되고 차분한</option>
+                  </optgroup>
+                  <optgroup label="남성 음성">
+                    <option value="CwhRBWXzGAHq8TQ4Fs17">Roger — 자신감 있고 설득력 있는</option>
+                    <option value="nPczCjzI2devNBz1zQrb">Brian — 깊고 신뢰감 있는</option>
+                    <option value="cjVigY5qzO86Huf0OWal">Eric — 친근하고 자연스러운</option>
+                    <option value="iP95p4xoKVk53GoZ742B">Chris — 캐주얼하고 편안한</option>
+                    <option value="onwK4e9ZLuTAKqWW03F9">Daniel — 깊고 격식 있는</option>
+                  </optgroup>
+                </select>
+              </div>
               <div class="btn-row">
                 <button type="button" class="primary-btn" id="ttsGenerateBtn">음성 생성</button>
               </div>
@@ -2825,25 +2844,22 @@
           statusEl.className = 'record-status recording';
           try {
             var token = localStorage.getItem('ddukddak_token') || '';
+            var voiceSelect = document.getElementById('ttsVoiceSelect');
+            var voiceId = voiceSelect ? voiceSelect.value : '';
+            var voiceName = voiceSelect ? voiceSelect.options[voiceSelect.selectedIndex].text : 'TTS';
             var res = await fetch('/api/shortform-tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-              body: JSON.stringify({ text: fullScript }),
+              body: JSON.stringify({ text: fullScript, voiceId: voiceId }),
             });
             if (!res.ok) {
               var err = await res.json();
               throw new Error(err.error || '음성 생성 실패');
             }
             var blob = await res.blob();
-            var audioUrl = URL.createObjectURL(blob);
-            var player = document.getElementById('audioPlayer');
-            player.src = audioUrl;
-            state.audioBlob = blob;
-            state.audioSource = 'tts';
-            document.getElementById('audioPreview').classList.add('show');
-            statusEl.textContent = '음성 생성 완료!';
+            statusEl.textContent = '음성 생성 완료! (' + voiceName.split('—')[0].trim() + ')';
             statusEl.className = 'record-status';
-            onAudioReady();
+            applyAudioBlob(blob, 'tts-' + voiceId + '.mp3', 'audio/mpeg', 'TTS 음성');
           } catch (e) {
             statusEl.textContent = '음성 생성 실패: ' + e.message;
             statusEl.className = 'record-status';
