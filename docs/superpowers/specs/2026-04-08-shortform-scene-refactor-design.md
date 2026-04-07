@@ -243,7 +243,35 @@ Style: {concept.visualStyle}
   └─ 자막 오버레이 (STT 싱크)
 ```
 
-## 8. 에러 처리
+## 8. 자막 시스템 변경
+
+### 현재
+- Whisper STT → 자동 자막 → 수정 불가 → 바로 렌더링
+- 줄바꿈 불안정 (3줄, 4줄 발생)
+
+### 변경 후
+
+```
+음성 (TTS or 업로드) → Whisper STT → 자막 초안 생성
+                                        ↓
+                                  [자막 편집 UI]
+                                  - 타임라인별 텍스트 수정
+                                  - 줄바꿈 직접 조정
+                                  - 표시 시점 조절
+                                        ↓
+                                  확인 후 렌더링
+```
+
+### 씬 type별 자막 표시
+
+| type | 자막 | 이유 |
+|------|------|------|
+| broll | 표시 (투명→진해지는 모션, 기존과 동일) | 배경이 이미지/영상이라 자막 필요 |
+| text | 숨김 | 배경 자체가 텍스트라 자막 있으면 과함 |
+
+- `type: "text"` 씬은 Remotion 렌더링 시 자막 레이어 자동 숨김
+
+## 9. 에러 처리
 
 | 실패 지점 | 처리 |
 |----------|------|
@@ -261,8 +289,8 @@ Style: {concept.visualStyle}
 | `services/shortform-broll-core.js` | buildVisualPrompt 변경 + text 씬 스킵 + scenes 입력 처리 |
 | `api/shortform-tts.js` | 신규 — ElevenLabs TTS API |
 | `api/shortform-stt.js` | 녹음 관련 코드 정리 |
-| `shortform.html` | 컨셉 선택 UI + 음성 선택 UI + 녹음 제거 + scenes 렌더링 |
-| `remotion/` | 텍스트 카드 컴포넌트 4종 추가 |
+| `shortform.html` | 컨셉 선택 UI + 음성 선택 UI + 녹음 제거 + scenes 렌더링 + 자막 편집 UI |
+| `remotion/` | 텍스트 카드 컴포넌트 4종 + text 씬 자막 숨김 처리 |
 | `vercel.json` | shortform-tts 라우트 추가 |
 
 ## 10. 테스트 시나리오
