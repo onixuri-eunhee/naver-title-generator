@@ -6,70 +6,86 @@ export const config = { maxDuration: 60 };
 const SHORTFORM_CREDIT_COSTS = { 30: 7, 45: 10, 60: 14, 90: 18 };
 const MODEL = 'claude-sonnet-4-20250514';
 
-const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다. 사용자의 입력을 바탕으로 30~60초 분량의 숏폼 대본을 HPC(Hook-Point-CTA) 구조로 작성하세요.
+const SCENE_COUNTS = { 30: 7, 45: 10, 60: 14, 90: 20 };
+
+const CONCEPTS = {
+  cinematic: {
+    visualStyle: 'warm cinematic, golden hour lighting, shallow depth of field, film grain',
+    textCard: 'dark-gradient',
+  },
+  minimal: {
+    visualStyle: 'clean minimal, white background, soft shadows, modern aesthetic',
+    textCard: 'white-clean',
+  },
+  dynamic: {
+    visualStyle: 'vibrant colors, high contrast, bold composition, urban energy',
+    textCard: 'bold-accent',
+  },
+  natural: {
+    visualStyle: 'natural daylight, candid feel, organic textures, everyday life',
+    textCard: 'soft-overlay',
+  },
+};
+
+function resolveConcept(concept) {
+  if (concept === 'random') {
+    const keys = Object.keys(CONCEPTS);
+    const picked = keys[Math.floor(Math.random() * keys.length)];
+    return { key: picked, ...CONCEPTS[picked] };
+  }
+  return CONCEPTS[concept] ? { key: concept, ...CONCEPTS[concept] } : { key: 'cinematic', ...CONCEPTS.cinematic };
+}
+
+const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다. 사용자의 입력을 바탕으로 숏폼 대본을 scenes 배열로 작성하세요.
 
 [절대 규칙]
 1. 반드시 존댓말만 사용하세요. 반말, 유행어 남발, 과장된 말투는 금지입니다.
 2. 출력은 설명 없이 순수 JSON 객체 하나만 반환하세요. 마크다운 코드블록, 부가 설명, 서문 금지입니다.
 3. 사실은 사용자가 제공한 topic과 blogText 안에서만 사용하세요. 입력에 없는 구체적 수치나 사례를 지어내지 마세요.
-4. 대본은 자연스러운 내레이션 문장으로 작성하세요. 문장만 읽어도 바로 촬영할 수 있어야 합니다.
-5. 전체 분량은 사용자가 지정한 목표 길이(targetDuration)에 맞추세요. 글자수 가이드를 반드시 따르세요.
+4. 대본은 자연스러운 내레이션 문장으로 작성하세요.
 
 [HPC 법칙]
-- Hook(처음 3초): 시청자의 고민이나 궁금증을 즉시 자극하는 질문 또는 충격적 사실 1~2문장
-- Point(핵심 내용): 3개 이내의 핵심 포인트. 각 포인트는 반드시 2~3문장
-- CTA(행동 유도): 댓글, 팔로우, 저장 중 하나 이상을 자연스럽게 유도하는 1~2문장
-
-[톤 가이드]
-- casual: 친근하지만 예의 있는 말투
-- professional: 전문적이고 신뢰감 있는 말투
+- Hook(처음 3초): 시청자의 고민이나 궁금증을 즉시 자극하는 질문 또는 충격적 사실
+- Point(핵심 내용): 3개 이내의 핵심 포인트
+- CTA(행동 유도): 댓글, 팔로우, 저장 중 하나 이상을 자연스럽게 유도
 
 [출력 JSON 스키마]
 {
-  "hook": "string",
-  "points": ["string", "string", "string"],
-  "cta": "string",
-  "brollSuggestions": ["phrase1", "phrase2", "phrase3", "phrase4", "phrase5", "phrase6", "phrase7", "phrase8", "phrase9", "phrase10", "phrase11", "phrase12"]
+  "scenes": [
+    {
+      "script": "대본 문장 (한국어, 1~2문장)",
+      "section": "hook | point | cta",
+      "type": "broll | text",
+      "visual": "broll이면 영어 B-roll 이미지 설명 / text면 화면에 표시할 핵심 문구 (한국어, 15자 이내)"
+    }
+  ]
 }
 
-[brollSuggestions 규칙]
-- 정확히 12개
-- 영어로 작성
-- 각 항목은 짧은 B-roll 이미지 설명
-- 예: "close-up of hands typing on laptop"
+[scenes 규칙]
+- scenes 개수는 targetSceneCount에 맞추세요
+- 각 scene의 script는 1~2문장, 자연스러운 내레이션
+- type은 대본 내용에 따라 자유롭게 판단하세요
+- broll의 visual은 구체적인 영어 이미지 설명 (예: "close-up of hands typing on laptop")
+- text의 visual은 화면에 크게 표시할 핵심 문구 (한국어, 15자 이내)
+- section은 HPC 흐름에 맞게 배정
 `;
 
-function buildUserPrompt(topic, blogText, tone, targetDurationSec) {
-  const durationGuide = {
-    30: '전체 대본을 약 150자(한국어 기준)로 작성하세요. Hook 1문장 + Point 1~2개(각 1~2문장) + CTA 1문장.',
-    45: '전체 대본을 약 225자(한국어 기준)로 작성하세요. Hook 1~2문장 + Point 2개(각 2문장) + CTA 1문장.',
-    60: '전체 대본을 약 300자(한국어 기준)로 작성하세요. Hook 2문장 + Point 2~3개(각 2~3문장) + CTA 1~2문장.',
-    90: '전체 대본을 약 450자(한국어 기준)로 작성하세요. Hook 2~3문장 + Point 3개(각 3문장) + CTA 2문장.',
-  };
-  const guide = durationGuide[targetDurationSec] || durationGuide[30];
-
+function buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount) {
   const inputSummary = [
     `tone: ${tone}`,
     `targetDuration: ${targetDurationSec}초`,
+    `targetSceneCount: ${targetSceneCount}`,
     topic ? `topic: ${topic}` : null,
     blogText ? `blogText:\n${blogText}` : null,
   ].filter(Boolean).join('\n\n');
 
   return `${inputSummary}
 
-위 입력을 바탕으로 숏폼 영상 대본을 작성하세요.
-
-★★★ 최우선 규칙: 영상 길이 목표 ${targetDurationSec}초 ★★★
-${guide}
-hook + 모든 points + cta를 합산한 총 글자수(공백 제외)가 반드시 위 기준을 충족해야 합니다.
-글자수 미달 시 Point의 문장을 추가하세요. 초과 시 줄이세요.
-
+위 입력을 바탕으로 숏폼 영상 대본을 scenes 배열로 작성하세요.
+- scenes 개수: 정확히 ${targetSceneCount}개
+- 각 scene의 script를 합산한 총 글자수(공백 제외)가 ${targetDurationSec}초 분량에 맞아야 합니다 (약 ${targetDurationSec * 5}자).
 - Hook, Point, CTA가 각각 뚜렷해야 합니다.
-- Point는 최대 3개까지만 작성하세요.
-- 각 Point는 독립된 핵심 메시지여야 합니다.
-- 너무 긴 서론 없이 바로 몰입되게 시작하세요.
-- CTA는 부담스럽지 않게 마무리하세요.
-- brollSuggestions는 대본 내용에 맞춰 영어로 12개 작성하세요.`;
+- 너무 긴 서론 없이 바로 몰입되게 시작하세요.`;
 }
 
 function extractClaudeText(data) {
@@ -132,39 +148,89 @@ function toSentence(value) {
   return String(value || '').trim().replace(/\s+/g, ' ');
 }
 
-function normalizeBrollSuggestions(items) {
-  const MAX_SUGGESTIONS = 12;
-  const normalized = Array.isArray(items)
-    ? items.map(item => toSentence(item)).filter(Boolean).slice(0, MAX_SUGGESTIONS)
-    : [];
+function postProcessScenes(scenes, targetSceneCount) {
+  if (!Array.isArray(scenes) || scenes.length === 0) return scenes;
 
-  if (normalized.length >= MAX_SUGGESTIONS) return normalized;
-
-  const fallback = [
-    'person speaking to camera', 'close-up of smartphone scrolling',
-    'detail shot of everyday workspace', 'wide shot of modern city street',
-    'hands organizing notes on desk', 'aerial view of busy intersection',
-    'close-up of coffee cup on wooden table', 'person walking through corridor',
-    'laptop screen with charts and data', 'sunlight through office window',
-    'hands holding a book open', 'minimalist desk setup with plant',
-  ];
-
-  return [...normalized, ...fallback].slice(0, MAX_SUGGESTIONS);
-}
-
-function buildScriptPayload(parsed) {
-  const hook = toSentence(parsed?.hook);
-  const points = (Array.isArray(parsed?.points) ? parsed.points : [])
-    .map(point => toSentence(point))
-    .filter(Boolean)
-    .slice(0, 3);
-  const cta = toSentence(parsed?.cta);
-
-  if (!hook || !cta || points.length === 0) {
-    throw new Error('Claude 응답 스키마가 올바르지 않습니다.');
+  // 1. 씬 수 보정
+  while (scenes.length < targetSceneCount && scenes.length > 0) {
+    const longest = scenes.reduce((max, s, i) => s.script.length > (scenes[max]?.script.length || 0) ? i : max, 0);
+    const s = scenes[longest];
+    const mid = Math.ceil(s.script.length / 2);
+    const breakAt = s.script.indexOf('.', mid - 10);
+    const splitPos = breakAt > 0 && breakAt < s.script.length - 2 ? breakAt + 1 : mid;
+    const first = { ...s, script: s.script.slice(0, splitPos).trim() };
+    const second = { ...s, script: s.script.slice(splitPos).trim() };
+    scenes.splice(longest, 1, first, second);
+  }
+  while (scenes.length > targetSceneCount && scenes.length > 1) {
+    let shortestIdx = 0;
+    for (let i = 1; i < scenes.length - 1; i++) {
+      if (scenes[i].script.length < scenes[shortestIdx].script.length) shortestIdx = i;
+    }
+    const mergeWith = shortestIdx > 0 ? shortestIdx - 1 : shortestIdx + 1;
+    const [a, b] = shortestIdx < mergeWith ? [shortestIdx, mergeWith] : [mergeWith, shortestIdx];
+    scenes[a] = { ...scenes[a], script: scenes[a].script + ' ' + scenes[b].script };
+    scenes.splice(b, 1);
   }
 
-  const fullScript = [hook, ...points, cta].join('\n\n');
+  // 2. 텍스트 카드 비율 20~40% 보정
+  const total = scenes.length;
+  const textCount = scenes.filter(s => s.type === 'text').length;
+  const minText = Math.ceil(total * 0.2);
+  const maxText = Math.floor(total * 0.4);
+
+  if (textCount < minText) {
+    const pointScenes = scenes.map((s, i) => ({ s, i })).filter(({ s }) => s.type === 'broll' && s.section === 'point');
+    for (let j = 0; j < minText - textCount && j < pointScenes.length; j++) {
+      const idx = pointScenes[j].i;
+      scenes[idx] = { ...scenes[idx], type: 'text', visual: scenes[idx].script.replace(/[^가-힣a-zA-Z0-9\s]/g, '').slice(0, 15) };
+    }
+  } else if (textCount > maxText) {
+    const textScenes = scenes.map((s, i) => ({ s, i })).filter(({ s }) => s.type === 'text');
+    for (let j = 0; j < textCount - maxText && j < textScenes.length; j++) {
+      const idx = textScenes[textScenes.length - 1 - j].i;
+      scenes[idx] = { ...scenes[idx], type: 'broll', visual: 'supporting visual for the narration' };
+    }
+  }
+
+  // 3. 같은 type 3연속 방지
+  for (let i = 1; i < scenes.length - 1; i++) {
+    if (scenes[i - 1].type === scenes[i].type && scenes[i].type === scenes[i + 1].type) {
+      if (scenes[i].type === 'broll') {
+        scenes[i] = { ...scenes[i], type: 'text', visual: scenes[i].script.replace(/[^가-힣a-zA-Z0-9\s]/g, '').slice(0, 15) };
+      } else {
+        scenes[i] = { ...scenes[i], type: 'broll', visual: 'supporting visual for the narration' };
+      }
+    }
+  }
+
+  return scenes;
+}
+
+function buildScriptPayload(parsed, concept, targetSceneCount) {
+  let scenes = Array.isArray(parsed?.scenes) ? parsed.scenes : [];
+
+  scenes = scenes.filter(s => s && typeof s.script === 'string' && s.script.trim());
+  scenes.forEach(s => {
+    s.script = toSentence(s.script);
+    s.section = ['hook', 'point', 'cta'].includes(s.section) ? s.section : 'point';
+    s.type = ['broll', 'text'].includes(s.type) ? s.type : 'broll';
+    s.visual = toSentence(s.visual) || (s.type === 'broll' ? 'generic B-roll scene' : s.script.slice(0, 15));
+  });
+
+  if (scenes.length < 3) {
+    throw new Error('Claude 응답에서 유효한 scenes가 3개 미만입니다.');
+  }
+
+  scenes = postProcessScenes(scenes, targetSceneCount);
+
+  const visualStyle = concept.visualStyle;
+  const textCardTemplate = concept.textCard;
+
+  const hook = scenes.filter(s => s.section === 'hook').map(s => s.script).join(' ');
+  const points = scenes.filter(s => s.section === 'point').map(s => s.script);
+  const cta = scenes.filter(s => s.section === 'cta').map(s => s.script).join(' ');
+  const fullScript = scenes.map(s => s.script).join('\n\n');
   const spokenLength = fullScript.replace(/\s+/g, '').length;
   const estimatedSeconds = Math.max(1, Math.round(spokenLength / 5));
 
@@ -174,11 +240,14 @@ function buildScriptPayload(parsed) {
     cta,
     fullScript,
     estimatedSeconds,
-    brollSuggestions: normalizeBrollSuggestions(parsed?.brollSuggestions),
+    scenes,
+    visualStyle,
+    textCardTemplate,
+    conceptKey: concept.key,
   };
 }
 
-async function callClaude(topic, blogText, tone, targetDurationSec) {
+async function callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount) {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY is not configured.');
   }
@@ -192,10 +261,10 @@ async function callClaude(topic, blogText, tone, targetDurationSec) {
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 2000,
+      max_tokens: 4000,
       temperature: 0.7,
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: buildUserPrompt(topic, blogText, tone, targetDurationSec) }],
+      messages: [{ role: 'user', content: buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount) }],
     }),
   });
 
@@ -204,7 +273,7 @@ async function callClaude(topic, blogText, tone, targetDurationSec) {
     throw new Error(JSON.stringify(data));
   }
 
-  return buildScriptPayload(extractJsonObject(extractClaudeText(data)));
+  return buildScriptPayload(extractJsonObject(extractClaudeText(data)), concept, targetSceneCount);
 }
 
 /**
@@ -272,6 +341,10 @@ export default async function handler(req, res) {
     const tone = body.tone === 'professional' ? 'professional' : 'casual';
     const targetDurationSec = [30, 45, 60, 90].includes(Number(body.targetDurationSec)) ? Number(body.targetDurationSec) : 30;
 
+    const conceptInput = ['cinematic', 'minimal', 'dynamic', 'natural', 'random'].includes(body.concept) ? body.concept : 'cinematic';
+    const concept = resolveConcept(conceptInput);
+    const targetSceneCount = SCENE_COUNTS[targetDurationSec] || SCENE_COUNTS[30];
+
     if (!topic && !blogText) {
       return res.status(400).json({ error: 'topic 또는 blogText 중 하나는 필요합니다.' });
     }
@@ -318,7 +391,7 @@ export default async function handler(req, res) {
       }
     }
 
-    const script = await callClaude(topic, blogText, tone, targetDurationSec);
+    const script = await callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount);
     await logUsage(email, 'shortform-script', tone, getClientIp(req));
 
     // 현재 잔액 조회
