@@ -287,15 +287,28 @@ export const ShortformComposition = (props) => {
         overflow: 'hidden',
       }}
     >
-      {timeline.visualSpans.map((visual) => (
-        <Sequence
-          key={`${visual.url}-${visual.startFrame}`}
-          from={visual.startFrame}
-          durationInFrames={visual.durationInFrames}
-        >
-          <BackgroundLayer visual={visual} durationInFrames={visual.durationInFrames} />
-        </Sequence>
-      ))}
+      {timeline.visualSpans.map((visual, index) => {
+        const sceneDef = props.scenes?.[index];
+        const isTextCard = sceneDef?.type === 'text';
+
+        return (
+          <Sequence
+            key={`visual-${index}-${visual.startFrame}`}
+            from={visual.startFrame}
+            durationInFrames={visual.durationInFrames}
+          >
+            {isTextCard ? (
+              <TextCard
+                template={props.textCardTemplate || 'dark-gradient'}
+                text={sceneDef.visual}
+                durationInFrames={visual.durationInFrames}
+              />
+            ) : (
+              <BackgroundLayer visual={visual} durationInFrames={visual.durationInFrames} />
+            )}
+          </Sequence>
+        );
+      })}
       <AbsoluteFill style={overlayStyle} />
       {props.audioSrc ? (
         <Audio
@@ -303,19 +316,30 @@ export const ShortformComposition = (props) => {
           startFrom={Math.floor((timeline.trimStartSec || 0) * SHORTFORM_FPS)}
         />
       ) : null}
-      {timeline.textScenes.map((scene) => (
-        <Sequence
-          key={`${scene.id}-${scene.startFrame}`}
-          from={scene.startFrame}
-          durationInFrames={scene.durationInFrames}
-        >
-          <TextLayer
-            scene={scene}
-            motionSpeed={timeline.motionSpeed}
-            textRevealMode={timeline.textRevealMode}
-          />
-        </Sequence>
-      ))}
+      {timeline.textScenes
+        .filter((scene) => {
+          if (!props.scenes) return true;
+          const sceneTimeSec = scene.startSec + (scene.endSec - scene.startSec) / 2;
+          return !props.scenes.some((s, i) => {
+            if (s.type !== 'text') return false;
+            const span = timeline.visualSpans[i];
+            return span && sceneTimeSec >= span.startSec && sceneTimeSec < span.endSec;
+          });
+        })
+        .map((scene) => (
+          <Sequence
+            key={`text-${scene.id}-${scene.startFrame}`}
+            from={scene.startFrame}
+            durationInFrames={scene.durationInFrames}
+          >
+            <TextLayer
+              scene={scene}
+              motionSpeed={timeline.motionSpeed}
+              textRevealMode={timeline.textRevealMode}
+            />
+          </Sequence>
+        ))
+      }
     </AbsoluteFill>
   );
 };
