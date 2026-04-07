@@ -98,7 +98,7 @@ export default async function handler(req, res) {
         },
         audioConfig: {
           audioEncoding: 'MP3',
-          speakingRate: 1.0,
+          speakingRate: 1.1,
           pitch: 0,
         },
       }),
