@@ -2853,8 +2853,14 @@
               body: JSON.stringify({ text: fullScript, voiceId: voiceId }),
             });
             if (!res.ok) {
-              var err = await res.json();
-              throw new Error(err.error || '음성 생성 실패');
+              var errText = await res.text();
+              var errMsg = '음성 생성 실패';
+              try { errMsg = JSON.parse(errText).error || errMsg; } catch(_) {}
+              throw new Error(errMsg);
+            }
+            var contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('audio')) {
+              throw new Error('음성 응답이 올바르지 않습니다. 다시 시도해주세요.');
             }
             var blob = await res.blob();
             statusEl.textContent = '음성 생성 완료! (' + voiceName.split('—')[0].trim() + ')';
