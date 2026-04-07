@@ -11,6 +11,7 @@ import {
   useVideoConfig,
 } from 'remotion';
 import {buildShortformTimeline, SHORTFORM_FPS, SHORTFORM_HEIGHT, SHORTFORM_WIDTH} from './timeline.js';
+import {TextCard} from './TextCard.jsx';
 
 const WORD_FADE_SECONDS = {
   slow: 0.25,
