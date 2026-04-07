@@ -122,7 +122,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { type, tone, industry, target, topic, memo } = req.body;
+    let { type, tone, industry, target, topic, memo } = req.body;
+    topic = (topic || '').substring(0, 500);
+    type = (type || '').substring(0, 50);
+    tone = (tone || '').substring(0, 50);
+    industry = (industry || '').substring(0, 50);
+    target = (target || '').substring(0, 100);
+    memo = (memo || '').substring(0, 5000);
 
     if (!topic) {
       return res.status(400).json({ error: '주제/소재를 입력해주세요.' });
@@ -226,7 +232,7 @@ ${typeGuide[type] || typeGuide['정보형']}
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Claude API Error:', data);
+      console.error('Claude API Error:', data?.error?.type || response.status);
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch(_) {}
       return res.status(500).json({ error: '글 생성 중 오류가 발생했습니다.' });
     }
@@ -277,7 +283,7 @@ ${typeGuide[type] || typeGuide['정보형']}
     return res.status(200).json({ results, remaining, limit: FREE_DAILY_LIMIT });
 
   } catch (error) {
-    console.error('Threads API Error:', error);
+    console.error('Threads API Error:', error?.message || 'unknown');
     return res.status(500).json({ error: '서버 오류가 발생했습니다.' });
   }
 }

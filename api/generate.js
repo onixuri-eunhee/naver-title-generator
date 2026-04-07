@@ -108,9 +108,14 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'prompt 또는 messages가 필요합니다.' });
     }
 
-    // 입력 길이 제한
+    // 시스템 프롬프트 길이 제한
+    if (system && system.length > 10000) {
+      return res.status(400).json({ error: '시스템 프롬프트가 너무 깁니다.' });
+    }
+
+    // 메시지 총 길이 제한
     const totalLen = JSON.stringify(apiMessages).length + (system ? system.length : 0);
-    if (totalLen > 100000) {
+    if (totalLen > 50000) {
       return res.status(400).json({ error: '입력이 너무 깁니다.' });
     }
 
@@ -188,7 +193,7 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Claude API Error:', data);
+      console.error('Claude API Error:', data?.error?.type || response.status);
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
       return res.status(500).json({ error: '글 생성 중 오류가 발생했습니다.' });
     }
@@ -197,7 +202,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ ...data, remaining, limit: dailyLimit });
 
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('API Error:', error?.message || 'unknown');
     return res.status(500).json({ error: '서버 오류가 발생했습니다.' });
   }
 }

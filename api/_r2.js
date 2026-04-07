@@ -3,6 +3,7 @@
  * @aws-sdk/client-s3로 S3 호환 API 사용
  * 동적 import (Vercel Serverless 호환)
  */
+import { randomUUID } from 'crypto';
 
 let _s3Client = null;
 
@@ -77,7 +78,7 @@ export async function uploadImageUrlToR2(imageUrl, key) {
  */
 export async function replaceUrlsWithR2(images, prefix, userId) {
   const date = new Date().toISOString().slice(0, 10);
-  const uuid = Math.random().toString(36).substring(2, 10);
+  const uuid = randomUUID();
 
   const results = await Promise.all(
     images.map(async (img, i) => {
@@ -96,7 +97,7 @@ export async function replaceUrlsWithR2(images, prefix, userId) {
 
 export async function uploadCardNewsToR2(userId, pngBuffers) {
   const date = new Date().toISOString().slice(0, 10);
-  const uuid = Math.random().toString(36).substring(2, 10);
+  const uuid = randomUUID();
   const urls = [];
 
   for (let i = 0; i < pngBuffers.length; i++) {

@@ -209,7 +209,9 @@ export default async function handler(req, res) {
   let rateLimitKey = null;
 
   try {
-    const { keyword, category } = req.body;
+    let { keyword, category } = req.body;
+    keyword = (keyword || '').substring(0, 100);
+    category = (category || '').substring(0, 50);
 
     if (!keyword) {
       return res.status(400).json({ error: '키워드를 입력해주세요.' });
@@ -266,7 +268,7 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Claude API Error (titles):', data);
+      console.error('Claude API Error (titles):', data?.error?.type || response.status);
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
       return res.status(500).json({ error: '제목 생성 중 오류가 발생했습니다.' });
     }
@@ -286,7 +288,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ results, remaining, limit: FREE_DAILY_LIMIT });
 
   } catch (error) {
-    console.error('Titles API Error:', error);
+    console.error('Titles API Error:', error?.message || 'unknown');
     // 예외 발생 시 rate limit 카운트 복원 (INCR 이후 실패한 경우)
     if (rateLimitKey) {
       try { await getRedis().decr(rateLimitKey); } catch (_) {}
