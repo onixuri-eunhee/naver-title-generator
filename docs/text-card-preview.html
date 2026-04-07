@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>텍스트 카드 컨셉 미리보기</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Noto+Serif+KR:wght@600&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Noto Sans KR',sans-serif; background:#111; color:#fff; min-height:100vh; padding:40px 20px; }
+h1 { text-align:center; font-size:24px; margin-bottom:12px; }
+p.sub { text-align:center; color:#888; font-size:14px; margin-bottom:40px; }
+.grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:24px; max-width:1200px; margin:0 auto; }
+@media (max-width:900px) { .grid { grid-template-columns:repeat(2, 1fr); } }
+@media (max-width:500px) { .grid { grid-template-columns:1fr; } }
+.card-wrap { text-align:center; }
+.card-wrap h3 { font-size:14px; color:#aaa; margin-bottom:8px; }
+.card-wrap .desc { font-size:11px; color:#666; margin-top:8px; line-height:1.5; }
+.phone { width:100%; aspect-ratio:9/16; border-radius:16px; overflow:hidden; position:relative; display:flex; align-items:center; justify-content:center; }
+
+/* 1. Cinematic */
+.cinematic {
+  background:linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+.cinematic .text {
+  color:#fff; font-size:28px; font-weight:900; text-align:center; padding:0 24px;
+  animation: fadeSlideUp 1s ease-out infinite alternate;
+}
+@keyframes fadeSlideUp {
+  0% { opacity:0.3; transform:translateY(12px); }
+  100% { opacity:1; transform:translateY(0); }
+}
+
+/* 2. Minimal */
+.minimal {
+  background:#fafafa;
+}
+.minimal .text {
+  color:#111; font-size:26px; font-weight:700; text-align:left; padding:0 32px;
+  border-bottom:3px solid #111; padding-bottom:8px;
+  animation: typing 2s steps(8) infinite;
+}
+@keyframes typing {
+  0% { width:0; overflow:hidden; white-space:nowrap; }
+  50% { width:100%; overflow:hidden; white-space:nowrap; }
+  100% { width:100%; }
+}
+
+/* 3. Dynamic */
+.dynamic {
+  background:#222;
+}
+.dynamic .text {
+  font-size:30px; font-weight:900; text-align:center; padding:0 20px;
+  animation: scaleBounce 0.8s ease-in-out infinite alternate;
+}
+.dynamic .text .accent { color:#ff5f1f; }
+.dynamic .text .white { color:#fff; }
+@keyframes scaleBounce {
+  0% { transform:scale(0.85); opacity:0.7; }
+  100% { transform:scale(1); opacity:1; }
+}
+
+/* 4. Natural */
+.natural {
+  background:linear-gradient(170deg, #f5f0e8 0%, #e8e0d0 100%);
+}
+.natural .text {
+  color:#4a3728; font-size:26px; font-weight:600; text-align:center; padding:0 28px;
+  font-family:'Noto Serif KR', serif;
+  animation: softFade 1.5s ease-in-out infinite alternate;
+}
+@keyframes softFade {
+  0% { opacity:0.4; }
+  100% { opacity:1; }
+}
+</style>
+</head>
+<body>
+
+<h1>숏폼 텍스트 카드 컨셉 4종</h1>
+<p class="sub">실제 9:16 비율 미리보기 (텍스트 카드 씬에 표시되는 화면)</p>
+
+<div class="grid">
+  <div class="card-wrap">
+    <h3>1. 시네마틱</h3>
+    <div class="phone cinematic">
+      <div class="text">키워드 리서치가<br>핵심입니다</div>
+    </div>
+    <div class="desc">어두운 그라데이션<br>fade-in + 위로 슬라이드</div>
+  </div>
+
+  <div class="card-wrap">
+    <h3>2. 미니멀</h3>
+    <div class="phone minimal">
+      <div class="text">키워드 리서치가<br>핵심입니다</div>
+    </div>
+    <div class="desc">흰 배경 + 밑줄 액센트<br>타이핑 효과</div>
+  </div>
+
+  <div class="card-wrap">
+    <h3>3. 다이나믹</h3>
+    <div class="phone dynamic">
+      <div class="text"><span class="accent">키워드 리서치</span><span class="white">가<br>핵심입니다</span></div>
+    </div>
+    <div class="desc">차콜 + 오렌지 액센트<br>스케일 바운스</div>
+  </div>
+
+  <div class="card-wrap">
+    <h3>4. 내추럴</h3>
+    <div class="phone natural">
+      <div class="text">키워드 리서치가<br>핵심입니다</div>
+    </div>
+    <div class="desc">베이지 그라데이션<br>부드러운 fade-in</div>
+  </div>
+</div>
+
+</body>
+</html>
