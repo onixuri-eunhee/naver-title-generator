@@ -2485,7 +2485,7 @@
         els.audioMeta.textContent = sourceLabel + ' · ' + fileName + ' · ' + formatFileSize(blob.size);
         els.uploadFileName.textContent = sourceLabel + ' 사용 중: ' + fileName;
         els.clearUploadBtn.disabled = false;
-        els.recordResetBtn.disabled = false;
+        if (els.recordResetBtn) els.recordResetBtn.disabled = false;
         markStep2Complete(sourceLabel);
         clearStep3Results();
         processMaterials('영상 소재 생성 중...', 'STT 타임스탬프와 B-roll 이미지를 준비하고 있습니다.');
@@ -2629,7 +2629,7 @@
         state.step2Complete = false;
         clearStep3Results();
         showBox(els.audioSuccess, '');
-        els.recordResetBtn.disabled = true;
+        if (els.recordResetBtn) els.recordResetBtn.disabled = true;
         updateLocks();
       }
 
@@ -2802,9 +2802,9 @@
       }
 
       els.generateScriptBtn.addEventListener('click', generateScript);
-      els.recordStartBtn.addEventListener('click', startRecording);
-      els.recordStopBtn.addEventListener('click', stopRecording);
-      els.recordResetBtn.addEventListener('click', function() {
+      if (els.recordStartBtn) els.recordStartBtn.addEventListener('click', startRecording);
+      if (els.recordStopBtn) els.recordStopBtn.addEventListener('click', stopRecording);
+      if (els.recordResetBtn) els.recordResetBtn.addEventListener('click', function() {
         if (state.mediaRecorder && state.mediaRecorder.state === 'recording') stopRecording();
         clearAudioSelection();
         els.recordStatus.textContent = '녹음 대기 중';
@@ -2816,7 +2816,7 @@
         ttsBtn.addEventListener('click', async function() {
           var fullScript = [state.script.hook, state.script.point, state.script.cta].filter(Boolean).join('\n\n').trim();
           if (!fullScript) {
-            showError('audioError', '먼저 대본을 생성해주세요.');
+            showBox(document.getElementById('audioError'), '먼저 대본을 생성해주세요.');
             return;
           }
           ttsBtn.disabled = true;
