@@ -2171,9 +2171,10 @@
               state.subtitleSentences[idx].editedText = input.value;
             }
           });
-          document.getElementById('subtitleEditSection').style.display = 'none';
-          // Continue with rendering flow
-          if (typeof proceedAfterSubtitles === 'function') proceedAfterSubtitles();
+          var editSection = document.getElementById('subtitleEditSection');
+          editSection.style.display = 'none';
+          showBox(els.materialsHint, '자막 수정이 반영되었습니다. 아래에서 영상을 렌더링하세요.');
+          if (els.step4Card) els.step4Card.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
       }
 
@@ -3176,6 +3177,8 @@
             body: JSON.stringify({
               script: state.script,
               visuals: mediaItems,
+              scenes: state.scenes || [],
+              textCardTemplate: state.textCardTemplate || 'dark-gradient',
               sttSegments: state.sttSegments,
               sttWords: state.sttWords,
               estimatedSeconds: state.estimatedSeconds || 30,

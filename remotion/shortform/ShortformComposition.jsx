@@ -288,8 +288,7 @@ export const ShortformComposition = (props) => {
       }}
     >
       {timeline.visualSpans.map((visual, index) => {
-        const sceneDef = props.scenes?.[index];
-        const isTextCard = sceneDef?.type === 'text';
+        const isTextCard = visual.sceneType === 'text';
 
         return (
           <Sequence
@@ -300,7 +299,7 @@ export const ShortformComposition = (props) => {
             {isTextCard ? (
               <TextCard
                 template={props.textCardTemplate || 'dark-gradient'}
-                text={sceneDef.visual}
+                text={visual.text || ''}
                 durationInFrames={visual.durationInFrames}
               />
             ) : (
@@ -318,12 +317,10 @@ export const ShortformComposition = (props) => {
       ) : null}
       {timeline.textScenes
         .filter((scene) => {
-          if (!props.scenes) return true;
           const sceneTimeSec = scene.startSec + (scene.endSec - scene.startSec) / 2;
-          return !props.scenes.some((s, i) => {
-            if (s.type !== 'text') return false;
-            const span = timeline.visualSpans[i];
-            return span && sceneTimeSec >= span.startSec && sceneTimeSec < span.endSec;
+          return !timeline.visualSpans.some((span) => {
+            if (span.sceneType !== 'text') return false;
+            return sceneTimeSec >= span.startSec && sceneTimeSec < span.endSec;
           });
         })
         .map((scene) => (

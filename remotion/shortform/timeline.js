@@ -480,7 +480,24 @@ export function buildShortformTimeline(inputProps) {
 
   const sections = normalizeSections(inputProps?.script || {});
   const lines = sections.flatMap((section) => splitDisplayLines(section));
-  const visuals = normalizeVisuals(inputProps?.visuals);
+  const rawVisuals = normalizeVisuals(inputProps?.visuals);
+  const scenes = Array.isArray(inputProps?.scenes) ? inputProps.scenes : [];
+
+  // scenes가 있으면 전체 scenes 기준으로 span 배분 (text 포함)
+  let visuals;
+  if (scenes.length > 0) {
+    let brollIdx = 0;
+    visuals = scenes.map((scene) => {
+      if (scene.type === 'text') {
+        return { type: 'text-card', url: null, text: scene.visual || '', sceneType: 'text' };
+      }
+      const v = rawVisuals[brollIdx] || { type: 'image', url: '', title: '' };
+      brollIdx++;
+      return { ...v, sceneType: 'broll' };
+    });
+  } else {
+    visuals = rawVisuals;
+  }
   const visualSpans = buildVisualSpans(visuals, effectiveDurationSec);
   const sectionRanges = buildSectionRanges(sections, effectiveDurationSec);
 

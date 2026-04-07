@@ -264,6 +264,8 @@ async function handleRemotionRenderRequest({ rawBody, req }) {
     const inputProps = {
       script: body.script,
       visuals,
+      scenes: Array.isArray(body.scenes) ? body.scenes : [],
+      textCardTemplate: typeof body.textCardTemplate === 'string' ? body.textCardTemplate : 'dark-gradient',
       sttSegments: Array.isArray(body.sttSegments) ? body.sttSegments : [],
       sttWords: Array.isArray(body.sttWords) ? body.sttWords : [],
       estimatedSeconds: Number(body.estimatedSeconds) || 30,
