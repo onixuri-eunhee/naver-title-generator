@@ -3,7 +3,7 @@ import { resolveAdmin, setCorsHeaders, extractToken, resolveSessionEmail } from 
 export const config = { maxDuration: 30 };
 
 const ELEVENLABS_API_URL = 'https://api.elevenlabs.io/v1/text-to-speech';
-const DEFAULT_VOICE_ID = 'EXAVITQu4vr4xnSDxMaL';
+const DEFAULT_VOICE_ID = 'AW5wrnG1jVizOYY7R1Oo'; // 지영 (한국어 네이티브)
 const DEFAULT_MODEL = 'eleven_multilingual_v2';
 
 export default async function handler(req, res) {
