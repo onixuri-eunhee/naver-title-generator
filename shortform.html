@@ -2214,7 +2214,11 @@
           var processor = audioCtx.createScriptProcessor(4096, 1, 1);
           var chunks = [];
 
+          var recordingStartTime = 0;
+          var WARMUP_MS = 400;
           processor.onaudioprocess = function(e) {
+            if (!recordingStartTime) recordingStartTime = Date.now();
+            if (Date.now() - recordingStartTime < WARMUP_MS) return;
             var input = e.inputBuffer.getChannelData(0);
             chunks.push(new Float32Array(input));
           };
