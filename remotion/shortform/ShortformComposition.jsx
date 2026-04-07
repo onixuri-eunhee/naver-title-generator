@@ -319,10 +319,9 @@ export const ShortformComposition = (props) => {
       ) : null}
       {timeline.textScenes
         .filter((scene) => {
-          const sceneTimeSec = scene.startSec + (scene.endSec - scene.startSec) / 2;
           return !timeline.visualSpans.some((span) => {
             if (span.sceneType !== 'text') return false;
-            return sceneTimeSec >= span.startSec && sceneTimeSec < span.endSec;
+            return scene.endSec > span.startSec && scene.startSec < span.endSec;
           });
         })
         .map((scene) => (

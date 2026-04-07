@@ -34,30 +34,13 @@ const TEMPLATES = {
   },
 };
 
-function splitTextLines(text) {
-  if (!text) return [''];
-  var maxChars = 8;
-  var words = text.split('');
-  var lines = [];
-  var current = '';
-  for (var i = 0; i < words.length; i++) {
-    if (current.length >= maxChars) {
-      lines.push(current);
-      current = '';
-    }
-    current += words[i];
-  }
-  if (current) lines.push(current);
-  return lines.length ? lines : [text];
-}
-
 export const TextCard = ({ template, text, durationInFrames }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = TEMPLATES[template] || TEMPLATES['dark-gradient'];
-  const lines = splitTextLines(text);
-  const totalLen = (text || '').length;
-  const fontSize = totalLen <= 8 ? 96 : totalLen <= 12 ? 84 : totalLen <= 16 ? 72 : 64;
+  const cleanText = (text || '').trim();
+  const totalLen = cleanText.length;
+  const fontSize = totalLen <= 6 ? 108 : totalLen <= 10 ? 88 : totalLen <= 15 ? 72 : 60;
 
   let opacity = 1;
   let translateY = 0;
@@ -65,7 +48,7 @@ export const TextCard = ({ template, text, durationInFrames }) => {
 
   if (t.animation === 'fadeSlideUp') {
     opacity = interpolate(frame, [0, 15], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-    translateY = interpolate(frame, [0, 15], [30, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+    translateY = interpolate(frame, [0, 15], [40, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   } else if (t.animation === 'scaleBounce') {
     var s = spring({ fps, frame, config: { damping: 12, stiffness: 200, mass: 0.8 } });
     scale = interpolate(s, [0, 1], [0.7, 1]);
@@ -83,26 +66,23 @@ export const TextCard = ({ template, text, durationInFrames }) => {
   opacity = Math.min(opacity, fadeOut);
 
   return (
-    <AbsoluteFill style={{ background: t.background, justifyContent: 'center', alignItems: 'center', padding: '0 80px' }}>
+    <AbsoluteFill style={{ background: t.background, justifyContent: 'center', alignItems: 'center', padding: '0 100px' }}>
       <div style={{
         opacity,
         transform: `translateY(${translateY}px) scale(${scale})`,
         textAlign: 'center',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
       }}>
-        {lines.map((line, i) => (
-          <div key={i} style={{
-            fontFamily: t.fontFamily,
-            fontWeight: t.fontWeight,
-            fontSize,
-            lineHeight: 1.2,
-            color: i === 0 && t.accent ? t.accent : t.color,
-          }}>
-            {line}
-          </div>
-        ))}
+        <div style={{
+          fontFamily: t.fontFamily,
+          fontWeight: t.fontWeight,
+          fontSize,
+          lineHeight: 1.3,
+          color: t.accent || t.color,
+          wordBreak: 'keep-all',
+          overflowWrap: 'break-word',
+        }}>
+          {cleanText}
+        </div>
       </div>
     </AbsoluteFill>
   );
