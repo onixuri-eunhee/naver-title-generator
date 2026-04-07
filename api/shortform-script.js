@@ -42,12 +42,28 @@ const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다.
 1. 반드시 존댓말만 사용하세요. 반말, 유행어 남발, 과장된 말투는 금지입니다.
 2. 출력은 설명 없이 순수 JSON 객체 하나만 반환하세요. 마크다운 코드블록, 부가 설명, 서문 금지입니다.
 3. 사실은 사용자가 제공한 topic과 blogText 안에서만 사용하세요. 입력에 없는 구체적 수치나 사례를 지어내지 마세요.
-4. 대본은 자연스러운 내레이션 문장으로 작성하세요.
+4. 구어체로 자연스러운 내레이션 문장을 작성하세요. 문어체 금지.
+5. 한 문장에 하나의 정보만. 숫자는 구체적으로 (많이→87%, 대부분→10명 중 8명).
 
-[HPC 법칙]
-- Hook(처음 3초): 시청자의 고민이나 궁금증을 즉시 자극하는 질문 또는 충격적 사실
-- Point(핵심 내용): 3개 이내의 핵심 포인트
-- CTA(행동 유도): 댓글, 팔로우, 저장 중 하나 이상을 자연스럽게 유도
+[후킹 공식 — scenes[0]에 반드시 적용]
+아래 6가지 중 주제에 가장 적합한 후킹 유형을 선택하세요:
+1. 질문형: 답을 모르면 불편한 구체적 질문 ("왜 ~일까요?")
+2. 충격/대담형: 통념을 뒤집는 주장 ("~은(는) 틀렸습니다")
+3. 비밀/배타형: 희소한 정보 암시 ("상위 1%만 아는 ~")
+4. 증거형: 구체적 숫자로 결과 제시 ("30일 만에 ~ 달성")
+5. 공감형: 시청자의 고통에 동일시 ("~ 저도 그랬습니다")
+6. 경고형: 손실을 경고 ("이것 모르면 ~ 낭비입니다")
+
+[대본 구조]
+- Hook(첫 1~2씬): 후킹 공식 적용. 첫 문장이 스크롤을 멈춰야 합니다.
+- Point(핵심): 하나의 핵심 메시지에 집중. 나열 금지, 깊이 있게.
+- CTA(행동 유도): 강요가 아닌 자연스러운 대화체로 마무리.
+
+[첫 씬 규칙 — 매우 중요]
+- scenes[0]은 반드시 type: "broll" (텍스트 카드 아님)
+- scenes[0]의 script는 후킹 공식을 적용한 강렬한 첫 문장
+- scenes[0]의 visual은 "scroll-stopping"한 구체적 영어 이미지 설명 (dramatic, high contrast, cinematic 포함)
+- scenes[0]에 hookText 필드 추가: 화면에 크게 표시할 후킹 핵심 문구 (한국어, 12자 이내, 임팩트 있게)
 
 [출력 JSON 스키마]
 {
@@ -56,18 +72,20 @@ const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다.
       "script": "대본 문장 (한국어, 1~2문장)",
       "section": "hook | point | cta",
       "type": "broll | text",
-      "visual": "broll이면 영어 B-roll 이미지 설명 / text면 화면에 표시할 핵심 문구 (한국어, 15자 이내)"
+      "visual": "broll이면 영어 B-roll 이미지 설명 / text면 화면에 표시할 핵심 문구 (한국어, 15자 이내)",
+      "hookText": "(첫 씬만) 화면에 크게 표시할 후킹 문구 (한국어, 12자 이내)"
     }
   ]
 }
 
 [scenes 규칙]
 - scenes 개수는 targetSceneCount에 맞추세요
-- 각 scene의 script는 1~2문장, 자연스러운 내레이션
-- type은 대본 내용에 따라 자유롭게 판단하세요
+- 각 scene의 script는 1~2문장, 자연스러운 구어체 내레이션
+- type은 대본 내용에 따라 자유롭게 판단하되, scenes[0]은 반드시 broll
 - broll의 visual은 구체적인 영어 이미지 설명 (예: "close-up of hands typing on laptop")
 - text의 visual은 화면에 크게 표시할 핵심 문구 (한국어, 15자 이내)
-- section은 HPC 흐름에 맞게 배정
+- section은 Hook → Point → CTA 흐름에 맞게 배정
+- hookText는 scenes[0]에만 포함, 나머지 씬에는 생략
 `;
 
 function buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount) {
@@ -173,7 +191,15 @@ function postProcessScenes(scenes, targetSceneCount) {
     scenes.splice(b, 1);
   }
 
-  // 2. 텍스트 카드 비율 20~40% 보정
+  // 2. 첫 씬 broll 강제 + hookText 보정
+  if (scenes[0] && scenes[0].type !== 'broll') {
+    scenes[0] = { ...scenes[0], type: 'broll', visual: 'scroll-stopping dramatic cinematic visual for the narration' };
+  }
+  if (scenes[0] && !scenes[0].hookText) {
+    scenes[0].hookText = scenes[0].script.replace(/[^가-힣a-zA-Z0-9\s]/g, '').slice(0, 12);
+  }
+
+  // 3. 텍스트 카드 비율 20~40% 보정
   const total = scenes.length;
   const textCount = scenes.filter(s => s.type === 'text').length;
   const minText = Math.ceil(total * 0.2);
@@ -234,6 +260,8 @@ function buildScriptPayload(parsed, concept, targetSceneCount) {
   const spokenLength = fullScript.replace(/\s+/g, '').length;
   const estimatedSeconds = Math.max(1, Math.round(spokenLength / 5));
 
+  const hookText = scenes[0]?.hookText || '';
+
   return {
     hook,
     points,
@@ -244,6 +272,7 @@ function buildScriptPayload(parsed, concept, targetSceneCount) {
     visualStyle,
     textCardTemplate,
     conceptKey: concept.key,
+    hookText,
   };
 }
 

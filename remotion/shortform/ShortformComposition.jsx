@@ -116,6 +116,65 @@ function getKenBurnsPreset(url) {
   return KEN_BURNS_PRESETS[Math.abs(hash) % KEN_BURNS_PRESETS.length];
 }
 
+const HOOK_FADE_IN_FRAMES = 6;
+const HOOK_FADE_OUT_FRAMES = 6;
+
+const HookOverlay = ({text, durationInFrames}) => {
+  const frame = useCurrentFrame();
+  const cleanText = (text || '').trim();
+  if (!cleanText) return null;
+
+  const totalLen = cleanText.replace(/\s+/g, '').length;
+  const fontSize = totalLen <= 6 ? 108 : totalLen <= 10 ? 88 : 72;
+
+  const fadeIn = interpolate(frame, [0, HOOK_FADE_IN_FRAMES], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+  const fadeOut = interpolate(
+    frame,
+    [Math.max(0, durationInFrames - HOOK_FADE_OUT_FRAMES), durationInFrames],
+    [1, 0],
+    {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}
+  );
+  const opacity = Math.min(fadeIn, fadeOut);
+  const translateY = interpolate(fadeIn, [0, 1], [30, 0]);
+  const scale = interpolate(fadeIn, [0, 1], [0.92, 1]);
+
+  return (
+    <AbsoluteFill
+      style={{
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '0 80px',
+      }}
+    >
+      <div
+        style={{
+          opacity,
+          transform: `translateY(${translateY}px) scale(${scale})`,
+          textAlign: 'center',
+        }}
+      >
+        <div
+          style={{
+            fontFamily: '"Noto Sans KR", "Apple SD Gothic Neo", sans-serif',
+            fontWeight: 900,
+            fontSize,
+            lineHeight: 1.3,
+            color: '#ffffff',
+            wordBreak: 'keep-all',
+            overflowWrap: 'break-word',
+            textShadow: '0 4px 24px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5)',
+          }}
+        >
+          {cleanText}
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 const CROSSFADE_FRAMES = 8;
 const VIDEO_FADEOUT_FRAMES = 18;
 
@@ -289,6 +348,8 @@ export const ShortformComposition = (props) => {
     >
       {timeline.visualSpans.map((visual, index) => {
         const isTextCard = visual.sceneType === 'text';
+        const isFirstScene = index === 0;
+        const hookText = isFirstScene ? props.hookText : null;
 
         return (
           <Sequence
@@ -306,6 +367,9 @@ export const ShortformComposition = (props) => {
               <>
                 <BackgroundLayer visual={visual} durationInFrames={visual.durationInFrames} />
                 <AbsoluteFill style={overlayStyle} />
+                {hookText ? (
+                  <HookOverlay text={hookText} durationInFrames={visual.durationInFrames} />
+                ) : null}
               </>
             )}
           </Sequence>
@@ -319,6 +383,14 @@ export const ShortformComposition = (props) => {
       ) : null}
       {timeline.textScenes
         .filter((scene) => {
+          // 첫 씬(hook overlay) 구간 자막 숨김
+          if (props.hookText && timeline.visualSpans.length > 0) {
+            const first = timeline.visualSpans[0];
+            if (scene.startSec >= first.startSec && scene.startSec < first.endSec) {
+              return false;
+            }
+          }
+          // 텍스트 카드 구간 자막 숨김
           return !timeline.visualSpans.some((span) => {
             if (span.sceneType !== 'text') return false;
             return scene.startSec >= span.startSec && scene.startSec < span.endSec;

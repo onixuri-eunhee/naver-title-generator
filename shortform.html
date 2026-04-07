@@ -2006,6 +2006,7 @@
         var visualStyle = '';
         var textCardTemplate = '';
         var conceptKey = '';
+        var hookText = '';
         candidates.forEach(function(candidate) {
           if (!candidate || typeof candidate !== 'object') return;
           var nested = candidate.hpc && typeof candidate.hpc === 'object' ? candidate.hpc : candidate;
@@ -2013,9 +2014,10 @@
           if (!visualStyle && nested.visualStyle) visualStyle = nested.visualStyle;
           if (!textCardTemplate && nested.textCardTemplate) textCardTemplate = nested.textCardTemplate;
           if (!conceptKey && nested.conceptKey) conceptKey = nested.conceptKey;
+          if (!hookText && nested.hookText) hookText = nested.hookText;
         });
 
-        return { script: script, estimatedSeconds: estimatedSeconds, brollSuggestions: brollSuggestions, scenes: scenes, visualStyle: visualStyle, textCardTemplate: textCardTemplate, conceptKey: conceptKey };
+        return { script: script, estimatedSeconds: estimatedSeconds, brollSuggestions: brollSuggestions, scenes: scenes, visualStyle: visualStyle, textCardTemplate: textCardTemplate, conceptKey: conceptKey, hookText: hookText };
       }
 
       function normalizeSttResponse(data) {
@@ -2304,6 +2306,7 @@
           state.visualStyle = normalized.visualStyle || '';
           state.textCardTemplate = normalized.textCardTemplate || 'dark-gradient';
           state.conceptKey = normalized.conceptKey || 'cinematic';
+          state.hookText = normalized.hookText || '';
           renderScriptEditor(state.script);
           updateEstimatedTime();
           markStep1Complete();
@@ -3180,6 +3183,7 @@
               visuals: mediaItems,
               scenes: state.scenes || [],
               textCardTemplate: state.textCardTemplate || 'dark-gradient',
+              hookText: state.hookText || '',
               sttSegments: state.sttSegments,
               sttWords: state.sttWords,
               estimatedSeconds: state.estimatedSeconds || 30,

@@ -105,10 +105,14 @@ function getSafeUserId(email, ip) {
   return (email || ip || 'anonymous').replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
-function buildVisualPrompt(visual, visualStyle, kind) {
+function buildVisualPrompt(visual, visualStyle, kind, isFirstScene) {
+  const scrollStopping = isFirstScene
+    ? 'Scroll-stopping, dramatic composition, high contrast, cinematic impact, visually arresting. '
+    : '';
+
   if (kind === 'video') {
     return [
-      visual.trim(),
+      scrollStopping + visual.trim(),
       'Cinematic vertical 9:16 short-form B-roll clip with realistic motion, natural lighting, and no on-screen text.',
       `Target duration: ${CLIP_DURATION_SEC} seconds.`,
       visualStyle ? `Style: ${visualStyle}` : '',
@@ -116,7 +120,7 @@ function buildVisualPrompt(visual, visualStyle, kind) {
   }
 
   return [
-    visual.trim(),
+    scrollStopping + visual.trim(),
     'Vertical 9:16 still image for short-form video. No on-screen text.',
     visualStyle ? `Style: ${visualStyle}` : '',
   ].filter(Boolean).join('\n');
@@ -650,8 +654,8 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
   const maxAssets = brollScenes.length;
   const videoSlots = computeVideoSlots(maxAssets);
 
-  async function generateWithFallback(scene, index) {
-    const imgPrompt = buildVisualPrompt(scene.visual, visualStyle, 'image');
+  async function generateWithFallback(scene, index, isFirstScene) {
+    const imgPrompt = buildVisualPrompt(scene.visual, visualStyle, 'image', isFirstScene);
     const imgKey = createR2Key(userId, `image${index}.png`);
 
     let imageResult = null;
@@ -670,7 +674,7 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
     if (!imageResult) return null;
 
     if (videoSlots.has(index) && hasVeoConfig()) {
-      const videoPrompt = buildVisualPrompt(scene.visual, visualStyle, 'video');
+      const videoPrompt = buildVisualPrompt(scene.visual, visualStyle, 'video', isFirstScene);
       const videoKey = createR2Key(userId, `i2v${index}.mp4`);
       try {
         const videoResult = await callVeoI2V(videoPrompt, videoKey, imageResult.base64);
@@ -690,7 +694,7 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
     const batch = brollScenes.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(
       batch.map(function(scene, batchIndex) {
-        return generateWithFallback(scene, i + batchIndex);
+        return generateWithFallback(scene, i + batchIndex, i + batchIndex === 0);
       })
     );
     batchResults.forEach(function(result) { if (result) items.push(result); });
