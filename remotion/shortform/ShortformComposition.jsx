@@ -303,12 +303,14 @@ export const ShortformComposition = (props) => {
                 durationInFrames={visual.durationInFrames}
               />
             ) : (
-              <BackgroundLayer visual={visual} durationInFrames={visual.durationInFrames} />
+              <>
+                <BackgroundLayer visual={visual} durationInFrames={visual.durationInFrames} />
+                <AbsoluteFill style={overlayStyle} />
+              </>
             )}
           </Sequence>
         );
       })}
-      <AbsoluteFill style={overlayStyle} />
       {props.audioSrc ? (
         <Audio
           src={props.audioSrc}

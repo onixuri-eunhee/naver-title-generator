@@ -2171,9 +2171,10 @@
               state.subtitleSentences[idx].editedText = input.value;
             }
           });
-          var editSection = document.getElementById('subtitleEditSection');
-          editSection.style.display = 'none';
           showBox(els.materialsHint, '자막 수정이 반영되었습니다. 아래에서 영상을 렌더링하세요.');
+          confirmSubBtn.textContent = '수정 반영 완료';
+          confirmSubBtn.disabled = true;
+          setTimeout(function() { confirmSubBtn.textContent = '확인 후 계속'; confirmSubBtn.disabled = false; }, 2000);
           if (els.step4Card) els.step4Card.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
       }

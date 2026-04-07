@@ -34,13 +34,21 @@ const TEMPLATES = {
   },
 };
 
-function splitTextLines(text, maxChars) {
-  if (!maxChars) maxChars = 15;
-  if (!text || text.length <= maxChars) return [text || ''];
-  var mid = Math.ceil(text.length / 2);
-  var breakAt = text.lastIndexOf(' ', mid);
-  var pos = breakAt > 0 ? breakAt : mid;
-  return [text.slice(0, pos).trim(), text.slice(pos).trim()].filter(Boolean);
+function splitTextLines(text) {
+  if (!text) return [''];
+  var maxChars = 8;
+  var words = text.split('');
+  var lines = [];
+  var current = '';
+  for (var i = 0; i < words.length; i++) {
+    if (current.length >= maxChars) {
+      lines.push(current);
+      current = '';
+    }
+    current += words[i];
+  }
+  if (current) lines.push(current);
+  return lines.length ? lines : [text];
 }
 
 export const TextCard = ({ template, text, durationInFrames }) => {
@@ -48,7 +56,8 @@ export const TextCard = ({ template, text, durationInFrames }) => {
   const { fps } = useVideoConfig();
   const t = TEMPLATES[template] || TEMPLATES['dark-gradient'];
   const lines = splitTextLines(text);
-  const fontSize = text && text.length > 10 ? 72 : 88;
+  const totalLen = (text || '').length;
+  const fontSize = totalLen <= 8 ? 96 : totalLen <= 12 ? 84 : totalLen <= 16 ? 72 : 64;
 
   let opacity = 1;
   let translateY = 0;
