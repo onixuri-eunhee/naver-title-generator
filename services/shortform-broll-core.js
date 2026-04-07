@@ -105,21 +105,20 @@ function getSafeUserId(email, ip) {
   return (email || ip || 'anonymous').replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
-function buildVisualPrompt(suggestion, scriptContext, kind) {
-  const context = (scriptContext || '').trim();
+function buildVisualPrompt(visual, visualStyle, kind) {
   if (kind === 'video') {
     return [
-      suggestion.trim(),
-      'Create a cinematic vertical 9:16 short-form B-roll clip with realistic motion, natural lighting, and no on-screen text.',
+      visual.trim(),
+      'Cinematic vertical 9:16 short-form B-roll clip with realistic motion, natural lighting, and no on-screen text.',
       `Target duration: ${CLIP_DURATION_SEC} seconds.`,
-      context ? `Story context: ${context}` : '',
+      visualStyle ? `Style: ${visualStyle}` : '',
     ].filter(Boolean).join('\n');
   }
 
   return [
-    suggestion.trim(),
-    'Create a cinematic vertical 9:16 still image for short-form video B-roll. Realistic, clean, and no on-screen text.',
-    context ? `Story context: ${context}` : '',
+    visual.trim(),
+    'Vertical 9:16 still image for short-form video. No on-screen text.',
+    visualStyle ? `Style: ${visualStyle}` : '',
   ].filter(Boolean).join('\n');
 }
 
@@ -574,6 +573,29 @@ async function callSeedanceVideo(prompt, key) {
   throw new Error('Seedance generation timed out');
 }
 
+// i2v 영상 슬롯: 첫 씬 + 마지막 씬 필수, 중간은 이미지 연속 2개 방지 교차 배치
+// 30초(5): [0,2,4]->2~3  45초(7): [0,2,4,6]->3~4  60초(8): [0,2,5,7]->4  90초(12): [0,3,6,9,11]->5
+function computeVideoSlots(total) {
+  if (total <= 1) return new Set([0]);
+  if (total <= 5) {
+    const slots = new Set([0, total - 1]);
+    for (let i = 2; i < total - 1; i += 2) slots.add(i);
+    return slots;
+  }
+  if (total <= 7) {
+    const slots = new Set([0, total - 1]);
+    for (let i = 2; i < total - 1; i += 2) slots.add(i);
+    return slots;
+  }
+  if (total <= 8) {
+    return new Set([0, 2, 5, total - 1]);
+  }
+  // 90초 (9~12): 0,3,6,9,last
+  const slots = new Set([0, total - 1]);
+  for (let i = 3; i < total - 1; i += 3) slots.add(i);
+  return slots;
+}
+
 async function createClipWithFallback(prompt, userId, clipNumber) {
   if (!(process.env.SEEDANCE_API_KEY || '').trim()) {
     return callImagen3Image(prompt, createR2Key(userId, `clip${clipNumber}-fallback.png`));
@@ -614,56 +636,24 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
   if (method !== 'POST') throw new HttpError(405, 'Method not allowed');
 
   const body = parseRequestBody(rawBody ? rawBody.toString('utf8') : '');
-  const brollSuggestions = Array.isArray(body.brollSuggestions)
-    ? body.brollSuggestions.map(item => typeof item === 'string' ? item.trim() : '').filter(Boolean)
-    : [];
-  const scriptContext = typeof body.scriptContext === 'string' ? body.scriptContext.trim() : '';
+  const scenes = Array.isArray(body.scenes) ? body.scenes : [];
+  const visualStyle = typeof body.visualStyle === 'string' ? body.visualStyle.trim() : '';
 
-  if (brollSuggestions.length < 3) {
-    throw new HttpError(400, 'brollSuggestions는 비어 있지 않은 영어 설명 3개 이상이 필요합니다.');
-  }
-  if (!scriptContext) {
-    throw new HttpError(400, 'scriptContext가 필요합니다.');
+  const brollScenes = scenes.filter(s => s && s.type === 'broll' && typeof s.visual === 'string' && s.visual.trim());
+
+  if (brollScenes.length === 0) {
+    throw new HttpError(400, 'broll 타입의 scene이 1개 이상 필요합니다.');
   }
 
   const userId = getSafeUserId(userEmail, ip);
   const failures = [];
-  const maxAssets = Math.min(brollSuggestions.length, 12);
-
-  // i2v 영상 슬롯: 첫 씬 + 마지막 씬 필수, 중간은 이미지 연속 2개 방지 교차 배치
-  // 30초(5): [0,2,4]->2~3  45초(7): [0,2,4,6]->3~4  60초(8): [0,2,5,7]->4  90초(12): [0,3,6,9,11]->5
-  function computeVideoSlots(total) {
-    if (total <= 1) return new Set([0]);
-    if (total <= 5) {
-      // 30초: 0,2,4 (첫, 중간, 끝) — 최대 3개 중 총 2개 보장
-      const slots = new Set([0, total - 1]);
-      for (let i = 2; i < total - 1; i += 2) slots.add(i);
-      return slots;
-    }
-    if (total <= 7) {
-      // 45초: 0,2,4,6
-      const slots = new Set([0, total - 1]);
-      for (let i = 2; i < total - 1; i += 2) slots.add(i);
-      return slots;
-    }
-    if (total <= 8) {
-      // 60초: 0,2,5,7
-      return new Set([0, 2, 5, total - 1]);
-    }
-    // 90초 (9~12): 0,3,6,9,last
-    const slots = new Set([0, total - 1]);
-    for (let i = 3; i < total - 1; i += 3) slots.add(i);
-    return slots;
-  }
-
+  const maxAssets = brollScenes.length;
   const videoSlots = computeVideoSlots(maxAssets);
-  function isVideoSlot(i) { return videoSlots.has(i); }
 
-  async function generateWithFallback(suggestion, index) {
-    const imgPrompt = buildVisualPrompt(suggestion, scriptContext, 'image');
+  async function generateWithFallback(scene, index) {
+    const imgPrompt = buildVisualPrompt(scene.visual, visualStyle, 'image');
     const imgKey = createR2Key(userId, `image${index}.png`);
 
-    // Step 1: Always generate image first (needed for both image-only and i2v slots)
     let imageResult = null;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
@@ -679,17 +669,14 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
     }
     if (!imageResult) return null;
 
-    // Step 2: If this is a video slot, convert the image to video via Veo i2v
-    if (isVideoSlot(index) && hasVeoConfig()) {
-      const videoPrompt = buildVisualPrompt(suggestion, scriptContext, 'video');
+    if (videoSlots.has(index) && hasVeoConfig()) {
+      const videoPrompt = buildVisualPrompt(scene.visual, visualStyle, 'video');
       const videoKey = createR2Key(userId, `i2v${index}.mp4`);
       try {
         const videoResult = await callVeoI2V(videoPrompt, videoKey, imageResult.base64);
-        console.log('[SHORTFORM-BROLL] i2v slot ' + index + ' success');
         return videoResult;
       } catch (error) {
-        console.warn('[SHORTFORM-BROLL] i2v slot ' + index + ' failed, using image fallback (Ken Burns):', error.message);
-        // Return the already-generated image as fallback
+        console.warn('[SHORTFORM-BROLL] i2v slot ' + index + ' failed, using image fallback:', error.message);
         return imageResult;
       }
     }
@@ -698,14 +685,12 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
   }
 
   const BATCH_SIZE = 2;
-  const allSuggestions = brollSuggestions.slice(0, maxAssets);
   const items = [];
-
-  for (let i = 0; i < allSuggestions.length; i += BATCH_SIZE) {
-    const batch = allSuggestions.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < brollScenes.length; i += BATCH_SIZE) {
+    const batch = brollScenes.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(
-      batch.map(function(suggestion, batchIndex) {
-        return generateWithFallback(suggestion, i + batchIndex);
+      batch.map(function(scene, batchIndex) {
+        return generateWithFallback(scene, i + batchIndex);
       })
     );
     batchResults.forEach(function(result) { if (result) items.push(result); });
