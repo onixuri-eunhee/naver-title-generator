@@ -7,6 +7,8 @@ import {fileURLToPath} from 'node:url';
 let cachedServeUrl = null;
 const SHORTFORM_REMOTION_ID = 'ShortformRemotion';
 export const SHORTFORM_REMOTION_VERSION = 'v2-remotion-stt-sync';
+const SELECT_COMPOSITION_TIMEOUT_MS = 120000;
+const RENDER_TIMEOUT_MS = 300000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,7 +56,7 @@ export async function renderShortformRemotion({
     chromiumOptions: {
       gl: 'angle',
     },
-    timeoutInMilliseconds: 120000,
+    timeoutInMilliseconds: SELECT_COMPOSITION_TIMEOUT_MS,
   });
 
   console.info('[shortform-remotion] composition:', {
@@ -74,11 +76,10 @@ export async function renderShortformRemotion({
     browserExecutable,
     chromeMode,
     overwrite: true,
-    timeoutInMilliseconds: 300000,
+    timeoutInMilliseconds: RENDER_TIMEOUT_MS,
     chromiumOptions: {
       gl: 'angle',
     },
-    timeoutInMilliseconds: 120000,
   });
 
   return {

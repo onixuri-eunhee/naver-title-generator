@@ -93,24 +93,34 @@ const TEXT_CARD_DURATION_SEC = 1.0;
 function buildVisualSpans(visuals, durationSec) {
   if (!visuals.length) return [];
   const overlapSec = 0.3;
+  const minSceneSec = 1 / SHORTFORM_FPS;
 
   const textCount = visuals.filter((v) => v.sceneType === 'text').length;
   const brollCount = visuals.length - textCount;
-  const totalTextSec = textCount * TEXT_CARD_DURATION_SEC;
-  const brollSpanSec = brollCount > 0 ? (durationSec - totalTextSec) / brollCount : durationSec;
+  const maxTextSec = Math.max(0, durationSec - (brollCount * minSceneSec));
+  const totalTextSec = textCount > 0
+    ? Math.min(textCount * TEXT_CARD_DURATION_SEC, maxTextSec)
+    : 0;
+  const textSpanSec = textCount > 0
+    ? Math.max(minSceneSec, totalTextSec / textCount)
+    : 0;
+  const remainingBrollSec = Math.max(0, durationSec - totalTextSec);
+  const brollSpanSec = brollCount > 0
+    ? Math.max(minSceneSec, remainingBrollSec / brollCount)
+    : 0;
 
   let cursor = 0;
   return visuals.map((visual, index) => {
     const isText = visual.sceneType === 'text';
-    const rawDuration = isText ? TEXT_CARD_DURATION_SEC : brollSpanSec;
+    const rawDuration = isText ? textSpanSec : brollSpanSec;
     const rawStart = cursor;
     const rawEnd = index === visuals.length - 1 ? durationSec : cursor + rawDuration;
 
     const prevIsText = index > 0 && visuals[index - 1].sceneType === 'text';
     const nextIsText = index < visuals.length - 1 && visuals[index + 1].sceneType === 'text';
-
-    const startSec = (index === 0 || isText || prevIsText) ? rawStart : Math.max(0, rawStart - overlapSec);
-    const endSec = (index === visuals.length - 1 || isText || nextIsText) ? rawEnd : Math.min(durationSec, rawEnd + overlapSec);
+    const localOverlapSec = Math.min(overlapSec, Math.max(0, rawDuration / 2));
+    const startSec = (index === 0 || isText || prevIsText) ? rawStart : Math.max(0, rawStart - localOverlapSec);
+    const endSec = (index === visuals.length - 1 || isText || nextIsText) ? rawEnd : Math.min(durationSec, rawEnd + localOverlapSec);
 
     cursor = rawEnd;
     return {
