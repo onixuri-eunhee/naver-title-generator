@@ -351,7 +351,7 @@ async function loadUsers(page) {
         '<td id="credit-' + num + '">' + esc(String(u.credits)) + '</td>' +
         '<td>' + esc(date) + '</td>' +
         '<td><div class="credit-actions">' +
-          '<input type="number" id="amt-' + num + '" value="10" min="1" max="9999">' +
+          '<input type="number" id="amt-' + num + '" value="1" min="1" max="9999">' +
           '<button class="btn-add" onclick="adjustCredit(\'' + emailEsc + '\',' + num + ',1)">+</button>' +
           '<button class="btn-sub" onclick="adjustCredit(\'' + emailEsc + '\',' + num + ',-1)">-</button>' +
           '<span class="credit-result" id="cr-' + num + '"></span>' +
