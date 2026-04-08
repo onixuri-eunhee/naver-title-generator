@@ -164,10 +164,10 @@ function subtractHiddenRanges(scene, hiddenRanges) {
 
 function getSceneFontSize(scene) {
   const textLength = String(scene?.text || '').replace(/\s+/g, '').length;
-  if (textLength <= 10) return 126;
-  if (textLength <= 16) return 112;
-  if (textLength <= 24) return 96;
-  return 84;
+  if (textLength <= 10) return 42;
+  if (textLength <= 16) return 36;
+  if (textLength <= 24) return 32;
+  return 27;
 }
 
 function getWordVisualState(word, currentTimeSec, fadeDurationSec) {
