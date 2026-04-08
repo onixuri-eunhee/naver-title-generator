@@ -425,12 +425,22 @@ async function callGrokImage(prompt, key) {
     method: 'POST',
     headers: { Authorization: `Bearer ${process.env.XAI_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: 'grok-2-image', prompt, n: 1, size: '1024x1792' }),
-  });
+  }, 20000);
   const data = await parseJsonResponse(response);
   if (!response.ok) throw new Error(`Grok image failed: ${response.status} ${JSON.stringify(data).slice(0, 200)}`);
   const imagePayload = data?.data?.[0] || data;
+  // b64_json이 있으면 base64 추출 (i2v 파이프라인 호환)
+  const b64 = imagePayload?.b64_json || null;
   const asset = await persistImageResult(imagePayload, key);
-  return { type: 'image', url: asset.url, r2Url: asset.r2Url, prompt, provider: 'grok' };
+  // base64가 없으면 R2에서 다운받아 추출
+  let base64 = b64;
+  if (!base64 && asset.r2Url) {
+    try {
+      const imgRes = await fetchWithTimeout(asset.r2Url, {}, 10000);
+      if (imgRes.ok) base64 = Buffer.from(await imgRes.arrayBuffer()).toString('base64');
+    } catch (_) {}
+  }
+  return { type: 'image', url: asset.url, r2Url: asset.r2Url, prompt, base64, provider: 'grok' };
 }
 
 async function pollVeoOperation(operationName, accessToken, location) {
