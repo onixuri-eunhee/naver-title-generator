@@ -86,8 +86,8 @@ const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다.
     {
       "script": "대본 문장 (한국어, 1~2문장)",
       "section": "hook | point | cta",
-      "type": "broll | text",
-      "visual": "broll이면 영어 B-roll 이미지 설명 / text면 화면에 표시할 핵심 문구 (한국어, 15자 이내)",
+      "type": "broll",
+      "visual": "구체적인 영어 B-roll 이미지 설명",
       "hookText": "(첫 씬만) 화면에 크게 표시할 후킹 문구 (한국어, 12자 이내)"
     }
   ]
@@ -96,9 +96,8 @@ const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다.
 [scenes 규칙]
 - scenes 개수는 targetSceneCount에 맞추세요
 - 각 scene의 script는 1~2문장, 자연스러운 구어체 내레이션
-- type은 대본 내용에 따라 자유롭게 판단하되, scenes[0]은 반드시 broll
-- broll의 visual은 구체적인 영어 이미지 설명 (예: "close-up of hands typing on laptop")
-- text의 visual은 화면에 크게 표시할 핵심 문구 (한국어, 15자 이내)
+- type은 모든 씬에서 반드시 "broll"만 사용. text 타입은 사용 금지.
+- visual은 구체적인 영어 이미지 설명 (예: "close-up of hands typing on laptop")
 - section은 Hook → Point → CTA 흐름에 맞게 배정
 - hookText는 scenes[0]에만 포함, 나머지 씬에는 생략
 `;
@@ -214,36 +213,15 @@ function postProcessScenes(scenes, targetSceneCount) {
     scenes[0].hookText = scenes[0].script.replace(/[^가-힣a-zA-Z0-9\s]/g, '').slice(0, 12);
   }
 
-  // 3. 텍스트 카드 비율 20~40% 보정
-  const total = scenes.length;
-  const textCount = scenes.filter(s => s.type === 'text').length;
-  const minText = Math.ceil(total * 0.2);
-  const maxText = Math.floor(total * 0.4);
-
-  if (textCount < minText) {
-    const pointScenes = scenes.map((s, i) => ({ s, i })).filter(({ s }) => s.type === 'broll' && s.section === 'point');
-    for (let j = 0; j < minText - textCount && j < pointScenes.length; j++) {
-      const idx = pointScenes[j].i;
-      scenes[idx] = { ...scenes[idx], type: 'text', visual: scenes[idx].script.replace(/[^가-힣a-zA-Z0-9\s]/g, '').slice(0, 15) };
-    }
-  } else if (textCount > maxText) {
-    const textScenes = scenes.map((s, i) => ({ s, i })).filter(({ s }) => s.type === 'text');
-    for (let j = 0; j < textCount - maxText && j < textScenes.length; j++) {
-      const idx = textScenes[textScenes.length - 1 - j].i;
-      scenes[idx] = { ...scenes[idx], type: 'broll', visual: 'supporting visual for the narration' };
-    }
-  }
-
-  // 3. 같은 type 3연속 방지
-  for (let i = 1; i < scenes.length - 1; i++) {
-    if (scenes[i - 1].type === scenes[i].type && scenes[i].type === scenes[i + 1].type) {
-      if (scenes[i].type === 'broll') {
-        scenes[i] = { ...scenes[i], type: 'text', visual: scenes[i].script.replace(/[^가-힣a-zA-Z0-9\s]/g, '').slice(0, 15) };
-      } else {
-        scenes[i] = { ...scenes[i], type: 'broll', visual: 'supporting visual for the narration' };
+  // 3. 모든 씬을 broll로 강제 (텍스트 카드 폐지)
+  scenes.forEach(s => {
+    if (s.type !== 'broll') {
+      s.type = 'broll';
+      if (!s.visual || !/[a-zA-Z]/.test(s.visual)) {
+        s.visual = 'supporting visual for the narration';
       }
     }
-  }
+  });
 
   return scenes;
 }
@@ -255,7 +233,7 @@ function buildScriptPayload(parsed, concept, targetSceneCount) {
   scenes.forEach(s => {
     s.script = toSentence(s.script);
     s.section = ['hook', 'point', 'cta'].includes(s.section) ? s.section : 'point';
-    s.type = ['broll', 'text'].includes(s.type) ? s.type : 'broll';
+    s.type = 'broll';
     s.visual = toSentence(s.visual) || (s.type === 'broll' ? 'generic B-roll scene' : s.script.slice(0, 15));
   });
 
