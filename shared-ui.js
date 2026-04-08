@@ -32,17 +32,9 @@
   function buildNavbar() {
     var links = NAV_ITEMS.map(function(item) {
       var isActive = item.label === activePage;
-      var badgeClass = '';
-      if (item.badge === 'pro') badgeClass = ' class="pro-badge"';
-      if (item.badge === 'new') badgeClass = ' class="new-badge"';
-      // active 페이지는 style이 우선, badge class와 동시 적용
-      if (isActive && item.badge) {
-        return '<a href="' + item.href + '"' + badgeClass + ' style="color:#ff5f1f; font-weight:700;">' + item.label + '</a>';
-      }
-      if (isActive) {
-        return '<a href="' + item.href + '" style="color:#ff5f1f; font-weight:700;">' + item.label + '</a>';
-      }
-      return '<a href="' + item.href + '"' + badgeClass + '>' + item.label + '</a>';
+      var cls = item.badge === 'pro' ? ' class="pro-badge"' : item.badge === 'new' ? ' class="new-badge"' : '';
+      var style = isActive ? ' style="color:#ff5f1f; font-weight:700;"' : '';
+      return '<a href="' + item.href + '"' + cls + style + '>' + item.label + '</a>';
     }).join('\n    ');
 
     return '<nav class="navbar">\n' +

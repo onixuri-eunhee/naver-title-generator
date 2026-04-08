@@ -2612,16 +2612,25 @@
 
   // ─── AI 글 검수기 (90점 만점) ───
   var lastReviewSuggestions = [];
+  var lastScoreData = null; // 캐싱: improveContent에서 재사용
+
+  function authHeaders() {
+    var h = { 'Content-Type': 'application/json' };
+    var tk = localStorage.getItem('ddukddak_token');
+    if (tk) h['Authorization'] = 'Bearer ' + tk;
+    return h;
+  }
+
+  function buildFullText(d) {
+    return (d.hook || '') + '\n\n' + (d.body || '') + '\n\n' + (d.cta || '');
+  }
 
   // AI 전형 어휘 자동 치환 (서버 API 호출)
   async function replaceAIVocabulary(parsed) {
     try {
-      var _hdr = { 'Content-Type': 'application/json' };
-      var _tk = localStorage.getItem('ddukddak_token');
-      if (_tk) _hdr['Authorization'] = 'Bearer ' + _tk;
       var res = await fetch('/api/score-check', {
         method: 'POST',
-        headers: _hdr,
+        headers: authHeaders(),
         body: JSON.stringify({ action: 'replace', parsed: parsed })
       });
       if (res.ok) {
@@ -2633,19 +2642,16 @@
 
   // AI 글 검수 (서버 API 호출)
   async function runReview(data) {
-    var fullText = (data.hook || '') + '\n\n' + (data.body || '') + '\n\n' + (data.cta || '');
+    var fullText = buildFullText(data);
     try {
-      var _hdr = { 'Content-Type': 'application/json' };
-      var _tk = localStorage.getItem('ddukddak_token');
-      if (_tk) _hdr['Authorization'] = 'Bearer ' + _tk;
       var res = await fetch('/api/score-check', {
         method: 'POST',
-        headers: _hdr,
+        headers: authHeaders(),
         body: JSON.stringify({ action: 'score', text: fullText })
       });
       if (!res.ok) throw new Error('검수 API 오류');
-      var scoreData = await res.json();
-      renderReview(scoreData.results, scoreData.totalScore);
+      lastScoreData = await res.json();
+      renderReview(lastScoreData.results, lastScoreData.totalScore);
     } catch (e) {
       console.error('검수 실패:', e);
     }
@@ -2765,20 +2771,10 @@
     btnImprove.disabled = true;
     btnImprove.textContent = 'AI가 수정 중...';
 
-    // 서버에서 검수 결과 가져오기 (채점 로직 보호)
-    var fullText = (generatedData.hook || '') + '\n\n' + (generatedData.body || '') + '\n\n' + (generatedData.cta || '');
-    var _hdr2 = { 'Content-Type': 'application/json' };
-    var _tk2 = localStorage.getItem('ddukddak_token');
-    if (_tk2) _hdr2['Authorization'] = 'Bearer ' + _tk2;
-    var scoreRes = await fetch('/api/score-check', {
-      method: 'POST',
-      headers: _hdr2,
-      body: JSON.stringify({ action: 'score', text: fullText })
-    });
-    if (!scoreRes.ok) throw new Error('검수 API 오류');
-    var scoreData = await scoreRes.json();
-    var allResults = scoreData.results;
-    var currentTotal = scoreData.totalScore;
+    // 캐싱된 검수 결과 사용 (runReview에서 이미 호출됨)
+    if (!lastScoreData) throw new Error('검수 데이터가 없습니다. 먼저 글을 생성해주세요.');
+    var allResults = lastScoreData.results;
+    var currentTotal = lastScoreData.totalScore;
 
     var improveParts = [];
     var focusItems = [];
@@ -2855,12 +2851,9 @@
       '★ PASS 항목은 현재 수준을 절대 떨어뜨리지 마세요.';
 
     try {
-      var _hdr = { 'Content-Type': 'application/json' };
-      var _tk = localStorage.getItem('ddukddak_token');
-      if (_tk) _hdr['Authorization'] = 'Bearer ' + _tk;
       var res = await fetch('/api/generate', {
         method: 'POST',
-        headers: _hdr,
+        headers: authHeaders(),
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 8192,
@@ -3056,12 +3049,9 @@
     var userMessage = userParts.join('\n');
 
     try {
-      var _hdr2 = { 'Content-Type': 'application/json' };
-      var _tk2 = localStorage.getItem('ddukddak_token');
-      if (_tk2) _hdr2['Authorization'] = 'Bearer ' + _tk2;
       var res = await fetch('/api/generate', {
         method: 'POST',
-        headers: _hdr2,
+        headers: authHeaders(),
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 8192,

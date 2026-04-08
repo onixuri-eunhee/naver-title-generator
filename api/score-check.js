@@ -14,15 +14,17 @@ const AI_VOCABULARY_MAP = {
 };
 
 const BANNED_WORDS = Object.keys(AI_VOCABULARY_MAP);
+const BANNED_REGEXPS = BANNED_WORDS.map(w => ({ word: w, re: new RegExp(w, 'g') }));
 
 // ── 7개 채점 함수 ──
 
 function checkAIVocabulary(fullText) {
   let found = 0;
   const foundWords = [];
-  for (const w of BANNED_WORDS) {
-    const matches = fullText.match(new RegExp(w, 'g'));
-    if (matches) { found += matches.length; foundWords.push(w); }
+  for (const { word, re } of BANNED_REGEXPS) {
+    re.lastIndex = 0;
+    const matches = fullText.match(re);
+    if (matches) { found += matches.length; foundWords.push(word); }
   }
   const score = found === 0 ? 15 : found <= 2 ? 8 : 0;
   const status = found === 0 ? 'pass' : found <= 2 ? 'warn' : 'fail';
@@ -122,9 +124,7 @@ function replaceAIVocabulary(parsed) {
   for (const field of fields) {
     if (parsed[field]) {
       for (const [word, replacement] of Object.entries(AI_VOCABULARY_MAP)) {
-        if (parsed[field].includes(word)) {
-          parsed[field] = parsed[field].split(word).join(replacement);
-        }
+        parsed[field] = parsed[field].split(word).join(replacement);
       }
     }
   }
