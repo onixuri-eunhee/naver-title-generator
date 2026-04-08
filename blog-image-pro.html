@@ -524,6 +524,11 @@ var currentMode = '';
 function getAuthBody() {
   return { token: token };
 }
+function getAuthHeaders() {
+  var h = { 'Content-Type': 'application/json' };
+  if (token) h['Authorization'] = 'Bearer ' + token;
+  return h;
+}
 
 // ─── 남은 횟수 ───
 async function loadRemaining() {
@@ -785,7 +790,7 @@ async function generateParse() {
     var body = Object.assign({ mode: 'parse', blogText: blogText, thumbnailText: thumbnailText, markers: markersToSend }, getAuthBody());
     var res = await fetch('/api/blog-image-pro', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(body),
     });
     var data = await res.json();
@@ -833,7 +838,7 @@ async function generateDirect() {
     var body = Object.assign({ mode: 'direct', topic: topic, mood: mood, thumbnailText: thumbnailText }, getAuthBody());
     var res = await fetch('/api/blog-image-pro', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(body),
     });
     var data = await res.json();
@@ -1050,7 +1055,7 @@ async function regenerateAll() {
 
     var res = await fetch('/api/blog-image-pro', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(body),
     });
     var data = await res.json();
@@ -1108,7 +1113,7 @@ async function regenerateSingle(index) {
 
     var res = await fetch('/api/blog-image-pro', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(body),
     });
     var data = await res.json();
