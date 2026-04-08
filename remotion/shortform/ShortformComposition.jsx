@@ -20,6 +20,7 @@ const WORD_FADE_SECONDS = {
 };
 
 const ACCENT = '#ff5f1f';
+const HIDDEN_RANGE_PAD_SEC = 2 / SHORTFORM_FPS;
 
 const overlayStyle = {
   background: 'linear-gradient(180deg, rgba(4, 10, 18, 0.28) 0%, rgba(4, 10, 18, 0.48) 44%, rgba(4, 10, 18, 0.78) 100%)',
@@ -62,6 +63,86 @@ const fallbackStyle = {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function buildLineText(words) {
+  return (words || [])
+    .map((word) => `${word.prefix || ''}${word.text}`)
+    .join('')
+    .trim();
+}
+
+function mergeHiddenRanges(ranges) {
+  if (!ranges.length) return [];
+
+  const sorted = [...ranges]
+    .filter((range) => range.endSec > range.startSec)
+    .sort((left, right) => left.startSec - right.startSec);
+
+  return sorted.reduce((acc, range) => {
+    const previous = acc[acc.length - 1];
+    if (!previous || range.startSec > previous.endSec) {
+      acc.push({...range});
+      return acc;
+    }
+
+    previous.endSec = Math.max(previous.endSec, range.endSec);
+    return acc;
+  }, []);
+}
+
+function clipTextScene(scene, startSec, endSec, segmentIndex) {
+  const minDurationSec = 1 / SHORTFORM_FPS;
+  if (endSec - startSec < minDurationSec) return null;
+
+  const clippedWordLines = (scene.wordLines || [])
+    .map((line) => ({
+      ...line,
+      words: (line.words || []).filter((word) => {
+        const wordEnd = typeof word.end === 'number' ? word.end : word.start + 0.2;
+        return wordEnd > startSec && word.start < endSec;
+      }),
+    }))
+    .filter((line) => line.words.length > 0);
+
+  const displayLines = clippedWordLines.length
+    ? clippedWordLines.map((line) => buildLineText(line.words)).filter(Boolean)
+    : (scene.displayLines || []).filter(Boolean);
+
+  return {
+    ...scene,
+    id: `${scene.id}-clip-${segmentIndex}`,
+    text: displayLines.join(' ').trim() || scene.text,
+    startSec,
+    endSec,
+    startFrame: Math.floor(startSec * SHORTFORM_FPS),
+    durationInFrames: Math.max(1, Math.round((endSec - startSec) * SHORTFORM_FPS)),
+    displayLines,
+    wordLines: clippedWordLines,
+  };
+}
+
+function subtractHiddenRanges(scene, hiddenRanges) {
+  const overlaps = hiddenRanges.filter((range) => range.endSec > scene.startSec && range.startSec < scene.endSec);
+  if (!overlaps.length) return [scene];
+
+  const visible = [];
+  let cursor = scene.startSec;
+
+  overlaps.forEach((range, index) => {
+    if (range.startSec > cursor) {
+      const clipped = clipTextScene(scene, cursor, Math.min(range.startSec, scene.endSec), index);
+      if (clipped) visible.push(clipped);
+    }
+    cursor = Math.max(cursor, range.endSec);
+  });
+
+  if (cursor < scene.endSec) {
+    const clipped = clipTextScene(scene, cursor, scene.endSec, overlaps.length);
+    if (clipped) visible.push(clipped);
+  }
+
+  return visible;
 }
 
 function getSceneFontSize(scene) {
@@ -336,6 +417,28 @@ const TextLayer = ({scene, motionSpeed, textRevealMode}) => {
 
 export const ShortformComposition = (props) => {
   const timeline = useMemo(() => buildShortformTimeline(props), [props]);
+  const backgroundVisualSpans = useMemo(
+    () => timeline.visualSpans.filter((span) => span.sceneType !== 'text'),
+    [timeline.visualSpans]
+  );
+  const textCardSpans = useMemo(
+    () => timeline.visualSpans.filter((span) => span.sceneType === 'text'),
+    [timeline.visualSpans]
+  );
+  const hiddenRanges = useMemo(() => {
+    const ranges = timeline.visualSpans
+      .filter((span, index) => span.sceneType === 'text' || (index === 0 && props.hookText))
+      .map((span) => ({
+        startSec: Math.max(0, span.startSec - HIDDEN_RANGE_PAD_SEC),
+        endSec: Math.min(timeline.durationSec, span.endSec + HIDDEN_RANGE_PAD_SEC),
+      }));
+
+    return mergeHiddenRanges(ranges);
+  }, [timeline.visualSpans, timeline.durationSec, props.hookText]);
+  const renderableTextScenes = useMemo(
+    () => timeline.textScenes.flatMap((scene) => subtractHiddenRanges(scene, hiddenRanges)),
+    [timeline.textScenes, hiddenRanges]
+  );
 
   return (
     <AbsoluteFill
@@ -346,32 +449,19 @@ export const ShortformComposition = (props) => {
         overflow: 'hidden',
       }}
     >
-      {timeline.visualSpans.map((visual, index) => {
-        const isTextCard = visual.sceneType === 'text';
-        const isFirstScene = index === 0;
-        const hookText = isFirstScene ? props.hookText : null;
+      {backgroundVisualSpans.map((visual, index) => {
+        const originalIndex = timeline.visualSpans.indexOf(visual);
 
         return (
           <Sequence
-            key={`visual-${index}-${visual.startFrame}`}
+            key={`visual-bg-${originalIndex}-${visual.startFrame}`}
             from={visual.startFrame}
             durationInFrames={visual.durationInFrames}
           >
-            {isTextCard ? (
-              <TextCard
-                template={props.textCardTemplate || 'dark-gradient'}
-                text={visual.text || ''}
-                durationInFrames={visual.durationInFrames}
-              />
-            ) : (
-              <>
-                <BackgroundLayer visual={visual} durationInFrames={visual.durationInFrames} />
-                <AbsoluteFill style={overlayStyle} />
-                {hookText ? (
-                  <HookOverlay text={hookText} durationInFrames={visual.durationInFrames} />
-                ) : null}
-              </>
-            )}
+            <>
+              <BackgroundLayer visual={visual} durationInFrames={visual.durationInFrames} />
+              <AbsoluteFill style={overlayStyle} />
+            </>
           </Sequence>
         );
       })}
@@ -381,22 +471,7 @@ export const ShortformComposition = (props) => {
           startFrom={Math.floor((timeline.trimStartSec || 0) * SHORTFORM_FPS)}
         />
       ) : null}
-      {timeline.textScenes
-        .filter((scene) => {
-          // 첫 씬(hook overlay) 구간 자막 숨김
-          if (props.hookText && timeline.visualSpans.length > 0) {
-            const first = timeline.visualSpans[0];
-            if (scene.startSec >= first.startSec && scene.startSec < first.endSec) {
-              return false;
-            }
-          }
-          // 텍스트 카드 구간 자막 숨김
-          return !timeline.visualSpans.some((span) => {
-            if (span.sceneType !== 'text') return false;
-            return scene.startSec >= span.startSec && scene.startSec < span.endSec;
-          });
-        })
-        .map((scene) => (
+      {renderableTextScenes.map((scene) => (
           <Sequence
             key={`text-${scene.id}-${scene.startFrame}`}
             from={scene.startFrame}
@@ -408,8 +483,29 @@ export const ShortformComposition = (props) => {
               textRevealMode={timeline.textRevealMode}
             />
           </Sequence>
-        ))
-      }
+        ))}
+      {textCardSpans.map((visual, index) => (
+        <Sequence
+          key={`visual-text-${index}-${visual.startFrame}`}
+          from={visual.startFrame}
+          durationInFrames={visual.durationInFrames}
+        >
+          <TextCard
+            template={props.textCardTemplate || 'dark-gradient'}
+            text={visual.text || ''}
+            durationInFrames={visual.durationInFrames}
+          />
+        </Sequence>
+      ))}
+      {props.hookText && timeline.visualSpans.length > 0 && timeline.visualSpans[0].sceneType !== 'text' ? (
+        <Sequence
+          key={`hook-overlay-${timeline.visualSpans[0].startFrame}`}
+          from={timeline.visualSpans[0].startFrame}
+          durationInFrames={timeline.visualSpans[0].durationInFrames}
+        >
+          <HookOverlay text={props.hookText} durationInFrames={timeline.visualSpans[0].durationInFrames} />
+        </Sequence>
+      ) : null}
     </AbsoluteFill>
   );
 };

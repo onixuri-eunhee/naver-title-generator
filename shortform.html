@@ -1141,32 +1141,155 @@
       .step-lock { padding-top: 112px; }
       .record-guide { padding: 14px; }
     }
+    .subtitle-editor-shell {
+      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,249,253,0.96));
+      border: 1px solid rgba(229,231,235,0.96);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+    }
+    .subtitle-editor-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .subtitle-editor-copy strong {
+      display: block;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .subtitle-editor-copy p {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .subtitle-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .subtitle-stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,95,31,0.08);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .subtitle-stat strong {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .subtitle-list {
+      display: grid;
+      gap: 8px;
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
     .subtitle-row {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 0;
-      border-bottom: 1px solid #f0f0f0;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid rgba(229,231,235,0.92);
+      border-radius: 12px;
+      padding: 10px 12px;
     }
-    .subtitle-row:last-child { border-bottom: none; }
-    .subtitle-time {
+    .subtitle-row-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    .subtitle-index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      color: #64748b;
       font-size: 11px;
-      color: #6B7280;
-      min-width: 50px;
-      font-family: monospace;
+      font-weight: 800;
+    }
+    .subtitle-kind {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: rgba(37, 99, 235, 0.12);
+      color: #2563eb;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .subtitle-label {
+      display: none;
+    }
+    .subtitle-time {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #4b5563;
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+    .subtitle-duration {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: rgba(22, 163, 74, 0.1);
+      color: #15803d;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
     }
     .subtitle-text-input {
-      flex: 1;
-      padding: 6px 10px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      flex: 1 1 auto;
+      min-height: 42px;
+      resize: none;
+      padding: 10px 12px;
+      border: 1px solid transparent;
+      border-radius: 10px;
       font-size: 13px;
+      line-height: 1.5;
       font-family: 'Noto Sans KR', sans-serif;
-      background: #FAFBFC;
+      background: #f8fafc;
+      color: var(--text);
     }
     .subtitle-text-input:focus {
       outline: none;
       border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255,95,31,0.10);
+      background: #fff;
+    }
+    @media (max-width: 768px) {
+      .subtitle-editor-top {
+        flex-direction: column;
+      }
+      .subtitle-row {
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .subtitle-text-input {
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -1481,18 +1604,22 @@
           </div>
         </div>
 
-          <div id="subtitleEditSection" style="display:none; margin-top:16px;">
-            <div style="background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:16px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <div>
-                  <strong style="font-size:15px;">자막 편집</strong>
-                  <div style="font-size:12px; color:#6B7280; margin-top:2px;">자막 텍스트와 줄바꿈을 수정할 수 있어요.</div>
+        <div id="subtitleEditSection" style="display:none; margin-top:16px;">
+          <div class="subtitle-editor-shell">
+            <div class="subtitle-editor-top">
+              <div class="subtitle-editor-copy">
+                <strong>자막 편집</strong>
+                <p>문장 단위로 바로 수정할 수 있게 정리했습니다. 렌더링에는 아래 편집본이 그대로 반영됩니다.</p>
+                <div class="subtitle-stats">
+                  <span class="subtitle-stat"><strong id="subtitleCountValue">0</strong>줄</span>
+                  <span class="subtitle-stat"><strong id="subtitleCharValue">0</strong>자</span>
                 </div>
-                <button type="button" class="primary-btn" id="confirmSubtitlesBtn" style="padding:8px 20px; font-size:13px;">확인 후 계속</button>
               </div>
-              <div id="subtitleTimeline" style="max-height:400px; overflow-y:auto;"></div>
+              <button type="button" class="primary-btn" id="confirmSubtitlesBtn" style="padding:10px 20px; font-size:13px;">확인 후 계속</button>
             </div>
+            <div id="subtitleTimeline" class="subtitle-list"></div>
           </div>
+        </div>
       </div>
     </section>
 
@@ -1595,6 +1722,7 @@
         reprocessTimer: 0,
         sttSegments: [],
         sttWords: [],
+        subtitleSentences: [],
         brollItems: [],
         renderProgress: 0,
         renderBlob: null,
@@ -2109,36 +2237,271 @@
         return (m > 0 ? m + ':' : '') + (s < 10 && m > 0 ? '0' : '') + s + '.' + ms;
       }
 
+      function updateSubtitleStats(sentences) {
+        var countEl = document.getElementById('subtitleCountValue');
+        var charEl = document.getElementById('subtitleCharValue');
+        var list = Array.isArray(sentences) ? sentences : [];
+        var totalChars = list.reduce(function(sum, item) {
+          return sum + String(item && item.text || '').replace(/\s+/g, '').length;
+        }, 0);
+        if (countEl) countEl.textContent = String(list.length);
+        if (charEl) charEl.textContent = String(totalChars);
+      }
+
+      function autoresizeSubtitleInput(el) {
+        if (!el) return;
+        el.style.height = '0px';
+        el.style.height = Math.max(42, el.scrollHeight) + 'px';
+      }
+
       function renderSubtitleEditor(words) {
         var container = document.getElementById('subtitleTimeline');
         if (!container) return;
         container.innerHTML = '';
 
-        // Group words into sentences (by punctuation or gap > 0.5s)
-        var sentences = [];
-        var bucket = [];
-        for (var i = 0; i < words.length; i++) {
-          bucket.push(words[i]);
-          var isEnd = /[.!?。！？]$/.test(words[i].text || words[i].word || '');
-          var hasGap = words[i + 1] && (words[i + 1].start - (words[i].end || words[i].start + 0.2)) > 0.5;
-          if (isEnd || hasGap || i === words.length - 1) {
-            var text = bucket.map(function(w) { return w.text || w.word || ''; }).join(' ').trim();
-            var start = bucket[0].start || 0;
-            sentences.push({ start: start, text: text, wordIndices: bucket.map(function(_, j) { return i - bucket.length + 1 + j; }) });
-            bucket = [];
-          }
-        }
+        var sentences = buildEditableSubtitleEntries(state.sttSegments || [], words || []);
 
         sentences.forEach(function(sentence, idx) {
+          var duration = Math.max(0.1, (sentence.end || sentence.start || 0) - (sentence.start || 0));
           var row = document.createElement('div');
           row.className = 'subtitle-row';
-          row.innerHTML = '<span class="subtitle-time">' + formatSubtitleTime(sentence.start) + '</span>' +
-            '<input type="text" class="subtitle-text-input" data-idx="' + idx + '" value="' + (sentence.text || '').replace(/"/g, '&quot;') + '">';
+          row.innerHTML =
+            '<div class="subtitle-row-title">' +
+              '<span class="subtitle-index">' + (idx + 1) + '</span>' +
+              '<span class="subtitle-kind">나레이션</span>' +
+            '</div>' +
+            '<textarea class="subtitle-text-input" data-idx="' + idx + '" rows="1">' + escapeHtml(sentence.text || '') + '</textarea>' +
+            '<span class="subtitle-duration">' + duration.toFixed(1) + 's</span>' +
+            '<span class="subtitle-time">' + formatSubtitleTime(sentence.start) + '</span>';
           container.appendChild(row);
         });
 
         state.subtitleSentences = sentences;
+        updateSubtitleStats(sentences);
         document.getElementById('subtitleEditSection').style.display = '';
+        container.querySelectorAll('.subtitle-text-input').forEach(function(input) {
+          autoresizeSubtitleInput(input);
+          input.addEventListener('input', function() {
+            autoresizeSubtitleInput(input);
+            var idx = parseInt(input.dataset.idx, 10);
+            if (state.subtitleSentences && state.subtitleSentences[idx]) {
+              state.subtitleSentences[idx].editedText = input.value;
+              state.subtitleSentences[idx].text = input.value;
+              updateSubtitleStats(state.subtitleSentences);
+            }
+          });
+        });
+      }
+
+      function splitSubtitleText(text, maxChars) {
+        var clean = String(text || '').replace(/\s+/g, ' ').trim();
+        if (!clean) return [];
+
+        var chunks = [];
+        var remaining = clean;
+        while (remaining.length > maxChars) {
+          var splitAt = maxChars;
+          for (var i = maxChars; i >= Math.max(1, Math.floor(maxChars * 0.55)); i--) {
+            var ch = remaining[i - 1];
+            if (ch === ' ' || /[,.!?;:。！？]/.test(ch)) {
+              splitAt = i;
+              break;
+            }
+          }
+          chunks.push(remaining.slice(0, splitAt).trim());
+          remaining = remaining.slice(splitAt).trim();
+        }
+        if (remaining) chunks.push(remaining);
+        return chunks.filter(Boolean);
+      }
+
+      function getSubtitlePreviewDuration() {
+        var duration = Number(state.audioDuration) || 0;
+        if (!duration && els.audioPlayer && Number.isFinite(els.audioPlayer.duration)) {
+          duration = Number(els.audioPlayer.duration) || 0;
+        }
+        if (!duration && state.sttSegments && state.sttSegments.length) {
+          duration = Number(state.sttSegments[state.sttSegments.length - 1].end) || 0;
+        }
+        return duration || Number(state.estimatedSeconds) || 30;
+      }
+
+      function getSceneVisualSpans(durationSec) {
+        var scenes = Array.isArray(state.scenes) ? state.scenes : [];
+        if (!scenes.length) return [];
+
+        var fps = 30;
+        var minSceneSec = 1 / fps;
+        var textCardDurationSec = 1.0;
+        var overlapSec = 0.3;
+        var textCount = scenes.filter(function(scene) { return scene && scene.type === 'text'; }).length;
+        var brollCount = scenes.length - textCount;
+        var maxTextSec = Math.max(0, durationSec - (brollCount * minSceneSec));
+        var totalTextSec = textCount > 0 ? Math.min(textCount * textCardDurationSec, maxTextSec) : 0;
+        var textSpanSec = textCount > 0 ? Math.max(minSceneSec, totalTextSec / textCount) : 0;
+        var remainingBrollSec = Math.max(0, durationSec - totalTextSec);
+        var brollSpanSec = brollCount > 0 ? Math.max(minSceneSec, remainingBrollSec / brollCount) : 0;
+        var cursor = 0;
+
+        return scenes.map(function(scene, index) {
+          var isText = scene && scene.type === 'text';
+          var rawDuration = isText ? textSpanSec : brollSpanSec;
+          var rawStart = cursor;
+          var rawEnd = index === scenes.length - 1 ? durationSec : cursor + rawDuration;
+          var prevIsText = index > 0 && scenes[index - 1] && scenes[index - 1].type === 'text';
+          var nextIsText = index < scenes.length - 1 && scenes[index + 1] && scenes[index + 1].type === 'text';
+          var localOverlapSec = Math.min(overlapSec, Math.max(0, rawDuration / 2));
+          var startSec = (index === 0 || isText || prevIsText) ? rawStart : Math.max(0, rawStart - localOverlapSec);
+          var endSec = (index === scenes.length - 1 || isText || nextIsText) ? rawEnd : Math.min(durationSec, rawEnd + localOverlapSec);
+
+          cursor = rawEnd;
+          return {
+            sceneType: isText ? 'text' : 'broll',
+            startSec: startSec,
+            endSec: endSec,
+            index: index
+          };
+        });
+      }
+
+      function getSubtitleHiddenRanges() {
+        var padSec = 2 / 30;
+        var visualSpans = getSceneVisualSpans(getSubtitlePreviewDuration());
+        var ranges = visualSpans.filter(function(span, index) {
+          return span.sceneType === 'text' || (index === 0 && state.hookText);
+        }).map(function(span) {
+          return {
+            start: Math.max(0, span.startSec - padSec),
+            end: span.endSec + padSec
+          };
+        }).filter(function(range) {
+          return range.end > range.start;
+        }).sort(function(a, b) {
+          return a.start - b.start;
+        });
+
+        return ranges.reduce(function(acc, range) {
+          var previous = acc[acc.length - 1];
+          if (!previous || range.start > previous.end) {
+            acc.push({ start: range.start, end: range.end });
+            return acc;
+          }
+          previous.end = Math.max(previous.end, range.end);
+          return acc;
+        }, []);
+      }
+
+      function subtractSubtitleHiddenRanges(entry, hiddenRanges) {
+        var overlaps = (hiddenRanges || []).filter(function(range) {
+          return range.end > entry.start && range.start < entry.end;
+        });
+        if (!overlaps.length) return [entry];
+
+        var visible = [];
+        var cursor = entry.start;
+        overlaps.forEach(function(range) {
+          if (range.start > cursor) {
+            visible.push({
+              start: cursor,
+              end: Math.min(range.start, entry.end),
+              text: entry.text
+            });
+          }
+          cursor = Math.max(cursor, range.end);
+        });
+        if (cursor < entry.end) {
+          visible.push({
+            start: cursor,
+            end: entry.end,
+            text: entry.text
+          });
+        }
+
+        return visible.filter(function(item) {
+          return (item.end - item.start) >= 0.12;
+        });
+      }
+
+      function buildEditableSubtitleEntries(segments, words) {
+        var hiddenRanges = getSubtitleHiddenRanges();
+
+        var fromSegments = (segments || []).filter(function(item) {
+          return item && typeof item.text === 'string' && item.text.trim();
+        });
+        if (fromSegments.length) {
+          var result = [];
+          fromSegments.forEach(function(item, idx) {
+            var start = typeof item.start === 'number' ? item.start : 0;
+            var end = typeof item.end === 'number' ? item.end : start + 0.8;
+            var pieces = splitSubtitleText(item.text, 24);
+            if (!pieces.length) return;
+            var pieceDuration = Math.max(0.2, (end - start) / pieces.length);
+            pieces.forEach(function(piece, pieceIdx) {
+              var pieceStart = start + (pieceDuration * pieceIdx);
+              var pieceEnd = pieceIdx === pieces.length - 1 ? end : Math.min(end, pieceStart + pieceDuration);
+              result.push({
+                id: 'segment-' + idx + '-' + pieceIdx,
+                start: pieceStart,
+                end: pieceEnd,
+                text: piece,
+              });
+            });
+          });
+          return result.flatMap(function(entry) {
+            return subtractSubtitleHiddenRanges(entry, hiddenRanges);
+          });
+        }
+
+        var fallback = [];
+        var bucket = [];
+        var maxChars = 24;
+        for (var wi = 0; wi < words.length; wi++) {
+          bucket.push(words[wi]);
+          var currentText = bucket.map(function(w) { return w.text || w.word || ''; }).join(' ').trim();
+          var currentWord = words[wi];
+          var nextWord = words[wi + 1];
+          var isEnd = /[.!?。！？]$/.test(currentWord.text || currentWord.word || '');
+          var hasGap = nextWord && (nextWord.start - (currentWord.end || currentWord.start + 0.2)) > 0.45;
+          var tooLong = currentText.replace(/\s+/g, '').length >= maxChars;
+          if (isEnd || hasGap || tooLong || wi === words.length - 1) {
+            fallback.push({
+              id: 'word-' + fallback.length,
+              start: bucket[0].start || 0,
+              end: currentWord.end || (currentWord.start || 0) + 0.2,
+              text: currentText,
+            });
+            bucket = [];
+          }
+        }
+        return fallback.flatMap(function(entry) {
+          return subtractSubtitleHiddenRanges(entry, hiddenRanges);
+        });
+      }
+
+      function getRenderSubtitlePayload() {
+        var edited = (state.subtitleSentences || []).filter(function(item) {
+          return item && typeof item.text === 'string' && item.text.trim();
+        }).map(function(item) {
+          return {
+            start: typeof item.start === 'number' ? item.start : 0,
+            end: typeof item.end === 'number' ? item.end : (typeof item.start === 'number' ? item.start + 0.8 : 0.8),
+            text: String(item.editedText || item.text || '').trim()
+          };
+        }).filter(function(item) {
+          return item.text && item.end > item.start;
+        });
+
+        if (edited.length) {
+          return {
+            sttSegments: edited,
+            sttWords: []
+          };
+        }
+
+        return {
+          sttSegments: state.sttSegments,
+          sttWords: state.sttWords
+        };
       }
 
       // Confirm subtitles button
@@ -2147,11 +2510,13 @@
         confirmSubBtn.addEventListener('click', function() {
           var inputs = document.querySelectorAll('.subtitle-text-input');
           inputs.forEach(function(input) {
-            var idx = parseInt(input.dataset.idx);
+            var idx = parseInt(input.dataset.idx, 10);
             if (state.subtitleSentences && state.subtitleSentences[idx]) {
               state.subtitleSentences[idx].editedText = input.value;
+              state.subtitleSentences[idx].text = input.value;
             }
           });
+          updateSubtitleStats(state.subtitleSentences);
           showBox(els.materialsHint, '자막 수정이 반영되었습니다. 아래에서 영상을 렌더링하세요.');
           confirmSubBtn.textContent = '수정 반영 완료';
           confirmSubBtn.disabled = true;
@@ -2224,10 +2589,16 @@
         state.step3Complete = false;
         state.sttSegments = [];
         state.sttWords = [];
+        state.subtitleSentences = [];
         state.brollItems = [];
         updateLocks();
         els.sttList.innerHTML = '<div class="empty-state">아직 생성된 자막 타임스탬프가 없습니다.</div>';
         els.brollGrid.innerHTML = '<div class="empty-state" style="grid-column:1 / -1;">아직 생성된 영상 소재가 없습니다.</div>';
+        var subtitleTimeline = document.getElementById('subtitleTimeline');
+        if (subtitleTimeline) subtitleTimeline.innerHTML = '';
+        var subtitleEditSection = document.getElementById('subtitleEditSection');
+        if (subtitleEditSection) subtitleEditSection.style.display = 'none';
+        updateSubtitleStats([]);
       }
 
       async function generateScript() {
@@ -3119,6 +3490,7 @@
         state.renderAbort = function() { aborted = true; };
 
         try {
+          var subtitlePayload = getRenderSubtitlePayload();
           var mediaItems = state.brollItems.filter(function(item) { return item && item.url; });
           if (!mediaItems.length) {
             throw new Error('B-roll 소재가 필요합니다.');
@@ -3150,8 +3522,8 @@
             estimatedSeconds: state.estimatedSeconds,
             trimStart: trimStart,
             trimEnd: trimEnd,
-            sttSegments: state.sttSegments?.length,
-            sttWords: state.sttWords?.length,
+            sttSegments: subtitlePayload.sttSegments?.length,
+            sttWords: subtitlePayload.sttWords?.length,
             visuals: mediaItems?.length,
           });
           var response = await fetch(getRemotionRenderEndpoint(), {
@@ -3163,8 +3535,8 @@
               scenes: state.scenes || [],
               textCardTemplate: state.textCardTemplate || 'dark-gradient',
               hookText: state.hookText || '',
-              sttSegments: state.sttSegments,
-              sttWords: state.sttWords,
+              sttSegments: subtitlePayload.sttSegments,
+              sttWords: subtitlePayload.sttWords,
               estimatedSeconds: state.estimatedSeconds || 30,
               audioDurationSec: audioDuration,
               motionSpeed: state.motionSpeed || 'normal',
