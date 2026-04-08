@@ -20,7 +20,7 @@ const WORD_FADE_SECONDS = {
 };
 
 const ACCENT = '#ff5f1f';
-const HIDDEN_RANGE_PAD_SEC = 2 / SHORTFORM_FPS;
+const HIDDEN_RANGE_PAD_SEC = 0.3;
 
 const overlayStyle = {
   background: 'linear-gradient(180deg, rgba(4, 10, 18, 0.28) 0%, rgba(4, 10, 18, 0.48) 44%, rgba(4, 10, 18, 0.78) 100%)',
@@ -123,23 +123,40 @@ function clipTextScene(scene, startSec, endSec, segmentIndex) {
 }
 
 function subtractHiddenRanges(scene, hiddenRanges) {
+  // 텍스트 카드 구간에 조금이라도 겹치면 해당 자막 씬 전체를 숨김
   const overlaps = hiddenRanges.filter((range) => range.endSec > scene.startSec && range.startSec < scene.endSec);
   if (!overlaps.length) return [scene];
+
+  // 씬의 50% 이상이 hidden 구간에 겹치면 전체 숨김
+  const totalHiddenSec = overlaps.reduce((sum, range) => {
+    const overlapStart = Math.max(scene.startSec, range.startSec);
+    const overlapEnd = Math.min(scene.endSec, range.endSec);
+    return sum + Math.max(0, overlapEnd - overlapStart);
+  }, 0);
+  const sceneDuration = scene.endSec - scene.startSec;
+  if (totalHiddenSec > sceneDuration * 0.5) return [];
 
   const visible = [];
   let cursor = scene.startSec;
 
   overlaps.forEach((range, index) => {
     if (range.startSec > cursor) {
-      const clipped = clipTextScene(scene, cursor, Math.min(range.startSec, scene.endSec), index);
-      if (clipped) visible.push(clipped);
+      const gap = range.startSec - cursor;
+      // 0.3초 미만의 조각은 버림 (깜빡이는 자막 방지)
+      if (gap >= 0.3) {
+        const clipped = clipTextScene(scene, cursor, Math.min(range.startSec, scene.endSec), index);
+        if (clipped) visible.push(clipped);
+      }
     }
     cursor = Math.max(cursor, range.endSec);
   });
 
   if (cursor < scene.endSec) {
-    const clipped = clipTextScene(scene, cursor, scene.endSec, overlaps.length);
-    if (clipped) visible.push(clipped);
+    const gap = scene.endSec - cursor;
+    if (gap >= 0.3) {
+      const clipped = clipTextScene(scene, cursor, scene.endSec, overlaps.length);
+      if (clipped) visible.push(clipped);
+    }
   }
 
   return visible;
