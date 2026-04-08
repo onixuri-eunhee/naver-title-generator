@@ -55,8 +55,6 @@ async function logUsage(userEmail, tool, mode, ip) {
 
 export const BROLL_VERSION = 'v8-i2v-pipeline';
 
-const FLUX_REALISM_ENDPOINT = 'https://fal.run/fal-ai/flux-realism';
-const FLUX_IMAGE_SIZE = { width: 768, height: 1344 };
 const CLIP_DURATION_SEC = 5;
 const VEO_CLIP_DURATION_SEC = 4;
 const VEO_POLL_INTERVAL_MS = 5000;
@@ -406,14 +404,33 @@ async function callImagen3Image(prompt, key) {
   const data = await parseJsonResponse(response);
   if (!response.ok) throw new Error(`Imagen 3 failed: ${response.status} ${JSON.stringify(data).slice(0, 200)}`);
 
-  const b64 = data?.predictions?.[0]?.bytesBase64Encoded;
-  if (!b64) throw new Error('Imagen 3: no image in response');
+  const prediction = data?.predictions?.[0];
+  const b64 = prediction?.bytesBase64Encoded;
+  if (!b64) {
+    const reason = prediction?.raiFilteredReason || prediction?.filteredReason || JSON.stringify(data).slice(0, 300);
+    console.error('[SHORTFORM-BROLL] Imagen 3 empty response. Prediction:', JSON.stringify(prediction || data).slice(0, 500));
+    throw new Error(`Imagen 3: no image in response (${reason})`);
+  }
 
   const imageBuffer = Buffer.from(b64, 'base64');
   const r2Url = await uploadToR2(key, imageBuffer, 'image/png');
   if (!r2Url) throw new Error('R2 image upload failed');
   console.log('[SHORTFORM-BROLL] Imagen 3 Fast image uploaded:', r2Url);
   return { type: 'image', url: r2Url, r2Url, prompt, base64: b64, provider: 'imagen-3-fast' };
+}
+
+async function callGrokImage(prompt, key) {
+  if (!process.env.XAI_API_KEY) throw new Error('XAI_API_KEY is missing');
+  const response = await fetchWithTimeout('https://api.x.ai/v1/images/generations', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.XAI_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'grok-2-image', prompt, n: 1, size: '1024x1792' }),
+  });
+  const data = await parseJsonResponse(response);
+  if (!response.ok) throw new Error(`Grok image failed: ${response.status} ${JSON.stringify(data).slice(0, 200)}`);
+  const imagePayload = data?.data?.[0] || data;
+  const asset = await persistImageResult(imagePayload, key);
+  return { type: 'image', url: asset.url, r2Url: asset.r2Url, prompt, provider: 'grok' };
 }
 
 async function pollVeoOperation(operationName, accessToken, location) {
@@ -659,19 +676,25 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
     const imgKey = createR2Key(userId, `image${index}.png`);
 
     let imageResult = null;
+    // Imagen 3 시도 (2회) → 실패 시 Grok 폴백
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         imageResult = await callImagen3Image(imgPrompt, imgKey);
         break;
       } catch (error) {
         console.warn('[SHORTFORM-BROLL] Imagen attempt ' + (attempt + 1) + ' for asset ' + index + ' failed:', error.message);
-        if (attempt === 1) {
-          failures.push(`asset${index}:${error.message}`);
-          return null;
-        }
       }
     }
-    if (!imageResult) return null;
+    if (!imageResult) {
+      try {
+        console.log('[SHORTFORM-BROLL] Falling back to Grok for asset ' + index);
+        imageResult = await callGrokImage(imgPrompt, createR2Key(userId, `image${index}-grok.png`));
+      } catch (grokError) {
+        console.error('[SHORTFORM-BROLL] Grok fallback also failed for asset ' + index + ':', grokError.message);
+        failures.push(`asset${index}:Imagen+Grok both failed`);
+        return null;
+      }
+    }
 
     if (videoSlots.has(index) && hasVeoConfig()) {
       const videoPrompt = buildVisualPrompt(scene.visual, visualStyle, 'video', isFirstScene);
