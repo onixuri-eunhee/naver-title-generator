@@ -1499,20 +1499,7 @@
               <div style="margin-bottom:10px;">
                 <label for="ttsVoiceSelect" style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:6px;">음성 선택</label>
                 <select id="ttsVoiceSelect" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;cursor:pointer;">
-                  <optgroup label="여성 음성">
-                    <option value="ko-KR-Neural2-A">서연 — 선명하고 자연스러운 ★</option>
-                    <option value="ko-KR-Neural2-B">민지 — 부드럽고 차분한 ★</option>
-                    <option value="ko-KR-Wavenet-A">하은 — 깨끗하고 밝은</option>
-                    <option value="ko-KR-Wavenet-B">지수 — 따뜻하고 친근한</option>
-                    <option value="ko-KR-Standard-A">유나 — 기본 여성</option>
-                  </optgroup>
-                  <optgroup label="남성 음성">
-                    <option value="ko-KR-Neural2-C">도윤 — 안정적이고 자연스러운 ★</option>
-                    <option value="ko-KR-Wavenet-C">준서 — 깊고 신뢰감 있는</option>
-                    <option value="ko-KR-Wavenet-D">시우 — 차분하고 편안한</option>
-                    <option value="ko-KR-Standard-C">건우 — 기본 남성 A</option>
-                    <option value="ko-KR-Standard-D">현우 — 기본 남성 B</option>
-                  </optgroup>
+                  <option value="">음성 목록 로딩 중...</option>
                 </select>
               </div>
               <div class="btn-row">
@@ -2610,7 +2597,7 @@
 
         showBox(els.scriptError, '');
         els.generateScriptBtn.disabled = true;
-        els.generateScriptBtn.textContent = '대본 생성 중...';
+        els.generateScriptBtn.textContent = '벤치마킹 + 대본 생성 중...';
 
         try {
           var response = await fetch('/api/shortform-script', {
@@ -3605,6 +3592,24 @@
       updateTrimSummary();
       updateLocks();
       loadRemaining();
+      // TTS 음성 목록 동적 로드
+      (async function loadVoices() {
+        try {
+          var res = await fetch('/api/shortform-tts', { headers: createHeaders({}) });
+          if (!res.ok) throw new Error('voice list fetch failed');
+          var data = await res.json();
+          var select = document.getElementById('ttsVoiceSelect');
+          if (data.voices && data.voices.length && select) {
+            select.innerHTML = data.voices.map(function(v) {
+              return '<option value="' + v.id + '">' + v.name + (v.provider === 'supertone' ? ' (Supertone)' : '') + '</option>';
+            }).join('');
+          }
+        } catch (e) {
+          // 폴백: 기존 Google 음성 하드코딩
+          var select = document.getElementById('ttsVoiceSelect');
+          if (select) select.innerHTML = '<option value="ko-KR-Neural2-A">서연 (Google)</option><option value="ko-KR-Neural2-C">도윤 (Google)</option>';
+        }
+      })();
       document.querySelectorAll('input[name="targetDuration"]').forEach(function(radio) {
         radio.addEventListener('change', function() { updateCreditWarning(); });
       });
