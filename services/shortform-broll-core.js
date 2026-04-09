@@ -53,7 +53,11 @@ async function logUsage(userEmail, tool, mode, ip) {
   }
 }
 
-export const BROLL_VERSION = 'v8-i2v-pipeline';
+export const BROLL_VERSION = 'v9-flux-kling-pipeline';
+
+const FAL_API_BASE = 'https://fal.run';
+const FLUX_SCHNELL_ENDPOINT = 'fal-ai/flux/schnell';
+const KLING_I2V_ENDPOINT = 'fal-ai/kling-video/v3/pro/image-to-video';
 
 const CLIP_DURATION_SEC = 5;
 const VEO_CLIP_DURATION_SEC = 4;
@@ -384,6 +388,69 @@ async function persistVideoResult(videoPayload, key) {
   return uploadRemoteAssetToR2(sourceUrl, key, 'video/mp4', 'video/');
 }
 
+// ── FLUX Schnell (fal.ai) — 메인 이미지 생성 ──
+async function callFluxSchnell(prompt, key) {
+  if (!process.env.FAL_KEY) throw new Error('FAL_KEY is missing');
+  const response = await fetchWithTimeout(`${FAL_API_BASE}/${FLUX_SCHNELL_ENDPOINT}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Key ${process.env.FAL_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt,
+      image_size: { width: 768, height: 1344 },
+      num_images: 1,
+    }),
+  }, 30000);
+  const data = await parseJsonResponse(response);
+  if (!response.ok) throw new Error(`FLUX Schnell failed: ${response.status} ${JSON.stringify(data).slice(0, 200)}`);
+
+  const imageUrl = data?.images?.[0]?.url;
+  if (!imageUrl) throw new Error('FLUX Schnell: no image URL in response');
+
+  // R2에 업로드 + base64 추출 (I2V용)
+  const r2Url = await uploadImageUrlToR2(imageUrl, key);
+  if (!r2Url) throw new Error('R2 image upload failed');
+
+  let base64 = null;
+  try {
+    const imgRes = await fetchWithTimeout(r2Url, {}, 10000);
+    if (imgRes.ok) base64 = Buffer.from(await imgRes.arrayBuffer()).toString('base64');
+  } catch (_) {}
+
+  console.log('[SHORTFORM-BROLL] FLUX Schnell image uploaded:', r2Url);
+  return { type: 'image', url: r2Url, r2Url, prompt, base64, provider: 'flux-schnell' };
+}
+
+// ── Kling 3.0 Pro I2V (fal.ai) — 첫 씬 영상 변환 ──
+async function callKlingI2V(prompt, key, imageUrl) {
+  if (!process.env.FAL_KEY) throw new Error('FAL_KEY is missing');
+  const response = await fetchWithTimeout(`${FAL_API_BASE}/${KLING_I2V_ENDPOINT}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Key ${process.env.FAL_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt,
+      image_url: imageUrl,
+      duration: '5',
+      aspect_ratio: '9:16',
+    }),
+  }, 120000);
+  const data = await parseJsonResponse(response);
+  if (!response.ok) throw new Error(`Kling I2V failed: ${response.status} ${JSON.stringify(data).slice(0, 200)}`);
+
+  const videoUrl = data?.video?.url || findFirstVideoUrl(data);
+  if (!videoUrl) throw new Error('Kling I2V: no video URL in response');
+
+  const asset = await uploadRemoteAssetToR2(videoUrl, key, 'video/mp4', 'video/');
+  console.log('[SHORTFORM-BROLL] Kling I2V video uploaded:', asset.r2Url);
+  return { type: 'video', url: asset.url, r2Url: asset.r2Url, prompt, durationSec: CLIP_DURATION_SEC, provider: 'kling-3-pro' };
+}
+
+// ── Imagen 3 (폴백용으로 유지) ──
 async function callImagen3Image(prompt, key) {
   const token = await getGoogleAccessToken();
   const projectId = getVeoProjectId();
@@ -685,35 +752,48 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
     const imgPrompt = buildVisualPrompt(scene.visual, visualStyle, 'image', isFirstScene);
     const imgKey = createR2Key(userId, `image${index}.png`);
 
+    // ── Step 1: 이미지 생성 (FLUX Schnell 메인 → Imagen 3 폴백 → Grok 폴백) ──
     let imageResult = null;
-    // Imagen 3 시도 (2회) → 실패 시 Grok 폴백
-    for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      imageResult = await callFluxSchnell(imgPrompt, imgKey);
+    } catch (fluxError) {
+      console.warn('[SHORTFORM-BROLL] FLUX Schnell failed for asset ' + index + ':', fluxError.message);
+      // Imagen 3 폴백
       try {
-        imageResult = await callImagen3Image(imgPrompt, imgKey);
-        break;
-      } catch (error) {
-        console.warn('[SHORTFORM-BROLL] Imagen attempt ' + (attempt + 1) + ' for asset ' + index + ' failed:', error.message);
-      }
-    }
-    if (!imageResult) {
-      try {
-        console.log('[SHORTFORM-BROLL] Falling back to Grok for asset ' + index);
-        imageResult = await callGrokImage(imgPrompt, createR2Key(userId, `image${index}-grok.png`));
-      } catch (grokError) {
-        console.error('[SHORTFORM-BROLL] Grok fallback also failed for asset ' + index + ':', grokError.message);
-        failures.push(`asset${index}:Imagen+Grok both failed`);
-        return null;
+        imageResult = await callImagen3Image(imgPrompt, createR2Key(userId, `image${index}-imagen.png`));
+      } catch (imagenError) {
+        console.warn('[SHORTFORM-BROLL] Imagen 3 fallback failed for asset ' + index + ':', imagenError.message);
+        // Grok 최종 폴백
+        try {
+          imageResult = await callGrokImage(imgPrompt, createR2Key(userId, `image${index}-grok.png`));
+        } catch (grokError) {
+          console.error('[SHORTFORM-BROLL] All image providers failed for asset ' + index);
+          failures.push(`asset${index}:FLUX+Imagen+Grok all failed`);
+          return null;
+        }
       }
     }
 
-    if (videoSlots.has(index) && hasVeoConfig()) {
-      const videoPrompt = buildVisualPrompt(scene.visual, visualStyle, 'video', isFirstScene);
+    // ── Step 2: 첫 씬만 Kling Pro I2V → Veo 폴백 ──
+    if (isFirstScene && imageResult?.r2Url) {
+      const videoPrompt = buildVisualPrompt(scene.visual, visualStyle, 'video', true);
       const videoKey = createR2Key(userId, `i2v${index}.mp4`);
+      // Kling Pro 시도
       try {
-        const videoResult = await callVeoI2V(videoPrompt, videoKey, imageResult.base64);
+        const videoResult = await callKlingI2V(videoPrompt, videoKey, imageResult.r2Url);
         return videoResult;
-      } catch (error) {
-        console.warn('[SHORTFORM-BROLL] i2v slot ' + index + ' failed, using image fallback:', error.message);
+      } catch (klingError) {
+        console.warn('[SHORTFORM-BROLL] Kling I2V failed for first scene:', klingError.message);
+        // Veo 폴백
+        if (hasVeoConfig() && imageResult.base64) {
+          try {
+            const veoResult = await callVeoI2V(videoPrompt, videoKey + '-veo.mp4', imageResult.base64);
+            return veoResult;
+          } catch (veoError) {
+            console.warn('[SHORTFORM-BROLL] Veo I2V fallback also failed:', veoError.message);
+          }
+        }
+        // I2V 모두 실패 → 이미지로 폴백
         return imageResult;
       }
     }
