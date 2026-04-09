@@ -28,6 +28,7 @@
     { "source": "/api/shortform-stt", "destination": "/api/shortform-stt" },
     { "source": "/api/shortform-broll", "destination": "/api/shortform-broll" },
     { "source": "/api/shortform-tts", "destination": "/api/shortform-tts" },
-    { "source": "/api/score-check", "destination": "/api/score-check" }
+    { "source": "/api/score-check", "destination": "/api/score-check" },
+    { "source": "/api/shortform-benchmark", "destination": "/api/shortform-benchmark" }
   ]
 }
