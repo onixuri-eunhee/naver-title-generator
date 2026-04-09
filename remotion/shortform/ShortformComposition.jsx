@@ -62,12 +62,8 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function getSceneFontSize(scene) {
-  const textLength = String(scene?.text || '').replace(/\s+/g, '').length;
-  if (textLength <= 10) return 56;
-  if (textLength <= 16) return 48;
-  if (textLength <= 24) return 42;
-  return 36;
+function getSceneFontSize() {
+  return 42;
 }
 
 function getWordVisualState(word, currentTimeSec, fadeDurationSec) {
