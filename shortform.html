@@ -3601,7 +3601,7 @@
           var select = document.getElementById('ttsVoiceSelect');
           if (data.voices && data.voices.length && select) {
             select.innerHTML = data.voices.map(function(v) {
-              return '<option value="' + v.id + '">' + v.name + (v.provider === 'supertone' ? ' (Supertone)' : '') + '</option>';
+              return '<option value="' + v.id + '">' + v.name + '</option>';
             }).join('');
           }
         } catch (e) {
