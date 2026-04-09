@@ -33,9 +33,9 @@ const backgroundStyle = {
 };
 
 const textWrapStyle = {
-  justifyContent: 'center',
+  justifyContent: 'flex-end',
   alignItems: 'center',
-  padding: '0 86px',
+  padding: '0 60px 120px 60px',
 };
 
 const textShellStyle = {
@@ -164,10 +164,10 @@ function subtractHiddenRanges(scene, hiddenRanges) {
 
 function getSceneFontSize(scene) {
   const textLength = String(scene?.text || '').replace(/\s+/g, '').length;
-  if (textLength <= 10) return 42;
-  if (textLength <= 16) return 36;
-  if (textLength <= 24) return 32;
-  return 27;
+  if (textLength <= 10) return 56;
+  if (textLength <= 16) return 48;
+  if (textLength <= 24) return 42;
+  return 36;
 }
 
 function getWordVisualState(word, currentTimeSec, fadeDurationSec) {
@@ -333,24 +333,11 @@ const TextLayer = ({scene, motionSpeed, textRevealMode}) => {
   const localTimeSec = frame / fps;
   const currentTimeSec = localTimeSec + (scene.startSec || 0);
 
-  const enter = spring({
-    fps,
-    frame,
-    config: {
-      damping: 200,
-      stiffness: 180,
-      mass: 0.9,
-    },
-  });
-
-  const exitStart = Math.max(0, scene.durationInFrames - Math.round(fps * 0.35));
-  const exitProgress = interpolate(frame, [exitStart, scene.durationInFrames], [1, 0], {
-    extrapolateLeft: 'clamp',
-    extrapolateRight: 'clamp',
-  });
-  const opacity = Math.min(1, enter) * exitProgress;
-  const translateY = interpolate(opacity, [0, 1], [34, 0]);
-  const scale = interpolate(opacity, [0, 1], [0.985, 1]);
+  // 하단 고정, 부드러운 페이드인/아웃만 (올라오기 없음)
+  const fadeIn = interpolate(frame, [0, 6], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const exitStart = Math.max(0, scene.durationInFrames - 6);
+  const fadeOut = interpolate(frame, [exitStart, scene.durationInFrames], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const opacity = Math.min(fadeIn, fadeOut);
   const fontSize = getSceneFontSize(scene);
   const fadeDurationSec = WORD_FADE_SECONDS[motionSpeed] || WORD_FADE_SECONDS.normal;
 
@@ -366,7 +353,6 @@ const TextLayer = ({scene, motionSpeed, textRevealMode}) => {
         style={{
           ...textShellStyle,
           opacity,
-          transform: `translateY(${translateY}px) scale(${scale})`,
         }}
       >
         {hasWordTiming ? scene.wordLines.map((line, lineIndex) => (
@@ -397,26 +383,18 @@ const TextLayer = ({scene, motionSpeed, textRevealMode}) => {
               );
             })}
           </div>
-        )) : scene.displayLines.map((line, lineIndex) => {
-          const lineDelay = textRevealMode === 'line' ? lineIndex * 0.1 : 0;
-          const localProgress = clamp((frame / fps - lineDelay) / 0.28, 0, 1);
-          const lineOpacity = opacity * localProgress;
-          const lineTranslateY = (1 - localProgress) * 24;
-
-          return (
+        )) : scene.displayLines.map((line, lineIndex) => (
             <div
               key={`${scene.id}-fallback-line-${lineIndex}`}
               style={{
                 ...textStyle,
                 fontSize,
-                opacity: lineOpacity,
-                transform: `translateY(${lineTranslateY}px)`,
+                opacity,
               }}
             >
               {line}
             </div>
-          );
-        })}
+        ))}
         <div
           style={{
             width: SHORTFORM_WIDTH * 0.12,
