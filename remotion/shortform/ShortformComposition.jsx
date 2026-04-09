@@ -63,7 +63,7 @@ function clamp(value, min, max) {
 }
 
 function getSceneFontSize() {
-  return 42;
+  return 58;
 }
 
 function getWordVisualState(word, currentTimeSec, fadeDurationSec) {
