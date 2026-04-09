@@ -106,6 +106,21 @@ function getSafeUserId(email, ip) {
 }
 
 function buildVisualPrompt(visual, visualStyle, kind, isFirstScene) {
+  if (kind === 'video' && isFirstScene) {
+    // 첫 씬 I2V: 동적 모션 필수 — 느린 패닝 금지
+    return [
+      visual.trim(),
+      'CRITICAL: This is the FIRST scene that must STOP the scroll. Include FAST, DYNAMIC MOTION:',
+      '- Objects moving rapidly (hands grabbing, papers flying, items sliding into frame)',
+      '- Quick camera movement (fast zoom-in, whip pan, dramatic push-in)',
+      '- Visual energy (light flashes, screen glowing, elements appearing suddenly)',
+      'NO slow pans. NO static scenes. MAXIMUM visual impact in first 2 seconds.',
+      'Cinematic vertical 9:16, no on-screen text, no people faces.',
+      `Target duration: ${CLIP_DURATION_SEC} seconds.`,
+      visualStyle ? `Style: ${visualStyle}` : '',
+    ].filter(Boolean).join('\n');
+  }
+
   const scrollStopping = isFirstScene
     ? 'Scroll-stopping, dramatic composition, high contrast, cinematic impact, visually arresting. '
     : '';
