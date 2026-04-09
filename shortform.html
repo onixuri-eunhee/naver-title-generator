@@ -1570,7 +1570,10 @@
           </div>
         </div>
         <div class="error-box" id="materialsError"></div>
-        <div class="info-box show" id="materialsHint">Step 2가 끝나면 STT와 B-roll 생성이 자동으로 병렬 실행됩니다.</div>
+        <div class="info-box show" id="materialsHint">음성을 확인한 후 아래 버튼을 눌러 소재를 생성하세요.</div>
+        <div style="margin:12px 0;">
+          <button type="button" class="primary-btn" id="generateMaterialsBtn" disabled>소재 생성 (STT + B-roll)</button>
+        </div>
 
         <div class="result-grid">
           <div class="result-panel">
@@ -2560,7 +2563,9 @@
       function markStep2Complete(sourceLabel) {
         state.step2Complete = true;
         updateLocks();
-        showBox(els.audioSuccess, sourceLabel + '이 준비되었습니다. Step 3가 자동으로 시작됩니다.');
+        showBox(els.audioSuccess, sourceLabel + '이 준비되었습니다. 음성을 확인 후 "소재 생성" 버튼을 눌러주세요.');
+        var btn = document.getElementById('generateMaterialsBtn');
+        if (btn) { btn.disabled = false; btn.textContent = '소재 생성 (STT + B-roll)'; }
       }
 
       function clearStep3Results() {
@@ -2646,8 +2651,7 @@
             if (data.credits.wasFree) showBox(els.scriptError, '<span style="color:#16A34A;">무료 체험으로 생성되었습니다!</span>');
           }
           if (state.step2Complete) {
-            showBox(els.materialsHint, '대본이 바뀌어 Step 3를 다시 생성합니다.');
-            queueReprocess();
+            showBox(els.materialsHint, '대본이 바뀌었습니다. 음성을 다시 생성한 후 "소재 생성" 버튼을 눌러주세요.');
           }
         } catch (e) {
           showBox(els.scriptError, e.message || '대본 생성 중 오류가 발생했습니다.');
@@ -2840,7 +2844,8 @@
         if (els.recordResetBtn) els.recordResetBtn.disabled = false;
         markStep2Complete(sourceLabel);
         clearStep3Results();
-        processMaterials('영상 소재 생성 중...', 'STT 타임스탬프와 B-roll 이미지를 준비하고 있습니다.');
+        // B-roll 자동 생성 제거 — 음성 확정 후 수동 트리거로 변경
+        showBox(els.materialsHint, '음성을 확인한 후 아래 "소재 생성" 버튼을 눌러주세요.');
         runAutoTrimDetection(blob);
       }
 
@@ -3125,11 +3130,15 @@
           }
           state.step3Complete = true;
           updateLocks();
+          var matBtn = document.getElementById('generateMaterialsBtn');
+          if (matBtn) { matBtn.disabled = false; matBtn.textContent = '소재 재생성'; }
           showBox(els.materialsHint, sttProbeMode
             ? 'STT probe(' + sttProbeMode + ') 응답이 도착했습니다.'
             : 'STT와 B-roll 생성이 완료되었습니다.');
         } catch (e) {
           if (requestId !== state.processRequestId) return;
+          var matBtn2 = document.getElementById('generateMaterialsBtn');
+          if (matBtn2) { matBtn2.disabled = false; matBtn2.textContent = '소재 생성 (STT + B-roll)'; }
           showBox(els.materialsError, e.message || '영상 소재 생성 중 오류가 발생했습니다.');
         } finally {
           if (requestId === state.processRequestId) setLoading(false);
@@ -3149,11 +3158,21 @@
         textarea.addEventListener('input', function() {
           autoResize(textarea);
           readScriptFromEditor();
-          if (state.step2Complete) queueReprocess();
+          // B-roll 자동 재생성 제거 — 소재 생성 버튼으로 수동 트리거
         });
       }
 
       els.generateScriptBtn.addEventListener('click', generateScript);
+      // 소재 생성 버튼 (음성 확정 후 수동 트리거)
+      var generateMaterialsBtn = document.getElementById('generateMaterialsBtn');
+      if (generateMaterialsBtn) {
+        generateMaterialsBtn.addEventListener('click', function() {
+          if (!state.step2Complete || !state.audioBlob) return;
+          generateMaterialsBtn.disabled = true;
+          generateMaterialsBtn.textContent = '소재 생성 중...';
+          processMaterials('영상 소재 생성 중...', 'STT 타임스탬프와 B-roll 이미지를 준비하고 있습니다.');
+        });
+      }
       if (els.recordStartBtn) els.recordStartBtn.addEventListener('click', startRecording);
       if (els.recordStopBtn) els.recordStopBtn.addEventListener('click', stopRecording);
       if (els.recordResetBtn) els.recordResetBtn.addEventListener('click', function() {
