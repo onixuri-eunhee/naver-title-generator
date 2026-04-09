@@ -8,13 +8,13 @@ const SUPERTONE_API_BASE = 'https://supertoneapi.com/v1';
 
 const SUPERTONE_VOICES = {
   // 여성 (감정 스타일 다양한 순)
-  '259d4ac1ecf560c0f76e08': { name: 'Anna — 감정 표현 풍부 ★' },
+  '259d4ac1ecf560c0f76e08': { name: 'Anna — 감정 표현 풍부' },
   '1f6b70f879da125bfec245': { name: 'Audrey — 자신감 있는' },
   '52dc253df44d06aa7f0867': { name: 'Bella — 친절하고 따뜻한' },
   '7c56c6a6471a12816604f0': { name: 'Ariel — 밝고 수줍은' },
   'e5f6fb1a53d0add87afb4f': { name: 'Agatha — 차분하고 평온한' },
   // 남성
-  '4653d63d07d5340656b6bc': { name: 'Andrew — 호기심 많은 ★' },
+  '4653d63d07d5340656b6bc': { name: 'Andrew — 호기심 많은' },
   'ead6b9de6beb66dc8f6d2d': { name: 'Andy — 친근하고 따뜻한' },
   '91992bbd4758bdcf9c9b01': { name: 'Adam — 안정적인' },
 };

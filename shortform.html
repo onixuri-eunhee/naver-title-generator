@@ -1439,7 +1439,6 @@
           <button type="button" class="primary-btn" id="generateScriptBtn">대본 생성</button>
         </div>
         <div id="creditWarning" style="display:none; color:#DC2626; font-size:13px; text-align:center; margin-top:4px;"></div>
-        <div class="helper-text">API: <code>POST /api/shortform-script</code></div>
         <div class="error-box" id="scriptError"></div>
 
         <div class="script-result" id="scriptResult">
@@ -2517,26 +2516,18 @@
           els.brollGrid.innerHTML = '<div class="empty-state" style="grid-column:1 / -1;">추천된 B-roll 소재가 없습니다.</div>';
           return;
         }
-        els.brollGrid.innerHTML = items.map(function(item) {
-          var providerLabel = item.provider ? item.provider.toUpperCase() : '';
-          var fallbackLabel = item.fallbackFrom ? ' · ' + item.fallbackFrom.toUpperCase() + ' fallback' : '';
-          var subtitleText = item.subtitle || '자동 추천 소재';
-          if (item.fallbackReason) {
-            subtitleText = subtitleText + ' · ' + item.fallbackReason;
-          }
+        els.brollGrid.innerHTML = items.map(function(item, idx) {
           var media;
           if (item.type === 'video') {
             media = '<video class="broll-thumb" controls playsinline muted preload="metadata" src="' + escapeAttribute(item.url) + '"' + (item.thumbnail ? ' poster="' + escapeAttribute(item.thumbnail) + '"' : '') + '></video>';
           } else {
-            media = '<img class="broll-thumb" src="' + escapeAttribute(item.thumbnail || item.url) + '" alt="' + escapeAttribute(item.title) + '">';
+            media = '<img class="broll-thumb" src="' + escapeAttribute(item.thumbnail || item.url) + '" alt="소재 ' + (idx + 1) + '">';
           }
           return '<div class="broll-item">' +
             media +
             '<div class="broll-body">' +
             '<div class="broll-tag">' + escapeHtml(item.type === 'video' ? 'CLIP' : 'IMAGE') + '</div>' +
-            '<div class="broll-title">' + escapeHtml(item.title) + '</div>' +
-            '<div class="broll-subtitle">' + escapeHtml(subtitleText) + '</div>' +
-            (providerLabel ? '<div class="broll-subtitle" style="margin-top:4px;color:#9ca3af;">provider: ' + escapeHtml(providerLabel + fallbackLabel) + '</div>' : '') +
+            '<div class="broll-subtitle">자동 추천 소재</div>' +
             '</div>' +
             '</div>';
         }).join('');
