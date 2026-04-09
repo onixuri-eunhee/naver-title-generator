@@ -102,7 +102,7 @@ const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다.
 - hookText는 scenes[0]에만 포함, 나머지 씬에는 생략
 `;
 
-function buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount) {
+function buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount, benchmark) {
   const inputSummary = [
     `tone: ${tone}`,
     `targetDuration: ${targetDurationSec}초`,
@@ -111,7 +111,33 @@ function buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCo
     blogText ? `blogText:\n${blogText}` : null,
   ].filter(Boolean).join('\n\n');
 
-  return `${inputSummary}
+  // 벤치마킹 결과가 있으면 프롬프트에 주입
+  let benchmarkSection = '';
+  if (benchmark && benchmark.patterns && !benchmark.fallback) {
+    const p = benchmark.patterns;
+    const videoList = (benchmark.videos || []).slice(0, 3).map((v, i) =>
+      `  ${i + 1}. "${v.title}" (조회수 ${(v.viewCount || 0).toLocaleString()}, 구독자 ${(v.subscriberCount || 0).toLocaleString()}, 비율 ${(v.viewToSubRatio || 0).toFixed(1)}배)`
+    ).join('\n');
+
+    benchmarkSection = `
+
+[벤치마킹 분석 결과 — 이 키워드에서 실제로 터진 숏폼 패턴]
+바이럴 영상 참고:
+${videoList}
+
+분석된 바이럴 공식:
+- 후킹 유형: ${p.hookType || '미분석'}
+- 후킹 패턴: ${p.hookPattern || '미분석'}
+- 대본 구조: ${p.structure || '미분석'}
+- 비주얼 스타일: ${p.visualStyle || '미분석'}
+- 바이럴 공식: ${p.viralFormula || '미분석'}
+- 추천 첫 문장: "${p.suggestedHook || ''}"
+
+★ 위 바이럴 공식을 반드시 반영하세요. 특히 후킹 유형과 구조를 따르세요.
+★ 추천 첫 문장을 참고하되, 그대로 복사하지 말고 더 강렬하게 변형하세요.`;
+  }
+
+  return `${inputSummary}${benchmarkSection}
 
 위 입력을 바탕으로 숏폼 영상 대본을 scenes 배열로 작성하세요.
 - scenes 개수: 정확히 ${targetSceneCount}개
@@ -269,7 +295,28 @@ function buildScriptPayload(parsed, concept, targetSceneCount) {
   };
 }
 
-async function callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount) {
+// ── 벤치마킹 내부 호출 ──
+async function fetchBenchmark(keyword, authHeader) {
+  try {
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'http://localhost:3000';
+    const res = await fetch(`${baseUrl}/api/shortform-benchmark`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
+      body: JSON.stringify({ keyword }),
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn('[SHORTFORM-SCRIPT] Benchmark fetch failed:', e.message);
+  }
+  return { fallback: true, videos: [], patterns: null };
+}
+
+async function callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount, benchmark) {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY is not configured.');
   }
@@ -286,7 +333,7 @@ async function callClaude(topic, blogText, tone, targetDurationSec, concept, tar
       max_tokens: 4000,
       temperature: 0.7,
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount) }],
+      messages: [{ role: 'user', content: buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount, benchmark) }],
     }),
   });
 
@@ -413,7 +460,15 @@ export default async function handler(req, res) {
       }
     }
 
-    const script = await callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount);
+    // ── 벤치마킹 (대본 생성 전, 백그라운드) ──
+    const benchmarkKeyword = topic || (blogText ? blogText.slice(0, 50).replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim() : '');
+    const authHeader = req.headers?.authorization || '';
+    const benchmark = benchmarkKeyword
+      ? await fetchBenchmark(benchmarkKeyword, authHeader)
+      : { fallback: true };
+    console.log(`[SHORTFORM-SCRIPT] Benchmark: ${benchmarkKeyword} → ${benchmark.fallback ? 'FALLBACK' : `${(benchmark.videos || []).length} videos`}`);
+
+    const script = await callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount, benchmark);
     await logUsage(email, 'shortform-script', tone, getClientIp(req));
 
     // 현재 잔액 조회
