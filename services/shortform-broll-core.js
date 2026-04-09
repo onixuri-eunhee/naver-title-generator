@@ -423,31 +423,66 @@ async function callFluxSchnell(prompt, key) {
   return { type: 'image', url: r2Url, r2Url, prompt, base64, provider: 'flux-schnell' };
 }
 
-// ── Kling 3.0 Pro I2V (fal.ai) — 첫 씬 영상 변환 ──
+// ── Kling 3.0 Pro I2V (fal.ai 큐 방식) — 첫 씬 영상 변환 ──
+const KLING_POLL_INTERVAL_MS = 5000;
+const KLING_TIMEOUT_MS = 180000;
+
 async function callKlingI2V(prompt, key, imageUrl) {
   if (!process.env.FAL_KEY) throw new Error('FAL_KEY is missing');
-  const response = await fetchWithTimeout(`${FAL_API_BASE}/${KLING_I2V_ENDPOINT}`, {
+  const authHeader = { Authorization: `Key ${process.env.FAL_KEY}`, 'Content-Type': 'application/json' };
+
+  // Step 1: 큐 제출
+  const submitRes = await fetchWithTimeout(`https://queue.fal.run/${KLING_I2V_ENDPOINT}`, {
     method: 'POST',
-    headers: {
-      Authorization: `Key ${process.env.FAL_KEY}`,
-      'Content-Type': 'application/json',
-    },
+    headers: authHeader,
     body: JSON.stringify({
       prompt,
       image_url: imageUrl,
       duration: '5',
       aspect_ratio: '9:16',
     }),
-  }, 120000);
-  const data = await parseJsonResponse(response);
-  if (!response.ok) throw new Error(`Kling I2V failed: ${response.status} ${JSON.stringify(data).slice(0, 200)}`);
+  }, 30000);
+  const submitData = await parseJsonResponse(submitRes);
+  if (!submitRes.ok) throw new Error(`Kling I2V submit failed: ${submitRes.status} ${JSON.stringify(submitData).slice(0, 200)}`);
 
-  const videoUrl = data?.video?.url || findFirstVideoUrl(data);
-  if (!videoUrl) throw new Error('Kling I2V: no video URL in response');
+  const requestId = submitData?.request_id;
+  if (!requestId) throw new Error('Kling I2V: no request_id in submit response');
+  console.log('[SHORTFORM-BROLL] Kling I2V submitted:', requestId);
 
-  const asset = await uploadRemoteAssetToR2(videoUrl, key, 'video/mp4', 'video/');
-  console.log('[SHORTFORM-BROLL] Kling I2V video uploaded:', asset.r2Url);
-  return { type: 'video', url: asset.url, r2Url: asset.r2Url, prompt, durationSec: CLIP_DURATION_SEC, provider: 'kling-3-pro' };
+  // Step 2: 폴링
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < KLING_TIMEOUT_MS) {
+    await sleep(KLING_POLL_INTERVAL_MS);
+    const statusRes = await fetchWithTimeout(`https://queue.fal.run/${KLING_I2V_ENDPOINT}/requests/${requestId}/status`, {
+      method: 'GET',
+      headers: authHeader,
+    }, 15000);
+    const statusData = await parseJsonResponse(statusRes);
+    const status = statusData?.status;
+
+    if (status === 'COMPLETED') {
+      // Step 3: 결과 가져오기
+      const resultRes = await fetchWithTimeout(`https://queue.fal.run/${KLING_I2V_ENDPOINT}/requests/${requestId}`, {
+        method: 'GET',
+        headers: authHeader,
+      }, 15000);
+      const resultData = await parseJsonResponse(resultRes);
+      const videoUrl = resultData?.video?.url || findFirstVideoUrl(resultData);
+      if (!videoUrl) throw new Error('Kling I2V: no video URL in result');
+
+      const asset = await uploadRemoteAssetToR2(videoUrl, key, 'video/mp4', 'video/');
+      console.log('[SHORTFORM-BROLL] Kling I2V video uploaded:', asset.r2Url);
+      return { type: 'video', url: asset.url, r2Url: asset.r2Url, prompt, durationSec: CLIP_DURATION_SEC, provider: 'kling-3-pro' };
+    }
+
+    if (status === 'FAILED') {
+      throw new Error(`Kling I2V generation failed: ${JSON.stringify(statusData).slice(0, 200)}`);
+    }
+
+    console.log('[SHORTFORM-BROLL] Kling I2V polling...', status, Math.round((Date.now() - startedAt) / 1000) + 's');
+  }
+
+  throw new Error('Kling I2V generation timed out');
 }
 
 // ── Imagen 3 (폴백용으로 유지) ──

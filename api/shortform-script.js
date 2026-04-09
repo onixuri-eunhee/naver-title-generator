@@ -84,7 +84,7 @@ const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다.
 {
   "scenes": [
     {
-      "script": "대본 문장 (한국어, 1~2문장)",
+      "script": "대본 문장 (한국어, 반드시 1문장만)",
       "section": "hook | point | cta",
       "type": "broll",
       "visual": "구체적인 영어 B-roll 이미지 설명",
@@ -95,7 +95,7 @@ const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다.
 
 [scenes 규칙]
 - scenes 개수는 targetSceneCount에 맞추세요
-- 각 scene의 script는 1~2문장, 자연스러운 구어체 내레이션
+- 각 scene의 script는 반드시 1문장만. 2문장 이상 금지. 길면 씬을 나누세요.
 - type은 모든 씬에서 반드시 "broll"만 사용. text 타입은 사용 금지.
 - visual은 구체적인 영어 이미지 설명 (예: "close-up of hands typing on laptop")
 - section은 Hook → Point → CTA 흐름에 맞게 배정
