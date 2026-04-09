@@ -7,13 +7,16 @@ export const config = { maxDuration: 30 };
 const SUPERTONE_API_BASE = 'https://supertoneapi.com/v1';
 
 const SUPERTONE_VOICES = {
-  // 여성 (Supertone Play 한국어 음성)
-  'st-yuna': { name: '유나', lang: 'ko' },
-  'st-soyeon': { name: '소연', lang: 'ko' },
-  'st-minji': { name: '민지', lang: 'ko' },
+  // 여성 (감정 스타일 다양한 순)
+  '259d4ac1ecf560c0f76e08': { name: 'Anna — 감정 표현 풍부 ★' },
+  '1f6b70f879da125bfec245': { name: 'Audrey — 자신감 있는' },
+  '52dc253df44d06aa7f0867': { name: 'Bella — 친절하고 따뜻한' },
+  '7c56c6a6471a12816604f0': { name: 'Ariel — 밝고 수줍은' },
+  'e5f6fb1a53d0add87afb4f': { name: 'Agatha — 차분하고 평온한' },
   // 남성
-  'st-joon': { name: '준', lang: 'ko' },
-  'st-hyun': { name: '현', lang: 'ko' },
+  '4653d63d07d5340656b6bc': { name: 'Andrew — 호기심 많은 ★' },
+  'ead6b9de6beb66dc8f6d2d': { name: 'Andy — 친근하고 따뜻한' },
+  '91992bbd4758bdcf9c9b01': { name: 'Adam — 안정적인' },
 };
 
 // ── Google Cloud TTS (폴백) ──
@@ -34,7 +37,7 @@ const GOOGLE_VOICES = {
   'ko-KR-Standard-D': { name: '현우', gender: 'MALE' },
 };
 
-const DEFAULT_SUPERTONE_VOICE = 'st-yuna';
+const DEFAULT_SUPERTONE_VOICE = '259d4ac1ecf560c0f76e08'; // Anna
 const DEFAULT_GOOGLE_VOICE = 'ko-KR-Neural2-A';
 
 // ── Supertone TTS ──
