@@ -538,6 +538,13 @@ export function buildShortformTimeline(inputProps) {
         ? buildSegmentTimedScenes(normalizedSegments, sectionRanges, effectiveDurationSec)
         : buildFallbackScenes(lines, sectionRanges, effectiveDurationSec);
 
+  // 첫 자막을 영상 시작(0초)부터 표시
+  if (textScenes.length && textScenes[0].startSec > 0) {
+    textScenes[0].startSec = 0;
+    textScenes[0].startFrame = 0;
+    textScenes[0].durationInFrames = Math.max(1, Math.round(textScenes[0].endSec * SHORTFORM_FPS));
+  }
+
   return {
     durationSec: effectiveDurationSec,
     durationInFrames: Math.max(1, Math.round(effectiveDurationSec * SHORTFORM_FPS)),
