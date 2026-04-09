@@ -7,16 +7,28 @@ export const config = { maxDuration: 30 };
 const SUPERTONE_API_BASE = 'https://supertoneapi.com/v1';
 
 const SUPERTONE_VOICES = {
-  // 여성 (감정 스타일 다양한 순)
-  '259d4ac1ecf560c0f76e08': { name: 'Anna — 감정 표현 풍부' },
-  '1f6b70f879da125bfec245': { name: 'Audrey — 자신감 있는' },
-  '52dc253df44d06aa7f0867': { name: 'Bella — 친절하고 따뜻한' },
-  '7c56c6a6471a12816604f0': { name: 'Ariel — 밝고 수줍은' },
-  'e5f6fb1a53d0add87afb4f': { name: 'Agatha — 차분하고 평온한' },
+  // 여성
+  'e5f6fb1a53d0add87afb4f': { name: 'Agatha', gender: 'female' },
+  'ac449f240c2732b7f0b8bb': { name: 'Aiko', gender: 'female' },
+  '451e6fa92768affdcced52': { name: 'Amantha', gender: 'female' },
+  '259d4ac1ecf560c0f76e08': { name: 'Anna', gender: 'female' },
+  '7c56c6a6471a12816604f0': { name: 'Ariel', gender: 'female' },
+  '941fd27c5b0cb6a6f1e7c3': { name: 'Arin', gender: 'female' },
+  '1f6b70f879da125bfec245': { name: 'Audrey', gender: 'female' },
+  '2cd6c38c7087106be21888': { name: 'Aya', gender: 'female' },
+  '52dc253df44d06aa7f0867': { name: 'Bella', gender: 'female' },
+  'aeda85bfe699f338b74d68': { name: 'Blitz', gender: 'female' },
   // 남성
-  '4653d63d07d5340656b6bc': { name: 'Andrew — 호기심 많은' },
-  'ead6b9de6beb66dc8f6d2d': { name: 'Andy — 친근하고 따뜻한' },
-  '91992bbd4758bdcf9c9b01': { name: 'Adam — 안정적인' },
+  '91992bbd4758bdcf9c9b01': { name: 'Adam', gender: 'male' },
+  '2d5a380030e78fcab0c82a': { name: 'Aiden', gender: 'male' },
+  'd9411052b13cba9cb4c313': { name: 'Allen', gender: 'male' },
+  'c3c0898fd41489a8e8919c': { name: 'Alphonse', gender: 'male' },
+  '4653d63d07d5340656b6bc': { name: 'Andrew', gender: 'male' },
+  'ead6b9de6beb66dc8f6d2d': { name: 'Andy', gender: 'male' },
+  '20160a4c5ba38967330c84': { name: 'Ben', gender: 'male' },
+  '816bc977b4111a3034146a': { name: 'Bert', gender: 'male' },
+  '257ff27e0d5377b184cb16': { name: 'Bin', gender: 'male' },
+  '053c8b0d977ac6762b013e': { name: 'Bodhi', gender: 'male' },
 };
 
 // ── Google Cloud TTS (폴백) ──
@@ -140,8 +152,8 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const hasSupertone = !!process.env.SUPERTONE_API_KEY;
     const voices = hasSupertone
-      ? Object.entries(SUPERTONE_VOICES).map(([id, v]) => ({ id, name: v.name, provider: 'supertone' }))
-      : Object.entries(GOOGLE_VOICES).map(([id, v]) => ({ id, name: v.name, provider: 'google' }));
+      ? Object.entries(SUPERTONE_VOICES).map(([id, v]) => ({ id, name: v.name, gender: v.gender, provider: 'supertone' }))
+      : Object.entries(GOOGLE_VOICES).map(([id, v]) => ({ id, name: v.name, gender: v.gender, provider: 'google' }));
     return res.status(200).json({ voices, provider: hasSupertone ? 'supertone' : 'google' });
   }
 

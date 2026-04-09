@@ -3610,14 +3610,24 @@
           var data = await res.json();
           var select = document.getElementById('ttsVoiceSelect');
           if (data.voices && data.voices.length && select) {
-            select.innerHTML = data.voices.map(function(v) {
-              return '<option value="' + v.id + '">' + v.name + '</option>';
-            }).join('');
+            var females = data.voices.filter(function(v) { return v.gender === 'female'; });
+            var males = data.voices.filter(function(v) { return v.gender === 'male'; });
+            var html = '';
+            if (females.length) {
+              html += '<optgroup label="여성 음성">';
+              html += females.map(function(v) { return '<option value="' + v.id + '">' + v.name + '</option>'; }).join('');
+              html += '</optgroup>';
+            }
+            if (males.length) {
+              html += '<optgroup label="남성 음성">';
+              html += males.map(function(v) { return '<option value="' + v.id + '">' + v.name + '</option>'; }).join('');
+              html += '</optgroup>';
+            }
+            select.innerHTML = html;
           }
         } catch (e) {
-          // 폴백: 기존 Google 음성 하드코딩
           var select = document.getElementById('ttsVoiceSelect');
-          if (select) select.innerHTML = '<option value="ko-KR-Neural2-A">서연 (Google)</option><option value="ko-KR-Neural2-C">도윤 (Google)</option>';
+          if (select) select.innerHTML = '<option value="ko-KR-Neural2-A">서연</option><option value="ko-KR-Neural2-C">도윤</option>';
         }
       })();
       document.querySelectorAll('input[name="targetDuration"]').forEach(function(radio) {
