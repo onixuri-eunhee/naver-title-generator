@@ -55,7 +55,7 @@ async function callSupertone(text, voiceId) {
       text,
       language: 'ko',
       model: 'sona_speech_1',
-      output_format: 'mp3_44100_128',
+      output_format: 'mp3',
       voice_settings: {
         speed: 1.1,
         similarity: 0.75,
