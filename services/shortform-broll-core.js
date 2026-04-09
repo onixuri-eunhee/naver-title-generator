@@ -63,8 +63,6 @@ const CLIP_DURATION_SEC = 5;
 const VEO_CLIP_DURATION_SEC = 4;
 const VEO_POLL_INTERVAL_MS = 5000;
 const VEO_TIMEOUT_MS = 180000;
-const SEEDANCE_POLL_INTERVAL_MS = 4000;
-const SEEDANCE_TIMEOUT_MS = 30000;
 const EXTERNAL_FETCH_TIMEOUT_MS = 45000;
 const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_CLOUD_PLATFORM_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
@@ -299,20 +297,6 @@ function findFirstVideoUrl(value) {
       const found = findFirstVideoUrl(nested);
       if (found) return found;
     }
-  }
-  return null;
-}
-
-function findFirstString(value, keys) {
-  if (!value || typeof value !== 'object') return null;
-  for (const key of keys) {
-    const candidate = value[key];
-    if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
-  }
-  for (const nested of Object.values(value)) {
-    if (!nested || typeof nested !== 'object') continue;
-    const candidate = findFirstString(nested, keys);
-    if (candidate) return candidate;
   }
   return null;
 }
@@ -633,114 +617,7 @@ async function callVeoI2V(prompt, key, imageBase64) {
   };
 }
 
-/** @deprecated Use callVeoI2V instead. Kept for backward compatibility. */
-async function callVeoHeroVideo(prompt, key) {
-  return callVeoI2V(prompt, key, null);
-}
 
-async function fetchSeedanceStatus(id) {
-  let lastError = null;
-  for (const path of [
-    `https://api.seedance.ai/v1/video/generations/${id}`,
-    `https://api.seedance.ai/v1/video/generations/${id}/status`,
-    `https://api.seedance.ai/v1/video/generations/${id}/result`,
-  ]) {
-    const response = await fetchWithTimeout(path, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${process.env.SEEDANCE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    }, 15000);
-    const data = await parseJsonResponse(response);
-    if (response.ok) return data;
-    lastError = new Error(`Seedance poll failed: ${response.status} ${JSON.stringify(data)}`);
-  }
-  throw lastError || new Error('Seedance poll failed');
-}
-
-async function callSeedanceVideo(prompt, key) {
-  if (!process.env.SEEDANCE_API_KEY) throw new Error('SEEDANCE_API_KEY is missing');
-
-  const response = await fetchWithTimeout('https://api.seedance.ai/v1/video/generations', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.SEEDANCE_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      prompt,
-      duration: CLIP_DURATION_SEC,
-      aspect_ratio: '9:16',
-    }),
-  });
-  const data = await parseJsonResponse(response);
-  if (!response.ok) throw new Error(`Seedance request failed: ${response.status} ${JSON.stringify(data)}`);
-
-  const directVideoUrl = findFirstVideoUrl(data);
-  if (directVideoUrl) {
-    const asset = await persistVideoResult(directVideoUrl, key);
-    return { type: 'video', url: asset.url, r2Url: asset.r2Url, prompt, durationSec: CLIP_DURATION_SEC };
-  }
-
-  const generationId = findFirstString(data, ['id', 'request_id', 'requestId', 'job_id', 'jobId', 'generation_id', 'generationId', 'task_id', 'taskId']);
-  if (!generationId) {
-    throw new Error(`Seedance response missing video URL and job id: ${JSON.stringify(data)}`);
-  }
-
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < SEEDANCE_TIMEOUT_MS) {
-    await sleep(SEEDANCE_POLL_INTERVAL_MS);
-    const statusData = await fetchSeedanceStatus(generationId);
-    const status = (findFirstString(statusData, ['status', 'state']) || '').toLowerCase();
-    const videoUrl = findFirstVideoUrl(statusData);
-    if (videoUrl) {
-      const asset = await persistVideoResult(videoUrl, key);
-      return { type: 'video', url: asset.url, r2Url: asset.r2Url, prompt, durationSec: CLIP_DURATION_SEC };
-    }
-    if (['failed', 'error', 'cancelled', 'canceled'].includes(status)) {
-      throw new Error(`Seedance generation failed: ${JSON.stringify(statusData)}`);
-    }
-  }
-
-  throw new Error('Seedance generation timed out');
-}
-
-// i2v 영상 슬롯: 첫 씬 + 마지막 씬 필수, 중간은 이미지 연속 2개 방지 교차 배치
-// 30초(5): [0,2,4]->2~3  45초(7): [0,2,4,6]->3~4  60초(8): [0,2,5,7]->4  90초(12): [0,3,6,9,11]->5
-function computeVideoSlots(total) {
-  if (total <= 1) return new Set([0]);
-  if (total <= 5) {
-    const slots = new Set([0, total - 1]);
-    for (let i = 2; i < total - 1; i += 2) slots.add(i);
-    return slots;
-  }
-  if (total <= 7) {
-    const slots = new Set([0, total - 1]);
-    for (let i = 2; i < total - 1; i += 2) slots.add(i);
-    return slots;
-  }
-  if (total <= 8) {
-    return new Set([0, 2, 5, total - 1]);
-  }
-  // 90초 (9~12): 0,3,6,9,last
-  const slots = new Set([0, total - 1]);
-  for (let i = 3; i < total - 1; i += 3) slots.add(i);
-  return slots;
-}
-
-async function createClipWithFallback(prompt, userId, clipNumber) {
-  if (!(process.env.SEEDANCE_API_KEY || '').trim()) {
-    return callImagen3Image(prompt, createR2Key(userId, `clip${clipNumber}-fallback.png`));
-  }
-
-  try {
-    return await callSeedanceVideo(prompt, createR2Key(userId, `clip${clipNumber}.mp4`));
-  } catch (error) {
-    console.error(`[SHORTFORM-BROLL] Seedance clip ${clipNumber} failed, falling back to Grok image:`, error.message);
-    return callImagen3Image(prompt, createR2Key(userId, `clip${clipNumber}-fallback.png`));
-  }
-}
 
 export async function handleShortformBrollRequest({ method, rawBody, userEmail, ip, query }) {
   const probeMode = typeof query?.probe === 'string' ? query.probe.trim().toLowerCase() : '';
@@ -780,8 +657,6 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
 
   const userId = getSafeUserId(userEmail, ip);
   const failures = [];
-  const maxAssets = brollScenes.length;
-  const videoSlots = computeVideoSlots(maxAssets);
 
   async function generateWithFallback(scene, index, isFirstScene) {
     const imgPrompt = buildVisualPrompt(scene.visual, visualStyle, 'image', isFirstScene);
