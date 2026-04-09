@@ -422,7 +422,7 @@ export const ShortformComposition = (props) => {
   );
   const hiddenRanges = useMemo(() => {
     const ranges = timeline.visualSpans
-      .filter((span, index) => span.sceneType === 'text' || (index === 0 && props.hookText))
+      .filter((span) => span.sceneType === 'text')
       .map((span) => ({
         startSec: Math.max(0, span.startSec - HIDDEN_RANGE_PAD_SEC),
         endSec: Math.min(timeline.durationSec, span.endSec + HIDDEN_RANGE_PAD_SEC),
