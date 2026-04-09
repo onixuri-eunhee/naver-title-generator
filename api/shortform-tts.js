@@ -80,15 +80,9 @@ async function callSupertone(text, voiceId) {
     throw new Error(`Supertone TTS failed: ${res.status} ${errText.slice(0, 200)}`);
   }
 
-  // 스트리밍 응답 → Buffer로 수집
-  const chunks = [];
-  const reader = res.body.getReader();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-  }
-  return Buffer.concat(chunks);
+  // 응답을 Buffer로 수집 (Vercel 서버리스 호환)
+  const arrayBuffer = await res.arrayBuffer();
+  return Buffer.from(arrayBuffer);
 }
 
 // ── Google Cloud TTS (폴백) ──
