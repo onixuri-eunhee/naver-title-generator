@@ -3199,9 +3199,12 @@
             var voiceSelect = document.getElementById('ttsVoiceSelect');
             var voiceId = voiceSelect ? voiceSelect.value : '';
             var voiceName = voiceSelect ? voiceSelect.options[voiceSelect.selectedIndex].text : 'TTS';
+            if (!token) {
+              throw new Error('로그인 토큰이 없습니다. 다시 로그인해주세요.');
+            }
             var res = await fetch('/api/shortform-tts', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+              headers: createHeaders({ 'Content-Type': 'application/json' }),
               body: JSON.stringify({ text: fullScript, voiceId: voiceId }),
             });
             if (!res.ok) {
