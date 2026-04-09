@@ -127,20 +127,25 @@ function buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCo
 
     benchmarkSection = `
 
-[벤치마킹 분석 결과 — 이 키워드에서 실제로 터진 숏폼 패턴]
-바이럴 영상 참고:
+[★★★ 벤치마킹 — 이 키워드에서 실제로 조회수가 터진 공식. 이 규칙을 어기면 실패 ★★★]
+
+실제 바이럴 영상 (구독자 낮은데 조회수 높은 영상):
 ${videoList}
 
-분석된 바이럴 공식:
-- 후킹 유형: ${p.hookType || '미분석'}
-- 후킹 패턴: ${p.hookPattern || '미분석'}
-- 대본 구조: ${p.structure || '미분석'}
-- 비주얼 스타일: ${p.visualStyle || '미분석'}
-- 바이럴 공식: ${p.viralFormula || '미분석'}
-- 추천 첫 문장: "${p.suggestedHook || ''}"
+이 영상들의 공통 패턴 (반드시 동일하게 적용):
+1. 후킹 유형: ${p.hookType || '미분석'} → scenes[0]에 이 유형 그대로 적용
+2. 후킹 패턴: ${p.hookPattern || '미분석'} → 이 패턴대로 첫 문장 구성
+3. 대본 구조: ${p.structure || '미분석'} → 이 구조를 그대로 따를 것
+4. 바이럴 공식: ${p.viralFormula || '미분석'} → 모든 씬에 이 공식 적용
 
-★ 위 바이럴 공식을 반드시 반영하세요. 특히 후킹 유형과 구조를 따르세요.
-★ 추천 첫 문장을 참고하되, 그대로 복사하지 말고 더 강렬하게 변형하세요.`;
+추천 첫 문장: "${p.suggestedHook || ''}"
+→ 이 문장의 구조와 톤을 유지하면서 더 강렬하게 변형
+
+[위반 금지]
+- 벤치마킹 후킹 유형을 무시하고 다른 유형을 쓰면 실패
+- 벤치마킹 대본 구조와 다른 구조를 쓰면 실패
+- 벤치마킹 바이럴 공식을 반영하지 않으면 실패
+- 이 규칙은 [절대 규칙]보다 우선합니다`;
   }
 
   return `${inputSummary}${benchmarkSection}
