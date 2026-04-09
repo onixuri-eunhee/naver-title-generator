@@ -673,8 +673,8 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
   const userId = getSafeUserId(userEmail, ip);
   const failures = [];
 
-  async function generateWithFallback(scene, index, isFirstScene) {
-    const imgPrompt = buildVisualPrompt(scene.visual, visualStyle, 'image', isFirstScene);
+  async function generateWithFallback(scene, index, isVideoScene) {
+    const imgPrompt = buildVisualPrompt(scene.visual, visualStyle, 'image', isVideoScene);
     const imgKey = createR2Key(userId, `image${index}.png`);
 
     // ── Step 1: 이미지 생성 (FLUX Schnell 메인 → Imagen 3 폴백 → Grok 폴백) ──
@@ -699,16 +699,16 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
       }
     }
 
-    // ── Step 2: 첫 씬만 Kling Pro I2V → Veo 폴백 ──
-    if (isFirstScene && imageResult?.r2Url) {
-      const videoPrompt = buildVisualPrompt(scene.visual, visualStyle, 'video', true);
+    // ── Step 2: 첫 2씬 Kling Pro I2V → Veo 폴백 ──
+    if (isVideoScene && imageResult?.r2Url) {
+      const videoPrompt = buildVisualPrompt(scene.visual, visualStyle, 'video', isVideoScene);
       const videoKey = createR2Key(userId, `i2v${index}.mp4`);
       // Kling Pro 시도
       try {
         const videoResult = await callKlingI2V(videoPrompt, videoKey, imageResult.r2Url);
         return videoResult;
       } catch (klingError) {
-        console.warn('[SHORTFORM-BROLL] Kling I2V failed for first scene:', klingError.message);
+        console.warn('[SHORTFORM-BROLL] Kling I2V failed for scene ' + index + ':', klingError.message);
         // Veo 폴백
         if (hasVeoConfig() && imageResult.base64) {
           try {
@@ -732,7 +732,7 @@ export async function handleShortformBrollRequest({ method, rawBody, userEmail, 
     const batch = brollScenes.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(
       batch.map(function(scene, batchIndex) {
-        return generateWithFallback(scene, i + batchIndex, i + batchIndex === 0);
+        return generateWithFallback(scene, i + batchIndex, i + batchIndex < 2);
       })
     );
     batchResults.forEach(function(result) { if (result) items.push(result); });

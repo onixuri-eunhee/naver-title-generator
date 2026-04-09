@@ -3049,7 +3049,8 @@
           scenes: (state.scenes || []).filter(function(s) { return s.type === 'broll'; }),
           visualStyle: state.visualStyle || '',
           brollSuggestions: suggestions.slice(0, targetCount),
-          scriptContext: scriptContext
+          scriptContext: scriptContext,
+          targetDurationSec: Number(document.querySelector('input[name="targetDuration"]:checked')?.value || 30)
         };
       }
 

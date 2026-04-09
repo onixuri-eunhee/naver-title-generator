@@ -1,11 +1,12 @@
 import {
   extractToken,
   getClientIp,
+  getRedis,
   resolveAdmin,
   resolveSessionEmail,
   setCorsHeaders,
 } from './_helpers.js';
-import {logUsage} from './_db.js';
+import {logUsage, getDb} from './_db.js';
 import {
   BROLL_VERSION,
   handleShortformBrollRequest,
@@ -16,6 +17,8 @@ export const config = {
   maxDuration: 180,
   api: {bodyParser: false},
 };
+
+const SHORTFORM_CREDIT_COSTS = { 30: 7, 45: 10, 60: 14, 90: 18 };
 
 const REMOTE_MEDIA_BASE_URL = (process.env.SHORTFORM_STT_SERVICE_URL || '').trim().replace(/\/+$/, '');
 const REMOTE_MEDIA_SECRET = (process.env.STT_SERVICE_SHARED_SECRET || '').trim();
@@ -64,6 +67,41 @@ async function proxyToRailway(req, rawBody) {
   };
 }
 
+/**
+ * B-roll 성공 시 크레딧 차감. 무료 체험(30초 1회)이면 차감하지 않음.
+ * @returns {{ charged: boolean, wasFree: boolean, error?: string }}
+ */
+async function chargeBrollCredits(email, isAdmin, targetDurationSec) {
+  if (isAdmin) return { charged: false, wasFree: false };
+
+  const creditCost = SHORTFORM_CREDIT_COSTS[targetDurationSec] || SHORTFORM_CREDIT_COSTS[30];
+
+  // 30초 무료 체험 1회 확인
+  const freeKey = `shortform-free:${email}`;
+  const freeUsed = await getRedis().get(freeKey);
+
+  if (!freeUsed && targetDurationSec === 30) {
+    await getRedis().set(freeKey, '1');
+    return { charged: false, wasFree: true };
+  }
+
+  // 크레딧 차감 (원자적)
+  const sql = getDb();
+  const result = await sql`UPDATE users SET credits = credits - ${creditCost}, updated_at = NOW()
+    WHERE email = ${email} AND credits >= ${creditCost}
+    RETURNING credits`;
+
+  if (result.length === 0) {
+    return { charged: false, wasFree: false, error: 'INSUFFICIENT_CREDITS', required: creditCost };
+  }
+
+  // credit_ledger 기록
+  await sql`INSERT INTO credit_ledger (user_email, amount, type, reason)
+    VALUES (${email}, ${-creditCost}, 'usage', ${'shortform-broll-' + targetDurationSec + 's'})`;
+
+  return { charged: true, wasFree: false, creditCost };
+}
+
 function writeProxyResponse(res, proxied) {
   res.statusCode = proxied.status;
   res.setHeader('Content-Type', proxied.contentType);
@@ -82,6 +120,9 @@ export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({error: 'Method not allowed'});
   }
+
+  let chargeResult = null;
+  let email = null;
 
   try {
     if (req.method === 'GET') {
@@ -102,17 +143,40 @@ export default async function handler(req, res) {
 
     const isAdmin = await resolveAdmin(req);
     const token = extractToken(req);
-    const email = await resolveSessionEmail(token);
+    email = await resolveSessionEmail(token);
     if (!isAdmin && !email) {
       return res.status(401).json({error: '로그인이 필요합니다.'});
     }
 
     const rawBody = await readIncomingBody(req);
 
+    // targetDurationSec 파싱 (크레딧 비용 결정용)
+    let targetDurationSec = 30;
+    try {
+      const parsed = JSON.parse(rawBody.toString('utf8'));
+      if ([30, 45, 60, 90].includes(Number(parsed.targetDurationSec))) {
+        targetDurationSec = Number(parsed.targetDurationSec);
+      }
+    } catch (_) {}
+
+    // 크레딧 선차감 (B-roll 생성 전)
+    chargeResult = await chargeBrollCredits(email, isAdmin, targetDurationSec);
+    if (chargeResult.error === 'INSUFFICIENT_CREDITS') {
+      return res.status(402).json({
+        error: '크레딧이 부족합니다. 충전 후 이용해주세요.',
+        required: chargeResult.required,
+        code: 'INSUFFICIENT_CREDITS',
+      });
+    }
+
     if (REMOTE_MEDIA_BASE_URL && REMOTE_MEDIA_SECRET) {
       const proxied = await proxyToRailway(req, rawBody);
       if (proxied.status >= 200 && proxied.status < 300) {
         await logUsage(email, 'shortform-broll', null, getClientIp(req));
+      } else if (chargeResult.charged) {
+        // B-roll 실패 시 크레딧 환불
+        const { refundShortformCredits } = await import('./shortform-script.js');
+        await refundShortformCredits(email, chargeResult.creditCost, 'shortform-broll-error-refund');
       }
       return writeProxyResponse(res, proxied);
     }
@@ -128,6 +192,13 @@ export default async function handler(req, res) {
     await logUsage(email, 'shortform-broll', null, getClientIp(req));
     return res.status(localPost.status).json(localPost.body);
   } catch (error) {
+    // B-roll 실패 시 크레딧 환불
+    if (chargeResult?.charged && email) {
+      try {
+        const { refundShortformCredits } = await import('./shortform-script.js');
+        await refundShortformCredits(email, chargeResult.creditCost, 'shortform-broll-error-refund');
+      } catch (_) {}
+    }
     const normalized = normalizeBrollError(error);
     console.error('[shortform-broll] API error:', normalized.message);
     return res.status(normalized.status).json({error: normalized.message, version: BROLL_VERSION});

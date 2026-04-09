@@ -410,10 +410,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  let creditCharged = false;
-  let creditCost = 0;
-  let email = null;
-
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const topic = toSentence(body.topic);
@@ -430,45 +426,9 @@ export default async function handler(req, res) {
     }
 
     const isAdmin = await resolveAdmin(req);
-    email = await resolveSessionEmail(extractToken(req));
+    const email = await resolveSessionEmail(extractToken(req));
     if (!isAdmin && !email) {
       return res.status(401).json({ error: '로그인이 필요합니다.' });
-    }
-
-    let wasFree = false;
-
-    if (!isAdmin) {
-      creditCost = SHORTFORM_CREDIT_COSTS[targetDurationSec] || SHORTFORM_CREDIT_COSTS[30];
-
-      // 30초 무료 체험 1회 확인
-      const freeKey = `shortform-free:${email}`;
-      const freeUsed = await getRedis().get(freeKey);
-
-      if (!freeUsed && targetDurationSec === 30) {
-        // 무료 체험 사용
-        wasFree = true;
-        await getRedis().set(freeKey, '1');
-      } else {
-        // 크레딧 차감 (원자적)
-        const sql = getDb();
-        const result = await sql`UPDATE users SET credits = credits - ${creditCost}, updated_at = NOW()
-          WHERE email = ${email} AND credits >= ${creditCost}
-          RETURNING credits`;
-
-        if (result.length === 0) {
-          return res.status(402).json({
-            error: '크레딧이 부족합니다. 충전 후 이용해주세요.',
-            required: creditCost,
-            code: 'INSUFFICIENT_CREDITS',
-          });
-        }
-
-        creditCharged = true;
-
-        // credit_ledger 기록
-        await sql`INSERT INTO credit_ledger (user_email, amount, type, reason)
-          VALUES (${email}, ${-creditCost}, 'usage', ${'shortform-script-' + targetDurationSec + 's'})`;
-      }
     }
 
     // ── 벤치마킹 (대본 생성 전, 백그라운드) ──
@@ -482,30 +442,9 @@ export default async function handler(req, res) {
     const script = await callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount, benchmark);
     await logUsage(email, 'shortform-script', tone, getClientIp(req));
 
-    // 현재 잔액 조회
-    let remainingCredits = 0;
-    if (!isAdmin && email) {
-      try {
-        const sql = getDb();
-        const [user] = await sql`SELECT credits FROM users WHERE email = ${email}`;
-        remainingCredits = user?.credits || 0;
-      } catch (_) {}
-    }
-
-    return res.status(200).json({
-      script,
-      credits: {
-        used: wasFree ? 0 : creditCost,
-        remaining: isAdmin ? 999 : remainingCredits,
-        wasFree,
-      },
-    });
+    return res.status(200).json({ script });
   } catch (error) {
     console.error('shortform-script API Error:', error);
-    // 크레딧 차감 후 대본 생성 실패 시 자동 환불
-    if (creditCharged && email) {
-      await refundShortformCredits(email, creditCost, 'shortform-script-error-refund');
-    }
     return res.status(500).json({ error: '숏폼 대본 생성 중 오류가 발생했습니다.' });
   }
 }
