@@ -178,14 +178,14 @@ export default async function handler(req, res) {
     if (process.env.SUPERTONE_API_KEY && (SUPERTONE_VOICES[voiceId] || !GOOGLE_VOICES[voiceId])) {
       const stVoiceId = SUPERTONE_VOICES[voiceId] ? voiceId : DEFAULT_SUPERTONE_VOICE;
       try {
+        console.log(`[TTS] Calling Supertone: voice=${stVoiceId}, text=${text.length} chars`);
         audioBuffer = await callSupertone(text, stVoiceId);
         provider = 'supertone';
         console.log(`[TTS] Supertone success: voice=${stVoiceId}, ${audioBuffer.length} bytes`);
       } catch (stError) {
-        console.warn('[TTS] Supertone failed, falling back to Google:', stError.message);
-        const gVoice = DEFAULT_GOOGLE_VOICE;
-        audioBuffer = await callGoogleTTS(text, gVoice, GOOGLE_VOICES[gVoice].gender);
-        provider = 'google-fallback';
+        console.error('[TTS] Supertone FAILED:', stError.message, '| voice:', stVoiceId);
+        // 폴백 없이 에러 반환 — 조용히 여성 음성으로 빠지는 것 방지
+        return res.status(502).json({ error: 'Supertone 음성 생성 실패: ' + stError.message });
       }
     } else {
       // Google TTS 직접 사용 (Supertone 키 없거나 Google 음성 명시 선택)
