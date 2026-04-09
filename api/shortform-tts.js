@@ -3,18 +3,30 @@ import { resolveAdmin, setCorsHeaders, extractToken, resolveSessionEmail } from 
 
 export const config = { maxDuration: 30 };
 
+// ── Supertone Play API (메인) ──
+const SUPERTONE_API_BASE = 'https://supertoneapi.com/v1';
+
+const SUPERTONE_VOICES = {
+  // 여성 (Supertone Play 한국어 음성)
+  'st-yuna': { name: '유나', lang: 'ko' },
+  'st-soyeon': { name: '소연', lang: 'ko' },
+  'st-minji': { name: '민지', lang: 'ko' },
+  // 남성
+  'st-joon': { name: '준', lang: 'ko' },
+  'st-hyun': { name: '현', lang: 'ko' },
+};
+
+// ── Google Cloud TTS (폴백) ──
 const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_TTS_URL = 'https://texttospeech.googleapis.com/v1/text:synthesize';
 const GOOGLE_CLOUD_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
 
-const VOICES = {
-  // 여성
+const GOOGLE_VOICES = {
   'ko-KR-Neural2-A': { name: '서연', gender: 'FEMALE' },
   'ko-KR-Neural2-B': { name: '민지', gender: 'FEMALE' },
   'ko-KR-Wavenet-A': { name: '하은', gender: 'FEMALE' },
   'ko-KR-Wavenet-B': { name: '지수', gender: 'FEMALE' },
   'ko-KR-Standard-A': { name: '유나', gender: 'FEMALE' },
-  // 남성
   'ko-KR-Neural2-C': { name: '도윤', gender: 'MALE' },
   'ko-KR-Wavenet-C': { name: '준서', gender: 'MALE' },
   'ko-KR-Wavenet-D': { name: '시우', gender: 'MALE' },
@@ -22,8 +34,49 @@ const VOICES = {
   'ko-KR-Standard-D': { name: '현우', gender: 'MALE' },
 };
 
-const DEFAULT_VOICE = 'ko-KR-Neural2-A';
+const DEFAULT_SUPERTONE_VOICE = 'st-yuna';
+const DEFAULT_GOOGLE_VOICE = 'ko-KR-Neural2-A';
 
+// ── Supertone TTS ──
+async function callSupertone(text, voiceId) {
+  const apiKey = process.env.SUPERTONE_API_KEY;
+  if (!apiKey) throw new Error('SUPERTONE_API_KEY is missing');
+
+  const res = await fetch(`${SUPERTONE_API_BASE}/text-to-speech/${voiceId}/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-sup-api-key': apiKey,
+    },
+    body: JSON.stringify({
+      text,
+      language: 'ko',
+      model: 'sona_speech_1',
+      output_format: 'mp3_44100_128',
+      voice_settings: {
+        speed: 1.1,
+        similarity: 0.75,
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Supertone TTS failed: ${res.status} ${errText.slice(0, 200)}`);
+  }
+
+  // 스트리밍 응답 → Buffer로 수집
+  const chunks = [];
+  const reader = res.body.getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks);
+}
+
+// ── Google Cloud TTS (폴백) ──
 let _tokenCache = { token: null, expiresAt: 0 };
 
 function _parseServiceAccount() {
@@ -36,7 +89,7 @@ function _base64url(input) {
   return b.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function getAccessToken() {
+async function getGoogleAccessToken() {
   const now = Math.floor(Date.now() / 1000);
   if (_tokenCache.token && _tokenCache.expiresAt - 60 > now) return _tokenCache.token;
 
@@ -59,62 +112,76 @@ async function getAccessToken() {
   return data.access_token;
 }
 
+async function callGoogleTTS(text, voiceName, voiceGender) {
+  const accessToken = await getGoogleAccessToken();
+  const res = await fetch(GOOGLE_TTS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({
+      input: { text },
+      voice: { languageCode: 'ko-KR', name: voiceName, ssmlGender: voiceGender },
+      audioConfig: { audioEncoding: 'MP3', speakingRate: 1.1, pitch: 0 },
+    }),
+  });
+  if (!res.ok) throw new Error(`Google TTS failed: ${res.status}`);
+  const data = await res.json();
+  return Buffer.from(data.audioContent, 'base64');
+}
+
+// ── 핸들러 ──
 export default async function handler(req, res) {
   setCorsHeaders(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // GET: 사용 가능한 음성 목록 반환
+  if (req.method === 'GET') {
+    const hasSupertone = !!process.env.SUPERTONE_API_KEY;
+    const voices = hasSupertone
+      ? Object.entries(SUPERTONE_VOICES).map(([id, v]) => ({ id, name: v.name, provider: 'supertone' }))
+      : Object.entries(GOOGLE_VOICES).map(([id, v]) => ({ id, name: v.name, provider: 'google' }));
+    return res.status(200).json({ voices, provider: hasSupertone ? 'supertone' : 'google' });
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
   const token = extractToken(req);
   const email = await resolveSessionEmail(token);
   const isAdmin = await resolveAdmin(req);
-
-  if (!isAdmin && !email) {
-    return res.status(401).json({ error: '로그인이 필요합니다.' });
-  }
+  if (!isAdmin && !email) return res.status(401).json({ error: '로그인이 필요합니다.' });
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const text = String(body.text || '').trim();
-    const voiceName = VOICES[body.voiceId] ? body.voiceId : DEFAULT_VOICE;
-    const voiceInfo = VOICES[voiceName];
-
     if (!text) return res.status(400).json({ error: 'text가 필요합니다.' });
     if (text.length > 5000) return res.status(400).json({ error: '텍스트가 너무 깁니다. (최대 5000자)' });
 
-    const accessToken = await getAccessToken();
+    const voiceId = body.voiceId || '';
+    let audioBuffer;
+    let provider;
 
-    const ttsResponse = await fetch(GOOGLE_TTS_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        input: { text },
-        voice: {
-          languageCode: 'ko-KR',
-          name: voiceName,
-          ssmlGender: voiceInfo.gender,
-        },
-        audioConfig: {
-          audioEncoding: 'MP3',
-          speakingRate: 1.1,
-          pitch: 0,
-        },
-      }),
-    });
-
-    if (!ttsResponse.ok) {
-      const errData = await ttsResponse.text();
-      console.error('[TTS] Google Cloud error:', ttsResponse.status, errData);
-      return res.status(502).json({ error: '음성 생성에 실패했습니다.' });
+    // Supertone 메인 → Google 폴백
+    if (process.env.SUPERTONE_API_KEY && (SUPERTONE_VOICES[voiceId] || !GOOGLE_VOICES[voiceId])) {
+      const stVoiceId = SUPERTONE_VOICES[voiceId] ? voiceId : DEFAULT_SUPERTONE_VOICE;
+      try {
+        audioBuffer = await callSupertone(text, stVoiceId);
+        provider = 'supertone';
+        console.log(`[TTS] Supertone success: voice=${stVoiceId}, ${audioBuffer.length} bytes`);
+      } catch (stError) {
+        console.warn('[TTS] Supertone failed, falling back to Google:', stError.message);
+        const gVoice = DEFAULT_GOOGLE_VOICE;
+        audioBuffer = await callGoogleTTS(text, gVoice, GOOGLE_VOICES[gVoice].gender);
+        provider = 'google-fallback';
+      }
+    } else {
+      // Google TTS 직접 사용 (Supertone 키 없거나 Google 음성 명시 선택)
+      const gVoice = GOOGLE_VOICES[voiceId] ? voiceId : DEFAULT_GOOGLE_VOICE;
+      audioBuffer = await callGoogleTTS(text, gVoice, GOOGLE_VOICES[gVoice].gender);
+      provider = 'google';
     }
-
-    const data = await ttsResponse.json();
-    const audioBuffer = Buffer.from(data.audioContent, 'base64');
 
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Content-Length', audioBuffer.length);
+    res.setHeader('X-TTS-Provider', provider);
     return res.status(200).send(audioBuffer);
   } catch (error) {
     console.error('[TTS] Error:', error.message);
