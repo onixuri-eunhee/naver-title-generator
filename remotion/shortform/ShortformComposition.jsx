@@ -30,9 +30,9 @@ const backgroundStyle = {
 };
 
 const textWrapStyle = {
-  justifyContent: 'flex-end',
+  justifyContent: 'center',
   alignItems: 'center',
-  padding: '0 60px 120px 60px',
+  padding: '0 60px',
 };
 
 const textShellStyle = {
@@ -233,11 +233,7 @@ const TextLayer = ({scene, motionSpeed}) => {
   const localTimeSec = frame / fps;
   const currentTimeSec = localTimeSec + (scene.startSec || 0);
 
-  // 하단 고정, 부드러운 페이드인/아웃만 (올라오기 없음)
-  const fadeIn = interpolate(frame, [0, 6], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const exitStart = Math.max(0, scene.durationInFrames - 6);
-  const fadeOut = interpolate(frame, [exitStart, scene.durationInFrames], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const opacity = Math.min(fadeIn, fadeOut);
+  // 항상 표시, word accent(흐린→진하게)가 시각 효과를 담당
   const fontSize = getSceneFontSize(scene);
   const fadeDurationSec = WORD_FADE_SECONDS[motionSpeed] || WORD_FADE_SECONDS.normal;
 
@@ -246,10 +242,7 @@ const TextLayer = ({scene, motionSpeed}) => {
   return (
     <AbsoluteFill style={textWrapStyle}>
       <div
-        style={{
-          ...textShellStyle,
-          opacity,
-        }}
+        style={textShellStyle}
       >
         {hasWordTiming ? scene.wordLines.map((line, lineIndex) => (
           <div
@@ -285,7 +278,6 @@ const TextLayer = ({scene, motionSpeed}) => {
               style={{
                 ...textStyle,
                 fontSize,
-                opacity,
               }}
             >
               {line}
@@ -297,7 +289,6 @@ const TextLayer = ({scene, motionSpeed}) => {
             height: 4,
             borderRadius: 999,
             background: ACCENT,
-            opacity,
             marginTop: 18,
           }}
         />
