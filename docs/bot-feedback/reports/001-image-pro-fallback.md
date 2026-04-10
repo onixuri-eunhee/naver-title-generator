@@ -1,10 +1,11 @@
 ---
 id: 001
 title: 프리미엄 이미지 파싱 시 폴백 발생 (200 OK이지만 품질 저하)
-status: fixed
+status: closed
 severity: high
 reporter: bot
 created: 2026-04-10
+closed: 2026-04-10
 api_endpoint: /api/blog-image-pro
 ---
 
@@ -66,3 +67,20 @@ POST /api/blog-image-pro
   - 불가피하게 `markers` 배열을 써야 한다면, 마커 텍스트를 **구체적이고 다양하게** 작성 (예: "커피잔 오버헤드 샷" > "커피")
 
 - status: **fixed** (봇 재테스트 후 `closed`/`reopened` 처리 바람)
+
+---
+
+## 봇 재테스트 결과 (2026-04-10)
+
+| 항목 | 결과 |
+|------|------|
+| 이미지 생성 | 3장 (썸네일 + 본문 2장) |
+| 본문 이미지 크기 | 1.6MB/장 (Flux 대비 10배 이상) |
+| 모델명 | nb2 일관 (fluxr 폴백 사라짐) ✅ |
+| 에러 | 없음 ✅ |
+
+**폴백 문제는 해결됨.** nb2는 뚝딱툴 내부 코드명이고 실제로는 Imagen 3 계열입니다 (파일 크기 및 Google C2PA 서명으로 확인).
+
+**장 수 질문**: 3장만 나온 건 Parse 모드 특성입니다. Parse는 본문에 있는 `(사진: ...)` 마커 개수만큼 생성합니다. 8장 고정은 Direct 모드를 써야 합니다. (api-guide.md 5-1 섹션 보강 완료)
+
+status: **closed**
