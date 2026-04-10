@@ -57,7 +57,7 @@ export const BROLL_VERSION = 'v9-flux-kling-pipeline';
 
 const FAL_API_BASE = 'https://fal.run';
 const FLUX_SCHNELL_ENDPOINT = 'fal-ai/flux/schnell';
-const KLING_I2V_ENDPOINT = 'fal-ai/kling-video/v3/pro/image-to-video';
+const KLING_I2V_ENDPOINT = 'fal-ai/kling-video/v1.6/standard/image-to-video';
 
 const CLIP_DURATION_SEC = 5;
 const VEO_CLIP_DURATION_SEC = 4;
@@ -471,7 +471,7 @@ async function callKlingI2V(prompt, key, imageUrl) {
 
       const asset = await uploadRemoteAssetToR2(videoUrl, key, 'video/mp4', 'video/');
       console.log('[SHORTFORM-BROLL] Kling I2V video uploaded:', asset.r2Url);
-      return { type: 'video', url: asset.url, r2Url: asset.r2Url, prompt, durationSec: CLIP_DURATION_SEC, provider: 'kling-3-pro' };
+      return { type: 'video', url: asset.url, r2Url: asset.r2Url, prompt, durationSec: CLIP_DURATION_SEC, provider: 'kling-1.6-standard' };
     }
 
     if (status === 'FAILED') {
