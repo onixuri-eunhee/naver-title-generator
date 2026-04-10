@@ -29,6 +29,89 @@ const SUPERTONE_VOICES = {
   'ead6b9de6beb66dc8f6d2d': { name: 'Andy', gender: 'male' },
 };
 
+// ── ElevenLabs (정밀 자막용) ──
+const ELEVENLABS_API_BASE = 'https://api.elevenlabs.io/v1';
+const ELEVENLABS_MODEL = 'eleven_multilingual_v2';
+
+const ELEVENLABS_VOICES = {
+  '21m00Tcm4TlvDq8ikWAM': { name: 'Rachel', gender: 'female' },
+  'EXAVITQu4vr4xnSDxMaL': { name: 'Sarah', gender: 'female' },
+  'XB0fDUnXU5powFXDhCwa': { name: 'Charlotte', gender: 'female' },
+  'pNInz6obpgDQGcFmaJgB': { name: 'Adam', gender: 'male' },
+  'ErXwobaYiN019PkySvjV': { name: 'Antoni', gender: 'male' },
+  'TxGEqnHWrfWFTfGW9XjX': { name: 'Josh', gender: 'male' },
+};
+
+async function callElevenLabs(text, voiceId) {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) throw new Error('ELEVENLABS_API_KEY is missing');
+
+  const res = await fetch(`${ELEVENLABS_API_BASE}/text-to-speech/${voiceId}/with-timestamps`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'xi-api-key': apiKey,
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({
+      text,
+      model_id: ELEVENLABS_MODEL,
+      voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`ElevenLabs TTS failed: ${res.status} ${errText.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  const audioBase64 = data.audio_base64 || data.audioBase64;
+  if (!audioBase64) throw new Error('ElevenLabs: audio_base64 missing');
+
+  // 한국어는 alignment(원문 음절)를 써야 함. normalized_alignment는 로마자 transliteration.
+  const alignment = data.alignment || data.normalized_alignment || null;
+  return {
+    audioBuffer: Buffer.from(audioBase64, 'base64'),
+    wordTimestamps: alignment ? charsToWordTimestamps(alignment) : [],
+  };
+}
+
+// 문자 단위 타임스탬프 → 단어 단위 병합 (공백 기준)
+function charsToWordTimestamps(alignment) {
+  const chars = alignment.characters || [];
+  const starts = alignment.character_start_times_seconds || [];
+  const ends = alignment.character_end_times_seconds || [];
+  if (!chars.length || chars.length !== starts.length) return [];
+
+  const words = [];
+  let buf = '';
+  let wordStart = null;
+  let lastEnd = 0;
+
+  const flush = () => {
+    if (buf) {
+      words.push({ word: buf, start: wordStart ?? lastEnd, end: lastEnd });
+      buf = '';
+      wordStart = null;
+    }
+  };
+
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    if (/\s/.test(ch)) {
+      flush();
+      lastEnd = ends[i];
+      continue;
+    }
+    if (wordStart === null) wordStart = starts[i];
+    buf += ch;
+    lastEnd = ends[i];
+  }
+  flush();
+  return words;
+}
+
 // ── Google Cloud TTS (폴백) ──
 const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_TTS_URL = 'https://texttospeech.googleapis.com/v1/text:synthesize';
@@ -143,10 +226,24 @@ export default async function handler(req, res) {
   // GET: 사용 가능한 음성 목록 반환
   if (req.method === 'GET') {
     const hasSupertone = !!process.env.SUPERTONE_API_KEY;
-    const voices = hasSupertone
-      ? Object.entries(SUPERTONE_VOICES).map(([id, v]) => ({ id, name: v.name, gender: v.gender, provider: 'supertone' }))
-      : Object.entries(GOOGLE_VOICES).map(([id, v]) => ({ id, name: v.name, gender: v.gender, provider: 'google' }));
-    return res.status(200).json({ voices, provider: hasSupertone ? 'supertone' : 'google' });
+    const hasEleven = !!process.env.ELEVENLABS_API_KEY;
+    const voices = [];
+    if (hasSupertone) {
+      for (const [id, v] of Object.entries(SUPERTONE_VOICES)) {
+        voices.push({ id, name: v.name, gender: v.gender, provider: 'supertone' });
+      }
+    }
+    if (hasEleven) {
+      for (const [id, v] of Object.entries(ELEVENLABS_VOICES)) {
+        voices.push({ id, name: v.name, gender: v.gender, provider: 'elevenlabs' });
+      }
+    }
+    if (!voices.length) {
+      for (const [id, v] of Object.entries(GOOGLE_VOICES)) {
+        voices.push({ id, name: v.name, gender: v.gender, provider: 'google' });
+      }
+    }
+    return res.status(200).json({ voices, provider: hasSupertone ? 'supertone' : (hasEleven ? 'elevenlabs' : 'google') });
   }
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
@@ -187,11 +284,27 @@ export default async function handler(req, res) {
       }
     }
     let audioBuffer;
+    let wordTimestamps = null;
     let provider;
 
-    // Supertone 메인 → Google 폴백
-    if (process.env.SUPERTONE_API_KEY && (SUPERTONE_VOICES[voiceId] || !GOOGLE_VOICES[voiceId])) {
-      const stVoiceId = SUPERTONE_VOICES[voiceId] ? voiceId : DEFAULT_SUPERTONE_VOICE;
+    const isElevenVoice = !!ELEVENLABS_VOICES[voiceId];
+    const isSupertoneVoice = !!SUPERTONE_VOICES[voiceId];
+    const isGoogleVoice = !!GOOGLE_VOICES[voiceId];
+
+    if (isElevenVoice && process.env.ELEVENLABS_API_KEY) {
+      try {
+        console.log(`[TTS] Calling ElevenLabs: voice=${voiceId}, text=${text.length} chars`);
+        const result = await callElevenLabs(text, voiceId);
+        audioBuffer = result.audioBuffer;
+        wordTimestamps = result.wordTimestamps;
+        provider = 'elevenlabs';
+        console.log(`[TTS] ElevenLabs success: ${audioBuffer.length} bytes, ${wordTimestamps.length} words`);
+      } catch (elError) {
+        console.error('[TTS] ElevenLabs FAILED:', elError.message);
+        return res.status(502).json({ error: 'ElevenLabs 음성 생성 실패: ' + elError.message });
+      }
+    } else if (process.env.SUPERTONE_API_KEY && (isSupertoneVoice || !isGoogleVoice)) {
+      const stVoiceId = isSupertoneVoice ? voiceId : DEFAULT_SUPERTONE_VOICE;
       try {
         console.log(`[TTS] Calling Supertone: voice=${stVoiceId}, text=${text.length} chars`);
         audioBuffer = await callSupertone(text, stVoiceId);
@@ -202,13 +315,12 @@ export default async function handler(req, res) {
         return res.status(502).json({ error: 'Supertone 음성 생성 실패: ' + stError.message });
       }
     } else {
-      // Google TTS 직접 사용 (Supertone 키 없거나 Google 음성 명시 선택)
-      const gVoice = GOOGLE_VOICES[voiceId] ? voiceId : DEFAULT_GOOGLE_VOICE;
+      const gVoice = isGoogleVoice ? voiceId : DEFAULT_GOOGLE_VOICE;
       audioBuffer = await callGoogleTTS(text, gVoice, GOOGLE_VOICES[gVoice].gender);
       provider = 'google';
     }
 
-    // 미리듣기 성공 시 Redis 캐시 저장 (voice당 1회만 Supertone 호출)
+    // 미리듣기 성공 시 Redis 캐시 저장 (voice당 1회만 호출)
     if (isPreview) {
       const redis = getRedis();
       if (redis) {
@@ -218,6 +330,17 @@ export default async function handler(req, res) {
       }
     }
 
+    // ElevenLabs 실제 생성: JSON 응답 (audioBase64 + wordTimestamps + skipWhisper)
+    if (provider === 'elevenlabs' && !isPreview) {
+      return res.status(200).json({
+        provider,
+        skipWhisper: true,
+        audioBase64: audioBuffer.toString('base64'),
+        wordTimestamps: wordTimestamps || [],
+      });
+    }
+
+    // 그 외(또는 ElevenLabs 미리듣기)는 기존 바이너리 응답 경로
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Content-Length', audioBuffer.length);
     res.setHeader('X-TTS-Provider', provider);

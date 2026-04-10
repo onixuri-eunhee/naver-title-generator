@@ -1715,6 +1715,9 @@
         reprocessTimer: 0,
         sttSegments: [],
         sttWords: [],
+        elevenWords: null,
+        skipWhisper: false,
+        ttsScript: '',
         subtitleSentences: [],
         brollItems: [],
         renderProgress: 0,
@@ -2118,6 +2121,53 @@
         });
 
         return { script: script, estimatedSeconds: estimatedSeconds, brollSuggestions: brollSuggestions, scenes: scenes, visualStyle: visualStyle, textCardTemplate: textCardTemplate, conceptKey: conceptKey, hookText: hookText };
+      }
+
+      // ElevenLabs가 반환한 단어 타임스탬프 + 원본 대본으로 로컬 STT 응답 구성 (Whisper 스킵용)
+      function buildLocalSttFromEleven(scriptText, elevenWords) {
+        if (!scriptText || !Array.isArray(elevenWords) || !elevenWords.length) {
+          return { segments: [], words: [] };
+        }
+        var words = elevenWords.map(function(w) {
+          return {
+            text: String(w.word || w.text || ''),
+            start: Number(w.start) || 0,
+            end: Number(w.end) || 0
+          };
+        }).filter(function(w) { return w.text; });
+
+        if (!words.length) return { segments: [], words: [] };
+
+        var sentences = scriptText
+          .split(/(?<=[.!?。])\s+|\n+/)
+          .map(function(s) { return s.trim(); })
+          .filter(Boolean);
+
+        if (!sentences.length) {
+          return {
+            segments: [{ start: words[0].start, end: words[words.length - 1].end, text: scriptText.trim() }],
+            words: words
+          };
+        }
+
+        var segments = [];
+        var idx = 0;
+        for (var i = 0; i < sentences.length; i++) {
+          var tokens = sentences[i].split(/\s+/).filter(Boolean);
+          if (!tokens.length) continue;
+          if (idx >= words.length) break;
+          var endIdx = Math.min(idx + tokens.length, words.length);
+          segments.push({
+            start: words[idx].start,
+            end: words[endIdx - 1].end,
+            text: sentences[i]
+          });
+          idx = endIdx;
+        }
+        if (idx < words.length && segments.length) {
+          segments[segments.length - 1].end = words[words.length - 1].end;
+        }
+        return { segments: segments, words: words };
       }
 
       function normalizeSttResponse(data) {
@@ -2980,6 +3030,9 @@
         state.audioFileName = '';
         state.audioMimeType = '';
         state.audioSourceType = '';
+        state.elevenWords = null;
+        state.skipWhisper = false;
+        state.ttsScript = '';
         resetTrimState();
         els.audioPlayer.removeAttribute('src');
         els.audioPlayer.load();
@@ -3078,24 +3131,54 @@
         updateLocks();
 
         try {
-          var sttRequest = buildSttRequest();
           var brollBody = buildBrollPayload();
           if (!brollBody.scriptContext) {
             throw new Error('B-roll용 대본 내용이 비어 있습니다. 대본을 먼저 작성해주세요.');
           }
-          var sttPromise = fetch(getSttEndpoint(), {
-            method: 'POST',
-            headers: sttRequest.headers,
-            body: sttRequest.body
-          });
-          var brollPromise = sttProbeMode ? null : fetch(getBrollEndpoint(), {
-            method: 'POST',
-            headers: createHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify(brollBody)
-          });
-          var responses = await Promise.all(sttProbeMode ? [sttPromise] : [sttPromise, brollPromise]);
-          var sttResult = await readResponseDetails(responses[0]);
-          var brollResult = sttProbeMode ? null : await readResponseDetails(responses[1]);
+          var currentScript = [state.script.hook, state.script.point, state.script.cta].filter(Boolean).join('\n\n').trim();
+          var useLocalStt = state.skipWhisper
+            && Array.isArray(state.elevenWords)
+            && state.elevenWords.length > 0
+            && state.ttsScript === currentScript;
+          if (state.skipWhisper && !useLocalStt) {
+            console.warn('[STT] ElevenLabs 캐시 무효 (대본 변경됨) — Whisper 폴백');
+          }
+
+          var sttResult;
+          var brollResult;
+          if (useLocalStt) {
+            console.log('[STT] ElevenLabs 단어 타임스탬프 사용 — Whisper 스킵 (' + state.elevenWords.length + ' words)');
+            var brollPromise = sttProbeMode ? null : fetch(getBrollEndpoint(), {
+              method: 'POST',
+              headers: createHeaders({ 'Content-Type': 'application/json' }),
+              body: JSON.stringify(brollBody)
+            });
+            var localSttData = buildLocalSttFromEleven(currentScript, state.elevenWords);
+            sttResult = {
+              ok: true,
+              status: 200,
+              data: localSttData,
+              text: '',
+              sttVersion: 'local-elevenlabs',
+              vercelId: ''
+            };
+            brollResult = sttProbeMode ? null : await readResponseDetails(await brollPromise);
+          } else {
+            var sttRequest = buildSttRequest();
+            var sttPromise = fetch(getSttEndpoint(), {
+              method: 'POST',
+              headers: sttRequest.headers,
+              body: sttRequest.body
+            });
+            var brollPromise2 = sttProbeMode ? null : fetch(getBrollEndpoint(), {
+              method: 'POST',
+              headers: createHeaders({ 'Content-Type': 'application/json' }),
+              body: JSON.stringify(brollBody)
+            });
+            var responses = await Promise.all(sttProbeMode ? [sttPromise] : [sttPromise, brollPromise2]);
+            sttResult = await readResponseDetails(responses[0]);
+            brollResult = sttProbeMode ? null : await readResponseDetails(responses[1]);
+          }
           var sttData = sttResult.data;
           var brollData = brollResult ? brollResult.data : null;
 
@@ -3219,10 +3302,29 @@
               throw new Error(errMsg);
             }
             var contentType = res.headers.get('content-type') || '';
-            if (!contentType.includes('audio')) {
+            var blob;
+            if (contentType.includes('application/json')) {
+              // ElevenLabs 경로: audioBase64 + wordTimestamps
+              var payload = await res.json();
+              if (!payload || !payload.audioBase64) {
+                throw new Error('음성 응답이 올바르지 않습니다. 다시 시도해주세요.');
+              }
+              var binary = atob(payload.audioBase64);
+              var bytes = new Uint8Array(binary.length);
+              for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+              blob = new Blob([bytes], { type: 'audio/mpeg' });
+              state.elevenWords = Array.isArray(payload.wordTimestamps) ? payload.wordTimestamps : [];
+              state.skipWhisper = payload.skipWhisper === true && state.elevenWords.length > 0;
+              state.ttsScript = fullScript;
+              console.log('[TTS] ElevenLabs: words=' + state.elevenWords.length + ', skipWhisper=' + state.skipWhisper);
+            } else if (contentType.includes('audio')) {
+              blob = await res.blob();
+              state.elevenWords = null;
+              state.skipWhisper = false;
+              state.ttsScript = '';
+            } else {
               throw new Error('음성 응답이 올바르지 않습니다. 다시 시도해주세요.');
             }
-            var blob = await res.blob();
             statusEl.textContent = '음성 생성 완료! (' + voiceName.split('—')[0].trim() + ')';
             statusEl.className = 'record-status';
             applyAudioBlob(blob, 'tts-' + voiceId + '.mp3', 'audio/mpeg', 'TTS 음성');
@@ -3662,19 +3764,36 @@
           var data = await res.json();
           var select = document.getElementById('ttsVoiceSelect');
           if (data.voices && data.voices.length && select) {
-            var females = data.voices.filter(function(v) { return v.gender === 'female'; });
-            var males = data.voices.filter(function(v) { return v.gender === 'male'; });
+            var PROVIDER_LABEL = {
+              supertone: 'Supertone (한국어 자연스러움)',
+              elevenlabs: 'ElevenLabs (정밀 자막)',
+              google: 'Google'
+            };
+            var PROVIDER_ORDER = ['supertone', 'elevenlabs', 'google'];
+            var byProvider = {};
+            data.voices.forEach(function(v) {
+              var p = v.provider || 'supertone';
+              if (!byProvider[p]) byProvider[p] = [];
+              byProvider[p].push(v);
+            });
             var html = '';
-            if (females.length) {
-              html += '<optgroup label="여성 음성">';
-              html += females.map(function(v) { return '<option value="' + v.id + '">' + v.name + '</option>'; }).join('');
-              html += '</optgroup>';
-            }
-            if (males.length) {
-              html += '<optgroup label="남성 음성">';
-              html += males.map(function(v) { return '<option value="' + v.id + '">' + v.name + '</option>'; }).join('');
-              html += '</optgroup>';
-            }
+            PROVIDER_ORDER.forEach(function(p) {
+              var list = byProvider[p];
+              if (!list || !list.length) return;
+              var females = list.filter(function(v) { return v.gender === 'female'; });
+              var males = list.filter(function(v) { return v.gender === 'male'; });
+              var label = PROVIDER_LABEL[p] || p;
+              if (females.length) {
+                html += '<optgroup label="' + label + ' · 여성">';
+                html += females.map(function(v) { return '<option value="' + v.id + '" data-provider="' + p + '">' + v.name + '</option>'; }).join('');
+                html += '</optgroup>';
+              }
+              if (males.length) {
+                html += '<optgroup label="' + label + ' · 남성">';
+                html += males.map(function(v) { return '<option value="' + v.id + '" data-provider="' + p + '">' + v.name + '</option>'; }).join('');
+                html += '</optgroup>';
+              }
+            });
             select.innerHTML = html;
           }
         } catch (e) {
