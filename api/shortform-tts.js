@@ -202,23 +202,14 @@ export default async function handler(req, res) {
     // Supertone 메인 → Google 폴백
     if (process.env.SUPERTONE_API_KEY && (SUPERTONE_VOICES[voiceId] || !GOOGLE_VOICES[voiceId])) {
       const stVoiceId = SUPERTONE_VOICES[voiceId] ? voiceId : DEFAULT_SUPERTONE_VOICE;
-      let lastError;
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          console.log(`[TTS] Calling Supertone (attempt ${attempt}/3): voice=${stVoiceId}, text=${text.length} chars`);
-          audioBuffer = await callSupertone(text, stVoiceId);
-          provider = 'supertone';
-          console.log(`[TTS] Supertone success (attempt ${attempt}): voice=${stVoiceId}, ${audioBuffer.length} bytes`);
-          lastError = null;
-          break;
-        } catch (stError) {
-          lastError = stError;
-          console.error(`[TTS] Supertone attempt ${attempt} FAILED:`, stError.message, '| voice:', stVoiceId);
-          if (attempt < 3) await new Promise(r => setTimeout(r, 500));
-        }
-      }
-      if (lastError) {
-        return res.status(502).json({ error: 'Supertone 음성 생성 실패: ' + lastError.message });
+      try {
+        console.log(`[TTS] Calling Supertone: voice=${stVoiceId}, text=${text.length} chars`);
+        audioBuffer = await callSupertone(text, stVoiceId);
+        provider = 'supertone';
+        console.log(`[TTS] Supertone success: voice=${stVoiceId}, ${audioBuffer.length} bytes`);
+      } catch (stError) {
+        console.error('[TTS] Supertone FAILED:', stError.message, '| voice:', stVoiceId);
+        return res.status(502).json({ error: 'Supertone 음성 생성 실패: ' + stError.message });
       }
     } else {
       // Google TTS 직접 사용 (Supertone 키 없거나 Google 음성 명시 선택)
