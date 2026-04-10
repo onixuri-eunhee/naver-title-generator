@@ -24,7 +24,7 @@ export default async function handler(req, res) {
       phone VARCHAR(20),
       password_hash TEXT,
       salt TEXT,
-      credits INTEGER DEFAULT 5,
+      credits DECIMAL(10,1) DEFAULT 0,
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )`;
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     await sql`CREATE TABLE IF NOT EXISTS credit_ledger (
       id SERIAL PRIMARY KEY,
       user_email VARCHAR(254),
-      amount INTEGER NOT NULL,
+      amount DECIMAL(10,1) NOT NULL,
       type VARCHAR(20) NOT NULL,
       reason VARCHAR(100),
       created_at TIMESTAMPTZ DEFAULT NOW()

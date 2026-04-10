@@ -30,11 +30,9 @@ const FREE_CUTOFF = '2026-04-24T23:59:59+09:00';
 const MAX_MARKERS = 8;
 const DIRECT_IMAGES = 8;
 
-// 크레딧 10배 스케일링 (소수점 회피: 0.7cr → 7단위, 3cr → 30단위)
-const CREDIT_SCALE = 10;
-const FULL_COST = 30;         // 전체 생성/재생성: 3 크레딧
-const SINGLE_REGEN_COST = 10; // 개별 1장 재생성: 1 크레딧
-const DAILY_LIMIT_SCALED = FREE_DAILY_LIMIT * FULL_COST; // 90단위 = 3회 × 30
+const FULL_COST = 3;          // 전체 생성/재생성: 3 크레딧
+const SINGLE_REGEN_COST = 1;  // 개별 1장 재생성: 1 크레딧
+const DAILY_LIMIT_SCALED = FREE_DAILY_LIMIT * FULL_COST; // 9 = 3회 × 3
 
 let redis;
 function getRedis() {
@@ -675,7 +673,8 @@ export default async function handler(req, res) {
       const ip = getClientIp(req);
       const key = getTodayKeyPro(ip);
       const count = Number((await getRedis().get(key)) || 0);
-      const remaining = Math.max(Math.round((DAILY_LIMIT_SCALED - count) / CREDIT_SCALE * 10) / 10, 0);
+      const remainingCredits = Math.max(DAILY_LIMIT_SCALED - count, 0);
+      const remaining = Math.floor(remainingCredits / FULL_COST);
       return res.status(200).json({ remaining, limit: FREE_DAILY_LIMIT });
     } catch {
       return res.status(200).json({ remaining: FREE_DAILY_LIMIT, limit: FREE_DAILY_LIMIT });
@@ -705,7 +704,7 @@ export default async function handler(req, res) {
         remaining: 0,
       });
     }
-    remaining = Math.round((DAILY_LIMIT_SCALED - newCount) / CREDIT_SCALE * 10) / 10;
+    remaining = Math.floor(Math.max(DAILY_LIMIT_SCALED - newCount, 0) / FULL_COST);
   }
 
   try {
