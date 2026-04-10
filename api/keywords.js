@@ -6,7 +6,7 @@
  */
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders, isCreditsActive } from './_helpers.js';
-import { logUsage, chargeCredits } from './_db.js';
+import { logUsage, chargeCredits, refundCredits } from './_db.js';
 import crypto from 'crypto';
 
 export const config = { maxDuration: 60 };
@@ -1183,6 +1183,9 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('[KEYWORDS] Error:', error.message, error.stack);
     if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+    if (creditCharged && email) {
+      await refundCredits(email, KEYWORD_CREDIT_COST, 'golden-keyword-error-refund');
+    }
     return res.status(500).json({ error: '키워드 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' });
   }
 }

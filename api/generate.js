@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders, isCreditsActive } from './_helpers.js';
-import { logUsage, chargeCredits, getUserCredits } from './_db.js';
+import { logUsage, chargeCredits, refundCredits, getUserCredits } from './_db.js';
 
 const MEMBER_DAILY_LIMIT = 5;
 const BLOG_CREDIT_COST = 1;
@@ -235,7 +235,6 @@ export default async function handler(req, res) {
       console.error('Claude API Error:', data?.error?.type || response.status);
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
       if (creditCharged && email) {
-        const { refundCredits } = await import('./_db.js');
         await refundCredits(email, BLOG_CREDIT_COST, 'blog-generate-error-refund');
       }
       return res.status(500).json({ error: '글 생성 중 오류가 발생했습니다.' });

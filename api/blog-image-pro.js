@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders, isCreditsActive } from './_helpers.js';
 import { replaceUrlsWithR2, uploadImageUrlToR2 } from './_r2.js';
-import { logUsage, chargeCredits, getUserCredits } from './_db.js';
+import { logUsage, chargeCredits, refundCredits, getUserCredits } from './_db.js';
 import crypto from 'crypto';
 import { renderToBase64 } from './_satori-renderer.js';
 import { renderTemplate } from './_satori-templates.js';
@@ -1232,6 +1232,9 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('[IMAGE-PRO] API Error:', error);
+    if (creditCharged && sessionEmail) {
+      await refundCredits(sessionEmail, creditCost, 'image-pro-error-refund');
+    }
     return res.status(500).json({ error: '서버 오류가 발생했습니다.' });
   }
 }

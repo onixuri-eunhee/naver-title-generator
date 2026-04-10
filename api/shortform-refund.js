@@ -1,5 +1,5 @@
 import { setCorsHeaders, extractToken, resolveSessionEmail, getClientIp } from './_helpers.js';
-import { refundShortformCredits } from './shortform-script.js';
+import { refundCredits } from './_db.js';
 
 export const config = { maxDuration: 10 };
 
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   const creditCost = SHORTFORM_CREDIT_COSTS[targetDurationSec] || SHORTFORM_CREDIT_COSTS[30];
 
   try {
-    await refundShortformCredits(email, creditCost, reason);
+    await refundCredits(email, creditCost, reason);
     return res.status(200).json({ refunded: true, refundedCredits: creditCost });
   } catch (error) {
     console.error('[SHORTFORM-REFUND] error:', error.message);

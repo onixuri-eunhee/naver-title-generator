@@ -7,7 +7,7 @@ import {
   resolveSessionEmail,
   setCorsHeaders,
 } from './_helpers.js';
-import {logUsage, getDb} from './_db.js';
+import {logUsage, getDb, refundCredits} from './_db.js';
 import {
   BROLL_VERSION,
   handleShortformBrollRequest,
@@ -177,8 +177,7 @@ export default async function handler(req, res) {
         await logUsage(email, 'shortform-broll', null, getClientIp(req));
       } else if (chargeResult.charged) {
         // B-roll 실패 시 크레딧 환불
-        const { refundShortformCredits } = await import('./shortform-script.js');
-        await refundShortformCredits(email, chargeResult.creditCost, 'shortform-broll-error-refund');
+        await refundCredits(email, chargeResult.creditCost, 'shortform-broll-error-refund');
       }
       return writeProxyResponse(res, proxied);
     }
@@ -197,8 +196,7 @@ export default async function handler(req, res) {
     // B-roll 실패 시 크레딧 환불
     if (chargeResult?.charged && email) {
       try {
-        const { refundShortformCredits } = await import('./shortform-script.js');
-        await refundShortformCredits(email, chargeResult.creditCost, 'shortform-broll-error-refund');
+        await refundCredits(email, chargeResult.creditCost, 'shortform-broll-error-refund');
       } catch (_) {}
     }
     const normalized = normalizeBrollError(error);

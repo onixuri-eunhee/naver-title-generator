@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders, isCreditsActive } from './_helpers.js';
-import { logUsage, chargeCredits, getUserCredits } from './_db.js';
+import { logUsage, chargeCredits, refundCredits, getUserCredits } from './_db.js';
 import { themes } from './_card-news-themes.js';
 import { h, lines, _F, getSatori, getResvg, initResvgWasm, loadFonts } from './_satori-renderer.js';
 
@@ -634,9 +634,11 @@ ${blogText.substring(0, 8000)}`;
 
   } catch (error) {
     console.error('[CARD-NEWS] Error:', error.message);
-    // AI 호출 실패 시 rate limit 복원
     if (rateLimitKey) {
       try { await getRedis().decr(rateLimitKey); } catch (_) {}
+    }
+    if (creditCharged && sessionEmail) {
+      await refundCredits(sessionEmail, CARD_NEWS_CREDIT_COST, 'card-news-error-refund');
     }
     return res.status(500).json({ error: '카드뉴스 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' });
   }

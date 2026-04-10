@@ -356,22 +356,6 @@ async function callClaude(topic, blogText, tone, targetDurationSec, concept, tar
   return buildScriptPayload(extractJsonObject(extractClaudeText(data)), concept, targetSceneCount);
 }
 
-/**
- * 숏폼 크레딧 환불 (다른 API에서 호출 가능)
- * 에러 시 console.error만 — 환불 실패가 전체 요청을 깨트리면 안 됨
- */
-export async function refundShortformCredits(email, creditCost, reason) {
-  try {
-    const sql = getDb();
-    await sql`UPDATE users SET credits = credits + ${creditCost}, updated_at = NOW()
-      WHERE email = ${email} RETURNING credits`;
-    await sql`INSERT INTO credit_ledger (user_email, amount, type, reason)
-      VALUES (${email}, ${creditCost}, 'refund', ${reason})`;
-  } catch (err) {
-    console.error('[SHORTFORM] refundShortformCredits failed:', err.message, { email, creditCost, reason });
-  }
-}
-
 export default async function handler(req, res) {
   setCorsHeaders(res, req);
 
