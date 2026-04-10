@@ -1143,24 +1143,49 @@ export default async function handler(req, res) {
     const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
     const fullPrompt = `${englishTopic}, ${moodStyle}, high quality editorial still-life photography, inanimate objects only, uninhabited empty scene, overhead or macro camera angle, clean Korean aesthetic, no text, no letters, photography style`;
 
-    // 8장 FLUX Realism 생성 (4장씩 배치, 딜레이 포함)
+    // 8장 FLUX Realism 생성 (4장씩 배치, 각 이미지 variation hint 추가)
+    // 각 슬롯마다 variation hint를 추가해 fal.ai 중복 캐시 방지
+    const variationHints = [
+      'wide angle composition',
+      'close-up detail shot',
+      'overhead flat-lay view',
+      'side angle perspective',
+      'macro extreme close-up',
+      'environmental wide shot',
+      '45-degree angle composition',
+      'soft focus background',
+    ];
+
+    async function generateOne(slotIdx) {
+      const variedPrompt = `${fullPrompt}, ${variationHints[slotIdx]}`;
+      try {
+        const url = await callFluxRealism(variedPrompt);
+        if (url) return { url, prompt: variedPrompt, type: 'photo', model: 'fluxr' };
+      } catch (err) {
+        console.error(`[IMAGE-PRO] FLUX Realism error (direct ${slotIdx} attempt 1):`, err?.message || err);
+      }
+      // 1회 재시도
+      try {
+        await new Promise(r => setTimeout(r, 500));
+        const url = await callFluxRealism(variedPrompt);
+        if (url) return { url, prompt: variedPrompt, type: 'photo', model: 'fluxr' };
+      } catch (err) {
+        console.error(`[IMAGE-PRO] FLUX Realism error (direct ${slotIdx} attempt 2):`, err?.message || err);
+      }
+      return { url: null, prompt: variedPrompt, type: 'photo', model: 'fluxr' };
+    }
+
     const images = [];
     for (let i = 0; i < DIRECT_IMAGES; i += 4) {
       if (i > 0) await new Promise(r => setTimeout(r, 300));
       const batchSize = Math.min(4, DIRECT_IMAGES - i);
       const batchResults = await Promise.all(
-        Array.from({ length: batchSize }, async (_, j) => {
-          try {
-            const url = await callFluxRealism(fullPrompt);
-            return { url, prompt: fullPrompt, type: 'photo', model: 'fluxr' };
-          } catch (err) {
-            console.error(`[IMAGE-PRO] FLUX Realism error (direct ${i + j}):`, err);
-            return { url: null, prompt: fullPrompt, type: 'photo', model: 'fluxr' };
-          }
-        })
+        Array.from({ length: batchSize }, (_, j) => generateOne(i + j))
       );
       images.push(...batchResults);
     }
+
+    console.log(`[IMAGE-PRO] Direct mode: ${images.filter(img => img.url).length}/${DIRECT_IMAGES} succeeded`);
 
     const validImages = images.filter(img => img.url);
     if (validImages.length === 0) {
