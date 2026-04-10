@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
-import { resolveAdmin, setCorsHeaders } from './_helpers.js';
-import { logUsage } from './_db.js';
+import { resolveAdmin, setCorsHeaders, isCreditsActive } from './_helpers.js';
+import { logUsage, chargeCredits, getUserCredits } from './_db.js';
 import { themes } from './_card-news-themes.js';
 import { h, lines, _F, getSatori, getResvg, initResvgWasm, loadFonts } from './_satori-renderer.js';
 
@@ -14,6 +14,7 @@ export const config = { maxDuration: 180 };
 
 const FREE_DAILY_LIMIT = 3;
 const FREE_CUTOFF = '2026-04-24T23:59:59+09:00';
+const CARD_NEWS_CREDIT_COST = 1;
 const CANVAS_W = 1080;
 const CANVAS_H = 1350; // 4:5 비율
 
@@ -425,16 +426,23 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const isAdminGet = await resolveAdmin(req);
     if (isAdminGet) {
-      return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
+      return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true, creditsActive: isCreditsActive() });
     }
     try {
+      if (isCreditsActive()) {
+        const token = req.headers?.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null;
+        const session = token ? await getRedis().get(`session:${token}`) : null;
+        const email = session?.email;
+        const credits = email ? await getUserCredits(email) : 0;
+        return res.status(200).json({ remaining: credits, creditCost: CARD_NEWS_CREDIT_COST, creditsActive: true });
+      }
       const ip = getClientIp(req);
       const key = getTodayKey(ip);
       const count = (await getRedis().get(key)) || 0;
       const remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
-      return res.status(200).json({ remaining, limit: FREE_DAILY_LIMIT });
+      return res.status(200).json({ remaining, limit: FREE_DAILY_LIMIT, creditsActive: false });
     } catch {
-      return res.status(200).json({ remaining: FREE_DAILY_LIMIT, limit: FREE_DAILY_LIMIT });
+      return res.status(200).json({ remaining: FREE_DAILY_LIMIT, limit: FREE_DAILY_LIMIT, creditsActive: isCreditsActive() });
     }
   }
 
@@ -460,7 +468,7 @@ export default async function handler(req, res) {
     if (!userData) {
       return res.status(401).json({ error: '회원 정보를 찾을 수 없습니다.' });
     }
-    if (new Date(userData.createdAt) > new Date(FREE_CUTOFF)) {
+    if (!isCreditsActive() && new Date(userData.createdAt) > new Date(FREE_CUTOFF)) {
       return res.status(403).json({ error: '4/24까지 가입한 회원만 무료 체험이 가능합니다.' });
     }
     sessionEmail = session.email;
@@ -516,23 +524,39 @@ export default async function handler(req, res) {
       };
     }
 
-    // Rate limit (INCR-first, 관리자 스킵)
+    // Rate limit / 크레딧 차감
     let remaining = isAdmin ? 999 : FREE_DAILY_LIMIT;
+    let creditCharged = false;
 
     if (!isAdmin) {
-      const ip = getClientIp(req);
-      rateLimitKey = getTodayKey(ip);
-      const newCount = await getRedis().incr(rateLimitKey);
-      await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
+      if (isCreditsActive()) {
+        // ── 4/25 이후: 크레딧 차감 ──
+        const result = await chargeCredits(sessionEmail, CARD_NEWS_CREDIT_COST, 'card-news');
+        if (!result) {
+          return res.status(402).json({
+            error: '크레딧이 부족합니다. 충전 후 이용해주세요.',
+            required: CARD_NEWS_CREDIT_COST,
+            code: 'INSUFFICIENT_CREDITS',
+          });
+        }
+        creditCharged = true;
+        remaining = result.remaining;
+      } else {
+        // ── 4/25 이전: 기존 일일 무료 횟수 ──
+        const ip = getClientIp(req);
+        rateLimitKey = getTodayKey(ip);
+        const newCount = await getRedis().incr(rateLimitKey);
+        await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
 
-      if (newCount > FREE_DAILY_LIMIT) {
-        await getRedis().decr(rateLimitKey);
-        return res.status(429).json({
-          error: `카드뉴스 일일 무료 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
-          remaining: 0,
-        });
+        if (newCount > FREE_DAILY_LIMIT) {
+          await getRedis().decr(rateLimitKey);
+          return res.status(429).json({
+            error: `카드뉴스 일일 무료 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
+            remaining: 0,
+          });
+        }
+        remaining = FREE_DAILY_LIMIT - newCount;
       }
-      remaining = FREE_DAILY_LIMIT - newCount;
     }
 
     console.log(`[CARD-NEWS] Start | slides: ${count} | theme: ${themeId} | blogText: ${blogText.length}자`);

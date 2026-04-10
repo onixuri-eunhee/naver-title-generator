@@ -1,8 +1,9 @@
 import { Redis } from '@upstash/redis';
-import { resolveAdmin, setCorsHeaders } from './_helpers.js';
-import { logUsage } from './_db.js';
+import { resolveAdmin, setCorsHeaders, isCreditsActive } from './_helpers.js';
+import { logUsage, chargeCredits, getUserCredits } from './_db.js';
 
 const FREE_DAILY_LIMIT = 5;
+const THREAD_CREDIT_COST = 0.5;
 
 function extractToken(req) {
   const auth = req.headers['authorization'] || req.headers['Authorization'] || '';
@@ -101,19 +102,23 @@ export default async function handler(req, res) {
     try {
       const whitelisted = await resolveAdmin(req);
       if (whitelisted) {
-        return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
+        return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true, creditsActive: isCreditsActive() });
       }
       const token = extractToken(req);
       const email = await resolveSessionEmail(token);
       if (!email) {
-        return res.status(200).json({ remaining: 0, limit: FREE_DAILY_LIMIT, loginRequired: true });
+        return res.status(200).json({ remaining: 0, limit: FREE_DAILY_LIMIT, loginRequired: true, creditsActive: isCreditsActive() });
+      }
+      if (isCreditsActive()) {
+        const credits = await getUserCredits(email);
+        return res.status(200).json({ remaining: credits, creditCost: THREAD_CREDIT_COST, creditsActive: true });
       }
       const key = getTodayKey(email);
       const count = (await getRedis().get(key)) || 0;
       const remaining = Math.max(FREE_DAILY_LIMIT - count, 0);
-      return res.status(200).json({ remaining, limit: FREE_DAILY_LIMIT });
+      return res.status(200).json({ remaining, limit: FREE_DAILY_LIMIT, creditsActive: false });
     } catch {
-      return res.status(200).json({ remaining: 0, limit: FREE_DAILY_LIMIT });
+      return res.status(200).json({ remaining: 0, limit: FREE_DAILY_LIMIT, creditsActive: isCreditsActive() });
     }
   }
 
@@ -147,18 +152,32 @@ export default async function handler(req, res) {
     let rateLimitKey = null;
 
     if (!whitelisted) {
-      rateLimitKey = getTodayKey(email);
-      const newCount = await getRedis().incr(rateLimitKey);
-      await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
+      if (isCreditsActive()) {
+        // ── 4/25 이후: 크레딧 차감 ──
+        const result = await chargeCredits(email, THREAD_CREDIT_COST, 'threads');
+        if (!result) {
+          return res.status(402).json({
+            error: '크레딧이 부족합니다. 충전 후 이용해주세요.',
+            required: THREAD_CREDIT_COST,
+            code: 'INSUFFICIENT_CREDITS',
+          });
+        }
+        remaining = result.remaining;
+      } else {
+        // ── 4/25 이전: 기존 일일 무료 횟수 ──
+        rateLimitKey = getTodayKey(email);
+        const newCount = await getRedis().incr(rateLimitKey);
+        await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
 
-      if (newCount > FREE_DAILY_LIMIT) {
-        await getRedis().decr(rateLimitKey);
-        return res.status(429).json({
-          error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
-          remaining: 0,
-        });
+        if (newCount > FREE_DAILY_LIMIT) {
+          await getRedis().decr(rateLimitKey);
+          return res.status(429).json({
+            error: `일일 무료 사용 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
+            remaining: 0,
+          });
+        }
+        remaining = FREE_DAILY_LIMIT - newCount;
       }
-      remaining = FREE_DAILY_LIMIT - newCount;
     }
 
     const systemPrompt = `당신은 Threads 바이럴 카피라이터다. 사용자 소재를 왜곡하지 않는다.

@@ -2,6 +2,7 @@ import {
   extractToken,
   getClientIp,
   getRedis,
+  isCreditsActive,
   resolveAdmin,
   resolveSessionEmail,
   setCorsHeaders,
@@ -73,6 +74,7 @@ async function proxyToRailway(req, rawBody) {
  */
 async function chargeBrollCredits(email, isAdmin, targetDurationSec) {
   if (isAdmin) return { charged: false, wasFree: false };
+  if (!isCreditsActive()) return { charged: false, wasFree: false };
 
   const creditCost = SHORTFORM_CREDIT_COSTS[targetDurationSec] || SHORTFORM_CREDIT_COSTS[30];
 

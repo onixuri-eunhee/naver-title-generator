@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
-import { resolveAdmin, setCorsHeaders } from './_helpers.js';
+import { resolveAdmin, setCorsHeaders, isCreditsActive } from './_helpers.js';
 import { replaceUrlsWithR2, uploadImageUrlToR2 } from './_r2.js';
-import { logUsage } from './_db.js';
+import { logUsage, chargeCredits, getUserCredits } from './_db.js';
 import crypto from 'crypto';
 import { renderToBase64 } from './_satori-renderer.js';
 import { renderTemplate } from './_satori-templates.js';
@@ -658,7 +658,7 @@ export default async function handler(req, res) {
     if (!userData) {
       return res.status(401).json({ error: '회원 정보를 찾을 수 없습니다.' });
     }
-    if (new Date(userData.createdAt) > new Date(FREE_CUTOFF)) {
+    if (!isCreditsActive() && new Date(userData.createdAt) > new Date(FREE_CUTOFF)) {
       return res.status(403).json({ error: '4/24까지 가입한 회원만 무료 체험이 가능합니다.' });
     }
     sessionEmail = session.email;
@@ -667,17 +667,21 @@ export default async function handler(req, res) {
   // ─── GET: 남은 횟수 조회 ───
   if (req.method === 'GET') {
     if (isAdmin) {
-      return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true });
+      return res.status(200).json({ remaining: 999, limit: FREE_DAILY_LIMIT, admin: true, creditsActive: isCreditsActive() });
     }
     try {
+      if (isCreditsActive()) {
+        const credits = sessionEmail ? await getUserCredits(sessionEmail) : 0;
+        return res.status(200).json({ remaining: credits, creditCost: FULL_COST, creditsActive: true });
+      }
       const ip = getClientIp(req);
       const key = getTodayKeyPro(ip);
       const count = Number((await getRedis().get(key)) || 0);
       const remainingCredits = Math.max(DAILY_LIMIT_SCALED - count, 0);
       const remaining = Math.floor(remainingCredits / FULL_COST);
-      return res.status(200).json({ remaining, limit: FREE_DAILY_LIMIT });
+      return res.status(200).json({ remaining, limit: FREE_DAILY_LIMIT, creditsActive: false });
     } catch {
-      return res.status(200).json({ remaining: FREE_DAILY_LIMIT, limit: FREE_DAILY_LIMIT });
+      return res.status(200).json({ remaining: FREE_DAILY_LIMIT, limit: FREE_DAILY_LIMIT, creditsActive: isCreditsActive() });
     }
   }
 
@@ -685,26 +689,42 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // ─── POST: 횟수 제한 ───
+  // ─── POST: 횟수 제한 / 크레딧 차감 ───
   const reqMode = req.body?.mode;
   const creditCost = reqMode === 'regenerate_single' ? SINGLE_REGEN_COST : FULL_COST;
   let remaining = isAdmin ? 999 : FREE_DAILY_LIMIT;
   let rateLimitKey = null;
+  let creditCharged = false;
 
   if (!isAdmin) {
-    const ip = getClientIp(req);
-    rateLimitKey = getTodayKeyPro(ip);
-    const newCount = await getRedis().incrby(rateLimitKey, creditCost);
-    await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
+    if (isCreditsActive()) {
+      // ── 4/25 이후: 크레딧 차감 ──
+      const result = await chargeCredits(sessionEmail, creditCost, reqMode === 'regenerate_single' ? 'image-pro-regen' : 'image-pro');
+      if (!result) {
+        return res.status(402).json({
+          error: '크레딧이 부족합니다. 충전 후 이용해주세요.',
+          required: creditCost,
+          code: 'INSUFFICIENT_CREDITS',
+        });
+      }
+      creditCharged = true;
+      remaining = result.remaining;
+    } else {
+      // ── 4/25 이전: 기존 일일 무료 횟수 ──
+      const ip = getClientIp(req);
+      rateLimitKey = getTodayKeyPro(ip);
+      const newCount = await getRedis().incrby(rateLimitKey, creditCost);
+      await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
 
-    if (newCount > DAILY_LIMIT_SCALED) {
-      await getRedis().decrby(rateLimitKey, creditCost);
-      return res.status(429).json({
-        error: `프리미엄 이미지 일일 무료 크레딧을 모두 사용했습니다. 내일 다시 이용해주세요.`,
-        remaining: 0,
-      });
+      if (newCount > DAILY_LIMIT_SCALED) {
+        await getRedis().decrby(rateLimitKey, creditCost);
+        return res.status(429).json({
+          error: `프리미엄 이미지 일일 무료 크레딧을 모두 사용했습니다. 내일 다시 이용해주세요.`,
+          remaining: 0,
+        });
+      }
+      remaining = Math.floor(Math.max(DAILY_LIMIT_SCALED - newCount, 0) / FULL_COST);
     }
-    remaining = Math.floor(Math.max(DAILY_LIMIT_SCALED - newCount, 0) / FULL_COST);
   }
 
   try {

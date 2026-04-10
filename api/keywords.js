@@ -5,13 +5,14 @@
  * 파이프라인: 입력 → Haiku 시드키워드 → 검색광고 API(검색량/경쟁도) → 블로그 포화도 → DataLab 트렌드 → 점수 산출
  */
 import { Redis } from '@upstash/redis';
-import { resolveAdmin, setCorsHeaders } from './_helpers.js';
-import { logUsage } from './_db.js';
+import { resolveAdmin, setCorsHeaders, isCreditsActive } from './_helpers.js';
+import { logUsage, chargeCredits } from './_db.js';
 import crypto from 'crypto';
 
 export const config = { maxDuration: 60 };
 
 const FREE_DAILY_LIMIT = 3;
+const KEYWORD_CREDIT_COST = 1;
 const DEBUG_VERSION = 'v26-performance-tidy';
 const DISPLAY_MIN_MONTHLY_SEARCH = 300;
 
@@ -869,21 +870,36 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: '로그인이 필요합니다.' });
   }
 
-  // Rate limit
+  // Rate limit / 크레딧 차감
   const ip = getClientIp(req);
   let rateLimitKey = null;
+  let creditCharged = false;
 
   if (!isAdmin) {
-    rateLimitKey = `ratelimit:keywords:${email || ip}:${getKSTDate()}`;
-    const count = await getRedis().incr(rateLimitKey);
-    await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
+    if (isCreditsActive()) {
+      // ── 4/25 이후: 크레딧 차감 ──
+      const result = await chargeCredits(email, KEYWORD_CREDIT_COST, 'golden-keyword');
+      if (!result) {
+        return res.status(402).json({
+          error: '크레딧이 부족합니다. 충전 후 이용해주세요.',
+          required: KEYWORD_CREDIT_COST,
+          code: 'INSUFFICIENT_CREDITS',
+        });
+      }
+      creditCharged = true;
+    } else {
+      // ── 4/25 이전: 기존 일일 무료 횟수 ──
+      rateLimitKey = `ratelimit:keywords:${email || ip}:${getKSTDate()}`;
+      const count = await getRedis().incr(rateLimitKey);
+      await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
 
-    if (count > FREE_DAILY_LIMIT) {
-      await getRedis().decr(rateLimitKey);
-      return res.status(429).json({
-        error: `황금키워드 일일 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
-        remaining: 0,
-      });
+      if (count > FREE_DAILY_LIMIT) {
+        await getRedis().decr(rateLimitKey);
+        return res.status(429).json({
+          error: `황금키워드 일일 한도(${FREE_DAILY_LIMIT}회)를 초과했습니다. 내일 다시 이용해주세요.`,
+          remaining: 0,
+        });
+      }
     }
   }
 

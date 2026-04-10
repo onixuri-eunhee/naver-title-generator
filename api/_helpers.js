@@ -69,4 +69,11 @@ function setCorsHeaders(res, req) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Audio-Mime-Type');
 }
 
-export { getRedis, getClientIp, extractToken, resolveSessionEmail, resolveAdmin, setCorsHeaders, ADMIN_EMAILS };
+// ── 크레딧 과금 시스템 (4/25 런칭) ──
+const CREDIT_LAUNCH_DATE = new Date('2026-04-25T00:00:00+09:00');
+
+function isCreditsActive() {
+  return Date.now() >= CREDIT_LAUNCH_DATE.getTime();
+}
+
+export { getRedis, getClientIp, extractToken, resolveSessionEmail, resolveAdmin, setCorsHeaders, ADMIN_EMAILS, isCreditsActive };

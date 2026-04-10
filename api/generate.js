@@ -1,8 +1,9 @@
 import { Redis } from '@upstash/redis';
-import { resolveAdmin, setCorsHeaders } from './_helpers.js';
-import { logUsage } from './_db.js';
+import { resolveAdmin, setCorsHeaders, isCreditsActive } from './_helpers.js';
+import { logUsage, chargeCredits, getUserCredits } from './_db.js';
 
 const MEMBER_DAILY_LIMIT = 5;
+const BLOG_CREDIT_COST = 1;
 
 let redis;
 function getRedis() {
@@ -76,20 +77,26 @@ export default async function handler(req, res) {
     try {
       const whitelisted = await resolveAdmin(req);
       if (whitelisted) {
-        return res.status(200).json({ remaining: 999, limit: MEMBER_DAILY_LIMIT, admin: true });
+        return res.status(200).json({ remaining: 999, limit: MEMBER_DAILY_LIMIT, admin: true, creditsActive: isCreditsActive() });
       }
 
       const token = extractToken(req);
       const email = await resolveSessionEmail(token);
       if (!email) {
-        return res.status(200).json({ remaining: 0, limit: MEMBER_DAILY_LIMIT, loginRequired: true });
+        return res.status(200).json({ remaining: 0, limit: MEMBER_DAILY_LIMIT, loginRequired: true, creditsActive: isCreditsActive() });
       }
+
+      if (isCreditsActive()) {
+        const credits = await getUserCredits(email);
+        return res.status(200).json({ remaining: credits, creditCost: BLOG_CREDIT_COST, creditsActive: true });
+      }
+
       const key = getTodayKeyByEmail(email);
       const count = (await getRedis().get(key)) || 0;
       const remaining = Math.max(MEMBER_DAILY_LIMIT - count, 0);
-      return res.status(200).json({ remaining, limit: MEMBER_DAILY_LIMIT });
+      return res.status(200).json({ remaining, limit: MEMBER_DAILY_LIMIT, creditsActive: false });
     } catch {
-      return res.status(200).json({ remaining: 0, limit: MEMBER_DAILY_LIMIT });
+      return res.status(200).json({ remaining: 0, limit: MEMBER_DAILY_LIMIT, creditsActive: isCreditsActive() });
     }
   }
 
@@ -138,38 +145,70 @@ export default async function handler(req, res) {
 
     const dailyLimit = MEMBER_DAILY_LIMIT;
     let remaining = whitelisted ? 999 : dailyLimit;
+    let creditCharged = false;
 
-    // 자동수정 1회 무료 처리: 서버에서 Redis 플래그로 검증
-    let skipRateLimit = false;
-    if (isAutoCorrect && !whitelisted) {
-      const acKey = `autocorrect:${email}:${getKSTDate()}`;
-      const used = await getRedis().get(acKey);
-      if (!used) {
-        // 미사용 → 이번 요청은 rate limit 스킵, 플래그 소비
-        await getRedis().set(acKey, '1', { ex: getTTLUntilMidnightKST() });
-        skipRateLimit = true;
+    if (isCreditsActive() && !whitelisted) {
+      // ── 4/25 이후: 크레딧 차감 (자동수정은 무료) ──
+      if (!isAutoCorrect) {
+        const result = await chargeCredits(email, BLOG_CREDIT_COST, 'blog-generate');
+        if (!result) {
+          return res.status(402).json({
+            error: '크레딧이 부족합니다. 충전 후 이용해주세요.',
+            required: BLOG_CREDIT_COST,
+            code: 'INSUFFICIENT_CREDITS',
+          });
+        }
+        creditCharged = true;
+        remaining = result.remaining;
+      } else {
+        // 자동수정은 기존처럼 1일 1회 무료
+        const acKey = `autocorrect:${email}:${getKSTDate()}`;
+        const used = await getRedis().get(acKey);
+        if (!used) {
+          await getRedis().set(acKey, '1', { ex: getTTLUntilMidnightKST() });
+        } else {
+          const result = await chargeCredits(email, BLOG_CREDIT_COST, 'blog-auto-correct');
+          if (!result) {
+            return res.status(402).json({
+              error: '크레딧이 부족합니다. 충전 후 이용해주세요.',
+              required: BLOG_CREDIT_COST,
+              code: 'INSUFFICIENT_CREDITS',
+            });
+          }
+          creditCharged = true;
+          remaining = result.remaining;
+        }
       }
-      // 이미 사용했으면 일반 rate limit 적용
-    }
-
-    if (!whitelisted && !skipRateLimit) {
-      rateLimitKey = getTodayKeyByEmail(email);
-      const newCount = await getRedis().incr(rateLimitKey);
-      await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
-
-      if (newCount > dailyLimit) {
-        await getRedis().decr(rateLimitKey);
-        return res.status(429).json({
-          error: `일일 무료 사용 한도(${dailyLimit}회)를 초과했습니다. 내일 다시 이용해주세요.`,
-          remaining: 0,
-        });
+    } else if (!whitelisted) {
+      // ── 4/25 이전: 기존 일일 무료 횟수 ──
+      let skipRateLimit = false;
+      if (isAutoCorrect) {
+        const acKey = `autocorrect:${email}:${getKSTDate()}`;
+        const used = await getRedis().get(acKey);
+        if (!used) {
+          await getRedis().set(acKey, '1', { ex: getTTLUntilMidnightKST() });
+          skipRateLimit = true;
+        }
       }
-      remaining = dailyLimit - newCount;
-    } else if (skipRateLimit) {
-      // 자동수정 무료: 현재 남은 횟수만 조회
-      const key = getTodayKeyByEmail(email);
-      const count = (await getRedis().get(key)) || 0;
-      remaining = Math.max(dailyLimit - count, 0);
+
+      if (!skipRateLimit) {
+        rateLimitKey = getTodayKeyByEmail(email);
+        const newCount = await getRedis().incr(rateLimitKey);
+        await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
+
+        if (newCount > dailyLimit) {
+          await getRedis().decr(rateLimitKey);
+          return res.status(429).json({
+            error: `일일 무료 사용 한도(${dailyLimit}회)를 초과했습니다. 내일 다시 이용해주세요.`,
+            remaining: 0,
+          });
+        }
+        remaining = dailyLimit - newCount;
+      } else {
+        const key = getTodayKeyByEmail(email);
+        const count = (await getRedis().get(key)) || 0;
+        remaining = Math.max(dailyLimit - count, 0);
+      }
     }
 
     const apiBody = {
@@ -195,6 +234,10 @@ export default async function handler(req, res) {
     if (!response.ok) {
       console.error('Claude API Error:', data?.error?.type || response.status);
       if (rateLimitKey) try { await getRedis().decr(rateLimitKey); } catch (_) {}
+      if (creditCharged && email) {
+        const { refundCredits } = await import('./_db.js');
+        await refundCredits(email, BLOG_CREDIT_COST, 'blog-generate-error-refund');
+      }
       return res.status(500).json({ error: '글 생성 중 오류가 발생했습니다.' });
     }
 
