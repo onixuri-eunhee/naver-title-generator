@@ -1,5 +1,17 @@
 import crypto from 'node:crypto';
+import { Redis } from '@upstash/redis';
 import { resolveAdmin, setCorsHeaders, extractToken, resolveSessionEmail } from './_helpers.js';
+
+const PREVIEW_SAMPLE_TEXT = '안녕하세요. 저는 이 목소리를 담당하고 있어요';
+const PREVIEW_CACHE_TTL = 60 * 60 * 24 * 30; // 30일
+
+let _redis = null;
+function getRedis() {
+  if (!_redis && process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    _redis = new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN });
+  }
+  return _redis;
+}
 
 export const config = { maxDuration: 30 };
 
@@ -160,32 +172,69 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const text = String(body.text || '').trim();
+    const isPreview = body.preview === true || body.preview === 'true';
+    const text = isPreview ? PREVIEW_SAMPLE_TEXT : String(body.text || '').trim();
     if (!text) return res.status(400).json({ error: 'text가 필요합니다.' });
     if (text.length > 5000) return res.status(400).json({ error: '텍스트가 너무 깁니다. (최대 5000자)' });
 
     const voiceId = body.voiceId || '';
+
+    // 미리듣기: Redis 캐시 확인 → hit 시 즉시 반환
+    if (isPreview) {
+      const redis = getRedis();
+      const cacheKey = `tts-preview:${voiceId || 'default'}`;
+      if (redis) {
+        try {
+          const cached = await redis.get(cacheKey);
+          if (cached && typeof cached === 'string') {
+            const cachedBuf = Buffer.from(cached, 'base64');
+            res.setHeader('Content-Type', 'audio/mpeg');
+            res.setHeader('Content-Length', cachedBuf.length);
+            res.setHeader('X-TTS-Provider', 'cache');
+            return res.status(200).send(cachedBuf);
+          }
+        } catch (_) {}
+      }
+    }
     let audioBuffer;
     let provider;
 
     // Supertone 메인 → Google 폴백
     if (process.env.SUPERTONE_API_KEY && (SUPERTONE_VOICES[voiceId] || !GOOGLE_VOICES[voiceId])) {
       const stVoiceId = SUPERTONE_VOICES[voiceId] ? voiceId : DEFAULT_SUPERTONE_VOICE;
-      try {
-        console.log(`[TTS] Calling Supertone: voice=${stVoiceId}, text=${text.length} chars`);
-        audioBuffer = await callSupertone(text, stVoiceId);
-        provider = 'supertone';
-        console.log(`[TTS] Supertone success: voice=${stVoiceId}, ${audioBuffer.length} bytes`);
-      } catch (stError) {
-        console.error('[TTS] Supertone FAILED:', stError.message, '| voice:', stVoiceId);
-        // 폴백 없이 에러 반환 — 조용히 여성 음성으로 빠지는 것 방지
-        return res.status(502).json({ error: 'Supertone 음성 생성 실패: ' + stError.message });
+      let lastError;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`[TTS] Calling Supertone (attempt ${attempt}/3): voice=${stVoiceId}, text=${text.length} chars`);
+          audioBuffer = await callSupertone(text, stVoiceId);
+          provider = 'supertone';
+          console.log(`[TTS] Supertone success (attempt ${attempt}): voice=${stVoiceId}, ${audioBuffer.length} bytes`);
+          lastError = null;
+          break;
+        } catch (stError) {
+          lastError = stError;
+          console.error(`[TTS] Supertone attempt ${attempt} FAILED:`, stError.message, '| voice:', stVoiceId);
+          if (attempt < 3) await new Promise(r => setTimeout(r, 500));
+        }
+      }
+      if (lastError) {
+        return res.status(502).json({ error: 'Supertone 음성 생성 실패: ' + lastError.message });
       }
     } else {
       // Google TTS 직접 사용 (Supertone 키 없거나 Google 음성 명시 선택)
       const gVoice = GOOGLE_VOICES[voiceId] ? voiceId : DEFAULT_GOOGLE_VOICE;
       audioBuffer = await callGoogleTTS(text, gVoice, GOOGLE_VOICES[gVoice].gender);
       provider = 'google';
+    }
+
+    // 미리듣기 성공 시 Redis 캐시 저장 (voice당 1회만 Supertone 호출)
+    if (isPreview) {
+      const redis = getRedis();
+      if (redis) {
+        try {
+          await redis.set(`tts-preview:${voiceId || 'default'}`, audioBuffer.toString('base64'), { ex: PREVIEW_CACHE_TTL });
+        } catch (_) {}
+      }
     }
 
     res.setHeader('Content-Type', 'audio/mpeg');

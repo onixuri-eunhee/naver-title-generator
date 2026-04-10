@@ -1497,9 +1497,13 @@
               <div class="panel-desc">AI 음성으로 대본을 읽어줍니다.</div>
               <div style="margin-bottom:10px;">
                 <label for="ttsVoiceSelect" style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:6px;">음성 선택</label>
-                <select id="ttsVoiceSelect" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;cursor:pointer;">
-                  <option value="">음성 목록 로딩 중...</option>
-                </select>
+                <div style="display:flex;gap:8px;align-items:stretch;">
+                  <select id="ttsVoiceSelect" style="flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;cursor:pointer;">
+                    <option value="">음성 목록 로딩 중...</option>
+                  </select>
+                  <button type="button" id="ttsPreviewBtn" title="선택한 음성 미리듣기" style="padding:8px 14px;border:1px solid #ff5f1f;background:#fff;color:#ff5f1f;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">▶ 미리듣기</button>
+                </div>
+                <audio id="ttsPreviewAudio" style="display:none;"></audio>
               </div>
               <div class="btn-row">
                 <button type="button" class="primary-btn" id="ttsGenerateBtn">음성 생성</button>
@@ -2356,8 +2360,8 @@
       function getSubtitleHiddenRanges() {
         var padSec = 2 / 30;
         var visualSpans = getSceneVisualSpans(getSubtitlePreviewDuration());
-        var ranges = visualSpans.filter(function(span, index) {
-          return span.sceneType === 'text' || (index === 0 && state.hookText);
+        var ranges = visualSpans.filter(function() {
+          return false;
         }).map(function(span) {
           return {
             start: Math.max(0, span.startSec - padSec),
@@ -3227,6 +3231,50 @@
             statusEl.className = 'record-status';
           } finally {
             ttsBtn.disabled = false;
+          }
+        });
+      }
+      // 음성 미리듣기 (클라 캐시 + 서버 Redis 캐시)
+      var previewBtn = document.getElementById('ttsPreviewBtn');
+      var previewAudio = document.getElementById('ttsPreviewAudio');
+      var previewBlobCache = {};
+      if (previewBtn && previewAudio) {
+        previewBtn.addEventListener('click', async function() {
+          var voiceSelect = document.getElementById('ttsVoiceSelect');
+          var voiceId = voiceSelect ? voiceSelect.value : '';
+          if (!voiceId) { alert('먼저 음성을 선택해주세요.'); return; }
+          try {
+            if (!previewAudio.paused) { previewAudio.pause(); previewAudio.currentTime = 0; }
+            if (previewBlobCache[voiceId]) {
+              previewAudio.src = previewBlobCache[voiceId];
+              await previewAudio.play();
+              return;
+            }
+            previewBtn.disabled = true;
+            var originalText = previewBtn.textContent;
+            previewBtn.textContent = '로딩 중...';
+            var res = await fetch('/api/shortform-tts', {
+              method: 'POST',
+              headers: createHeaders({ 'Content-Type': 'application/json' }),
+              body: JSON.stringify({ preview: true, voiceId: voiceId }),
+            });
+            if (!res.ok) {
+              var errText = await res.text();
+              var errMsg = '미리듣기 실패';
+              try { errMsg = JSON.parse(errText).error || errMsg; } catch(_) {}
+              throw new Error(errMsg);
+            }
+            var blob = await res.blob();
+            var url = URL.createObjectURL(blob);
+            previewBlobCache[voiceId] = url;
+            previewAudio.src = url;
+            await previewAudio.play();
+            previewBtn.textContent = originalText;
+          } catch (e) {
+            alert('미리듣기 실패: ' + e.message);
+            previewBtn.textContent = '▶ 미리듣기';
+          } finally {
+            previewBtn.disabled = false;
           }
         });
       }
