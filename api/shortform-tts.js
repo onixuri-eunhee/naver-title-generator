@@ -19,28 +19,14 @@ export const config = { maxDuration: 30 };
 const SUPERTONE_API_BASE = 'https://supertoneapi.com/v1';
 
 const SUPERTONE_VOICES = {
-  // 여성
+  // 여성 — 큐레이션: 성인 톤만 유지
   'e5f6fb1a53d0add87afb4f': { name: 'Agatha', gender: 'female' },
-  'ac449f240c2732b7f0b8bb': { name: 'Aiko', gender: 'female' },
-  '451e6fa92768affdcced52': { name: 'Amantha', gender: 'female' },
-  '259d4ac1ecf560c0f76e08': { name: 'Anna', gender: 'female' },
-  '7c56c6a6471a12816604f0': { name: 'Ariel', gender: 'female' },
-  '941fd27c5b0cb6a6f1e7c3': { name: 'Arin', gender: 'female' },
   '1f6b70f879da125bfec245': { name: 'Audrey', gender: 'female' },
-  '2cd6c38c7087106be21888': { name: 'Aya', gender: 'female' },
   '52dc253df44d06aa7f0867': { name: 'Bella', gender: 'female' },
-  'aeda85bfe699f338b74d68': { name: 'Blitz', gender: 'female' },
-  // 남성
+  // 남성 — 큐레이션: 성인 톤만 유지
   '91992bbd4758bdcf9c9b01': { name: 'Adam', gender: 'male' },
-  '2d5a380030e78fcab0c82a': { name: 'Aiden', gender: 'male' },
-  'd9411052b13cba9cb4c313': { name: 'Allen', gender: 'male' },
-  'c3c0898fd41489a8e8919c': { name: 'Alphonse', gender: 'male' },
   '4653d63d07d5340656b6bc': { name: 'Andrew', gender: 'male' },
   'ead6b9de6beb66dc8f6d2d': { name: 'Andy', gender: 'male' },
-  '20160a4c5ba38967330c84': { name: 'Ben', gender: 'male' },
-  '816bc977b4111a3034146a': { name: 'Bert', gender: 'male' },
-  '257ff27e0d5377b184cb16': { name: 'Bin', gender: 'male' },
-  '053c8b0d977ac6762b013e': { name: 'Bodhi', gender: 'male' },
 };
 
 // ── Google Cloud TTS (폴백) ──
@@ -61,7 +47,7 @@ const GOOGLE_VOICES = {
   'ko-KR-Standard-D': { name: '현우', gender: 'MALE' },
 };
 
-const DEFAULT_SUPERTONE_VOICE = '259d4ac1ecf560c0f76e08'; // Anna
+const DEFAULT_SUPERTONE_VOICE = '52dc253df44d06aa7f0867'; // Bella
 const DEFAULT_GOOGLE_VOICE = 'ko-KR-Neural2-A';
 
 // ── Supertone TTS ──
