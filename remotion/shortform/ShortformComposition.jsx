@@ -70,7 +70,7 @@ function getWordVisualState(word, currentTimeSec, fadeDurationSec) {
   if (currentTimeSec < word.start) {
     return {
       color: '#ffffff',
-      opacity: 0.15,
+      opacity: 0.7,
       scale: 1,
       blur: 0,
     };
