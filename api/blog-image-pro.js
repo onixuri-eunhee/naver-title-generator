@@ -975,12 +975,29 @@ export default async function handler(req, res) {
             throw new Error('Translation count mismatch');
           }
         } catch (translateErr) {
-          console.warn('[IMAGE-PRO] AI 추천 마커 번역 실패, 기본 photo:', translateErr.message);
-          analysisResult = markers.map((mk, i) => ({
-            marker: mk.text, type: 'photo', model: 'fluxr',
-            reason: 'AI 추천 마커 → 번역 실패 → 기본 사진',
-            prompt: 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, photorealistic, clean composition, no text, no letters, photography style',
-          }));
+          console.warn('[IMAGE-PRO] AI 추천 마커 번역 실패, 마커별 개별 프롬프트:', translateErr.message);
+          // 마커별로 다른 프롬프트 생성 (한국어 마커 텍스트를 직접 활용)
+          analysisResult = markers.map((mk, i) => {
+            const r = routingInfo[i];
+            const markerText = mk.text.replace(/[^\uAC00-\uD7A3a-zA-Z0-9\s]/g, '').trim();
+            let fallbackPrompt;
+            if (r.model === 'satori') {
+              // Satori 템플릿: 기본 JSON 구조
+              fallbackPrompt = {
+                title: markerText || '정보 요약',
+                subtitle: '',
+                items: [{ label: markerText, value: '', unit: '' }]
+              };
+            } else {
+              // 사진: 마커 텍스트를 로마자 음차 대신 의미 기반 키워드로 전환
+              fallbackPrompt = `editorial photography of "${markerText}", high quality Korean lifestyle scene, soft natural lighting, photorealistic, clean composition, variation ${i + 1}, no text, no letters, photography style`;
+            }
+            return {
+              marker: mk.text, type: r.type, model: r.model,
+              reason: `AI 추천 마커 → 번역 실패 → 마커 기반 폴백`,
+              prompt: fallbackPrompt,
+            };
+          });
         }
       }
 
@@ -1066,34 +1083,42 @@ export default async function handler(req, res) {
               };
             } catch (err) {
               console.error(`[IMAGE-PRO] ✗ "${item.marker}" → ${modelLabel} FAILED:`, err.message);
-              // Satori 실패 → Imagen 3로 대체 (사진 프롬프트 생성)
-              // 그 외 실패 → FLUX Realism 폴백
+              // 재시도 전략:
+              //   Satori 실패 → Imagen 3
+              //   Imagen 3(nb2) 실패 → FLUX Realism
+              //   FLUX Realism(fluxr) 실패 → Imagen 3 (다른 모델로 교차 폴백)
+              //   기타 실패 → FLUX Realism
               await new Promise(r => setTimeout(r, 1000));
               try {
                 let retryPrompt;
                 let retryModel;
+                let retryLabel;
                 if (modelName === 'satori') {
-                  // Satori 실패: Imagen 3 사진으로 대체
                   retryModel = 'nb2';
+                  retryLabel = 'Imagen 3';
                   retryPrompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, photorealistic, clean composition, no text, no letters, photography style';
-                } else if (modelName !== 'fluxr') {
+                } else if (modelName === 'fluxr') {
+                  // FLUX 실패 → Imagen 3로 교차 폴백
+                  retryModel = 'nb2';
+                  retryLabel = 'Imagen 3';
+                  retryPrompt = typeof item.prompt === 'string' ? item.prompt : JSON.stringify(item.prompt);
+                } else {
+                  // Imagen 3 등 기타 실패 → FLUX Realism
                   retryModel = 'fluxr';
+                  retryLabel = 'FLUX Realism';
                   retryPrompt = (typeof item.prompt === 'string' ? item.prompt : '').replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
                     ', no text, no letters, photography style';
-                } else {
-                  retryModel = 'fluxr';
-                  retryPrompt = item.prompt;
                 }
                 const url = await generateByModel(retryModel, retryPrompt, 'photo');
-                console.log(`[IMAGE-PRO] ↩ "${item.marker}" retry → ${retryModel === 'nb2' ? 'Imagen 3' : 'FLUX Realism'} OK`);
+                console.log(`[IMAGE-PRO] ↩ "${item.marker}" retry → ${retryLabel} OK`);
                 return {
                   url, marker: item.marker, prompt: retryPrompt,
                   type: 'photo', model: retryModel,
-                  reason: `${modelLabel} 실패 → ${retryModel === 'nb2' ? 'Imagen 3' : 'FLUX Realism'} 대체`,
+                  reason: `${modelLabel} 실패 → ${retryLabel} 대체`,
                   originalIndex: item.originalIndex,
                 };
               } catch (retryErr) {
-                console.error(`[IMAGE-PRO] ✗ "${item.marker}" retry also FAILED`);
+                console.error(`[IMAGE-PRO] ✗ "${item.marker}" retry also FAILED:`, retryErr?.message || retryErr);
               }
               return { url: null, marker: item.marker, type: item.type, model: modelName, originalIndex: item.originalIndex };
             }
