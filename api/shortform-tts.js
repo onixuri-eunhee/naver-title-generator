@@ -165,14 +165,18 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  const token = extractToken(req);
-  const email = await resolveSessionEmail(token);
-  const isAdmin = await resolveAdmin(req);
-  if (!isAdmin && !email) return res.status(401).json({ error: '로그인이 필요합니다.' });
-
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const isPreview = body.preview === true || body.preview === 'true';
+
+    // 미리듣기는 로그인 불필요 (고정 샘플 텍스트 + Redis 캐시로 악용 차단)
+    if (!isPreview) {
+      const token = extractToken(req);
+      const email = await resolveSessionEmail(token);
+      const isAdmin = await resolveAdmin(req);
+      if (!isAdmin && !email) return res.status(401).json({ error: '로그인이 필요합니다.' });
+    }
+
     const text = isPreview ? PREVIEW_SAMPLE_TEXT : String(body.text || '').trim();
     if (!text) return res.status(400).json({ error: 'text가 필요합니다.' });
     if (text.length > 5000) return res.status(400).json({ error: '텍스트가 너무 깁니다. (최대 5000자)' });

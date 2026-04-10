@@ -67,7 +67,8 @@
         localStorage.setItem(USER_KEY, JSON.stringify(data));
         var nameEl = document.querySelector('.navbar-user-name');
         if (nameEl) nameEl.textContent = (data.name || '') + '님';
-      } else {
+      } else if (res.status === 401) {
+        // 401만 토큰 삭제 — 500/503 같은 일시 장애는 유지
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
         renderAuthUI();
