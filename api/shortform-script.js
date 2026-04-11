@@ -36,7 +36,7 @@ function resolveConcept(concept) {
   return CONCEPTS[concept] ? { key: concept, ...CONCEPTS[concept] } : { key: 'cinematic', ...CONCEPTS.cinematic };
 }
 
-const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다. 사용자의 입력을 바탕으로 숏폼 대본을 scenes 배열로 작성하세요.
+export const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다. 사용자의 입력을 바탕으로 숏폼 대본을 scenes 배열로 작성하세요.
 
 [절대 규칙]
 1. 반드시 존댓말만 사용하세요. 반말, 유행어 남발, 과장된 말투는 금지입니다.
@@ -108,7 +108,7 @@ const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다.
 - hookText는 scenes[0]에만 포함, 나머지 씬에는 생략
 `;
 
-function buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount, benchmark) {
+export function buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount, benchmark) {
   const inputSummary = [
     `tone: ${tone}`,
     `targetDuration: ${targetDurationSec}초`,
