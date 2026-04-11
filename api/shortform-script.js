@@ -150,13 +150,14 @@ export const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입
 - hookText는 scenes[0]에만 포함, 나머지 씬에는 생략
 `;
 
-export function buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount, benchmark) {
+export function buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount, benchmark, personaMemo) {
   const inputSummary = [
     `tone: ${tone}`,
     `targetDuration: ${targetDurationSec}초`,
     `targetSceneCount: ${targetSceneCount}`,
     topic ? `topic: ${topic}` : null,
     blogText ? `blogText:\n${blogText}` : null,
+    `personaMemo: ${(personaMemo && personaMemo.trim()) ? personaMemo.trim() : '(없음)'}`,
   ].filter(Boolean).join('\n\n');
 
   // 벤치마킹 결과가 있으면 프롬프트에 주입
@@ -195,8 +196,10 @@ ${videoList}
 위 입력을 바탕으로 숏폼 영상 대본을 scenes 배열로 작성하세요.
 - scenes 개수: 정확히 ${targetSceneCount}개
 - 각 scene의 script를 합산한 총 글자수(공백 제외)가 ${targetDurationSec}초 분량에 맞아야 합니다 (약 ${targetDurationSec * 5}자).
-- Hook, Point, CTA가 각각 뚜렷해야 합니다.
-- 너무 긴 서론 없이 바로 몰입되게 시작하세요.`;
+- Hook → Point(공감 루프) → CTA가 각각 뚜렷해야 합니다.
+- 너무 긴 서론 없이 바로 몰입되게 시작하세요.
+- 위 [대본 구조] base를 따르되 매번 변주하세요. 템플릿화 금지.
+- personaMemo가 있으면 Point 중 최소 1씬에 가공해 녹이세요. 없으면 관찰형 1인칭으로.`;
 }
 
 function extractClaudeText(data) {
@@ -369,7 +372,7 @@ async function fetchBenchmark(keyword, authHeader) {
   return { fallback: true, videos: [], patterns: null };
 }
 
-async function callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount, benchmark) {
+async function callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount, benchmark, personaMemo) {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY is not configured.');
   }
@@ -392,7 +395,7 @@ async function callClaude(topic, blogText, tone, targetDurationSec, concept, tar
           cache_control: { type: 'ephemeral' },
         },
       ],
-      messages: [{ role: 'user', content: buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount, benchmark) }],
+      messages: [{ role: 'user', content: buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount, benchmark, personaMemo) }],
     }),
   });
 
@@ -446,6 +449,7 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const topic = toSentence(body.topic);
     const blogText = String(body.blogText || '').trim();
+    const personaMemo = String(body.personaMemo || '').trim();
     const tone = body.tone === 'professional' ? 'professional' : 'casual';
     const targetDurationSec = [30, 45, 60, 90].includes(Number(body.targetDurationSec)) ? Number(body.targetDurationSec) : 30;
 
@@ -471,7 +475,7 @@ export default async function handler(req, res) {
       : { fallback: true };
     console.log(`[SHORTFORM-SCRIPT] Benchmark: ${benchmarkKeyword} → ${benchmark.fallback ? 'FALLBACK' : `${(benchmark.videos || []).length} videos`}`);
 
-    const script = await callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount, benchmark);
+    const script = await callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount, benchmark, personaMemo);
     await logUsage(email, 'shortform-script', tone, getClientIp(req));
 
     return res.status(200).json({ script });
