@@ -209,7 +209,13 @@ async function callSonnet(systemPrompt, userMessage, maxTokens = 4000) {
       model: 'claude-sonnet-4-20250514',
       max_tokens: maxTokens,
       temperature: 0.7,
-      system: systemPrompt,
+      system: [
+        {
+          type: 'text',
+          text: systemPrompt,
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
       messages: [{ role: 'user', content: userMessage }],
     }),
   });
