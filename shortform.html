@@ -1435,6 +1435,11 @@
           <textarea id="blogTextInput" placeholder="원문이 있으면 붙여넣어 주세요. 없으면 키워드만으로도 생성됩니다."></textarea>
         </div>
 
+        <div class="input-group">
+          <label class="input-label" for="personaMemoInput">내 경험 한 줄 <span style="font-weight:400; color:#6B7280;">(선택)</span></label>
+          <textarea id="personaMemoInput" placeholder="본인의 경험·페르소나·실패담을 한 줄로 적어주세요. 비워도 됩니다.&#10;예: 15년차 헤어 디자이너, 처음엔 반신반의했는데 한 달 뒤 머릿결이 확 달라짐"></textarea>
+        </div>
+
         <div class="btn-row">
           <button type="button" class="primary-btn" id="generateScriptBtn">대본 생성</button>
         </div>
@@ -1742,6 +1747,7 @@
         step2Fieldset: document.getElementById('step2Fieldset'),
         keywordInput: document.getElementById('keywordInput'),
         blogTextInput: document.getElementById('blogTextInput'),
+        personaMemoInput: document.getElementById('personaMemoInput'),
         generateScriptBtn: document.getElementById('generateScriptBtn'),
         scriptError: document.getElementById('scriptError'),
         scriptResult: document.getElementById('scriptResult'),
@@ -2662,6 +2668,7 @@
               targetDurationSec: Number(document.querySelector('input[name="targetDuration"]:checked')?.value || 30),
               concept: document.querySelector('input[name="concept"]:checked').value,
               blogText: els.blogTextInput.value.trim(),
+              personaMemo: els.personaMemoInput.value.trim(),
               sourceText: els.blogTextInput.value.trim(),
               sourceType: els.blogTextInput.value.trim() ? 'blog' : 'keyword'
             })
@@ -3804,6 +3811,33 @@
       document.querySelectorAll('input[name="targetDuration"]').forEach(function(radio) {
         radio.addEventListener('change', function() { updateCreditWarning(); });
       });
+      // ── blog-writer 핸드오프 수신 ──
+      try {
+        var handoffRaw = localStorage.getItem('blogTextForShortform');
+        if (handoffRaw) {
+          var handoff = JSON.parse(handoffRaw);
+          if (handoff && typeof handoff === 'object') {
+            if (handoff.body && els.blogTextInput) els.blogTextInput.value = String(handoff.body);
+            if (handoff.memo && els.personaMemoInput) els.personaMemoInput.value = String(handoff.memo);
+            if (handoff.topic && els.keywordInput && !els.keywordInput.value) els.keywordInput.value = String(handoff.topic);
+          }
+          localStorage.removeItem('blogTextForShortform');
+        }
+      } catch (_) {}
+
+      // ── lastMemo 자동 채움 (직접 진입 사용자) ──
+      try {
+        if (els.personaMemoInput && !els.personaMemoInput.value) {
+          var lastMemo = localStorage.getItem('shortformLastMemo');
+          if (lastMemo) els.personaMemoInput.value = lastMemo;
+        }
+        if (els.personaMemoInput) {
+          els.personaMemoInput.addEventListener('blur', function() {
+            try { localStorage.setItem('shortformLastMemo', els.personaMemoInput.value.trim()); } catch (_) {}
+          });
+        }
+      } catch (_) {}
+
       showSignupBannerIfNeeded();
     })();
   </script>
