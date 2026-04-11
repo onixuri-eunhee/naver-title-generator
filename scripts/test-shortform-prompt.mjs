@@ -7,10 +7,6 @@ function assertContains(haystack, needle, label) {
   if (!haystack.includes(needle)) failures.push(`MISSING: ${label} — expected "${needle}"`);
 }
 
-function assertNotContains(haystack, needle, label) {
-  if (haystack.includes(needle)) failures.push(`FORBIDDEN: ${label} — should not contain "${needle}"`);
-}
-
 // ── SYSTEM_PROMPT 검증 ──
 
 // Hook 6종 공감 베이스 재해석
