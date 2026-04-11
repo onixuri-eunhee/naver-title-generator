@@ -1676,6 +1676,7 @@
     <button onclick="goToImageGenerator()" style="display:inline-block; background:linear-gradient(135deg, #8B5CF6, #6D28D9); color:#fff; padding:16px 36px; border-radius:12px; font-size:16px; font-weight:700; border:none; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(139,92,246,0.25); font-family:'Noto Sans KR',sans-serif;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(139,92,246,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 16px rgba(139,92,246,0.25)'">📷 이 글에 맞는 이미지 생성하기 →</button>
     <p style="margin-top:10px; font-size:13px; color:#888;">글 내용이 자동으로 전달되어 문맥에 맞는 이미지를 생성합니다</p>
     <button id="premiumImageBtn" onclick="goToPremiumImageGenerator()" style="display:inline-block; margin-top:12px; background:linear-gradient(135deg, #F59E0B, #D97706); color:#fff; padding:14px 32px; border-radius:12px; font-size:15px; font-weight:700; border:none; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(245,158,11,0.25); font-family:'Noto Sans KR',sans-serif;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(245,158,11,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 16px rgba(245,158,11,0.25)'">PREMIUM 프리미엄 이미지 생성하기</button>
+    <button id="shortformBtn" onclick="goToShortformGenerator()" style="display:inline-block; margin-top:12px; margin-left:8px; background:linear-gradient(135deg, #EC4899, #BE185D); color:#fff; padding:14px 32px; border-radius:12px; font-size:15px; font-weight:700; border:none; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(236,72,153,0.25); font-family:'Noto Sans KR',sans-serif;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(236,72,153,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 16px rgba(236,72,153,0.25)'">NEW 이 글로 숏폼 만들기</button>
   </div>
 
   <!-- 카드뉴스 변환 섹션 -->
@@ -3355,6 +3356,29 @@
     var fullText = parts.join('\n\n');
     try { localStorage.setItem('blogTextForImagePro', fullText); } catch(e) {}
     window.location.href = 'blog-image-pro.html';
+  }
+
+  // ─── 숏폼 대본 생성기로 글 + 메모 전달 ───
+  function goToShortformGenerator() {
+    if (!generatedData) { alert('먼저 글을 생성해주세요.'); return; }
+    var parts = [];
+    if (generatedData.title) parts.push(generatedData.title);
+    if (generatedData.hook) parts.push(generatedData.hook);
+    if (generatedData.body) parts.push(generatedData.body);
+    if (generatedData.cta) parts.push(generatedData.cta);
+    var fullText = parts.join('\n\n');
+    var memoEl = document.getElementById('memo');
+    var memoVal = memoEl ? memoEl.value.trim() : '';
+    var topicEl = document.getElementById('topic');
+    var topicVal = topicEl ? topicEl.value.trim() : '';
+    try {
+      localStorage.setItem('blogTextForShortform', JSON.stringify({
+        body: fullText,
+        memo: memoVal,
+        topic: topicVal,
+      }));
+    } catch (e) {}
+    window.location.href = 'shortform.html';
   }
 
   // ─── JSON 안전 파싱 (Claude 응답용) ───
