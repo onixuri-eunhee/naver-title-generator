@@ -4,7 +4,7 @@ import { getDb, logUsage } from './_db.js';
 export const config = { maxDuration: 60 };
 
 const SHORTFORM_CREDIT_COSTS = { 30: 7, 45: 10, 60: 14, 90: 18 };
-const MODEL = 'claude-sonnet-4-20250514';
+const MODEL = 'claude-opus-4-6';
 
 const SCENE_COUNTS = { 30: 7, 45: 10, 60: 14, 90: 20 };
 
@@ -158,14 +158,6 @@ export const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입
 - visual은 구체적인 영어 이미지 설명 (예: "close-up of hands typing on laptop")
 - section은 Hook → Point → CTA 흐름에 맞게 배정
 - hookText와 hookType은 scenes[0]에만 포함, 나머지 씬에는 생략
-
-[★★★ 최종 체크 — 출력 직전 반드시 확인 ★★★]
-1. 모든 script가 한국어 문법에 자연스러운가? 조사·어미 오류 없나?
-2. scenes[0].hookType이 매 생성마다 다른 유형을 선택했나? (이전 생성이 질문형이면 다른 것으로)
-3. scenes[1]이 마음읽기 질문인가?
-4. personaMemo가 있으면 Point에 직업/정체성 + 구체 장면이 모두 등장하나?
-5. CTA에 금지 문구("궁금한 점 댓글로", "팔로우 부탁드려요", "감사합니다" 등)가 없는가?
-6. 같은 말 반복 없이 씬마다 새 정보인가?
 `;
 
 export function buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount, benchmark, personaMemo) {
@@ -405,7 +397,7 @@ async function callClaude(topic, blogText, tone, targetDurationSec, concept, tar
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 4000,
-      temperature: 0.5,
+      temperature: 0.7,
       system: [
         {
           type: 'text',
