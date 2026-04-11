@@ -385,7 +385,13 @@ async function callClaude(topic, blogText, tone, targetDurationSec, concept, tar
       model: MODEL,
       max_tokens: 4000,
       temperature: 0.7,
-      system: SYSTEM_PROMPT,
+      system: [
+        {
+          type: 'text',
+          text: SYSTEM_PROMPT,
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
       messages: [{ role: 'user', content: buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount, benchmark) }],
     }),
   });
