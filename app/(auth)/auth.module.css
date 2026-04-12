@@ -1,0 +1,147 @@
+.root {
+  --bg: #FAFBFE;
+  --card: #FFFFFF;
+  --border: #E5E7EB;
+  --text: #1A1A2E;
+  --muted: #6B7280;
+  --accent: #ff5f1f;
+  --accent-soft: rgba(255, 95, 31, 0.12);
+  --radius: 16px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.hero {
+  background: var(--bg);
+  padding: 48px 20px 40px;
+  text-align: center;
+}
+.hero h1 {
+  font-size: clamp(24px, 5vw, 36px);
+  font-weight: 900;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 14px;
+  letter-spacing: -0.5px;
+}
+.hero h1 em {
+  color: var(--accent);
+  font-style: normal;
+}
+.hero p {
+  color: var(--muted);
+  font-size: 14px;
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.8;
+}
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+}
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 28px;
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.formGroup { margin-bottom: 16px; }
+.formGroup label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.formGroup input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.formGroup input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.formGroup input::placeholder { color: #9CA3AF; }
+
+.submitBtn {
+  width: 100%;
+  padding: 15px;
+  margin-top: 8px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.submitBtn:hover { background: #e6541a; }
+.submitBtn:active { background: #cc4a17; }
+.submitBtn:disabled { background: #9CA3AF; cursor: not-allowed; }
+
+.errorBox {
+  background: #FFF0F1;
+  border: 1px solid #FECACA;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #DC2626;
+}
+
+.authLink {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.authLink a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.authLink a:hover { text-decoration: underline; }
+
+.agreeRow {
+  margin: 16px 0 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.agreeRow input[type="checkbox"] {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.agreeRow label {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 400;
+  cursor: pointer;
+  line-height: 1.6;
+}
+.agreeRow a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+  .card { padding: 20px; }
+}
