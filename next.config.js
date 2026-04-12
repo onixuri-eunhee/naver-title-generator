@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true,
+  poweredByHeader: false,
+  outputFileTracingRoot: __dirname,
   // 기존 HTML URL 호환을 위한 리다이렉트
   async redirects() {
     return [
@@ -31,7 +34,7 @@ const nextConfig = {
       { source: '/admin-8524.html', destination: '/admin-dashboard', permanent: true },
       { source: '/hooking-psychology.html', destination: '/hooking-psychology', permanent: true },
       { source: '/naver-blog-title-importance.html', destination: '/naver-blog-title-importance', permanent: true },
-      ...Array.from({ length: 34 }, (_, i) => {
+      ...Array.from({ length: 33 }, (_, i) => {
         const num = String(i + 1).padStart(3, '0');
         return { source: `/column-${num}.html`, destination: `/column/${num}`, permanent: true };
       }),
