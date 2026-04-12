@@ -11,29 +11,62 @@ export function useAuth() {
   return ctx;
 }
 
+// Module-scoped single-install pattern: patch is installed exactly once,
+// token is a mutable reference so logout clears injection immediately.
+let currentAdminToken = null;
+let fetchPatched = false;
+
+function ensureAdminFetchPatch() {
+  if (fetchPatched || typeof window === 'undefined') return;
+  const originalFetch = window.fetch;
+  window.fetch = function (url, opts = {}) {
+    if (currentAdminToken && typeof url === 'string' && url.startsWith('/api/')) {
+      opts.headers = opts.headers || {};
+      if (!opts.headers.Authorization && !opts.headers.authorization) {
+        opts.headers.Authorization = `Bearer ${currentAdminToken}`;
+      }
+    }
+    return originalFetch.call(this, url, opts);
+  };
+  fetchPatched = true;
+}
+
+function setAdminToken(token) {
+  currentAdminToken = token;
+  if (token) ensureAdminFetchPatch();
+}
+
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 초기에 캐시된 유저 먼저 표시 (FOUC 방지)
     const cached = getUser();
-    if (cached) setUser(cached);
-
     const token = getToken();
-    if (!token) { setLoading(false); return; }
 
+    // Cache hit → show immediately and mark loading done
+    if (cached) {
+      setUser(cached);
+      setLoading(false);
+    }
+
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    // Background refresh: verify token + sync latest user state
     fetchUser(token).then((data) => {
       if (!data || data.networkError) {
-        // 네트워크 장애: 캐시 유지
+        // Keep cache — no state change needed
       } else if (data.unauthorized) {
-        // 401: 토큰 무효 → 로그아웃
         clearAuth();
         setUser(null);
+        setAdminToken(null);
       } else {
         setAuth(token, data);
         setUser(data);
-        if (data.isAdmin) setupAdminFetch(token);
+        if (data.isAdmin) setAdminToken(token);
       }
       setLoading(false);
     });
@@ -42,10 +75,11 @@ export default function AuthProvider({ children }) {
   const login = useCallback((token, userData) => {
     setAuth(token, userData);
     setUser(userData);
-    if (userData.isAdmin) setupAdminFetch(token);
+    if (userData.isAdmin) setAdminToken(token);
   }, []);
 
   const logout = useCallback(async () => {
+    setAdminToken(null);
     await doLogout();
     setUser(null);
     window.location.href = '/';
@@ -66,18 +100,4 @@ export default function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-function setupAdminFetch(token) {
-  if (typeof window === 'undefined') return;
-  const originalFetch = window.fetch;
-  window.fetch = function (url, opts = {}) {
-    if (typeof url === 'string' && url.startsWith('/api/')) {
-      opts.headers = opts.headers || {};
-      if (!opts.headers.Authorization && !opts.headers.authorization) {
-        opts.headers.Authorization = `Bearer ${token}`;
-      }
-    }
-    return originalFetch.call(this, url, opts);
-  };
 }

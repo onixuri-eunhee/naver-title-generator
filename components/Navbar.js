@@ -9,6 +9,9 @@ export default function Navbar() {
   const pathname = usePathname();
   const { user, loading } = useAuth();
 
+  const isActive = (href) =>
+    href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(href + '/');
+
   return (
     <nav className="navbar">
       <div className="navbar-inner">
@@ -20,7 +23,7 @@ export default function Navbar() {
             <Link
               key={href}
               href={href}
-              className={pathname === href ? 'active' : ''}
+              className={isActive(href) ? 'active' : ''}
             >
               {label}
               {badge === 'pro' && <span className="pro-badge">PRO</span>}
