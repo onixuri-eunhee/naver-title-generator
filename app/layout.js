@@ -1,6 +1,9 @@
 import { Noto_Sans_KR } from 'next/font/google';
 import './globals.css';
 import Script from 'next/script';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import AuthProvider from '@/components/AuthProvider';
 
 const notoSansKR = Noto_Sans_KR({
   subsets: ['latin'],
@@ -42,7 +45,11 @@ export default function RootLayout({ children }) {
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
-        {children}
+        <AuthProvider>
+          <Navbar />
+          <main>{children}</main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );
