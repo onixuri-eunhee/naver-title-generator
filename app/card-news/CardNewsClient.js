@@ -26,6 +26,7 @@ export default function CardNewsClient() {
   const [images, setImages] = useState([]);
   const [modalIdx, setModalIdx] = useState(null);
   const [zipBusy, setZipBusy] = useState(false);
+  const [variantInfo, setVariantInfo] = useState(null);
 
   const gridRef = useRef(null);
 
@@ -126,6 +127,7 @@ export default function CardNewsClient() {
 
       const result = await res.json();
       setImages(result.images || []);
+      if (result.variant) setVariantInfo(result.variant);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -334,6 +336,45 @@ export default function CardNewsClient() {
 
         {images.length > 0 && (
           <div ref={gridRef}>
+            {variantInfo && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '12px 16px',
+                marginBottom: 12,
+                background: 'var(--ds-bg-soft, #F4F2EC)',
+                border: '1px solid var(--ds-border, #ECE9E2)',
+                borderRadius: 10,
+                fontSize: 12,
+                color: 'var(--ds-muted, #77736B)',
+                flexWrap: 'wrap',
+              }}>
+                <span>
+                  디자인 variant — 스케일: <strong>{variantInfo.typeScale}</strong> · 액센트: <strong>{variantInfo.accentPlacement}</strong> · 번호: <strong>{variantInfo.numberStyle}</strong>
+                  <span style={{ opacity: 0.6, marginLeft: 8 }}>(seed {variantInfo.seed})</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={generate}
+                  disabled={loading}
+                  style={{
+                    padding: '8px 16px',
+                    background: 'var(--ds-card, #fff)',
+                    border: '1.5px solid var(--ds-accent, #F95A1F)',
+                    color: 'var(--ds-accent, #F95A1F)',
+                    borderRadius: 8,
+                    fontWeight: 700,
+                    fontSize: 12,
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  🎲 다른 디자인으로 재생성
+                </button>
+              </div>
+            )}
             <div className={styles.previewGrid}>
               {images.map((base64, i) => (
                 <div

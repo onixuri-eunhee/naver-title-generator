@@ -9,6 +9,7 @@ import {
 import { logUsage, chargeCredits, refundCredits, getUserCredits } from '@/lib/db';
 import { themes } from '@/lib/card-news-themes';
 import { withRichness } from '@/lib/card-news-layouts';
+import { pickVariant } from '@/lib/card-news-variants';
 import { h, lines, _F, getSatori, getResvg, initResvgWasm, loadFonts } from '@/lib/satori-renderer';
 
 export const maxDuration = 180;
@@ -41,53 +42,126 @@ function getTTLUntilMidnightKST() {
 }
 
 const _W = 1080, _H = 1350, _P = 100;
+
+// ═════════════════════════════════════════════════════════════
+// Variant 헬퍼 — Phase 1
+// ═════════════════════════════════════════════════════════════
+
+// variant 폰트 사이즈 안전 조회 (없으면 fallback)
+function sz(v, layoutName, key, fallback) {
+  if (!v || !v.getSize) return fallback;
+  const val = v.getSize(layoutName, key);
+  return typeof val === 'number' ? val : fallback;
+}
+
+// 번호 배지 — 4가지 스타일 (numberStyle)
+function renderNumberBadge(num, t, style) {
+  if (style === 'big-serif') {
+    return h('div', { style: { display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 32 } },
+      h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 120, color: t.primary, opacity: 0.2, lineHeight: 0.9, letterSpacing: -4, marginRight: 24 } }, num),
+      h('div', { style: { display: 'flex', width: 48, height: 4, background: t.accent, borderRadius: 2 } }),
+    );
+  }
+  if (style === 'underline') {
+    return h('div', { style: { display: 'flex', flexDirection: 'column', marginBottom: 32 } },
+      h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 72, color: t.primary, lineHeight: 1, marginBottom: 8 } }, num),
+      h('div', { style: { display: 'flex', width: 96, height: 4, background: t.accent, borderRadius: 2 } }),
+    );
+  }
+  if (style === 'corner-tag') {
+    return h('div', { style: { display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 32, gap: 14 } },
+      h('div', { style: { display: 'flex', padding: '10px 20px', background: t.accent, borderRadius: 6 } },
+        h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 30, color: t.bgDark, letterSpacing: 2 } }, `NO.${num}`),
+      ),
+      h('div', { style: { display: 'flex', width: 40, height: 4, background: t.accent, borderRadius: 2 } }),
+    );
+  }
+  // 기본: circle-badge
+  return h('div', { style: { display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 32 } },
+    h('div', { style: { display: 'flex', width: 88, height: 88, borderRadius: 44, background: `${t.primary}12`, alignItems: 'center', justifyContent: 'center', marginRight: 20 } },
+      h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 48, color: t.primary, lineHeight: 1 } }, num),
+    ),
+    h('div', { style: { display: 'flex', width: 48, height: 4, background: t.accent, borderRadius: 2 } }),
+  );
+}
+
+// 액센트 장식 — 카드뉴스 모서리에 4가지 위치
+function renderAccentDecor(t, placement) {
+  if (placement === 'top-bar') {
+    return h('div', { style: { display: 'flex', position: 'absolute', top: 0, left: 0, width: _W, height: 12, background: t.accent } });
+  }
+  if (placement === 'corner-mark') {
+    return h('div', { style: { display: 'flex', position: 'absolute', top: 48, left: 48, flexDirection: 'column' } },
+      h('div', { style: { display: 'flex', width: 48, height: 4, background: t.accent, borderRadius: 2 } }),
+      h('div', { style: { display: 'flex', width: 4, height: 44, background: t.accent, borderRadius: 2 } }),
+    );
+  }
+  if (placement === 'dot-cluster') {
+    return h('div', { style: { display: 'flex', position: 'absolute', top: 60, right: 60, flexDirection: 'row', gap: 10 } },
+      h('div', { style: { display: 'flex', width: 12, height: 12, borderRadius: 6, background: t.accent } }),
+      h('div', { style: { display: 'flex', width: 12, height: 12, borderRadius: 6, background: `${t.accent}80` } }),
+      h('div', { style: { display: 'flex', width: 12, height: 12, borderRadius: 6, background: `${t.accent}40` } }),
+    );
+  }
+  // 기본 left-bar
+  return h('div', { style: { display: 'flex', position: 'absolute', top: 80, left: 0, width: 10, height: 160, background: t.accent, borderRadius: '0 5px 5px 0' } });
+}
+
 const layouts = {
-  cover: (s, t) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.bgDark, padding: _P } },
+  cover: (s, t, v) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.bgDark, padding: _P, position: 'relative' } },
     h('div', { style: { display: 'flex', position: 'absolute', top: -60, right: -60, width: 280, height: 280, background: t.accent, opacity: 0.07, borderRadius: 140 } }),
     h('div', { style: { display: 'flex', position: 'absolute', bottom: -40, left: -40, width: 200, height: 200, background: t.primary, opacity: 0.05, borderRadius: 100 } }),
+    v ? renderAccentDecor(t, v.accentPlacement) : null,
     h('div', { style: { display: 'flex', width: 120, height: 6, background: t.accent, borderRadius: 3, marginBottom: 48 } }),
-    lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: s.title && s.title.replace(/\n/g, '').length > 16 ? 80 : 96, color: '#FFFFFF', textAlign: 'center', lineHeight: 1.2, letterSpacing: -0.5, maxWidth: _W - _P * 2, justifyContent: 'center', alignItems: 'center' }),
-    s.subtitle ? lines(s.subtitle, { fontFamily: _F, fontWeight: 400, fontSize: 36, color: t.accent, marginTop: 32, textAlign: 'center', lineHeight: 1.5, letterSpacing: 0.5, maxWidth: _W - _P * 2, justifyContent: 'center', alignItems: 'center' }) : null,
+    lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: s.title && s.title.replace(/\n/g, '').length > 16 ? sz(v, 'cover', 'title', 96) - 16 : sz(v, 'cover', 'title', 96), color: '#FFFFFF', textAlign: 'center', lineHeight: 1.2, letterSpacing: -0.5, maxWidth: _W - _P * 2, justifyContent: 'center', alignItems: 'center' }),
+    s.subtitle ? lines(s.subtitle, { fontFamily: _F, fontWeight: 400, fontSize: sz(v, 'cover', 'subtitle', 36), color: t.accent, marginTop: 32, textAlign: 'center', lineHeight: 1.5, letterSpacing: 0.5, maxWidth: _W - _P * 2, justifyContent: 'center', alignItems: 'center' }) : null,
     s.brand ? h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 400, fontSize: 24, color: 'rgba(255,255,255,0.4)', marginTop: 64, letterSpacing: 3 } }, s.brand) : null,
   ),
-  summary: (s, t) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.bgDark, padding: 60 } },
+  summary: (s, t, v) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.bgDark, padding: 60, position: 'relative' } },
+    v ? renderAccentDecor(t, v.accentPlacement) : null,
     h('div', { style: { display: 'flex', flexDirection: 'column', width: _W - 120, background: t.bg, borderRadius: t.radius + 8, padding: 72, borderLeft: `8px solid ${t.accent}` } },
-      s.label ? h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 28, color: t.accent, marginBottom: 24, letterSpacing: 3 } }, s.label) : null,
-      lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: 52, color: t.text, lineHeight: 1.3, marginBottom: 32, textAlign: 'left' }),
-      lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: 36, color: t.textLight, lineHeight: 1.7, letterSpacing: 0.3, textAlign: 'left' }),
+      s.label ? h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: sz(v, 'summary', 'label', 28), color: t.accent, marginBottom: 24, letterSpacing: 3 } }, s.label) : null,
+      lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: sz(v, 'summary', 'title', 52), color: t.text, lineHeight: 1.3, marginBottom: 32, textAlign: 'left' }),
+      lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: sz(v, 'summary', 'body', 36), color: t.textLight, lineHeight: 1.7, letterSpacing: 0.3, textAlign: 'left' }),
     ),
   ),
-  content: (s, t) => { const num = s.number ? String(s.number).padStart(2, '0') : '01'; const numInt = parseInt(num); const variant = numInt % 3; if (variant === 1) return layouts._contentB(s, t, num); if (variant === 2) return layouts._contentC(s, t, num); return h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.secondary, padding: 60 } },
-    h('div', { style: { display: 'flex', flexDirection: 'column', width: _W - 120, background: t.bg, borderRadius: t.radius + 8, padding: 72 } },
-      h('div', { style: { display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 32 } },
-        h('div', { style: { display: 'flex', width: 88, height: 88, borderRadius: 44, background: `${t.primary}12`, alignItems: 'center', justifyContent: 'center', marginRight: 20 } },
-          h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 48, color: t.primary, lineHeight: 1 } }, num),
-        ),
-        h('div', { style: { display: 'flex', width: 48, height: 4, background: t.accent, borderRadius: 2 } }),
+  content: (s, t, v) => {
+    const num = s.number ? String(s.number).padStart(2, '0') : '01';
+    const slideIndex = v && typeof v._slideIndex === 'number' ? v._slideIndex : (parseInt(num) || 0);
+    const contentVar = v && v.getContentVariant ? v.getContentVariant(slideIndex) : ['A', 'B', 'C'][slideIndex % 3];
+    if (contentVar === 'B') return layouts._contentB(s, t, num, v);
+    if (contentVar === 'C') return layouts._contentC(s, t, num, v);
+    // A (기본) — numberStyle 따라 번호 배지 변형
+    return h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.secondary, padding: 60, position: 'relative' } },
+      v ? renderAccentDecor(t, v.accentPlacement) : null,
+      h('div', { style: { display: 'flex', flexDirection: 'column', width: _W - 120, background: t.bg, borderRadius: t.radius + 8, padding: 72 } },
+        renderNumberBadge(num, t, v ? v.numberStyle : 'circle-badge'),
+        lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: sz(v, 'content', 'title', 48), color: t.text, lineHeight: 1.3, marginBottom: 32, textAlign: 'left' }),
+        lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: sz(v, 'content', 'body', 36), color: t.textLight, lineHeight: 1.7, letterSpacing: 0.3, textAlign: 'left' }),
       ),
-      lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: 48, color: t.text, lineHeight: 1.3, marginBottom: 32, textAlign: 'left' }),
-      lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: 36, color: t.textLight, lineHeight: 1.7, letterSpacing: 0.3, textAlign: 'left' }),
-    ),
-  ); },
-  _contentB: (s, t, num) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.secondary, padding: 60 } },
+    );
+  },
+  _contentB: (s, t, num, v) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.secondary, padding: 60, position: 'relative' } },
+    v ? renderAccentDecor(t, v.accentPlacement) : null,
     h('div', { style: { display: 'flex', flexDirection: 'row', width: _W - 120, background: t.bg, borderRadius: t.radius + 8, padding: 72 } },
       h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', width: 140, marginRight: 32, paddingTop: 8 } },
         h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 80, color: t.primary, opacity: 0.15, lineHeight: 1 } }, num),
         h('div', { style: { display: 'flex', width: 4, height: 60, background: t.accent, borderRadius: 2, marginTop: 16 } }),
       ),
       h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1 } },
-        lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: 48, color: t.text, lineHeight: 1.3, marginBottom: 32, textAlign: 'left' }),
-        lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: 36, color: t.textLight, lineHeight: 1.7, letterSpacing: 0.3, textAlign: 'left' }),
+        lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: sz(v, 'content', 'title', 48), color: t.text, lineHeight: 1.3, marginBottom: 32, textAlign: 'left' }),
+        lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: sz(v, 'content', 'body', 36), color: t.textLight, lineHeight: 1.7, letterSpacing: 0.3, textAlign: 'left' }),
       ),
     ),
   ),
-  _contentC: (s, t, num) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.secondary, padding: 60 } },
+  _contentC: (s, t, num, v) => h('div', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: _W, height: _H, background: t.secondary, padding: 60, position: 'relative' } },
+    v ? renderAccentDecor(t, v.accentPlacement) : null,
     h('div', { style: { display: 'flex', flexDirection: 'column', width: _W - 120, background: t.bg, borderRadius: t.radius + 8, overflow: 'hidden' } },
       h('div', { style: { display: 'flex', width: _W - 120, height: 8, background: t.accent } }),
       h('div', { style: { display: 'flex', flexDirection: 'column', padding: 72 } },
         h('div', { style: { display: 'flex', fontFamily: _F, fontWeight: 700, fontSize: 28, color: t.accent, marginBottom: 16, letterSpacing: 2 } }, `POINT ${num}`),
-        lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: 48, color: t.text, lineHeight: 1.3, marginBottom: 32, textAlign: 'left' }),
-        lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: 36, color: t.textLight, lineHeight: 1.7, letterSpacing: 0.3, textAlign: 'left' }),
+        lines(s.title, { fontFamily: _F, fontWeight: 700, fontSize: sz(v, 'content', 'title', 48), color: t.text, lineHeight: 1.3, marginBottom: 32, textAlign: 'left' }),
+        lines(s.body, { fontFamily: _F, fontWeight: 400, fontSize: sz(v, 'content', 'body', 36), color: t.textLight, lineHeight: 1.7, letterSpacing: 0.3, textAlign: 'left' }),
       ),
     ),
   ),
@@ -428,7 +502,7 @@ function validateSlides(parsed, requestedCount) {
   return { slides };
 }
 
-async function renderSlides(slidesData, theme) {
+async function renderSlides(slidesData, theme, variant) {
   await initResvgWasm();
   const satoriRender = await getSatori();
   const { Resvg } = await getResvg();
@@ -446,9 +520,22 @@ async function renderSlides(slidesData, theme) {
     flow: layouts.flow,
   };
 
+  // content 슬라이드 인덱스 카운터 — variant.getContentVariant(idx) 용
+  let contentIdx = 0;
+
   for (const slide of slidesData.slides) {
     const layoutFn = layoutMap[slide.type] || layoutMap.content;
-    const vnode = withRichness(layoutFn(slide, theme));
+    // content 슬라이드마다 _slideIndex 증가시켜 variant에 주입
+    let perSlideVariant = variant;
+    if (variant && slide.type === 'content') {
+      perSlideVariant = Object.assign(
+        Object.create(Object.getPrototypeOf(variant)),
+        variant,
+        { _slideIndex: contentIdx },
+      );
+      contentIdx += 1;
+    }
+    const vnode = withRichness(layoutFn(slide, theme, perSlideVariant));
 
     const svg = await satoriRender(vnode, {
       width: CANVAS_W,
@@ -530,6 +617,12 @@ export async function POST(request) {
     const slideCount = body.slideCount;
     const themeId = body.theme || body.themeId || 'clean';
     const blogTitle = body.title || '';
+    // 시드: 사용자가 "다시" 눌렀을 때 새 숫자 보내면 다른 variant.
+    // 없으면 매번 랜덤.
+    const seed = typeof body.seed === 'number' && Number.isFinite(body.seed)
+      ? body.seed
+      : Math.floor(Math.random() * 0xFFFFFFFF);
+    const variant = pickVariant(seed);
 
     if (!blogText || blogText.trim().length < 100) {
       return jsonResponse(request, { error: '블로그 글을 100자 이상 입력해주세요.' }, { status: 400 });
@@ -618,8 +711,8 @@ ${blogText.substring(0, 8000)}`;
     const validated = validateSlides(parsed, count);
     console.log(`[CARD-NEWS] Validated slides: ${validated.slides.length}장`);
 
-    const pngs = await renderSlides(validated, theme);
-    console.log(`[CARD-NEWS] Rendered ${pngs.length} PNGs`);
+    const pngs = await renderSlides(validated, theme, variant);
+    console.log(`[CARD-NEWS] Rendered ${pngs.length} PNGs · variant: ${variant.typeScale}/${variant.accentPlacement}/${variant.numberStyle} · seed ${variant.seed}`);
 
     let r2Urls = [];
     try {
@@ -665,6 +758,12 @@ ${blogText.substring(0, 8000)}`;
       r2Urls,
       remaining,
       limit: FREE_DAILY_LIMIT,
+      variant: {
+        seed: variant.seed,
+        typeScale: variant.typeScale,
+        accentPlacement: variant.accentPlacement,
+        numberStyle: variant.numberStyle,
+      },
     });
   } catch (error) {
     console.error('[CARD-NEWS] Error:', error.message);
