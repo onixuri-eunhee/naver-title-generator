@@ -170,9 +170,37 @@ export default function MyPageClient() {
             <span className={styles.infoLabel}>전화번호</span>
             <span className={styles.infoValue}>{user.phone || '-'}</span>
           </div>
-          <div className={styles.infoRow}>
-            <span className={styles.infoLabel}>크레딧 잔액</span>
-            <span className={styles.infoValue}>{user.credits ?? 0} 크레딧</span>
+        </div>
+
+        {/* 크레딧 잔액 카드 — 토스 결제경로 심사 "결제 후 사용처" 캡처용 */}
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>크레딧 잔액</div>
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>💎</div>
+            <div style={{ fontSize: 48, fontWeight: 900, color: 'var(--ds-accent)', lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}>
+              {user.credits ?? 0}
+            </div>
+            <div style={{ fontSize: 14, color: 'var(--ds-muted)', marginTop: 4 }}>보유 크레딧</div>
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 16 }}>
+            <a
+              href="/pricing"
+              style={{
+                display: 'inline-block',
+                padding: '12px 28px',
+                background: 'var(--ds-accent)',
+                color: '#fff',
+                borderRadius: 10,
+                fontSize: 14,
+                fontWeight: 700,
+                textDecoration: 'none',
+              }}
+            >
+              크레딧 충전하기
+            </a>
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: 'var(--ds-muted)' }}>
+            ※ 크레딧은 충전일로부터 1년간 유효하며, 블로그 글·이미지·카드뉴스·숏폼 등 PRO 도구 이용 시 차감됩니다.
           </div>
         </div>
 
