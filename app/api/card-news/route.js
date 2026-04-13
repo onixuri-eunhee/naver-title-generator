@@ -8,6 +8,7 @@ import {
 } from '@/lib/api-helpers';
 import { logUsage, chargeCredits, refundCredits, getUserCredits } from '@/lib/db';
 import { themes } from '@/lib/card-news-themes';
+import { withRichness } from '@/lib/card-news-layouts';
 import { h, lines, _F, getSatori, getResvg, initResvgWasm, loadFonts } from '@/lib/satori-renderer';
 
 export const maxDuration = 180;
@@ -343,7 +344,7 @@ async function renderSlides(slidesData, theme) {
 
   for (const slide of slidesData.slides) {
     const layoutFn = layoutMap[slide.type] || layoutMap.content;
-    const vnode = layoutFn(slide, theme);
+    const vnode = withRichness(layoutFn(slide, theme));
 
     const svg = await satoriRender(vnode, {
       width: CANVAS_W,
@@ -439,7 +440,7 @@ export async function POST(request) {
     const count = Math.min(Math.max(Number(slideCount) || 7, 5), 10);
     const brandPrimary = body.brandPrimary || '';
     const brandSecondary = body.brandSecondary || '';
-    const baseTheme = themes[themeId] || themes.clean;
+    const baseTheme = themes[themeId] || themes.charcoal;
 
     const isValidHex = (c) => /^#[0-9a-fA-F]{6}$/.test(c);
     let theme = baseTheme;
