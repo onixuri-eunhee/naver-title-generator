@@ -6,3 +6,5 @@ __pycache__/
 config.js
 .env.test
 *.bak
+.next/
+out/
