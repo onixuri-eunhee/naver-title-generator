@@ -258,7 +258,7 @@ ${typeGuide[type] || typeGuide['정보형']}
       });
     }
 
-    logUsage(email, 'thread', null, getClientIp(request));
+    await logUsage(email, 'thread', null, getClientIp(request));
     return jsonResponse(request, { results, remaining, limit: FREE_DAILY_LIMIT });
   } catch (error) {
     console.error('Threads API Error:', error?.message || 'unknown');

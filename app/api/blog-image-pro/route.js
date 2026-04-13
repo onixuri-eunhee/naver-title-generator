@@ -1075,7 +1075,7 @@ export async function POST(request) {
       const userId = (sessionEmail || getClientIp(request) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
       const r2Images = await replaceUrlsWithR2(validImages, 'images-pro', userId);
 
-      logUsage(sessionEmail, 'image-pro', 'parse', getClientIp(request));
+      await logUsage(sessionEmail, 'image-pro', 'parse', getClientIp(request));
       return jsonResponse(request, {
         mode: 'parse',
         images: r2Images,
@@ -1153,7 +1153,7 @@ export async function POST(request) {
     const directUserId = (sessionEmail || getClientIp(request) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
     const r2DirectImages = await replaceUrlsWithR2(validImages, 'images-pro', directUserId);
 
-    logUsage(sessionEmail, 'image-pro', 'direct', getClientIp(request));
+    await logUsage(sessionEmail, 'image-pro', 'direct', getClientIp(request));
     return jsonResponse(request, {
       mode: 'direct',
       images: r2DirectImages,

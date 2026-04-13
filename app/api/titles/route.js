@@ -299,7 +299,7 @@ export async function POST(request) {
       return jsonResponse(request, { results: {}, remaining, limit: FREE_DAILY_LIMIT, fallback: true });
     }
 
-    logUsage(email, 'title', null, getClientIp(request));
+    await logUsage(email, 'title', null, getClientIp(request));
     return jsonResponse(request, { results, remaining, limit: FREE_DAILY_LIMIT });
   } catch (error) {
     console.error('Titles API Error:', error?.message || 'unknown');

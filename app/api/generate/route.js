@@ -198,7 +198,7 @@ export async function POST(request) {
       return jsonResponse(request, { error: '글 생성 중 오류가 발생했습니다.' }, { status: 500 });
     }
 
-    logUsage(email, 'blog', isAutoCorrect ? 'auto_correct' : null, getClientIp(request));
+    await logUsage(email, 'blog', isAutoCorrect ? 'auto_correct' : null, getClientIp(request));
     return jsonResponse(request, { ...data, remaining, limit: dailyLimit });
   } catch (error) {
     console.error('API Error:', error?.message || 'unknown');

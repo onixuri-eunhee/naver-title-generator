@@ -1140,7 +1140,7 @@ export async function POST(request) {
 
     const remaining = isAdmin ? 999 : FREE_DAILY_LIMIT - (await getRedis().get(rateLimitKey) || 0);
 
-    logUsage(email, 'keyword', null, ip);
+    await logUsage(email, 'keyword', null, ip);
 
     console.log(`[KEYWORDS] Done! Top: "${results[0]?.keyword}" (${results[0]?.score}pt)`);
 

@@ -554,7 +554,7 @@ ${blogText.substring(0, 8000)}`;
       });
     }
 
-    logUsage(sessionEmail, 'card-news', null, getClientIp(request));
+    await logUsage(sessionEmail, 'card-news', null, getClientIp(request));
     return jsonResponse(request, {
       slides: validated.slides,
       images: pngs,
