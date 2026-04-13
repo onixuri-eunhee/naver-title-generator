@@ -21,6 +21,11 @@ export default function CardNewsClient() {
   const [brandSecondary, setBrandSecondary] = useState('#1A1A2E');
   const [snsHandle, setSnsHandle] = useState('');
 
+  // Variant 선택 — 'auto'면 서버가 랜덤, 아니면 명시적 값
+  const [typeScale, setTypeScale] = useState('auto');
+  const [accentPlacement, setAccentPlacement] = useState('auto');
+  const [numberStyle, setNumberStyle] = useState('auto');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [images, setImages] = useState([]);
@@ -111,6 +116,10 @@ export default function CardNewsClient() {
           brandPrimary: bp,
           brandSecondary: bs,
           snsHandle: snsHandle.trim() || undefined,
+          // Variant 선택 — 'auto'면 생략 (서버가 랜덤)
+          typeScale: typeScale !== 'auto' ? typeScale : undefined,
+          accentPlacement: accentPlacement !== 'auto' ? accentPlacement : undefined,
+          numberStyle: numberStyle !== 'auto' ? numberStyle : undefined,
         }),
       });
 
@@ -248,6 +257,73 @@ export default function CardNewsClient() {
                 );
               })
             )}
+          </div>
+
+          {/* ═════ Variant 선택 — 디자인 다양성 ═════ */}
+          <span className={styles.optionLabel}>타이포 스케일</span>
+          <div className={styles.slideBtns} style={{ flexWrap: 'wrap' }}>
+            {[
+              { id: 'auto', label: '자동' },
+              { id: 'compact', label: '컴팩트' },
+              { id: 'normal', label: '기본' },
+              { id: 'impact', label: '임팩트' },
+              { id: 'asymmetric', label: '비대칭' },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={`${styles.slideBtn} ${typeScale === opt.id ? styles.slideBtnActive : ''}`}
+                onClick={() => setTypeScale(opt.id)}
+                style={{ width: 'auto', padding: '10px 16px' }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <span className={styles.optionLabel}>액센트 배치</span>
+          <div className={styles.slideBtns} style={{ flexWrap: 'wrap' }}>
+            {[
+              { id: 'auto', label: '자동' },
+              { id: 'left-bar', label: '좌측 바' },
+              { id: 'top-bar', label: '상단 바' },
+              { id: 'corner-mark', label: 'L자 마커' },
+              { id: 'dot-cluster', label: '점 클러스터' },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={`${styles.slideBtn} ${accentPlacement === opt.id ? styles.slideBtnActive : ''}`}
+                onClick={() => setAccentPlacement(opt.id)}
+                style={{ width: 'auto', padding: '10px 16px' }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <span className={styles.optionLabel}>번호 스타일</span>
+          <div className={styles.slideBtns} style={{ flexWrap: 'wrap' }}>
+            {[
+              { id: 'auto', label: '자동' },
+              { id: 'circle-badge', label: '원형 배지' },
+              { id: 'big-serif', label: '큰 세리프' },
+              { id: 'underline', label: '밑줄' },
+              { id: 'corner-tag', label: '코너 태그' },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={`${styles.slideBtn} ${numberStyle === opt.id ? styles.slideBtnActive : ''}`}
+                onClick={() => setNumberStyle(opt.id)}
+                style={{ width: 'auto', padding: '10px 16px' }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--ds-muted, #77736B)', marginTop: 4, marginBottom: 4 }}>
+            💡 모두 "자동"으로 두면 매번 다른 디자인 조합. 특정 스타일 원하면 직접 선택.
           </div>
 
           <div className={styles.brandToggleRow}>

@@ -623,6 +623,20 @@ export async function POST(request) {
       ? body.seed
       : Math.floor(Math.random() * 0xFFFFFFFF);
     const variant = pickVariant(seed);
+    // 명시적 override: 사용자가 UI에서 선택한 값이 있으면 variant에 덮어씀.
+    // 'auto'는 클라이언트에서 생략 처리되므로 여기서는 값 있으면 바로 적용.
+    const VALID_TYPE_SCALES = ['compact', 'normal', 'impact', 'asymmetric'];
+    const VALID_ACCENT_PLACEMENTS = ['left-bar', 'top-bar', 'corner-mark', 'dot-cluster'];
+    const VALID_NUMBER_STYLES = ['circle-badge', 'big-serif', 'underline', 'corner-tag'];
+    if (typeof body.typeScale === 'string' && VALID_TYPE_SCALES.includes(body.typeScale)) {
+      variant.typeScale = body.typeScale;
+    }
+    if (typeof body.accentPlacement === 'string' && VALID_ACCENT_PLACEMENTS.includes(body.accentPlacement)) {
+      variant.accentPlacement = body.accentPlacement;
+    }
+    if (typeof body.numberStyle === 'string' && VALID_NUMBER_STYLES.includes(body.numberStyle)) {
+      variant.numberStyle = body.numberStyle;
+    }
 
     if (!blogText || blogText.trim().length < 100) {
       return jsonResponse(request, { error: '블로그 글을 100자 이상 입력해주세요.' }, { status: 400 });
