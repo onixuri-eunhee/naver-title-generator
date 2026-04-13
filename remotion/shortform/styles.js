@@ -1,13 +1,16 @@
 /**
  * 숏폼 디자인 토큰 — my-video 포팅판
  * 색상은 프리셋에서 주입받으므로 여기는 레이아웃/폰트 상수만 유지
+ *
+ * 주의: @remotion/google-fonts/NotoSansKR가 Google Fonts 최신 URL을 못
+ * 따라가 런타임에 폰트 파일 404 + "weight: 400 is not available" 에러를
+ * 던져 전체 숏폼 페이지 크래시를 일으켰음. 해당 import를 제거하고 CSS
+ * font-family 문자열만 사용하도록 변경. 브라우저/시스템의 Noto Sans KR
+ * 또는 Apple SD Gothic Neo로 폴백되어 동작. 추후 self-hosted TTF 또는
+ * next/font 로 교체 예정.
  */
-import { loadFont } from '@remotion/google-fonts/NotoSansKR';
 
-const { fontFamily: notoSansKR } = loadFont('normal', {
-  weights: ['400', '500', '700', '900'],
-  subsets: ['korean'],
-});
+const notoSansKR = '"Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 
 export const FONTS = {
   primary: notoSansKR,
