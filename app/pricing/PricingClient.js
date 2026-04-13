@@ -43,8 +43,17 @@ export default function PricingClient() {
       router.push('/login');
       return;
     }
-    if (!sdkLoaded || typeof window === 'undefined' || !window.PaymentWidget) {
-      alert('결제 위젯이 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
+
+    // Next.js Script onLoad가 캐시 상태에서 가끔 안 발화하므로
+    // sdkLoaded state 대신 window.PaymentWidget 직접 확인 + 짧은 대기.
+    if (typeof window === 'undefined') return;
+    let waited = 0;
+    while (!window.PaymentWidget && waited < 5000) {
+      await new Promise((r) => setTimeout(r, 100));
+      waited += 100;
+    }
+    if (!window.PaymentWidget) {
+      alert('결제 위젯을 불러오지 못했습니다. 페이지를 새로고침해주세요.');
       return;
     }
 
