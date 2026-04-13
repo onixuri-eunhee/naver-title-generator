@@ -513,31 +513,8 @@ export default function BlogImagePro() {
     );
   }
 
-  if (!user) {
-    return (
-      <main className={styles.root}>
-        <div className={styles.accessDenied}>
-          <h2>회원 전용 도구</h2>
-          <p>프리미엄 이미지 생성기는 회원만 사용할 수 있습니다.</p>
-          <p style={{ marginTop: 8, fontSize: 13 }}>4/24까지 가입하면 1일 3회 무료 체험 가능</p>
-          <div style={{ marginTop: 20, display: 'flex', gap: 10 }}>
-            <Link
-              href="/signup"
-              style={{ padding: '10px 24px', borderRadius: 8, fontSize: 14, fontWeight: 600, background: '#ff5f1f', color: '#fff', textDecoration: 'none' }}
-            >
-              회원가입
-            </Link>
-            <Link
-              href="/login"
-              style={{ padding: '10px 24px', borderRadius: 8, fontSize: 14, fontWeight: 600, border: '1px solid #E5E7EB', color: '#6B7280', textDecoration: 'none' }}
-            >
-              로그인
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
-  }
+  // 비회원도 페이지는 볼 수 있음. 생성 버튼 클릭 시 API에서 401 반환 → 로그인 유도.
+  // 다른 PRO 도구(blog-writer, card-news 등)와 동일한 패턴.
 
   const remainingText = (() => {
     if (!remainingState) return '남은 횟수 확인 중...';

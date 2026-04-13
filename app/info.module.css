@@ -4,14 +4,15 @@
  * hooking-psychology, naver-blog-title-importance
  */
 .root {
-  --bg: #FAFBFE;
-  --card: #FFFFFF;
-  --border: #E5E7EB;
-  --text: #1A1A2E;
-  --muted: #6B7280;
-  --accent: #ff5f1f;
-  background: var(--bg);
-  color: var(--text);
+  /* 로컬 별칭 → 전역 디자인 토큰 참조 */
+  --bg: var(--ds-bg);
+  --card: var(--ds-card);
+  --border: var(--ds-border);
+  --text: var(--ds-text);
+  --muted: var(--ds-muted);
+  --accent: var(--ds-accent);
+  background: var(--ds-bg);
+  color: var(--ds-text);
   min-height: 100vh;
 }
 
@@ -48,18 +49,21 @@
 }
 
 .container {
-  max-width: 780px;
+  max-width: 860px;
   margin: 0 auto;
   padding: 0 20px 80px;
 }
 
 .card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 28px;
-  margin-bottom: 16px;
+  background: var(--ds-card);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius);
+  padding: 28px 30px;
+  margin-bottom: 18px;
+  box-shadow: var(--ds-shadow-sm);
+  transition: box-shadow 0.3s var(--ds-ease);
 }
+.card:hover { box-shadow: var(--ds-shadow-md); }
 .card h2 {
   font-size: 17px;
   font-weight: 800;
@@ -233,20 +237,27 @@
 .heroBanner {
   background: linear-gradient(135deg, #1A1A2E, #16213E, #0F3460);
   color: #fff;
-  padding: 60px 20px 50px;
+  padding: 72px 20px 56px;
   text-align: center;
+  position: relative;
+  overflow: hidden;
 }
 .heroBanner h1 {
-  font-size: clamp(26px, 5vw, 38px);
+  font-size: clamp(28px, 6vw, 48px);
   font-weight: 900;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   color: #fff;
+  line-height: 1.15;
+  letter-spacing: -0.028em;
+  text-wrap: balance;
 }
-.heroBanner h1 em { color: var(--accent); font-style: normal; }
+.heroBanner h1 em { color: var(--ds-accent); font-style: normal; }
 .heroBanner p {
-  font-size: 14px;
-  opacity: 0.85;
-  max-width: 560px;
+  font-size: 15px;
+  opacity: 0.9;
+  max-width: 540px;
   margin: 0 auto;
-  line-height: 1.8;
+  line-height: 1.75;
+  text-wrap: pretty;
+  color: #fff;
 }
