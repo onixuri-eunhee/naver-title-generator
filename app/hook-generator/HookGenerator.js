@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { clipCopy } from '@/lib/utils';
 import { ga, reul } from '@/lib/josa';
+import { getToken } from '@/lib/auth';
 import styles from './page.module.css';
 
 const INDUSTRY_TAGS = ['미용실', '필라테스', '카페', '식당', '학원', '부동산', '인테리어', '동물병원', '네일샵', '베이커리', '공방', '코칭'];
@@ -175,7 +176,9 @@ export default function HookGenerator() {
   const resultsRef = useRef(null);
 
   useEffect(() => {
-    fetch('/api/hooks')
+    const tk = getToken();
+    const headers = tk ? { Authorization: `Bearer ${tk}` } : undefined;
+    fetch('/api/hooks', headers ? { headers } : undefined)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data && typeof data.remaining === 'number') setRemaining(data.remaining);
@@ -198,14 +201,20 @@ export default function HookGenerator() {
 
     setLoading(true);
     const fallback = generateFallback(I, K);
+    const token = getToken();
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
 
     try {
       const resp = await fetch('/api/hooks', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ industry: I, keyword: K }),
       });
-      if (resp.status === 429) {
+      if (resp.status === 401) {
+        setError('로그인이 필요합니다. 로그인 후 이용해주세요.');
+        setResults(null);
+      } else if (resp.status === 429) {
         const errData = await resp.json().catch(() => ({}));
         setError(errData.error || '오늘 무료 사용 횟수를 모두 소진했습니다. 내일 다시 이용해주세요.');
         setRemaining(0);

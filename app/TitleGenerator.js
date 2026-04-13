@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { clipCopy } from '@/lib/utils';
+import { getToken } from '@/lib/auth';
 import styles from './page.module.css';
 
 const hints = {
@@ -142,7 +143,9 @@ export default function TitleGenerator() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/titles')
+    const tk = getToken();
+    const headers = tk ? { Authorization: `Bearer ${tk}` } : undefined;
+    fetch('/api/titles', headers ? { headers } : undefined)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!cancelled && data && typeof data.remaining === 'number') {
@@ -170,15 +173,21 @@ export default function TitleGenerator() {
     setLoading(true);
 
     const fallback = generateFallback(kw);
+    const token = getToken();
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
 
     try {
       const resp = await fetch('/api/titles', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ keyword: kw, category: categoryLabel }),
       });
 
-      if (resp.status === 429) {
+      if (resp.status === 401) {
+        setError('로그인이 필요합니다. 로그인 후 이용해주세요.');
+        setTitles(null);
+      } else if (resp.status === 429) {
         const errData = await resp.json().catch(() => ({}));
         setError(errData.error || '오늘 무료 사용 횟수를 모두 소진했습니다. 내일 다시 이용해주세요.');
         setRemaining(0);
