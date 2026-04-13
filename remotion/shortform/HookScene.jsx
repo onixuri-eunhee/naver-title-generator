@@ -8,6 +8,7 @@ import {
 import { FONTS, SIZES, SPRING_CONFIG } from './styles';
 import { breathe } from './utils';
 import { KenBurnsImage } from './KenBurnsImage';
+import { KineticText } from './kineticText';
 
 const CORNER_DOT_POSITIONS = [
   { top: 120, left: 120 },
@@ -26,16 +27,14 @@ export const HookScene = ({
   const { fps } = useVideoConfig();
   const { colors } = preset;
 
-  const titleIn = spring({ frame, fps, config: SPRING_CONFIG });
   const badgeIn = spring({ frame: frame - 10, fps, config: SPRING_CONFIG });
   const underlineIn = spring({ frame: frame - 20, fps, config: SPRING_CONFIG });
 
-  const titleY = interpolate(titleIn, [0, 1], [60, 0]);
   const badgeY = interpolate(badgeIn, [0, 1], [40, 0]);
   const barWidth = interpolate(underlineIn, [0, 1], [0, 520]);
   const breath = breathe(frame);
 
-  const titleLines = (title || '').split('\n');
+  const kineticVariant = preset.kineticHook || 'wordReveal';
 
   return (
     <AbsoluteFill>
@@ -81,10 +80,13 @@ export const HookScene = ({
             {badge}
           </div>
         )}
-        <div
-          style={{
-            opacity: titleIn,
-            transform: `translateY(${titleY}px) scale(${breath})`,
+        <KineticText
+          variant={kineticVariant}
+          text={title || ''}
+          frame={frame}
+          fps={fps}
+          delay={0}
+          baseStyle={{
             fontFamily: FONTS.primary,
             fontWeight: FONTS.weight.black,
             fontSize: SIZES.hookTitle,
@@ -93,12 +95,9 @@ export const HookScene = ({
             lineHeight: 1.15,
             letterSpacing: -0.5,
             textShadow: imageUrl ? '0 8px 32px rgba(0,0,0,0.6)' : 'none',
+            transform: `scale(${breath})`,
           }}
-        >
-          {titleLines.map((line, i) => (
-            <div key={i}>{line}</div>
-          ))}
-        </div>
+        />
         {underlineText && (
           <div
             style={{

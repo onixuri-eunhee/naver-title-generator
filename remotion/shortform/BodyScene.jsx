@@ -8,6 +8,7 @@ import {
 import { FONTS, RADIUS, SIZES, SPRING_CONFIG } from './styles';
 import { breathe } from './utils';
 import { KenBurnsImage } from './KenBurnsImage';
+import { KineticText } from './kineticText';
 
 const CARD_INITIAL_DELAY = 15;
 const CARD_STAGGER = 30;
@@ -130,11 +131,8 @@ const CardsMode = ({ header, cards, preset }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { colors } = preset;
-
-  const headerIn = spring({ frame, fps, config: SPRING_CONFIG });
-  const headerY = interpolate(headerIn, [0, 1], [-40, 0]);
   const breath = breathe(frame);
-  const headerLines = (header || '').split('\n');
+  const kineticVariant = preset.kineticBody || 'wordReveal';
 
   return (
     <AbsoluteFill
@@ -147,10 +145,8 @@ const CardsMode = ({ header, cards, preset }) => {
       {header && (
         <div
           style={{
-            opacity: headerIn,
-            transform: `translateY(${headerY}px) scale(${breath})`,
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'center',
             gap: 20,
             marginBottom: 40,
@@ -162,30 +158,27 @@ const CardsMode = ({ header, cards, preset }) => {
               height: 40,
               backgroundColor: colors.accent,
               borderRadius: 2,
+              marginTop: 8,
             }}
           />
-          <div
-            style={{
+          <KineticText
+            variant={kineticVariant}
+            text={header}
+            frame={frame}
+            fps={fps}
+            delay={0}
+            baseStyle={{
               fontFamily: FONTS.primary,
               fontWeight: FONTS.weight.black,
               fontSize: SIZES.bodyHeader,
               textAlign: 'left',
               letterSpacing: -0.5,
               lineHeight: 1.1,
+              color: colors.textPrimary,
+              transform: `scale(${breath})`,
+              transformOrigin: 'left center',
             }}
-          >
-            {headerLines.map((line, i) => (
-              <div
-                key={i}
-                style={{
-                  color:
-                    i === headerLines.length - 1 ? colors.accent : colors.textPrimary,
-                }}
-              >
-                {line}
-              </div>
-            ))}
-          </div>
+          />
         </div>
       )}
       {(cards || []).map((card, i) => (
