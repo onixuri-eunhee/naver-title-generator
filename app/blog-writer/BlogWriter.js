@@ -723,20 +723,18 @@ export default function BlogWriter() {
             <div className={styles.card}>
               <div className={styles.cardLabel}>내용 입력</div>
 
-              {presets.length > 0 && (
-                <div className={styles.presetSection}>
-                  <div className={styles.presetLabel}>자주 쓰는 설정</div>
-                  <div className={styles.presetChips}>
-                    {presets.map((p, i) => (
-                      <span key={i} className={styles.presetChip}>
-                        <span onClick={() => applyPreset(i)}>{p.industry || '이름없음'}</span>
-                        <span className={styles.presetDelete} onClick={() => deletePreset(i)}>×</span>
-                      </span>
-                    ))}
-                    <button type="button" className={styles.presetSaveBtn} onClick={savePreset}>+ 현재 설정 저장</button>
-                  </div>
+              <div className={styles.presetSection}>
+                <div className={styles.presetLabel}>자주 쓰는 설정</div>
+                <div className={styles.presetChips}>
+                  {presets.map((p, i) => (
+                    <span key={i} className={styles.presetChip}>
+                      <span onClick={() => applyPreset(i)}>{p.industry || '이름없음'}</span>
+                      <span className={styles.presetDelete} onClick={() => deletePreset(i)}>×</span>
+                    </span>
+                  ))}
+                  <button type="button" className={styles.presetSaveBtn} onClick={savePreset}>+ 현재 설정 저장</button>
                 </div>
-              )}
+              </div>
 
               <div className={styles.inputRow}>
                 <div className={styles.inputGroup}>
