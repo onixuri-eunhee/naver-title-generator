@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import Script from 'next/script';
 import styles from './admin.module.css';
 
-const ADMIN_SESSION_LIMIT = 2 * 60 * 60 * 1000; // 2h
+const ADMIN_SESSION_LIMIT = 2 * 60 * 60 * 1000;
+const ADMIN_SESSION_KEY = 'admin_session';
 
 const TOOL_STYLE_MAP = {
   title: styles.toolTitle,
@@ -14,6 +15,8 @@ const TOOL_STYLE_MAP = {
   image: styles.toolImage,
   'image-pro': styles.toolImagePro,
   'card-news': styles.toolCardNews,
+  keyword: styles.toolDefault,
+  shortform: styles.toolDefault,
 };
 
 const TOOL_COLORS = {
@@ -67,7 +70,7 @@ export default function AdminDashboard() {
   );
 
   const logout = useCallback(() => {
-    if (typeof window !== 'undefined') sessionStorage.removeItem('admin_session');
+    if (typeof window !== 'undefined') sessionStorage.removeItem(ADMIN_SESSION_KEY);
     setToken(null);
     adminLoginTimeRef.current = null;
     setSessionTimer('');
@@ -80,7 +83,7 @@ export default function AdminDashboard() {
 
   // Session restore
   useEffect(() => {
-    const saved = sessionStorage.getItem('admin_session');
+    const saved = sessionStorage.getItem(ADMIN_SESSION_KEY);
     if (!saved) return;
     try {
       const s = JSON.parse(saved);
@@ -91,7 +94,7 @@ export default function AdminDashboard() {
         return;
       }
     } catch {}
-    sessionStorage.removeItem('admin_session');
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
   }, []);
 
   // Verify admin after token set
@@ -250,6 +253,11 @@ export default function AdminDashboard() {
         options: chartOpts(),
       });
     }
+
+    return () => {
+      Object.values(chartInstances.current).forEach((c) => c?.destroy?.());
+      chartInstances.current = {};
+    };
   }, [stats, chartJsReady]);
 
   async function login() {
@@ -272,7 +280,7 @@ export default function AdminDashboard() {
       const now = Date.now();
       adminLoginTimeRef.current = now;
       sessionStorage.setItem(
-        'admin_session',
+        ADMIN_SESSION_KEY,
         JSON.stringify({ token: data.token, loginTime: now })
       );
       setToken(data.token);
@@ -369,30 +377,19 @@ export default function AdminDashboard() {
 
       <div className={styles.container}>
         <div className={styles.statsGrid}>
-          <div className={styles.statCard}>
-            <div className="label">총 가입자</div>
-            <div className={`${styles.value ?? ''} value ${styles.blue}`}>
-              {stats?.summary?.totalUsers?.toLocaleString() ?? '-'}
+          {[
+            { label: '총 가입자', value: stats?.summary?.totalUsers, color: styles.blue },
+            { label: '오늘 가입', value: stats?.summary?.todaySignups, color: styles.green },
+            { label: '오늘 생성', value: stats?.summary?.todayUsage, color: styles.amber },
+            { label: '주간 활성 (7일)', value: stats?.summary?.weeklyActive, color: styles.purple },
+          ].map((s) => (
+            <div key={s.label} className={styles.statCard}>
+              <div className={styles.label}>{s.label}</div>
+              <div className={`${styles.value} ${s.color}`}>
+                {s.value?.toLocaleString() ?? '-'}
+              </div>
             </div>
-          </div>
-          <div className={styles.statCard}>
-            <div className="label">오늘 가입</div>
-            <div className={`value ${styles.green}`}>
-              {stats?.summary?.todaySignups?.toLocaleString() ?? '-'}
-            </div>
-          </div>
-          <div className={styles.statCard}>
-            <div className="label">오늘 생성</div>
-            <div className={`value ${styles.amber}`}>
-              {stats?.summary?.todayUsage?.toLocaleString() ?? '-'}
-            </div>
-          </div>
-          <div className={styles.statCard}>
-            <div className="label">주간 활성 (7일)</div>
-            <div className={`value ${styles.purple}`}>
-              {stats?.summary?.weeklyActive?.toLocaleString() ?? '-'}
-            </div>
-          </div>
+          ))}
         </div>
 
         <div className={styles.chartsGrid}>
@@ -494,7 +491,7 @@ export default function AdminDashboard() {
             {Array.from({ length: pagination.pages }, (_, i) => i + 1).map((p) => (
               <button
                 key={p}
-                className={p === pagination.page ? 'active' : ''}
+                className={p === pagination.page ? styles.active : ''}
                 onClick={() => loadUsers(p)}
               >
                 {p}

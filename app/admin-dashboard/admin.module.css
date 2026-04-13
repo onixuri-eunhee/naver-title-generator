@@ -105,12 +105,12 @@
   border-radius: 12px;
   padding: 20px;
 }
-.statCard .label {
+.label {
   font-size: 12px;
   color: #94a3b8;
   margin-bottom: 4px;
 }
-.statCard .value {
+.value {
   font-size: 28px;
   font-weight: 700;
 }
@@ -218,6 +218,10 @@
   font-size: 12px;
 }
 .pagination button.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+.active {
   background: #3b82f6;
   border-color: #3b82f6;
 }
