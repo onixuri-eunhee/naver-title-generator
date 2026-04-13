@@ -333,6 +333,7 @@ footer a:hover { text-decoration: underline; }
 
       // Render content
       var container = document.getElementById('mainContent');
+      var creditsVal = (typeof data.credits === 'number') ? data.credits : 0;
       container.innerHTML = ''
         // Card 1: 사용자 정보
         + '<div class="card">'
@@ -348,6 +349,22 @@ footer a:hover { text-decoration: underline; }
         + '  <div class="info-row">'
         + '    <span class="info-label">전화번호</span>'
         + '    <span class="info-value">' + escapeHtml(data.phone || '-') + '</span>'
+        + '  </div>'
+        + '</div>'
+
+        // Card 1-B: 크레딧 잔액
+        + '<div class="card">'
+        + '  <div class="card-title">크레딧 잔액</div>'
+        + '  <div class="credit-display">'
+        + '    <div class="credit-icon">💎</div>'
+        + '    <div class="credit-number">' + creditsVal + '</div>'
+        + '    <div class="credit-label">보유 크레딧</div>'
+        + '  </div>'
+        + '  <div style="text-align:center; margin-top: 16px;">'
+        + '    <a href="/pricing.html" style="display:inline-block; padding:12px 28px; background:#ff5f1f; color:#fff; border-radius:10px; font-size:14px; font-weight:700; text-decoration:none;">크레딧 충전하기</a>'
+        + '  </div>'
+        + '  <div style="text-align:center; margin-top: 12px; font-size:12px; color:#6B7280;">'
+        + '    ※ 크레딧은 충전일로부터 1년간 유효하며, 블로그 글·이미지·카드뉴스·숏폼 등 PRO 도구 이용 시 차감됩니다.'
         + '  </div>'
         + '</div>'
 
