@@ -118,7 +118,7 @@ function CopyButton({ onCopy }) {
   );
 }
 
-function ReviewCard({ scoreData, generatedData, hasImproved, onImprove }) {
+function ReviewCard({ scoreData, generatedData, hasImproved, isImproving, onImprove }) {
   if (!scoreData) return null;
   const maxScore = 90;
   const totalScore = scoreData.totalScore;
@@ -184,9 +184,13 @@ function ReviewCard({ scoreData, generatedData, hasImproved, onImprove }) {
             type="button"
             className={styles.btnImprove}
             onClick={onImprove}
-            disabled={hasImproved}
+            disabled={hasImproved || isImproving}
           >
-            {hasImproved ? '자동 수정 완료 (1회 제한)' : '자동 수정하기 (1회 재생성 가능)'}
+            {isImproving
+              ? '⏳ 자동 수정 중... (최대 30초)'
+              : hasImproved
+                ? '자동 수정 완료 (1회 제한)'
+                : '자동 수정하기 (1회 재생성 가능)'}
           </button>
         </>
       )}
@@ -219,6 +223,7 @@ export default function BlogWriter() {
   const [generatedData, setGeneratedData] = useState(null);
   const [scoreData, setScoreData] = useState(null);
   const [hasImproved, setHasImproved] = useState(false);
+  const [isImproving, setIsImproving] = useState(false);
 
   const [remaining, setRemaining] = useState(null);
   const [limit, setLimit] = useState(null);
@@ -398,6 +403,8 @@ export default function BlogWriter() {
 
   async function improveContent() {
     if (!generatedData || hasImproved || !scoreData) return;
+    if (isImproving) return; // 중복 호출 방지
+    setIsImproving(true);
     const allResults = scoreData.results;
     const currentTotal = scoreData.totalScore;
 
@@ -513,7 +520,9 @@ export default function BlogWriter() {
       if (typeof data.remaining === 'number') setRemaining(data.remaining);
       if (typeof data.limit === 'number') setLimit(data.limit);
     } catch (err) {
-      alert('수정 실패: ' + err.message);
+      alert('수정 실패: ' + err.message + '\n\n다시 시도하시려면 버튼을 한 번만 눌러주세요.');
+    } finally {
+      setIsImproving(false);
     }
   }
 
@@ -621,9 +630,12 @@ export default function BlogWriter() {
   function goToShortform() {
     if (!generatedData) { alert('먼저 글을 생성해주세요.'); return; }
     const parts = [generatedData.title, generatedData.hook, generatedData.body, generatedData.cta].filter(Boolean);
+    const blogText = parts.join('\n\n');
     try {
+      // ShortformClient는 blogText 필드를 읽음 (body는 역호환 키)
       localStorage.setItem('blogTextForShortform', JSON.stringify({
-        body: parts.join('\n\n'),
+        blogText,
+        body: blogText, // 역호환 유지
         memo: memo.trim(),
         topic: topic.trim(),
       }));
@@ -926,6 +938,7 @@ export default function BlogWriter() {
               scoreData={scoreData}
               generatedData={generatedData}
               hasImproved={hasImproved}
+              isImproving={isImproving}
               onImprove={improveContent}
             />
 

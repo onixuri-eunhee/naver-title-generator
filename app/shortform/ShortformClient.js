@@ -452,11 +452,13 @@ function ShortformClientInner() {
       if (raw) {
         localStorage.removeItem('blogTextForShortform');
         const data = JSON.parse(raw);
+        // blogText(신규) → body(구 버전 호환) → topic(최후 폴백) 순으로 시도
+        const fullBlog = data.blogText || data.body || data.topic || '';
         // 새 step1Value 기준으로 반영
         setStep1Value((prev) => ({
           ...prev,
           contentMode: 'blog',
-          blogText: data.blogText || data.topic || '',
+          blogText: fullBlog,
           userExperience: data.memo || prev.userExperience,
         }));
         // 역호환 레거시 state도 유지
