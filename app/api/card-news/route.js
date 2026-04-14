@@ -11,6 +11,7 @@ import { themes } from '@/lib/card-news-themes';
 import { withRichness } from '@/lib/card-news-layouts';
 import { pickVariant } from '@/lib/card-news-variants';
 import { h, lines, _F, getSatori, getResvg, initResvgWasm, loadFonts } from '@/lib/satori-renderer';
+import { verifyOwnershipByUrls } from '@/lib/user-images';
 
 export const maxDuration = 180;
 
@@ -502,7 +503,139 @@ function validateSlides(parsed, requestedCount) {
   return { slides };
 }
 
-async function renderSlides(slidesData, theme, variant) {
+// ═════════════════════════════════════════════════════════════
+// 사용자 이미지 렌더링 헬퍼 — Phase 3
+// ═════════════════════════════════════════════════════════════
+
+// 외부 URL → data URL (Satori는 외부 URL 대신 data URL 선호)
+async function fetchUserImageDataUrl(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`fetch ${res.status}`);
+    const buf = Buffer.from(await res.arrayBuffer());
+    const mime = res.headers.get('content-type') || 'image/jpeg';
+    return `data:${mime};base64,${buf.toString('base64')}`;
+  } catch (err) {
+    console.error('[CARD-NEWS] user image fetch failed:', err.message);
+    return null;
+  }
+}
+
+// cover 모드: 카드 전체를 사용자 사진 + 그라디언트 오버레이 + 텍스트
+function buildCoverSlide(slide, theme, dataUrl) {
+  const title = slide.title || slide.body || '';
+  return h('div', {
+    style: {
+      width: _W, height: _H,
+      display: 'flex', position: 'relative',
+      background: theme.bgDark,
+    },
+  },
+    h('img', {
+      src: dataUrl,
+      width: _W,
+      height: _H,
+      style: { position: 'absolute', top: 0, left: 0, objectFit: 'cover' },
+    }),
+    // 그라디언트 오버레이 (Satori는 linear-gradient 지원)
+    h('div', {
+      style: {
+        position: 'absolute', top: 0, left: 0,
+        width: _W, height: _H,
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.75) 100%)',
+        display: 'flex',
+      },
+    }),
+    h('div', {
+      style: {
+        position: 'absolute',
+        left: 0, right: 0, bottom: 140,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', padding: '0 80px',
+      },
+    },
+      h('div', { style: { display: 'flex', width: 80, height: 4, background: theme.accent, borderRadius: 2, marginBottom: 36 } }),
+      lines(title, {
+        fontFamily: _F, fontWeight: 800, fontSize: 68,
+        color: '#FFFFFF', textAlign: 'center', lineHeight: 1.2,
+        letterSpacing: -0.5, maxWidth: _W - 160,
+        justifyContent: 'center', alignItems: 'center',
+      }),
+    ),
+  );
+}
+
+// content 모드: 상단 40% 이미지 + 하단 60% 텍스트
+function buildContentModeSlide(slide, theme, dataUrl) {
+  const imageH = Math.round(_H * 0.40);
+  const textH = _H - imageH;
+  return h('div', {
+    style: {
+      width: _W, height: _H,
+      display: 'flex', flexDirection: 'column',
+      background: theme.bg,
+    },
+  },
+    h('div', { style: { width: _W, height: imageH, display: 'flex', overflow: 'hidden' } },
+      h('img', {
+        src: dataUrl,
+        width: _W,
+        height: imageH,
+        style: { objectFit: 'cover' },
+      }),
+    ),
+    h('div', {
+      style: {
+        width: _W, height: textH,
+        display: 'flex', flexDirection: 'column', justifyContent: 'center',
+        padding: '48px 80px',
+      },
+    },
+      h('div', { style: { display: 'flex', width: 60, height: 4, background: theme.accent, borderRadius: 2, marginBottom: 28 } }),
+      lines(slide.title || '', {
+        fontFamily: _F, fontWeight: 800, fontSize: 56,
+        color: theme.text, lineHeight: 1.2, marginBottom: 24, textAlign: 'left',
+      }),
+      slide.body ? lines(slide.body, {
+        fontFamily: _F, fontWeight: 400, fontSize: 32,
+        color: theme.textLight, lineHeight: 1.6, textAlign: 'left',
+      }) : null,
+    ),
+  );
+}
+
+// background 모드: 기존 레이아웃을 반투명 사진 배경 위에 겹침
+function wrapWithBackgroundImage(originalNode, dataUrl) {
+  return h('div', {
+    style: {
+      width: _W, height: _H,
+      display: 'flex', position: 'relative',
+    },
+  },
+    h('img', {
+      src: dataUrl,
+      width: _W,
+      height: _H,
+      style: { position: 'absolute', top: 0, left: 0, objectFit: 'cover' },
+    }),
+    h('div', {
+      style: {
+        position: 'absolute', top: 0, left: 0,
+        width: _W, height: _H,
+        background: 'rgba(255, 255, 255, 0.82)',
+        display: 'flex',
+      },
+    }),
+    h('div', {
+      style: {
+        position: 'absolute', top: 0, left: 0,
+        width: _W, height: _H, display: 'flex',
+      },
+    }, originalNode),
+  );
+}
+
+async function renderSlides(slidesData, theme, variant, userImages = []) {
   await initResvgWasm();
   const satoriRender = await getSatori();
   const { Resvg } = await getResvg();
@@ -520,10 +653,20 @@ async function renderSlides(slidesData, theme, variant) {
     flow: layouts.flow,
   };
 
+  // 사용자 이미지 data URL 프리페치 (병렬)
+  const userImageDataUrls = new Map();
+  await Promise.all(
+    userImages.map(async (u) => {
+      const dataUrl = await fetchUserImageDataUrl(u.url);
+      if (dataUrl) userImageDataUrls.set(u.cardIndex, { ...u, dataUrl });
+    }),
+  );
+
   // content 슬라이드 인덱스 카운터 — variant.getContentVariant(idx) 용
   let contentIdx = 0;
 
-  for (const slide of slidesData.slides) {
+  for (let i = 0; i < slidesData.slides.length; i++) {
+    const slide = slidesData.slides[i];
     const layoutFn = layoutMap[slide.type] || layoutMap.content;
     // content 슬라이드마다 _slideIndex 증가시켜 variant에 주입
     let perSlideVariant = variant;
@@ -535,7 +678,25 @@ async function renderSlides(slidesData, theme, variant) {
       );
       contentIdx += 1;
     }
-    const vnode = withRichness(layoutFn(slide, theme, perSlideVariant));
+
+    const ui = userImageDataUrls.get(i);
+    let vnode;
+    if (ui && ui.dataUrl) {
+      if (ui.mode === 'cover') {
+        vnode = buildCoverSlide(slide, theme, ui.dataUrl);
+      } else if (ui.mode === 'content') {
+        vnode = buildContentModeSlide(slide, theme, ui.dataUrl);
+      } else {
+        // background
+        const originalNode = withRichness(layoutFn(slide, theme, perSlideVariant));
+        vnode = wrapWithBackgroundImage(originalNode, ui.dataUrl);
+      }
+      if (ui.crop) {
+        console.log(`[CARD-NEWS] card ${i} user image crop: ${JSON.stringify(ui.crop)} (object-fit cover 적용 — 정밀 크롭은 후속 작업)`);
+      }
+    } else {
+      vnode = withRichness(layoutFn(slide, theme, perSlideVariant));
+    }
 
     const svg = await satoriRender(vnode, {
       width: CANVAS_W,
@@ -638,6 +799,36 @@ export async function POST(request) {
       variant.numberStyle = body.numberStyle;
     }
 
+    // 사용자 이미지 검증 (Phase 3 - user images library)
+    const rawUserImages = Array.isArray(body.userImages) ? body.userImages : [];
+    const VALID_MODES = new Set(['background', 'content', 'cover']);
+    const sanitizedUserImages = [];
+    for (const u of rawUserImages) {
+      if (!u || typeof u !== 'object') continue;
+      const cardIndex = Number(u.cardIndex);
+      if (!Number.isInteger(cardIndex) || cardIndex < 0) continue;
+      if (!VALID_MODES.has(u.mode)) continue;
+      if (typeof u.url !== 'string' || !u.url.startsWith('https://cdn.ddukddaktool.co.kr/user-images/')) continue;
+      const crop = (u.crop && typeof u.crop === 'object') ? {
+        x: Number(u.crop.x) || 0,
+        y: Number(u.crop.y) || 0,
+        width: Number(u.crop.width) || 0,
+        height: Number(u.crop.height) || 0,
+      } : null;
+      sanitizedUserImages.push({ cardIndex, mode: u.mode, url: u.url, crop });
+    }
+
+    if (sanitizedUserImages.length > 0) {
+      if (!sessionEmail) {
+        return jsonResponse(request, { error: '사용자 이미지를 사용하려면 로그인이 필요합니다.' }, { status: 401 });
+      }
+      const urls = sanitizedUserImages.map((u) => u.url);
+      const owned = await verifyOwnershipByUrls(sessionEmail, urls);
+      if (!owned) {
+        return jsonResponse(request, { error: '권한이 없는 이미지가 포함돼 있습니다.' }, { status: 403 });
+      }
+    }
+
     if (!blogText || blogText.trim().length < 100) {
       return jsonResponse(request, { error: '블로그 글을 100자 이상 입력해주세요.' }, { status: 400 });
     }
@@ -725,7 +916,11 @@ ${blogText.substring(0, 8000)}`;
     const validated = validateSlides(parsed, count);
     console.log(`[CARD-NEWS] Validated slides: ${validated.slides.length}장`);
 
-    const pngs = await renderSlides(validated, theme, variant);
+    const effectiveUserImages = sanitizedUserImages.filter((u) => u.cardIndex < validated.slides.length);
+    if (effectiveUserImages.length > 0) {
+      console.log(`[CARD-NEWS] userImages: ${effectiveUserImages.length}장 적용`);
+    }
+    const pngs = await renderSlides(validated, theme, variant, effectiveUserImages);
     console.log(`[CARD-NEWS] Rendered ${pngs.length} PNGs · variant: ${variant.typeScale}/${variant.accentPlacement}/${variant.numberStyle} · seed ${variant.seed}`);
 
     let r2Urls = [];
