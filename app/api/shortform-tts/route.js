@@ -338,7 +338,11 @@ export async function POST(request) {
 
     return audioResponse(request, audioBuffer, provider);
   } catch (error) {
-    console.error('[TTS] Error:', error.message);
-    return jsonResponse(request, { error: '음성 생성 중 오류가 발생했습니다.' }, { status: 500 });
+    console.error('[TTS] Unexpected error:', error.message, error.stack);
+    return jsonResponse(
+      request,
+      { error: '음성 생성 중 오류가 발생했습니다: ' + (error.message || 'unknown') },
+      { status: 500 }
+    );
   }
 }

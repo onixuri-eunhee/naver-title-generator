@@ -851,16 +851,44 @@ function ShortformClientInner() {
     setTtsStatus('busy');
     setAudioUrl(null);
     try {
-      // 전체 대본을 한 번에 TTS
-      const text = script.fullScript || (script.scenes || []).map((s) => s.script).join(' ');
+      // 전체 대본을 한 번에 TTS. 편집한 내용 반영.
+      // scene.script만 사용 (hookText/type 등 메타데이터는 TTS 대상 아님).
+      const sceneTexts = (script.scenes || []).map((s) => s.script).filter(Boolean);
+      const text = script.fullScript || sceneTexts.join(' ');
+
+      console.log(`[TTS] 요청 문자 수: ${text.length}, 씬 수: ${sceneTexts.length}`);
+
+      // 문자 수 제한 체크 (Supertone 5000자 한계 근접 시 경고)
+      if (text.length > 4500) {
+        throw new Error(
+          `대본이 너무 길어요 (${text.length}자). Supertone은 최대 5000자까지 지원합니다. ` +
+          `대본 편집기에서 본문 일부를 줄여주세요.`
+        );
+      }
+      if (text.length === 0) {
+        throw new Error('대본이 비어 있습니다. 먼저 대본을 생성하거나 편집기에서 내용을 입력해주세요.');
+      }
+
       const res = await fetch('/api/shortform-tts', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ text, voiceId: ttsVoice }),
       });
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'TTS 생성 실패');
+        // 서버 에러 상세 추출 (JSON 또는 text)
+        let errMsg = `TTS 생성 실패 (HTTP ${res.status})`;
+        try {
+          const errData = await res.json();
+          if (errData.error) errMsg = errData.error;
+          console.error('[TTS] 서버 에러 상세:', errData);
+        } catch (_) {
+          try {
+            const errText = await res.text();
+            console.error('[TTS] 서버 에러 raw:', errText);
+            if (errText) errMsg = errText.slice(0, 300);
+          } catch (_) {}
+        }
+        throw new Error(errMsg);
       }
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('audio/')) {
@@ -878,6 +906,7 @@ function ShortformClientInner() {
       }
       setTtsStatus('done');
     } catch (err) {
+      console.error('[TTS] 최종 에러:', err);
       setError(err.message || 'TTS 중 오류');
       setTtsStatus('error');
     }
