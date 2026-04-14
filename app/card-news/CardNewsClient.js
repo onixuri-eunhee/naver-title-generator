@@ -423,9 +423,8 @@ export default function CardNewsClient() {
             {userImages.length > 0 && (
               <div style={{
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
+                flexDirection: 'column',
+                gap: 10,
                 padding: '14px 18px',
                 marginBottom: 12,
                 background: 'rgba(255, 95, 31, 0.08)',
@@ -433,28 +432,39 @@ export default function CardNewsClient() {
                 borderRadius: 12,
                 fontSize: 13,
                 color: 'var(--ds-text, #1F2937)',
-                flexWrap: 'wrap',
               }}>
-                <span>
+                <div style={{ fontWeight: 700 }}>
                   🖼 <strong>{userImages.length}개</strong> 카드에 내 이미지 선택됨 — 아래 버튼을 눌러야 카드에 실제로 반영돼요
-                </span>
+                </div>
+                <div style={{
+                  fontSize: 12,
+                  color: '#B45309',
+                  background: 'rgba(255, 193, 7, 0.12)',
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  lineHeight: 1.6,
+                }}>
+                  ⚠️ <strong>주의:</strong> 재생성 1회당 1크레딧이 차감돼요.<br />
+                  여러 카드에 이미지 넣을 거면 <strong>모든 카드에 다 선택한 후 한 번만</strong> 재생성 눌러주세요.
+                </div>
                 <button
                   type="button"
                   onClick={generate}
                   disabled={loading}
                   style={{
-                    padding: '10px 20px',
+                    padding: '12px 20px',
                     background: 'var(--ds-accent, #F95A1F)',
                     border: 'none',
                     color: '#fff',
                     borderRadius: 8,
                     fontWeight: 800,
-                    fontSize: 13,
+                    fontSize: 14,
                     cursor: loading ? 'not-allowed' : 'pointer',
                     fontFamily: 'inherit',
+                    alignSelf: 'stretch',
                   }}
                 >
-                  🖼 내 이미지 반영해서 재생성
+                  🖼 내 이미지 반영해서 재생성 (1크레딧)
                 </button>
               </div>
             )}
