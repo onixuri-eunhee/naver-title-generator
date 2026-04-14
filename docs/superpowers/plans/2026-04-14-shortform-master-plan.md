@@ -132,6 +132,8 @@
 
 **의존성:** 없음 (1주차 즉시 시작 가능)
 
+**상태:** ✅ 완료 (2026-04-14, 마지막 커밋 `825ed2e`)
+
 ---
 
 ### Phase C — Project Model (shortform_projects DB + auto-save)
