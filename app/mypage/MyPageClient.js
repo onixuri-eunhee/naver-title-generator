@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { getToken } from '@/lib/auth';
+import MyImagesSection from './MyImagesSection';
 import styles from './page.module.css';
 
 function ThreadsSection() {
@@ -202,6 +203,10 @@ export default function MyPageClient() {
           <div style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: 'var(--ds-muted)' }}>
             ※ 크레딧은 충전일로부터 1년간 유효하며, 블로그 글·이미지·카드뉴스·숏폼 등 PRO 도구 이용 시 차감됩니다.
           </div>
+        </div>
+
+        <div className={styles.card}>
+          <MyImagesSection />
         </div>
 
         <div className={styles.card}>
