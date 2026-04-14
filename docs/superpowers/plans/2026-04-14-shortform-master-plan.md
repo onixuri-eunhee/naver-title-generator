@@ -212,6 +212,8 @@
 
 **의존성:** 없음 (1주차 즉시 시작 가능, 자산 재활용)
 
+**상태:** ✅ 완료 — Step5VisualAccent 신설 + ImagePickerModal showModeSelector prop + scriptToProps 이미지 우선순위 병합 + 임시 점프 버튼. Phase D 머지 시 점프 버튼 제거 예정.
+
 ---
 
 ### Phase F — Preview + Customization (Step 6 미리보기 + 프리셋 + 자막)
