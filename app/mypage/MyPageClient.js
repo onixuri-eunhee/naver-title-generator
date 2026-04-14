@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { getToken } from '@/lib/auth';
 import MyImagesSection from './MyImagesSection';
+import BrandKitSection from './BrandKitSection';
 import styles from './page.module.css';
 
 function ThreadsSection() {
@@ -207,6 +208,10 @@ export default function MyPageClient() {
 
         <div className={styles.card}>
           <MyImagesSection />
+        </div>
+
+        <div className={styles.card}>
+          <BrandKitSection />
         </div>
 
         <div className={styles.card}>
