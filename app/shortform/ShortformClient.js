@@ -14,6 +14,9 @@ import {
 } from '@/remotion/shortform/styles';
 import StepProgress from '@/components/StepProgress';
 import Step1Input from './components/Step1Input';
+// Phase K — 온보딩 위저드
+import OnboardingModal from './components/OnboardingModal';
+import { getSample, sampleToStep1Value } from '@/lib/shortform-samples';
 import styles from './page.module.css';
 
 const STEP_LIST = [
@@ -156,6 +159,57 @@ export default function ShortformClient() {
   const [ttsStatus, setTtsStatus] = useState('idle');
   const [error, setError] = useState('');
   const [ttsVoice, setTtsVoice] = useState('52dc253df44d06aa7f0867'); // Bella (Supertone)
+
+  // === Phase K: 온보딩 위저드 + 첫 영상 무료 ===
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isFreeFirst, setIsFreeFirst] = useState(false);
+
+  // /me 조회 → onboardingCompleted=false면 모달 노출
+  useEffect(() => {
+    const tk = getToken();
+    if (!tk) return;
+    let cancelled = false;
+    fetch('/api/auth?action=me', {
+      headers: { Authorization: `Bearer ${tk}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.onboardingCompleted === false) {
+          setShowOnboarding(true);
+        }
+        setIsFreeFirst(Boolean(data?.eligibleForFreeFirstShortform));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function postOnboardingCompleted(extra) {
+    const tk = getToken();
+    if (!tk) return;
+    fetch('/api/auth/onboarding', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
+      body: JSON.stringify({ completed: true, ...(extra || {}) }),
+    }).catch(() => {});
+  }
+
+  function handleSelectSample(sampleId) {
+    const sample = getSample(sampleId);
+    if (!sample) return;
+    const next = sampleToStep1Value(sample);
+    if (next) setStep1Value(next);
+    setShowOnboarding(false);
+    postOnboardingCompleted({ selectedSampleId: sampleId });
+  }
+
+  function handleSkipOnboarding() {
+    setShowOnboarding(false);
+    postOnboardingCompleted();
+  }
+  // === /Phase K ===
 
   // blog-writer 핸드오프 (Phase A: step1Value로 매핑)
   useEffect(() => {
@@ -333,11 +387,25 @@ export default function ShortformClient() {
 
   return (
     <main className={styles.root}>
+      {/* Phase K: 첫 방문 온보딩 모달 */}
+      <OnboardingModal
+        open={showOnboarding}
+        onSelectSample={handleSelectSample}
+        onSkip={handleSkipOnboarding}
+      />
+
       <div className={styles.hero}>
         <div className={styles.heroBadge}>NEW · 숏폼</div>
         <h1>릴스·쇼츠를<br /><em>5분 만에 뚝딱</em></h1>
         <p>주제만 입력하면 AI 대본 + Ken Burns 이미지 + TTS로<br />프리미엄 숏폼 영상을 자동 생성합니다</p>
       </div>
+
+      {/* Phase K: 첫 영상 무료 배너 (가입 7일 이내 & 첫 숏폼 미생성) */}
+      {isFreeFirst && !showOnboarding && (
+        <div className={styles.freeFirstBanner}>
+          첫 영상은 무료에요. 지금 바로 만들어보세요.
+        </div>
+      )}
 
       {/* Phase A: StepProgress 표시 */}
       <div className={styles.stepProgressWrap}>
