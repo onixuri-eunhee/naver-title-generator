@@ -653,6 +653,17 @@ export default function ShortformClient() {
           <p className={styles.skipHint}>
             바쁘시면 단계별 진행 없이 한 번에 영상을 만들 수 있어요. 다만 결과 품질은 단계 진행보다 낮습니다.
           </p>
+
+          {/* Phase E: Step 5 독립 테스트용 점프 버튼 (Phase D 완료 시 제거) */}
+          {currentStep !== 5 && (
+            <button
+              type="button"
+              className={styles.skipToStep5Btn}
+              onClick={() => setCurrentStep(5)}
+            >
+              Step 5 (사진 액센트)로 바로 가기 →
+            </button>
+          )}
         </div>
       )}
     </main>
