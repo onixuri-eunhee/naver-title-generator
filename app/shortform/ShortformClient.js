@@ -13,13 +13,34 @@ import {
   SHORTFORM_HEIGHT,
 } from '@/remotion/shortform/styles';
 import StepProgress from '@/components/StepProgress';
+import ProgressIndicator from '@/components/ProgressIndicator';
 import Step1Input from './components/Step1Input';
 import Step5VisualAccent from './components/Step5VisualAccent';
 import useProjectAutoSave from './hooks/useProjectAutoSave';
+// Phase I — SSE 진행 표시 + 취소 + 백그라운드 모드
+import { useJobProgress } from './hooks/useJobProgress';
 // Phase K — 온보딩 위저드
 import OnboardingModal from './components/OnboardingModal';
 import { getSample, sampleToStep1Value } from '@/lib/shortform-samples';
 import styles from './page.module.css';
+
+const PROGRESS_ACTIVE_STEPS = [
+  'keyword-extraction',
+  'youtube-search',
+  'video-analysis',
+  'script-generation',
+  'tts-synthesis',
+  'video-render',
+];
+
+const SHORTFORM_JOB_STORAGE_KEY = 'shortform:activeJobId';
+
+function generateClientJobId() {
+  if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+  return `job_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
 
 const STEP_LIST = [
   { id: 1, label: '입력' },
@@ -218,6 +239,64 @@ function ShortformClientInner() {
     initialProjectId: restoredProjectId ? Number(restoredProjectId) : null,
     debounceMs: 1500,
   });
+
+  // === Phase I: SSE 진행 상태 + 취소 + 백그라운드 모드 ===
+  const [jobId, setJobId] = useState(null);
+  const authTokenForProgress = typeof window !== 'undefined'
+    ? localStorage.getItem('ddukddak_token')
+    : null;
+  const {
+    steps: progressSteps,
+    current: progressCurrent,
+    status: progressStatus,
+    error: progressError,
+    cancel: cancelJob,
+    reset: resetProgress,
+  } = useJobProgress(jobId, { authToken: authTokenForProgress });
+
+  // 페이지 진입 시 localStorage의 활성 jobId 복원
+  useEffect(() => {
+    try {
+      const stored = typeof window !== 'undefined'
+        ? localStorage.getItem(SHORTFORM_JOB_STORAGE_KEY)
+        : null;
+      if (stored) setJobId(stored);
+    } catch {}
+  }, []);
+
+  // jobId 변경 시 localStorage 동기화
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (jobId) {
+        localStorage.setItem(SHORTFORM_JOB_STORAGE_KEY, jobId);
+      }
+    } catch {}
+  }, [jobId]);
+
+  // 완료/에러/취소 시 localStorage 정리 + 브라우저 알림
+  useEffect(() => {
+    if (
+      progressStatus === 'complete'
+      || progressStatus === 'cancelled'
+      || progressStatus === 'error'
+    ) {
+      try {
+        localStorage.removeItem(SHORTFORM_JOB_STORAGE_KEY);
+      } catch {}
+    }
+    if (progressStatus === 'complete') {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        if (Notification.permission === 'granted') {
+          try {
+            new Notification('숏폼 생성 완료', {
+              body: '마이페이지에서 확인하실 수 있어요.',
+            });
+          } catch {}
+        }
+      }
+    }
+  }, [progressStatus]);
 
   // === Phase K: 온보딩 위저드 + 첫 영상 무료 ===
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -425,11 +504,18 @@ function ShortformClientInner() {
 
     setScriptStatus('busy');
     setScript(null);
+
+    // Phase I: SSE 진행 구독을 위한 jobId 발급
+    resetProgress();
+    const newJobId = generateClientJobId();
+    setJobId(newJobId);
+
     try {
       const res = await fetch('/api/shortform-script', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({
+          jobId: newJobId,
           topic,
           blogText: '',
           personaMemo: memo,
@@ -633,6 +719,20 @@ function ShortformClientInner() {
           onStepClick={handleStepClick}
         />
       </div>
+
+      {/* Phase I: SSE 실시간 진행 표시 + 취소 */}
+      {jobId && progressStatus !== 'idle' && (
+        <div className={styles.progressIndicatorWrap}>
+          <ProgressIndicator
+            activeSteps={PROGRESS_ACTIVE_STEPS}
+            progress={progressSteps}
+            current={progressCurrent}
+            status={progressStatus}
+            error={progressError}
+            onCancel={cancelJob}
+          />
+        </div>
+      )}
 
       {/* Step 1: 새 입력 폼 */}
       {currentStep === 1 && (
