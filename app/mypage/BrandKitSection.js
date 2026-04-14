@@ -42,6 +42,7 @@ export default function BrandKitSection() {
   const [savedMsg, setSavedMsg] = useState('');
   const [error, setError] = useState('');
   const [isEmpty, setIsEmpty] = useState(true);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   async function refresh() {
     const token = getToken();
@@ -76,6 +77,51 @@ export default function BrandKitSection() {
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  async function handleLogoChange(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      setError('로고는 JPG 또는 PNG만 가능합니다.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError('로고 파일은 2MB 이하만 가능합니다.');
+      return;
+    }
+
+    const token = getToken();
+    if (!token) return;
+
+    setLogoUploading(true);
+    setError('');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('tag', 'brand-logo');
+      const res = await fetch('/api/my-images', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || '로고 업로드에 실패했습니다.');
+      } else if (data.image?.public_url) {
+        update('logo_url', data.image.public_url);
+      }
+    } catch {
+      setError('네트워크 오류가 발생했습니다.');
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
+  function removeLogo() {
+    update('logo_url', '');
   }
 
   async function handleSave() {
@@ -184,10 +230,38 @@ export default function BrandKitSection() {
         </label>
       </div>
 
-      {/* 그룹 2: 비주얼 (로고/컬러는 G5, G6에서) */}
+      {/* 그룹 2: 비주얼 */}
       <div className={styles.group}>
         <div className={styles.groupLabel}>비주얼</div>
-        <div className={styles.placeholderNote}>로고·컬러 필드는 G5/G6에서 추가됩니다.</div>
+        <div className={styles.field}>
+          <span className={styles.fieldLabel}>로고 이미지</span>
+          <div className={styles.logoArea}>
+            {form.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={form.logo_url} alt="로고" className={styles.logoPreview} />
+            ) : (
+              <div className={styles.logoPlaceholder}>로고<br />없음</div>
+            )}
+            <div className={styles.logoControls}>
+              <input
+                type="file"
+                id="brand-logo-upload"
+                accept="image/jpeg,image/png"
+                onChange={handleLogoChange}
+                style={{ display: 'none' }}
+              />
+              <label htmlFor="brand-logo-upload" className={styles.logoBtn}>
+                {logoUploading ? '업로드 중...' : (form.logo_url ? '교체' : '+ 로고 업로드')}
+              </label>
+              {form.logo_url && (
+                <button type="button" className={styles.logoRemoveBtn} onClick={removeLogo}>
+                  로고 제거
+                </button>
+              )}
+              <div className={styles.logoHint}>JPG/PNG, 최대 2MB. 정사각형 권장</div>
+            </div>
+          </div>
+        </div>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>추천 폰트</span>
           <select
