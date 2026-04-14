@@ -299,6 +299,11 @@ export default function ShortformClient() {
       if (!res.ok) throw new Error(data.error || '대본 생성 실패');
       setScript(data.script);
       setScriptStatus('done');
+      // Phase K: 첫 영상 무료 적용됐으면 배너 숨김 (Agent D 가 응답에
+      // freeFirstApplied 포함하도록 wire-up 한 뒤에만 동작)
+      if (data.freeFirstApplied) {
+        setIsFreeFirst(false);
+      }
     } catch (err) {
       setError(err.message || '대본 생성 중 오류');
       setScriptStatus('error');
