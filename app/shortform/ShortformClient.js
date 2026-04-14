@@ -128,7 +128,11 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
 
   const pointTexts = pointScenes.map((s) => s.script).filter(Boolean);
   const bodyHeader = pointTexts[0] || script?.points?.[0] || '';
-  const bodyCaption = pointTexts.slice(1).join(' ') || script?.points?.slice(1).join(' ') || '';
+  // caption은 최대 2문장만 (줄바꿈 보존). 너무 길면 화면 가독성 ↓
+  const captionSource = pointTexts.slice(1, 3).length > 0
+    ? pointTexts.slice(1, 3)
+    : (script?.points?.slice(1, 3) || []);
+  const bodyCaption = captionSource.join('\n');
 
   const ctaText = ctaScene.script || script?.cta || '지금 시작하세요';
 

@@ -262,18 +262,23 @@ const ImageMode = ({ header, caption, imageUrl, preset, subtitle, textPosition, 
               fontSize: SIZES.bodyCaption,
               color: colors.white,
               textAlign: 'center',
-              lineHeight: 1.35,
-              padding: '24px 36px',
-              background: 'rgba(0, 0, 0, 0.35)',
+              lineHeight: 1.45,
+              padding: '28px 40px',
+              background: 'rgba(0, 0, 0, 0.4)',
               borderRadius: RADIUS.card,
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               border: `1px solid ${colors.accent}40`,
               maxWidth: '90%',
               textShadow: '0 4px 16px rgba(0,0,0,0.8)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
             }}
           >
-            {caption}
+            {caption.split('\n').filter(Boolean).map((line, i) => (
+              <div key={i}>{line}</div>
+            ))}
           </div>
         )}
       </AbsoluteFill>
