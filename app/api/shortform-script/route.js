@@ -10,6 +10,13 @@ import {
 import { getDb, logUsage } from '@/lib/db';
 import { generateScriptFlow } from '@/lib/script-flow';
 import { buildPromptContextForEmail } from '@/lib/brand-kit';
+import {
+  publishProgress,
+  checkCancelled,
+  createJobId,
+  cleanupJob,
+} from '@/lib/job-progress';
+import { CancelledError } from '@/lib/cancelled-error';
 
 export const maxDuration = 60;
 
@@ -452,10 +459,28 @@ export async function GET(request) {
   }
 }
 
-export async function POST(request) {
-  try {
-    const body = await request.json().catch(() => ({}));
+/**
+ * 숏폼 크레딧 차감 지점 (Phase I 결정).
+ *
+ * 차감 시점은 Step 7 영상 렌더 시작으로 이동 예정. Phase F(Preview) 완료 후
+ * 실제 렌더 라우트가 이 함수를 호출. 현재는 skeleton — Phase F에서 wire-up.
+ *
+ * @param {object} params { email, durationSec, isFreeFirst }
+ * @returns {Promise<{ charged: number, reason: string }>}
+ */
+export async function chargeShortformCredits(_params) {
+  // TODO(Phase F): Step 7 진입 시 실제 차감 로직 이동.
+  // 현재는 script 라우트가 크레딧을 직접 차감하지 않으므로 no-op.
+  return { charged: 0, reason: 'pre-render: charging deferred to Step 7' };
+}
 
+export async function POST(request) {
+  const body = await request.json().catch(() => ({}));
+
+  // Phase I: jobId + SSE
+  const jobId = body.jobId || createJobId();
+
+  try {
     // 기존 필드 (역호환)
     const topic = toSentence(body.topic);
     const blogText = String(body.blogText || '').trim();
@@ -495,6 +520,16 @@ export async function POST(request) {
 
     let script;
 
+    // Phase I: script-generation draft sub-step
+    await publishProgress(jobId, {
+      type: 'step',
+      step: 'script-generation',
+      status: 'running',
+      progress: 0,
+      subStep: 'draft',
+    });
+    await checkCancelled(jobId, 'script:draft-start');
+
     if (personaId) {
       // Phase D 경로: Genkit flow + Claude + 페르소나 + 벤치마킹 aggregated + 브랜드킷
       let brandContext = null;
@@ -520,6 +555,15 @@ export async function POST(request) {
         brandContext,
       });
 
+      await publishProgress(jobId, {
+        type: 'step',
+        step: 'script-generation',
+        status: 'running',
+        progress: 60,
+        subStep: 'caption',
+      });
+      await checkCancelled(jobId, 'script:caption-done');
+
       // flow 결과를 기존 buildScriptPayload 형식으로 변환 (postProcessScenes 재사용)
       script = buildScriptPayload(
         {
@@ -542,14 +586,54 @@ export async function POST(request) {
         : { fallback: true };
       console.log(`[SHORTFORM-SCRIPT] Legacy path: ${benchmarkKeyword} → ${benchmark.fallback ? 'FALLBACK' : `${(benchmark.videos || []).length} videos`}`);
 
+      await publishProgress(jobId, {
+        type: 'step',
+        step: 'script-generation',
+        status: 'running',
+        progress: 40,
+        subStep: 'claude',
+      });
+      await checkCancelled(jobId, 'script:claude-call');
+
       script = await callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount, benchmark, personaMemo);
     }
 
+    await publishProgress(jobId, {
+      type: 'step',
+      step: 'script-generation',
+      status: 'done',
+      progress: 100,
+      result: { sceneCount: script?.scenes?.length || 0 },
+    });
+
     await logUsage(email, 'shortform-script', tone, getClientIp(request));
 
-    return jsonResponse(request, { script });
+    await publishProgress(jobId, {
+      type: 'complete',
+      result: { jobId, script },
+    });
+
+    return jsonResponse(request, { jobId, script });
   } catch (error) {
+    if (error instanceof CancelledError) {
+      await publishProgress(jobId, {
+        type: 'cancelled',
+        cancelledAt: error.checkpoint,
+      });
+      return jsonResponse(
+        request,
+        { cancelled: true, checkpoint: error.checkpoint, jobId },
+        { status: 499 },
+      );
+    }
     console.error('shortform-script API Error:', error);
+    await publishProgress(jobId, {
+      type: 'error',
+      error: error?.message || 'script generation error',
+      step: 'script-generation',
+    });
     return jsonResponse(request, { error: '숏폼 대본 생성 중 오류가 발생했습니다.' }, { status: 500 });
+  } finally {
+    await cleanupJob(jobId);
   }
 }
