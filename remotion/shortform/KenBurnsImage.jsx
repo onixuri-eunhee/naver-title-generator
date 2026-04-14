@@ -21,15 +21,43 @@ function pickPreset(seedString) {
   return KEN_BURNS_PRESETS[idx];
 }
 
-export const KenBurnsImage = ({ src, overlay = 0.35, seed = 'default' }) => {
+/**
+ * KenBurnsImage 4종 카메라 모션 지원
+ * Props:
+ * - src: string
+ * - overlay: number (0~1)
+ * - seed: string (ken-burns 변형 선택용)
+ * - cameraMotion?: 'static'|'ken-burns'|'zoom-in'|'pan'  (기본 ken-burns — 하위 호환)
+ */
+export const KenBurnsImage = ({ src, overlay = 0.35, seed = 'default', cameraMotion = 'ken-burns' }) => {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
-  const preset = pickPreset(seed || src || 'default');
+  const kbPreset = pickPreset(seed || src || 'default');
 
   const progress = frame / durationInFrames;
-  const scale = interpolate(progress, [0, 1], [preset.scaleFrom, preset.scaleTo]);
-  const x = interpolate(progress, [0, 1], [preset.xFrom, preset.xTo]);
-  const y = interpolate(progress, [0, 1], [preset.yFrom, preset.yTo]);
+
+  let scale = 1;
+  let x = 0;
+  let y = 0;
+
+  switch (cameraMotion) {
+    case 'static':
+      scale = 1;
+      break;
+    case 'zoom-in':
+      scale = interpolate(progress, [0, 1], [1.0, 1.25]);
+      break;
+    case 'pan':
+      x = interpolate(progress, [0, 1], [-40, 40]);
+      scale = 1.1;
+      break;
+    case 'ken-burns':
+    default:
+      scale = interpolate(progress, [0, 1], [kbPreset.scaleFrom, kbPreset.scaleTo]);
+      x = interpolate(progress, [0, 1], [kbPreset.xFrom, kbPreset.xTo]);
+      y = interpolate(progress, [0, 1], [kbPreset.yFrom, kbPreset.yTo]);
+      break;
+  }
 
   return (
     <AbsoluteFill style={{ overflow: 'hidden' }}>

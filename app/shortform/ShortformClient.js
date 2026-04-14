@@ -16,6 +16,12 @@ import StepProgress from '@/components/StepProgress';
 import ProgressIndicator from '@/components/ProgressIndicator';
 import Step1Input from './components/Step1Input';
 import Step5VisualAccent from './components/Step5VisualAccent';
+import Step6Preview from './components/Step6Preview';
+import {
+  buildStep6ValueFromPreset,
+  DEFAULT_SHORTFORM_PRESET,
+  getShortformPreset,
+} from '@/lib/shortform-presets';
 import useProjectAutoSave from './hooks/useProjectAutoSave';
 // Phase I — SSE 진행 표시 + 취소 + 백그라운드 모드
 import { useJobProgress } from './hooks/useJobProgress';
@@ -96,8 +102,11 @@ function mergeShortformImages(step5) {
  *
  * script.scenes[] → hook (scene[0]) + body (scene[1..n-2]) + cta (scene[n-1])
  * script.hookText → hook.badge
+ *
+ * sceneImageOrder (Phase F): [{ sceneId: 'hook'|'body', imageUrl }] 형태로
+ * 사용자가 지정한 씬별 이미지 우선 적용. 없으면 bodyImages 배열 순서대로 폴백.
  */
-function scriptToProps(script, presetKey, totalDurationSec, bodyImages) {
+function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneImageOrder) {
   const fps = SHORTFORM_FPS;
   const totalFrames = Math.round(totalDurationSec * fps);
 
@@ -121,19 +130,25 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages) {
 
   const ctaText = ctaScene.script || script?.cta || '지금 시작하세요';
 
+  // Phase F: sceneImageOrder 우선 → bodyImages 순서 폴백
+  const orderedHook = sceneImageOrder?.find((s) => s.sceneId === 'hook')?.imageUrl;
+  const orderedBody = sceneImageOrder?.find((s) => s.sceneId === 'body')?.imageUrl;
+  const hookImage = orderedHook || bodyImages?.[0] || undefined;
+  const bodyImage = orderedBody || bodyImages?.[1] || bodyImages?.[0] || undefined;
+
   return {
     preset: presetKey,
     hook: {
       badge: hookBadge.slice(0, 12),
       title: hookTitle,
       underlineText: underlineText || undefined,
-      imageUrl: bodyImages?.[0] || undefined,
+      imageUrl: hookImage,
       durationInFrames: hookFrames,
     },
     body: {
       header: bodyHeader,
       caption: bodyCaption,
-      imageUrl: bodyImages?.[1] || bodyImages?.[0] || undefined,
+      imageUrl: bodyImage,
       durationInFrames: bodyFrames,
     },
     cta: {
@@ -206,6 +221,11 @@ function ShortformClientInner() {
     aiImages: [],      // [url]
   });
   const [aiImageGenStatus, setAiImageGenStatus] = useState('idle');
+
+  // === Step 6 — 미리보기 + 커스터마이징 (Phase F) ===
+  const [step6Value, setStep6Value] = useState(() =>
+    buildStep6ValueFromPreset(DEFAULT_SHORTFORM_PRESET),
+  );
 
   // === Phase H: Draft 복원 state ===
   const [restoredProjectId, setRestoredProjectId] = useState(null);
@@ -468,12 +488,19 @@ function ShortformClientInner() {
   );
 
   // 미리보기 props + duration 계산
+  // Phase F: step6Value.sceneImageOrder를 scriptToProps에 전달
   const playerProps = useMemo(() => {
     if (!script) return null;
     // Step 5 값이 있으면 우선, 비어있으면 기존 images state 폴백 (runAll 경로)
     const bodyImages = mergedImages.length > 0 ? mergedImages : images;
-    return scriptToProps(script, presetKey, totalDurationSec, bodyImages);
-  }, [script, presetKey, totalDurationSec, images, mergedImages]);
+    return scriptToProps(
+      script,
+      presetKey,
+      totalDurationSec,
+      bodyImages,
+      step6Value?.sceneImageOrder,
+    );
+  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder]);
 
   const playerDurationInFrames = useMemo(() => {
     if (!playerProps) return totalDurationSec * SHORTFORM_FPS;
@@ -759,8 +786,36 @@ function ShortformClientInner() {
         </div>
       )}
 
-      {/* Step 2~4, 6~7: 기존 UI를 임시 유지 (Phase B/C/D/F에서 단계별 교체) */}
-      {currentStep >= 2 && currentStep !== 5 && (
+      {/* Step 6: 미리보기 + 커스터마이징 (Phase F) */}
+      {currentStep === 6 && (
+        <div className={styles.stepContainer}>
+          <Step6Preview
+            value={step6Value}
+            onChange={(next) => {
+              setStep6Value(next);
+              // 상위 프리셋이 바뀌면 레거시 presetKey도 동기화 (하위 컬러 프리셋)
+              if (next?.presetKey) {
+                const upper = getShortformPreset(next.presetKey);
+                if (upper?.colorPreset && upper.colorPreset !== presetKey) {
+                  setPresetKey(upper.colorPreset);
+                }
+              }
+            }}
+            playerProps={playerProps}
+            mergedImages={mergedImages}
+            /* Phase B가 도달하기 전까지는 undefined — 배너 자동 숨김 */
+            benchmarkAggregated={undefined}
+            onBack={() => setCurrentStep(5)}
+            onNext={() => {
+              setCompletedSteps((prev) => Array.from(new Set([...prev, 6])));
+              setCurrentStep(7);
+            }}
+          />
+        </div>
+      )}
+
+      {/* Step 2~4, 7: 기존 UI를 임시 유지 (Phase B/C/D에서 단계별 교체) */}
+      {currentStep >= 2 && currentStep !== 5 && currentStep !== 6 && (
       <div className={styles.layout}>
         <div className={styles.left}>
           <div className={styles.card}>

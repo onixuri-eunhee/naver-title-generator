@@ -241,6 +241,8 @@
 
 **의존성:** Phase D (대본) + Phase E (이미지)
 
+**상태:** ✅ 완료 — lib/shortform-presets.js + PresetPicker/SubtitleCustomizer/RecommendationBanner/Step6Preview + Remotion Composition subtitle/textPosition/cameraMotion/sceneTransition props 확장 + Scene/KenBurnsImage props 수용 + ShortformClient Step 6 통합 + scriptToProps sceneImageOrder. F10 (Genkit AI 자막 추천) P1로 스킵. benchmarkAggregated는 Phase B 머지 시 wire-up 예정.
+
 ---
 
 ### Phase G — Brand Kit (마이페이지 섹션 + 자동 적용)

@@ -5,7 +5,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
-import { FONTS, RADIUS, SIZES, SPRING_CONFIG } from './styles';
+import { FONTS, RADIUS, SIZES, SPRING_CONFIG, buildSubtitleStyle } from './styles';
 import { breathe } from './utils';
 
 export const CTAScene = ({
@@ -13,7 +13,10 @@ export const CTAScene = ({
   buttonText,
   subtext,
   preset,
+  subtitle,
+  textPosition,
 }) => {
+  const subtitleStyle = buildSubtitleStyle(subtitle, textPosition);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { colors } = preset;
@@ -80,6 +83,8 @@ export const CTAScene = ({
             textAlign: 'center',
             lineHeight: 1.2,
             letterSpacing: -0.5,
+            // Phase F — subtitle override
+            ...(subtitleStyle || {}),
           }}
         >
           {headlineLines.map((line, i) => (
