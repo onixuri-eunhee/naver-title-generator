@@ -18,7 +18,8 @@ const MODE_LABELS = {
  * - onSelect: ({ image, crop, mode }) => void
  * - modeOptions?: Array<'background'|'content'|'cover'>
  * - defaultMode?: string
- * - aspectRatio?: number  (예: 4/5)
+ * - aspectRatio?: number  (예: 4/5, 9/16)
+ * - showModeSelector?: boolean  (기본 true. false면 모드 선택 UI 강제 숨김)
  */
 export default function ImagePickerModal({
   open,
@@ -27,6 +28,7 @@ export default function ImagePickerModal({
   modeOptions = ['background', 'content', 'cover'],
   defaultMode = 'content',
   aspectRatio = 4 / 5,
+  showModeSelector = true,
 }) {
   const [tab, setTab] = useState('library');
   const [images, setImages] = useState([]);
@@ -152,7 +154,7 @@ export default function ImagePickerModal({
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="닫기">×</button>
         </div>
 
-        {modeOptions.length > 1 && (
+        {showModeSelector && modeOptions.length > 1 && (
           <div className={styles.modeRow}>
             <span className={styles.modeLabel}>사용 방식</span>
             {modeOptions.map((m) => (
