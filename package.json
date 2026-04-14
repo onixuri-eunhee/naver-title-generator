@@ -35,8 +35,10 @@
     "openai": "^6.33.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-easy-crop": "^5.5.7",
     "remotion": "4.0.446",
-    "satori": "^0.12.0"
+    "satori": "^0.12.0",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "subset-font": "^2.4.0",
