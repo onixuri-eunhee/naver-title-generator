@@ -106,19 +106,46 @@ function mergeShortformImages(step5) {
  * sceneImageOrder (Phase F): [{ sceneId: 'hook'|'body', imageUrl }] 형태로
  * 사용자가 지정한 씬별 이미지 우선 적용. 없으면 bodyImages 배열 순서대로 폴백.
  */
-function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneImageOrder) {
+function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneImageOrder, mode = 'kinetic') {
   const fps = SHORTFORM_FPS;
   const totalFrames = Math.round(totalDurationSec * fps);
-
-  // 3씬 비율: Hook 20%, Body 60%, CTA 20%
-  const hookFrames = Math.round(totalFrames * 0.2);
-  const ctaFrames = Math.round(totalFrames * 0.2);
-  const bodyFrames = totalFrames - hookFrames - ctaFrames;
 
   const scenes = Array.isArray(script?.scenes) ? script.scenes : [];
   const hookScene = scenes.find((s) => s.section === 'hook') || scenes[0] || {};
   const pointScenes = scenes.filter((s) => s.section === 'point');
   const ctaScene = scenes.find((s) => s.section === 'cta') || scenes[scenes.length - 1] || {};
+
+  // ── Slideshow 모드: 각 scene을 슬라이드로 변환 ──
+  if (mode === 'slideshow') {
+    // 모든 scene을 순서대로 슬라이드로 변환 (hook → points → cta)
+    const orderedScenes = [];
+    if (hookScene?.script) orderedScenes.push({ ...hookScene, _kind: 'hook' });
+    pointScenes.forEach((s) => s?.script && orderedScenes.push({ ...s, _kind: 'point' }));
+    if (ctaScene?.script && ctaScene !== hookScene) orderedScenes.push({ ...ctaScene, _kind: 'cta' });
+
+    // 이미지 배열 (bodyImages = Step 5에서 받은 전체 이미지 리스트)
+    const imgs = Array.isArray(bodyImages) ? bodyImages : [];
+
+    const slides = orderedScenes.map((s, i) => ({
+      imageUrl: imgs[i] || imgs[i % Math.max(imgs.length, 1)] || undefined,
+      text: s.script,
+      badge: s._kind === 'hook' ? (s.hookText || 'STOP').slice(0, 12) : undefined,
+      ctaButton: s._kind === 'cta' ? '지금 시작 →' : undefined,
+    }));
+
+    return {
+      preset: presetKey,
+      mode: 'slideshow',
+      slides,
+      totalDurationInFrames: totalFrames,
+    };
+  }
+
+  // ── Kinetic 모드 (기존 3씬) ──
+  // 3씬 비율: Hook 20%, Body 60%, CTA 20%
+  const hookFrames = Math.round(totalFrames * 0.2);
+  const ctaFrames = Math.round(totalFrames * 0.2);
+  const bodyFrames = totalFrames - hookFrames - ctaFrames;
 
   const hookTitle = hookScene.script || script?.hook || '숏폼 영상';
   const hookBadge = hookScene.hookText || script?.hookText || 'STOP';
@@ -144,6 +171,7 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
 
   return {
     preset: presetKey,
+    mode: 'kinetic',
     hook: {
       badge: hookBadge.slice(0, 12),
       title: hookTitle,
@@ -223,10 +251,13 @@ function ShortformClientInner() {
   // === Step 5 — 비주얼 액센트 (Phase E) ===
   const [step5Value, setStep5Value] = useState({
     userPhotos: [],    // [{ image, crop }]
-    aiImageCount: 1,   // 0 | 1 | 2
+    aiImageCount: 1,   // 0 | 1 | 2 (kinetic mode)
     aiImages: [],      // [url]
   });
   const [aiImageGenStatus, setAiImageGenStatus] = useState('idle');
+
+  // === 영상 모드 (kinetic = 기존, slideshow = 이미지 슬라이드쇼) ===
+  const [videoMode, setVideoMode] = useState('kinetic');
 
   // === Step 6 — 미리보기 + 커스터마이징 (Phase F) ===
   const [step6Value, setStep6Value] = useState(() =>
@@ -505,8 +536,9 @@ function ShortformClientInner() {
       totalDurationSec,
       bodyImages,
       step6Value?.sceneImageOrder,
+      videoMode,
     );
-  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder]);
+  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder, videoMode]);
 
   const playerDurationInFrames = useMemo(() => {
     if (!playerProps) return totalDurationSec * SHORTFORM_FPS;
@@ -781,6 +813,59 @@ function ShortformClientInner() {
       {/* Step 5: 비주얼 액센트 (Phase E) */}
       {currentStep === 5 && (
         <div className={styles.stepContainer}>
+          {/* 영상 모드 선택 */}
+          <div style={{
+            marginBottom: 24,
+            padding: '16px 20px',
+            background: 'var(--ds-bg-soft, #F4F2EC)',
+            border: '1px solid var(--ds-border, #ECE9E2)',
+            borderRadius: 12,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: 'var(--ds-text, #1F2937)' }}>
+              영상 모드
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setVideoMode('kinetic')}
+                style={{
+                  flex: 1,
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  border: videoMode === 'kinetic' ? '2px solid var(--ds-accent, #F95A1F)' : '1.5px solid var(--ds-border, #E5E7EB)',
+                  background: videoMode === 'kinetic' ? 'rgba(255, 95, 31, 0.06)' : '#fff',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>🎨 키네틱 모드 (기본)</div>
+                <div style={{ fontSize: 11, color: 'var(--ds-muted, #77736B)', lineHeight: 1.4 }}>
+                  Hook/Body/CTA 3씬 + 키네틱 타이포. 이미지 최대 2장.
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setVideoMode('slideshow')}
+                style={{
+                  flex: 1,
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  border: videoMode === 'slideshow' ? '2px solid var(--ds-accent, #F95A1F)' : '1.5px solid var(--ds-border, #E5E7EB)',
+                  background: videoMode === 'slideshow' ? 'rgba(255, 95, 31, 0.06)' : '#fff',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>📸 슬라이드쇼 모드</div>
+                <div style={{ fontSize: 11, color: 'var(--ds-muted, #77736B)', lineHeight: 1.4 }}>
+                  각 씬마다 1장씩 (5~8장). 매장 투어/메뉴 소개에 적합.
+                </div>
+              </button>
+            </div>
+          </div>
+
           <Step5VisualAccent
             value={step5Value}
             onChange={setStep5Value}
@@ -788,6 +873,7 @@ function ShortformClientInner() {
             aiStatus={aiImageGenStatus}
             onBack={() => setCurrentStep(4)}
             onNext={() => setCurrentStep(6)}
+            videoMode={videoMode}
           />
         </div>
       )}

@@ -10,6 +10,7 @@ import { ProgressBar } from './ProgressBar';
 import { HookScene } from './HookScene';
 import { BodyScene } from './BodyScene';
 import { CTAScene } from './CTAScene';
+import { SlideshowScene } from './SlideshowScene';
 import { getPreset, DEFAULT_PRESET_KEY } from './presets';
 import { SHORTFORM_FPS } from './styles';
 
@@ -49,6 +50,9 @@ function resolveTransition(kind) {
  */
 export const ShortformComposition = ({
   preset: presetKey = DEFAULT_PRESET_KEY,
+  mode = 'kinetic',                // 'kinetic' | 'slideshow'
+  slides,                          // slideshow 모드용 [{ imageUrl, text, badge?, ctaButton? }]
+  totalDurationInFrames,           // slideshow 모드: 전체 프레임 수
   hook,
   body,
   cta,
@@ -64,6 +68,61 @@ export const ShortformComposition = ({
   const ctaFrames = cta?.durationInFrames || 90;
 
   const { transitionFrames, transitionPresentation } = resolveTransition(sceneTransition);
+
+  // ── Slideshow 모드 ────────────────────────────────────
+  if (mode === 'slideshow' && Array.isArray(slides) && slides.length > 0) {
+    const slideCount = slides.length;
+    const total = totalDurationInFrames || (hookFrames + bodyFrames + ctaFrames);
+    // 각 슬라이드 프레임 수 = total / N (최소 90 = 3초)
+    const perSlideFrames = Math.max(Math.round(total / slideCount), 90);
+
+    // Transition은 Sequence 사이에 형제로 배치
+    const children = [];
+    slides.forEach((slide, i) => {
+      children.push(
+        <TransitionSeries.Sequence
+          key={`seq-${i}`}
+          durationInFrames={perSlideFrames}
+        >
+          <SlideshowScene
+            imageUrl={slide.imageUrl}
+            text={slide.text}
+            preset={preset}
+            subtitle={subtitle}
+            textPosition={textPosition}
+            cameraMotion={cameraMotion}
+            isFirst={i === 0}
+            isLast={i === slideCount - 1}
+            badge={slide.badge}
+            ctaButton={slide.ctaButton}
+          />
+        </TransitionSeries.Sequence>,
+      );
+      if (i < slideCount - 1) {
+        children.push(
+          <TransitionSeries.Transition
+            key={`tr-${i}`}
+            presentation={transitionPresentation}
+            timing={linearTiming({ durationInFrames: transitionFrames })}
+          />,
+        );
+      }
+    });
+
+    return (
+      <BackgroundLayer colors={preset.colors} meshCircles={preset.mesh}>
+        <TransitionSeries>{children}</TransitionSeries>
+        <ProgressBar color={preset.colors.accent} />
+        {audio?.url && (
+          <Sequence from={0}>
+            <Audio src={audio.url} />
+          </Sequence>
+        )}
+      </BackgroundLayer>
+    );
+  }
+
+  // ── Kinetic 모드 (기존 Hook/Body/CTA 3씬) ──────────────
 
   return (
     <BackgroundLayer colors={preset.colors} meshCircles={preset.mesh}>
@@ -126,10 +185,22 @@ export const ShortformComposition = ({
 };
 
 export function buildShortformTimeline(props) {
+  const { transitionFrames } = resolveTransition(props?.sceneTransition || 'slide');
+
+  // Slideshow 모드: totalDurationInFrames 우선, 없으면 slide 수 × 180 (6초) 폴백
+  if (props?.mode === 'slideshow' && Array.isArray(props?.slides) && props.slides.length > 0) {
+    const total = props.totalDurationInFrames || (props.slides.length * 180);
+    // transition 개수 = slides - 1
+    const netTransitions = transitionFrames * Math.max(props.slides.length - 1, 0);
+    return {
+      durationInFrames: Math.max(total - netTransitions, SHORTFORM_FPS),
+    };
+  }
+
+  // Kinetic 모드 (기존 Hook/Body/CTA 3씬)
   const hookFrames = props?.hook?.durationInFrames || 90;
   const bodyFrames = props?.body?.durationInFrames || 270;
   const ctaFrames = props?.cta?.durationInFrames || 90;
-  const { transitionFrames } = resolveTransition(props?.sceneTransition || 'slide');
   // TransitionSeries는 transition 시간만큼 sequence가 겹치므로 total = sum - 2*transition
   const durationInFrames = hookFrames + bodyFrames + ctaFrames - 2 * transitionFrames;
   return {

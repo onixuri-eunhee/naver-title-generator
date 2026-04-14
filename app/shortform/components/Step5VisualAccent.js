@@ -4,21 +4,25 @@ import { useState } from 'react';
 import ImagePickerModal from '@/components/ImagePickerModal';
 import styles from './Step5VisualAccent.module.css';
 
-const MAX_USER_PHOTOS = 3;
+const MAX_PHOTOS_KINETIC = 3;
+const MAX_PHOTOS_SLIDESHOW = 10;
+const MAX_AI_KINETIC = 2;
+const MAX_AI_SLIDESHOW = 8;
 
 /**
  * Step 5 — 비주얼 액센트
  *
- * 메인 영상은 키네틱 타이포로 자동 생성되고, 사용자는 액센트로
- * 내 사진 0~3장 + AI 이미지 0~2장을 얹을 수 있다.
+ * kinetic 모드: 사진 0~3장 + AI 0~2장 (최대 5장)
+ * slideshow 모드: 사진 0~10장 + AI 0~8장 (최대 18장, 각 씬 1장씩)
  *
  * Props:
- * - value: { userPhotos: Array<{image, crop}>, aiImageCount: 0|1|2, aiImages: string[] }
+ * - value: { userPhotos: Array<{image, crop}>, aiImageCount: number, aiImages: string[] }
  * - onChange: (nextValue) => void
  * - onGenerateAI: (count) => Promise<string[]>  // blog-image-pro 호출
  * - aiStatus: 'idle' | 'busy' | 'done' | 'error'
  * - onNext: () => void
  * - onBack?: () => void
+ * - videoMode?: 'kinetic' | 'slideshow'
  */
 export default function Step5VisualAccent({
   value,
@@ -27,12 +31,16 @@ export default function Step5VisualAccent({
   aiStatus = 'idle',
   onNext,
   onBack,
+  videoMode = 'kinetic',
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const userPhotos = value?.userPhotos || [];
   const aiImageCount = value?.aiImageCount ?? 1;
   const aiImages = value?.aiImages || [];
+
+  const MAX_USER_PHOTOS = videoMode === 'slideshow' ? MAX_PHOTOS_SLIDESHOW : MAX_PHOTOS_KINETIC;
+  const MAX_AI_IMAGES = videoMode === 'slideshow' ? MAX_AI_SLIDESHOW : MAX_AI_KINETIC;
 
   function addUserPhoto(payload) {
     if (userPhotos.length >= MAX_USER_PHOTOS) return;
@@ -69,11 +77,19 @@ export default function Step5VisualAccent({
     <div className={styles.root}>
       <div className={styles.intro}>
         <h2 className={styles.title}>비주얼 액센트</h2>
-        <p className={styles.description}>
-          메인 영상은 키네틱 타이포로 만들어져요.<br />
-          핵심 순간에만 사진 1~2장을 얹으면 결과물이 한 단계 올라갑니다.
-          <br /><span className={styles.hint}>(없어도 괜찮아요 — 그냥 다음으로 넘어가셔도 돼요)</span>
-        </p>
+        {videoMode === 'slideshow' ? (
+          <p className={styles.description}>
+            슬라이드쇼 모드 — <strong>각 씬마다 이미지 1장씩 필요</strong>해요.<br />
+            사진 최대 {MAX_USER_PHOTOS}장 + AI 이미지 최대 {MAX_AI_IMAGES}장.
+            <br /><span className={styles.hint}>(이미지가 부족하면 남는 씬은 반복 사용됩니다)</span>
+          </p>
+        ) : (
+          <p className={styles.description}>
+            메인 영상은 키네틱 타이포로 만들어져요.<br />
+            핵심 순간에만 사진 1~2장을 얹으면 결과물이 한 단계 올라갑니다.
+            <br /><span className={styles.hint}>(없어도 괜찮아요 — 그냥 다음으로 넘어가셔도 돼요)</span>
+          </p>
+        )}
       </div>
 
       {/* 내 사진 섹션 */}
@@ -135,11 +151,20 @@ export default function Step5VisualAccent({
         </div>
 
         <div className={styles.radioRow}>
-          {[
-            { value: 0, label: '사용 안 함', meta: '' },
-            { value: 1, label: '1장 생성', meta: '3 크레딧' },
-            { value: 2, label: '2장 생성', meta: '6 크레딧' },
-          ].map((opt) => (
+          {(videoMode === 'slideshow'
+            ? [
+                { value: 0, label: '사용 안 함', meta: '' },
+                { value: 2, label: '2장', meta: '6 크레딧' },
+                { value: 4, label: '4장', meta: '12 크레딧' },
+                { value: 6, label: '6장', meta: '18 크레딧' },
+                { value: 8, label: '8장', meta: '24 크레딧' },
+              ]
+            : [
+                { value: 0, label: '사용 안 함', meta: '' },
+                { value: 1, label: '1장 생성', meta: '3 크레딧' },
+                { value: 2, label: '2장 생성', meta: '6 크레딧' },
+              ]
+          ).map((opt) => (
             <button
               key={opt.value}
               type="button"
