@@ -4,11 +4,17 @@ import { useState } from 'react';
 import { PERSONAS, TONES } from '@/lib/shortform-personas';
 import styles from './Step1Input.module.css';
 
-const DURATIONS = [
+const SHORTFORM_DURATIONS = [
   { sec: 30, label: '30초' },
   { sec: 45, label: '45초' },
   { sec: 60, label: '60초' },
   { sec: 90, label: '90초' },
+];
+
+const LONGFORM_DURATIONS = [
+  { sec: 180, label: '3분' },
+  { sec: 300, label: '5분' },
+  { sec: 600, label: '10분' },
 ];
 
 /**
@@ -18,8 +24,11 @@ const DURATIONS = [
  * - value: { contentMode, blogText, keywords, userExperience, persona, customPersonaLabel, tone, durationSec }
  * - onChange: (next) => void
  * - onNext: () => void  // 검증 통과 시 다음 단계로
+ * - contentType?: 'shortform' | 'longform'  // v2.1 — duration 옵션 분기
  */
-export default function Step1Input({ value, onChange, onNext }) {
+export default function Step1Input({ value, onChange, onNext, contentType = 'shortform' }) {
+  const DURATIONS = contentType === 'longform' ? LONGFORM_DURATIONS : SHORTFORM_DURATIONS;
+  const lengthLabel = contentType === 'longform' ? '롱폼 길이' : '영상 길이';
   const [error, setError] = useState('');
 
   function update(patch) {
@@ -159,7 +168,7 @@ export default function Step1Input({ value, onChange, onNext }) {
       </div>
 
       <div className={styles.section}>
-        <div className={styles.sectionTitle}>4. 영상 길이</div>
+        <div className={styles.sectionTitle}>4. {lengthLabel}</div>
         <div className={styles.durationRow}>
           {DURATIONS.map((d) => (
             <button

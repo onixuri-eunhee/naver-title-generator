@@ -76,6 +76,19 @@ const DURATIONS = [
   { sec: 90, label: '90초' },
 ];
 
+// v2.1: 롱폼 옵션 (3/5/10분)
+const LONGFORM_DURATIONS = [
+  { sec: 180, label: '3분' },
+  { sec: 300, label: '5분' },
+  { sec: 600, label: '10분' },
+];
+
+// 크레딧 비용 테이블 — 미리보기/렌더 시 동일 사용
+const CREDIT_COSTS = {
+  shortform: { 30: 7, 45: 10, 60: 14, 90: 18 },
+  longform: { 180: 7, 300: 12, 600: 22 },
+};
+
 function authHeaders() {
   const h = { 'Content-Type': 'application/json' };
   const tk = getToken();
@@ -217,6 +230,8 @@ function ShortformClientInner() {
 
   // === Step 1 입력 통합 state (Phase A) ===
   const [currentStep, setCurrentStep] = useState(1);
+  // v2.1: 콘텐츠 타입 (shortform | longform) — Step 1 최상단 토글
+  const [contentType, setContentType] = useState('shortform');
   const [step1Value, setStep1Value] = useState({
     contentMode: 'blog', // 'blog' | 'keyword'
     blogText: '',
@@ -406,6 +421,21 @@ function ShortformClientInner() {
   }
   // === /Phase K ===
 
+  // v2.1: contentType 변경 시 유효한 duration으로 리셋
+  function handleContentTypeChange(next) {
+    setContentType(next);
+    setStep1Value((prev) => {
+      const validDurations = next === 'longform' ? [180, 300, 600] : [30, 45, 60, 90];
+      if (validDurations.includes(prev.durationSec)) return prev;
+      return {
+        ...prev,
+        durationSec: next === 'longform' ? 180 : 45,
+      };
+    });
+    // 레거시 state 동기화
+    setTotalDurationSec(next === 'longform' ? 180 : 30);
+  }
+
   // blog-writer 핸드오프 (Phase A: step1Value로 매핑)
   useEffect(() => {
     try {
@@ -585,6 +615,8 @@ function ShortformClientInner() {
           blogText: '',
           personaMemo: memo,
           tone,
+          // v2.1: contentType + 롱폼 duration 지원
+          contentType,
           targetDurationSec: totalDurationSec,
           concept: 'cinematic',
         }),
@@ -802,10 +834,103 @@ function ShortformClientInner() {
       {/* Step 1: 새 입력 폼 */}
       {currentStep === 1 && (
         <div className={styles.stepContainer}>
+          {/* v2.1: 콘텐츠 타입 토글 (숏폼 vs 롱폼) */}
+          <div
+            style={{
+              marginBottom: 20,
+              padding: '16px 20px',
+              background: 'var(--ds-bg-soft, #F4F2EC)',
+              border: '1px solid var(--ds-border, #ECE9E2)',
+              borderRadius: 12,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                marginBottom: 10,
+                color: 'var(--ds-text, #1F2937)',
+              }}
+            >
+              영상 타입
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => handleContentTypeChange('shortform')}
+                style={{
+                  flex: 1,
+                  padding: '14px 16px',
+                  borderRadius: 10,
+                  border:
+                    contentType === 'shortform'
+                      ? '2px solid var(--ds-accent, #F95A1F)'
+                      : '1.5px solid var(--ds-border, #E5E7EB)',
+                  background:
+                    contentType === 'shortform' ? 'rgba(255, 95, 31, 0.06)' : '#fff',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>
+                  🎬 숏폼 (30~90초)
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--ds-muted, #77736B)',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  릴스·쇼츠·틱톡. 후킹 + 공감 루프 3씬.
+                </div>
+                <div style={{ fontSize: 11, marginTop: 6, color: 'var(--ds-muted, #77736B)' }}>
+                  7~18 크레딧
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleContentTypeChange('longform')}
+                style={{
+                  flex: 1,
+                  padding: '14px 16px',
+                  borderRadius: 10,
+                  border:
+                    contentType === 'longform'
+                      ? '2px solid var(--ds-accent, #F95A1F)'
+                      : '1.5px solid var(--ds-border, #E5E7EB)',
+                  background:
+                    contentType === 'longform' ? 'rgba(255, 95, 31, 0.06)' : '#fff',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>
+                  🎞 롱폼 (3~10분)
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--ds-muted, #77736B)',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  유튜브 본편. Hook/Body×4/Conclusion/CTA 7씬.
+                </div>
+                <div style={{ fontSize: 11, marginTop: 6, color: 'var(--ds-muted, #77736B)' }}>
+                  7~22 크레딧
+                </div>
+              </button>
+            </div>
+          </div>
+
           <Step1Input
             value={step1Value}
             onChange={setStep1Value}
             onNext={handleStep1Next}
+            contentType={contentType}
           />
         </div>
       )}
