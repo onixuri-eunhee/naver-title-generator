@@ -12,7 +12,19 @@ import {
   SHORTFORM_WIDTH,
   SHORTFORM_HEIGHT,
 } from '@/remotion/shortform/styles';
+import StepProgress from '@/components/StepProgress';
+import Step1Input from './components/Step1Input';
 import styles from './page.module.css';
+
+const STEP_LIST = [
+  { id: 1, label: '입력' },
+  { id: 2, label: '벤치마킹' },
+  { id: 3, label: '대본' },
+  { id: 4, label: '음성' },
+  { id: 5, label: '비주얼' },
+  { id: 6, label: '미리보기' },
+  { id: 7, label: '다운로드' },
+];
 
 // Player는 클라이언트 전용 — dynamic import로 SSR 방지
 const Player = dynamic(
@@ -112,7 +124,21 @@ export default function ShortformClient() {
   const router = useRouter();
   const { user } = useAuth();
 
-  // 입력
+  // === Step 1 입력 통합 state (Phase A) ===
+  const [currentStep, setCurrentStep] = useState(1);
+  const [step1Value, setStep1Value] = useState({
+    contentMode: 'blog', // 'blog' | 'keyword'
+    blogText: '',
+    keywords: '',
+    userExperience: '',
+    persona: '',
+    customPersonaLabel: '',
+    tone: 'casual',
+    durationSec: 45,
+  });
+  const [completedSteps, setCompletedSteps] = useState([]);
+
+  // 입력 (역호환 레거시 state — runAll/generateScript 등에서 계속 사용)
   const [topic, setTopic] = useState('');
   const [memo, setMemo] = useState('');
   const [tone, setTone] = useState('casual');
@@ -131,18 +157,41 @@ export default function ShortformClient() {
   const [error, setError] = useState('');
   const [ttsVoice, setTtsVoice] = useState('52dc253df44d06aa7f0867'); // Bella (Supertone)
 
-  // blog-writer 핸드오프
+  // blog-writer 핸드오프 (Phase A: step1Value로 매핑)
   useEffect(() => {
     try {
       const raw = localStorage.getItem('blogTextForShortform');
       if (raw) {
         localStorage.removeItem('blogTextForShortform');
         const data = JSON.parse(raw);
+        // 새 step1Value 기준으로 반영
+        setStep1Value((prev) => ({
+          ...prev,
+          contentMode: 'blog',
+          blogText: data.blogText || data.topic || '',
+          userExperience: data.memo || prev.userExperience,
+        }));
+        // 역호환 레거시 state도 유지
         if (data.topic) setTopic(data.topic);
         if (data.memo) setMemo(data.memo);
       }
     } catch (_) {}
   }, []);
+
+  // Step 1 → 2 이동: step1Value를 레거시 state로 매핑하여 역호환 유지
+  function handleStep1Next() {
+    setTopic(step1Value.contentMode === 'keyword' ? step1Value.keywords : (step1Value.blogText.slice(0, 100) || ''));
+    setMemo(step1Value.userExperience);
+    setTone(step1Value.tone === 'casual' ? 'casual' : 'professional');
+    setTotalDurationSec(step1Value.durationSec);
+
+    setCompletedSteps((prev) => Array.from(new Set([...prev, 1])));
+    setCurrentStep(2);
+  }
+
+  function handleStepClick(stepNum) {
+    setCurrentStep(stepNum);
+  }
 
   // 미리보기 props + duration 계산
   const playerProps = useMemo(() => {
@@ -290,6 +339,29 @@ export default function ShortformClient() {
         <p>주제만 입력하면 AI 대본 + Ken Burns 이미지 + TTS로<br />프리미엄 숏폼 영상을 자동 생성합니다</p>
       </div>
 
+      {/* Phase A: StepProgress 표시 */}
+      <div className={styles.stepProgressWrap}>
+        <StepProgress
+          steps={STEP_LIST}
+          currentStep={currentStep}
+          completedSteps={completedSteps}
+          onStepClick={handleStepClick}
+        />
+      </div>
+
+      {/* Step 1: 새 입력 폼 */}
+      {currentStep === 1 && (
+        <div className={styles.stepContainer}>
+          <Step1Input
+            value={step1Value}
+            onChange={setStep1Value}
+            onNext={handleStep1Next}
+          />
+        </div>
+      )}
+
+      {/* Step 2~7: 기존 UI를 임시 유지 (Phase B/C에서 단계별 교체) */}
+      {currentStep >= 2 && (
       <div className={styles.layout}>
         <div className={styles.left}>
           <div className={styles.card}>
@@ -481,6 +553,7 @@ export default function ShortformClient() {
           )}
         </div>
       </div>
+      )}
     </main>
   );
 }
