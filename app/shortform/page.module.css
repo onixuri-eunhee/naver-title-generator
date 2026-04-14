@@ -366,3 +366,16 @@
 }
 .scriptPreview h5:first-child { margin-top: 0; }
 .scriptPreview p { margin-bottom: 6px; }
+
+/* === Phase A: Step 진행 표시 === */
+.stepProgressWrap {
+  max-width: 900px;
+  margin: 0 auto 24px;
+  padding: 0 20px;
+}
+
+.stepContainer {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 20px 80px;
+}
