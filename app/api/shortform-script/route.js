@@ -18,12 +18,20 @@ import {
 } from '@/lib/job-progress';
 import { CancelledError } from '@/lib/cancelled-error';
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const SHORTFORM_CREDIT_COSTS = { 30: 7, 45: 10, 60: 14, 90: 18 };
+const LONGFORM_CREDIT_COSTS = { 180: 7, 300: 12, 600: 22 };
+const CREDIT_COSTS = {
+  shortform: SHORTFORM_CREDIT_COSTS,
+  longform: LONGFORM_CREDIT_COSTS,
+};
 const MODEL = 'claude-opus-4-6';
 
 const SCENE_COUNTS = { 30: 7, 45: 10, 60: 14, 90: 20 };
+const LONGFORM_SCENE_COUNT = 7;
+const VALID_SHORTFORM_DURATIONS = [30, 45, 60, 90];
+const VALID_LONGFORM_DURATIONS = [180, 300, 600];
 
 const CONCEPTS = {
   cinematic: {
@@ -331,6 +339,74 @@ function postProcessScenes(scenes, targetSceneCount) {
   return scenes;
 }
 
+/**
+ * 롱폼 전용 payload 빌더 — section/type 보존.
+ * postProcessScenes(숏폼 전용 greedy 병합/분할) 건드리지 않음.
+ * 7씬 구조 (hook / body1~4 / conclusion / cta) 검증만 수행.
+ */
+const LONGFORM_SECTIONS = ['hook', 'body1', 'body2', 'body3', 'body4', 'conclusion', 'cta'];
+
+function buildLongformScriptPayload(parsed, concept) {
+  let scenes = Array.isArray(parsed?.scenes) ? parsed.scenes : [];
+  scenes = scenes.filter((s) => s && typeof s.script === 'string' && s.script.trim());
+
+  if (scenes.length < 3) {
+    throw new Error('Claude 롱폼 응답에서 유효한 scenes가 3개 미만입니다.');
+  }
+
+  scenes.forEach((s, i) => {
+    s.script = toSentence(s.script);
+    // 섹션 기본값 보정 — 없거나 잘못되면 위치 기반 추론
+    if (!LONGFORM_SECTIONS.includes(s.section)) {
+      s.section = LONGFORM_SECTIONS[i] || 'body1';
+    }
+    // scene type (v2.1) 보존. 허용값 아니면 text 폴백.
+    const allowed = ['text', 'comparison', 'emphasis', 'testimonial', 'data', 'flow', 'broll'];
+    if (!allowed.includes(s.type)) s.type = 'text';
+    if (s.type === 'broll') s.type = 'text'; // 롱폼은 broll 개념 없음
+    s.visual = toSentence(s.visual) || 'long-form cinematic supporting visual for the narration';
+  });
+
+  // 7씬에 못 미치면 마지막 씬 복제로 패딩 (Claude가 짧게 내린 경우)
+  while (scenes.length < 7) {
+    const last = scenes[scenes.length - 1];
+    scenes.push({ ...last, section: LONGFORM_SECTIONS[scenes.length] || 'body4' });
+  }
+  // 7씬 초과면 절단
+  if (scenes.length > 7) scenes = scenes.slice(0, 7);
+
+  // 섹션 재할당 (위치 기반 고정)
+  scenes.forEach((s, i) => { s.section = LONGFORM_SECTIONS[i]; });
+
+  const hook = scenes[0]?.script || '';
+  const body = scenes.slice(1, 5).map((s) => s.script);
+  const conclusion = scenes[5]?.script || '';
+  const cta = scenes[6]?.script || '';
+  const fullScript = scenes.map((s) => s.script).join('\n\n');
+  const spokenLength = fullScript.replace(/\s+/g, '').length;
+  const estimatedSeconds = Math.max(1, Math.round(spokenLength / 5));
+
+  const hookText = scenes[0]?.hookText || '';
+
+  return {
+    contentType: 'longform',
+    hook,
+    body,
+    points: body, // 역호환 별칭
+    conclusion,
+    cta,
+    fullScript,
+    estimatedSeconds,
+    scenes,
+    visualStyle: concept.visualStyle,
+    textCardTemplate: concept.textCard,
+    conceptKey: concept.key,
+    hookText,
+  };
+}
+
+const SHORTFORM_SCENE_TYPES = ['text', 'comparison', 'emphasis', 'testimonial', 'data', 'flow'];
+
 function buildScriptPayload(parsed, concept, targetSceneCount) {
   let scenes = Array.isArray(parsed?.scenes) ? parsed.scenes : [];
 
@@ -338,8 +414,16 @@ function buildScriptPayload(parsed, concept, targetSceneCount) {
   scenes.forEach((s) => {
     s.script = toSentence(s.script);
     s.section = ['hook', 'point', 'cta'].includes(s.section) ? s.section : 'point';
+    // v2.1: scene type 보존 (text/comparison/emphasis/testimonial/data/flow).
+    // 레거시 'broll' 또는 미지정 → 'text'로 통일. BodyScene이 type별 라우팅.
+    if (!SHORTFORM_SCENE_TYPES.includes(s.sceneKind)) {
+      // sceneKind에 원본 저장 (새 필드, Agent A의 scriptToProps가 읽음)
+      const originalType = s.type;
+      s.sceneKind = SHORTFORM_SCENE_TYPES.includes(originalType) ? originalType : 'text';
+    }
+    // 레거시 type 필드는 'broll'로 유지 (기존 postProcessScenes/파이프라인 호환)
     s.type = 'broll';
-    s.visual = toSentence(s.visual) || (s.type === 'broll' ? 'generic B-roll scene' : s.script.slice(0, 15));
+    s.visual = toSentence(s.visual) || 'generic B-roll scene';
   });
 
   if (scenes.length < 3) {
@@ -437,12 +521,24 @@ export async function GET(request) {
   try {
     const isAdmin = await resolveAdmin(request);
     if (isAdmin) {
-      return jsonResponse(request, { remaining: 999, admin: true, creditCosts: SHORTFORM_CREDIT_COSTS });
+      return jsonResponse(request, {
+        remaining: 999,
+        admin: true,
+        creditCosts: SHORTFORM_CREDIT_COSTS,
+        shortformCreditCosts: SHORTFORM_CREDIT_COSTS,
+        longformCreditCosts: LONGFORM_CREDIT_COSTS,
+      });
     }
 
     const email = await resolveSessionEmail(extractToken(request));
     if (!email) {
-      return jsonResponse(request, { remaining: 0, loginRequired: true, creditCosts: SHORTFORM_CREDIT_COSTS });
+      return jsonResponse(request, {
+        remaining: 0,
+        loginRequired: true,
+        creditCosts: SHORTFORM_CREDIT_COSTS,
+        shortformCreditCosts: SHORTFORM_CREDIT_COSTS,
+        longformCreditCosts: LONGFORM_CREDIT_COSTS,
+      });
     }
 
     const freeUsed = await getRedis().get(`shortform-free:${email}`);
@@ -453,9 +549,16 @@ export async function GET(request) {
       freeAvailable: !freeUsed,
       credits: user?.credits || 0,
       creditCosts: SHORTFORM_CREDIT_COSTS,
+      shortformCreditCosts: SHORTFORM_CREDIT_COSTS,
+      longformCreditCosts: LONGFORM_CREDIT_COSTS,
     });
   } catch {
-    return jsonResponse(request, { remaining: 0, creditCosts: SHORTFORM_CREDIT_COSTS });
+    return jsonResponse(request, {
+      remaining: 0,
+      creditCosts: SHORTFORM_CREDIT_COSTS,
+      shortformCreditCosts: SHORTFORM_CREDIT_COSTS,
+      longformCreditCosts: LONGFORM_CREDIT_COSTS,
+    });
   }
 }
 
@@ -486,9 +589,19 @@ export async function POST(request) {
     const blogText = String(body.blogText || '').trim();
     const personaMemo = String(body.personaMemo || '').trim();
     const tone = body.tone === 'professional' ? 'professional' : 'casual';
-    const targetDurationSec = [30, 45, 60, 90].includes(Number(body.targetDurationSec))
+
+    // v2.1: contentType 분기 (shortform | longform)
+    const contentType = body.contentType === 'longform' ? 'longform' : 'shortform';
+    const isLongform = contentType === 'longform';
+
+    const validDurations = isLongform ? VALID_LONGFORM_DURATIONS : VALID_SHORTFORM_DURATIONS;
+    const defaultDuration = isLongform ? 180 : 30;
+    const targetDurationSec = validDurations.includes(Number(body.targetDurationSec))
       ? Number(body.targetDurationSec)
-      : 30;
+      : defaultDuration;
+
+    // 크레딧 비용 산출 (Phase F Step 7 실제 차감 시 사용)
+    const creditCost = CREDIT_COSTS[contentType]?.[targetDurationSec] || 0;
 
     // Phase D 신규 필드
     const personaId = String(body.personaId || body.persona || '').trim();
@@ -506,7 +619,9 @@ export async function POST(request) {
       ? body.concept
       : 'cinematic';
     const concept = resolveConcept(conceptInput);
-    const targetSceneCount = SCENE_COUNTS[targetDurationSec] || SCENE_COUNTS[30];
+    const targetSceneCount = isLongform
+      ? LONGFORM_SCENE_COUNT
+      : (SCENE_COUNTS[targetDurationSec] || SCENE_COUNTS[30]);
 
     if (!topic && !blogText && !keywords) {
       return jsonResponse(request, { error: 'topic/blogText/keywords 중 하나는 필요합니다.' }, { status: 400 });
@@ -538,8 +653,8 @@ export async function POST(request) {
       }
 
       console.log(
-        `[SHORTFORM-SCRIPT] Phase D path: persona=${personaId} tone=${tone} dur=${targetDurationSec}s ` +
-        `benchmark=${benchmarkAggregated ? 'yes' : 'no'} brandKit=${brandContext ? 'yes' : 'no'}`
+        `[SHORTFORM-SCRIPT] Phase D path: type=${contentType} persona=${personaId} tone=${tone} dur=${targetDurationSec}s ` +
+        `cost=${creditCost}cr benchmark=${benchmarkAggregated ? 'yes' : 'no'} brandKit=${brandContext ? 'yes' : 'no'}`
       );
 
       const flowResult = await generateScriptFlow({
@@ -550,6 +665,7 @@ export async function POST(request) {
         customPersonaLabel,
         customPersonaHint,
         tone,
+        contentType,
         durationSec: targetDurationSec,
         benchmarkAggregated,
         brandContext,
@@ -564,19 +680,34 @@ export async function POST(request) {
       });
       await checkCancelled(jobId, 'script:caption-done');
 
-      // flow 결과를 기존 buildScriptPayload 형식으로 변환 (postProcessScenes 재사용)
-      script = buildScriptPayload(
-        {
-          scenes: flowResult.scenes,
-          totalDuration: flowResult.totalDuration,
-          presetUsed: flowResult.presetUsed,
-        },
-        concept,
-        targetSceneCount
-      );
+      // flow 결과를 payload 형식으로 변환
+      if (isLongform) {
+        // 롱폼: postProcessScenes 미적용, section/type 보존
+        script = buildLongformScriptPayload(
+          {
+            scenes: flowResult.scenes,
+            totalDuration: flowResult.totalDuration,
+            presetUsed: flowResult.presetUsed,
+          },
+          concept,
+        );
+      } else {
+        // 숏폼: 기존 buildScriptPayload 재사용 (postProcessScenes 포함)
+        script = buildScriptPayload(
+          {
+            scenes: flowResult.scenes,
+            totalDuration: flowResult.totalDuration,
+            presetUsed: flowResult.presetUsed,
+          },
+          concept,
+          targetSceneCount,
+        );
+      }
       script.caption = flowResult.caption;
       script.warnings = flowResult.warnings;
       script.personaId = personaId;
+      script.contentType = contentType;
+      script.creditCost = creditCost;
     } else {
       // 레거시 경로 (역호환): 기존 callClaude 그대로
       const benchmarkKeyword = topic || (blogText ? blogText.slice(0, 50).replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim() : '');

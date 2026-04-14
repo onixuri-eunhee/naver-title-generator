@@ -24,9 +24,9 @@ const CACHE_TTL_SEC = 7 * 86400; // 7일 (스펙 §9)
 /**
  * 요청 캐시 키 — blogText + keywords 해시.
  */
-function makeCacheKey({ blogText, keywords }) {
+function makeCacheKey({ blogText, keywords, contentType }) {
   const hash = crypto.createHash('sha256')
-    .update(`${blogText || ''}|${keywords || ''}`)
+    .update(`${blogText || ''}|${keywords || ''}|${contentType || 'shortform'}`)
     .digest('hex')
     .slice(0, 32);
   return `bench:cache:${hash}`;
@@ -54,6 +54,9 @@ export async function POST(request) {
       ? body.keywords.join(', ').slice(0, 200)
       : '';
 
+  // v2.1: contentType 필터 (shortform=≤90s, longform=≥180s)
+  const contentType = body.contentType === 'longform' ? 'longform' : 'shortform';
+
   if (!blogText && !keywords) {
     return jsonResponse(request, { error: 'blogText 또는 keywords 중 하나는 필수입니다.' }, { status: 400 });
   }
@@ -66,8 +69,8 @@ export async function POST(request) {
   // ─ Phase I: jobId + SSE 진행 이벤트 ─
   const jobId = body.jobId || createJobId();
 
-  // ─ 캐시 확인 ─
-  const cacheKey = makeCacheKey({ blogText, keywords });
+  // ─ 캐시 확인 (contentType 포함 — shortform과 longform 분리 캐시) ─
+  const cacheKey = makeCacheKey({ blogText, keywords, contentType });
   try {
     const cached = await getRedis().get(cacheKey);
     if (cached) {
@@ -128,8 +131,8 @@ export async function POST(request) {
       subStep: `query-0/${expansion.searchQueries?.length || 5}`,
     });
     await checkCancelled(jobId, 'youtube-search:start');
-    console.log(`[BENCHMARK] Parallel search: ${expansion.searchQueries.join(' | ')}`);
-    const { videos, relaxed } = await benchmarkSearch(expansion.searchQueries, apiKey);
+    console.log(`[BENCHMARK] Parallel search (${contentType}): ${expansion.searchQueries.join(' | ')}`);
+    const { videos, relaxed } = await benchmarkSearch(expansion.searchQueries, apiKey, { contentType });
     await publishProgress(jobId, {
       type: 'step',
       step: 'youtube-search',
