@@ -420,6 +420,44 @@ export default function CardNewsClient() {
 
         {images.length > 0 && (
           <div ref={gridRef}>
+            {userImages.length > 0 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '14px 18px',
+                marginBottom: 12,
+                background: 'rgba(255, 95, 31, 0.08)',
+                border: '1.5px solid var(--ds-accent, #F95A1F)',
+                borderRadius: 12,
+                fontSize: 13,
+                color: 'var(--ds-text, #1F2937)',
+                flexWrap: 'wrap',
+              }}>
+                <span>
+                  🖼 <strong>{userImages.length}개</strong> 카드에 내 이미지 선택됨 — 아래 버튼을 눌러야 카드에 실제로 반영돼요
+                </span>
+                <button
+                  type="button"
+                  onClick={generate}
+                  disabled={loading}
+                  style={{
+                    padding: '10px 20px',
+                    background: 'var(--ds-accent, #F95A1F)',
+                    border: 'none',
+                    color: '#fff',
+                    borderRadius: 8,
+                    fontWeight: 800,
+                    fontSize: 13,
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  🖼 내 이미지 반영해서 재생성
+                </button>
+              </div>
+            )}
             {variantInfo && (
               <div style={{
                 display: 'flex',
