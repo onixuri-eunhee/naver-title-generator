@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth';
 import { useAuth } from '@/components/AuthProvider';
+import ImagePickerModal from '@/components/ImagePickerModal';
 import styles from './page.module.css';
 
 const SLIDE_COUNTS = [5, 6, 7, 8, 9, 10];
@@ -32,6 +33,12 @@ export default function CardNewsClient() {
   const [modalIdx, setModalIdx] = useState(null);
   const [zipBusy, setZipBusy] = useState(false);
   const [variantInfo, setVariantInfo] = useState(null);
+
+  // 사용자 이미지 선택 상태
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerCardIdx, setPickerCardIdx] = useState(null);
+  // userImages: [{ cardIndex, mode, url, crop }]
+  const [userImages, setUserImages] = useState([]);
 
   const gridRef = useRef(null);
 
@@ -120,6 +127,7 @@ export default function CardNewsClient() {
           typeScale: typeScale !== 'auto' ? typeScale : undefined,
           accentPlacement: accentPlacement !== 'auto' ? accentPlacement : undefined,
           numberStyle: numberStyle !== 'auto' ? numberStyle : undefined,
+          userImages: userImages.filter((u) => u.cardIndex < slideCount),
         }),
       });
 
@@ -452,23 +460,37 @@ export default function CardNewsClient() {
               </div>
             )}
             <div className={styles.previewGrid}>
-              {images.map((base64, i) => (
-                <div
-                  key={i}
-                  className={styles.previewItem}
-                  onClick={() => setModalIdx(i)}
-                >
-                  <img src={`data:image/png;base64,${base64}`} alt={`슬라이드 ${i + 1}`} />
-                  <span className={styles.previewNum}>{i + 1}</span>
-                  <button
-                    type="button"
-                    className={styles.previewDl}
-                    onClick={(e) => { e.stopPropagation(); downloadSingleSlide(i); }}
+              {images.map((base64, i) => {
+                const hasUserImg = userImages.some((u) => u.cardIndex === i);
+                return (
+                  <div
+                    key={i}
+                    className={styles.previewItem}
+                    onClick={() => setModalIdx(i)}
                   >
-                    저장
-                  </button>
-                </div>
-              ))}
+                    <img src={`data:image/png;base64,${base64}`} alt={`슬라이드 ${i + 1}`} />
+                    <span className={styles.previewNum}>{i + 1}</span>
+                    {hasUserImg && <span className={styles.previewUserImg}>내 사진</span>}
+                    <button
+                      type="button"
+                      className={styles.previewPhotoBtn}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPickerCardIdx(i);
+                        setPickerOpen(true);
+                      }}
+                      aria-label="사진 넣기"
+                    >📷</button>
+                    <button
+                      type="button"
+                      className={styles.previewDl}
+                      onClick={(e) => { e.stopPropagation(); downloadSingleSlide(i); }}
+                    >
+                      저장
+                    </button>
+                  </div>
+                );
+              })}
             </div>
             <button
               type="button"
@@ -496,6 +518,23 @@ export default function CardNewsClient() {
           </div>
         </div>
       )}
+
+      <ImagePickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        modeOptions={['background', 'content', 'cover']}
+        defaultMode="content"
+        aspectRatio={4 / 5}
+        onSelect={({ image, crop, mode }) => {
+          setUserImages((prev) => {
+            const filtered = prev.filter((u) => u.cardIndex !== pickerCardIdx);
+            return [
+              ...filtered,
+              { cardIndex: pickerCardIdx, mode, url: image.public_url, crop },
+            ];
+          });
+        }}
+      />
     </main>
   );
 }
