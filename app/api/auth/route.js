@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { getRedis, getClientIp, extractToken, jsonResponse, handleOptions, ADMIN_EMAILS } from '@/lib/api-helpers';
 import { getDb } from '@/lib/db';
+import { getOnboardingState, isEligibleForFreeFirstShortform } from '@/lib/shortform-onboarding';
 
 function hashPassword(password, salt) {
   return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
@@ -157,6 +158,22 @@ async function handleMe(request) {
   const userData = typeof userRaw === 'string' ? JSON.parse(userRaw) : userRaw;
   const isAdmin = ADMIN_EMAILS.includes(session.email.toLowerCase());
 
+  // Phase K: 숏폼 온보딩 상태 + 첫 영상 무료 자격 포함 (실패 시 non-fatal)
+  let onboarding = null;
+  try {
+    onboarding = await getOnboardingState(session.email);
+  } catch (err) {
+    console.error('[AUTH /me] onboarding state 조회 실패:', err?.message);
+  }
+  let eligibleForFreeFirstShortform = false;
+  try {
+    if (!onboarding?.firstShortformAt) {
+      eligibleForFreeFirstShortform = await isEligibleForFreeFirstShortform(session.email);
+    }
+  } catch (err) {
+    console.error('[AUTH /me] free-first 판정 실패:', err?.message);
+  }
+
   return jsonResponse(request, {
     name: userData.name,
     email: session.email,
@@ -164,6 +181,9 @@ async function handleMe(request) {
     credits: userData.credits,
     createdAt: userData.createdAt,
     isAdmin,
+    onboardingCompleted: onboarding?.onboardingCompleted ?? false,
+    firstShortformAt: onboarding?.firstShortformAt ?? null,
+    eligibleForFreeFirstShortform,
   });
 }
 
