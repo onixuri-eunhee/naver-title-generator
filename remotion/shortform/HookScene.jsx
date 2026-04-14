@@ -5,7 +5,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
-import { FONTS, SIZES, SPRING_CONFIG } from './styles';
+import { FONTS, SIZES, SPRING_CONFIG, buildSubtitleStyle, textPositionToAlign } from './styles';
 import { breathe } from './utils';
 import { KenBurnsImage } from './KenBurnsImage';
 import { KineticText } from './kineticText';
@@ -22,6 +22,9 @@ export const HookScene = ({
   underlineText,
   imageUrl,
   preset,
+  subtitle,
+  textPosition = 'center',
+  cameraMotion,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -36,12 +39,23 @@ export const HookScene = ({
 
   const kineticVariant = preset.kineticHook || 'wordReveal';
 
+  // Phase F: subtitle override 스타일
+  const subtitleStyle = buildSubtitleStyle(subtitle, textPosition);
+  const justifyContent = textPositionToAlign(textPosition);
+
   return (
     <AbsoluteFill>
-      {imageUrl && <KenBurnsImage src={imageUrl} overlay={0.5} seed={`hook-${title}`} />}
+      {imageUrl && (
+        <KenBurnsImage
+          src={imageUrl}
+          overlay={0.5}
+          seed={`hook-${title}`}
+          cameraMotion={cameraMotion}
+        />
+      )}
       <AbsoluteFill
         style={{
-          justifyContent: 'center',
+          justifyContent,
           alignItems: 'center',
           padding: 80,
         }}
@@ -96,6 +110,8 @@ export const HookScene = ({
             letterSpacing: -0.5,
             textShadow: imageUrl ? '0 8px 32px rgba(0,0,0,0.6)' : 'none',
             transform: `scale(${breath})`,
+            // Phase F — subtitle override
+            ...(subtitleStyle || {}),
           }}
         />
         {underlineText && (
