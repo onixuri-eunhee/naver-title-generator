@@ -367,6 +367,46 @@
 .scriptPreview h5:first-child { margin-top: 0; }
 .scriptPreview p { margin-bottom: 6px; }
 
+/* === Phase H: Draft 복원 배너 === */
+.restoreBanner {
+  max-width: 900px;
+  margin: 0 auto 12px;
+  padding: 10px 14px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 10px;
+  font-size: 12px;
+  color: #1E40AF;
+}
+.restoreBannerSuccess {
+  max-width: 900px;
+  margin: 0 auto 12px;
+  padding: 10px 14px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 10px;
+  font-size: 12px;
+  color: #065F46;
+}
+.restoreBannerError {
+  max-width: 900px;
+  margin: 0 auto 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: #FEE2E2;
+  border: 1px solid #FECACA;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #B91C1C;
+}
+.restoreBannerLink {
+  color: var(--ds-accent, #ff5f1f);
+  font-weight: 700;
+  text-decoration: none;
+}
+
 /* === Phase A: Step 진행 표시 === */
 .stepProgressWrap {
   max-width: 900px;

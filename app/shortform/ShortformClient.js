@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getToken } from '@/lib/auth';
 import { useAuth } from '@/components/AuthProvider';
 import { ShortformComposition, buildShortformTimeline } from '@/remotion/shortform/ShortformComposition.jsx';
@@ -15,6 +15,7 @@ import {
 import StepProgress from '@/components/StepProgress';
 import Step1Input from './components/Step1Input';
 import Step5VisualAccent from './components/Step5VisualAccent';
+import useProjectAutoSave from './hooks/useProjectAutoSave';
 import styles from './page.module.css';
 
 const STEP_LIST = [
@@ -135,8 +136,10 @@ function Status({ status, label, meta }) {
   );
 }
 
-export default function ShortformClient() {
+function ShortformClientInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get('projectId');
   const { user } = useAuth();
 
   // === Step 1 입력 통합 state (Phase A) ===
@@ -180,6 +183,39 @@ export default function ShortformClient() {
   });
   const [aiImageGenStatus, setAiImageGenStatus] = useState('idle');
 
+  // === Phase H: Draft 복원 state ===
+  const [restoredProjectId, setRestoredProjectId] = useState(null);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreError, setRestoreError] = useState('');
+
+  // === Phase H: 자동 저장 훅 활성화 (Phase C 훅 사용) ===
+  const authTokenForSave = typeof window !== 'undefined'
+    ? localStorage.getItem('ddukddak_token')
+    : null;
+  const autoSaveSnapshot = useMemo(() => ({
+    current_step: currentStep,
+    blog_text: step1Value.blogText || null,
+    keywords: step1Value.keywords
+      ? step1Value.keywords.split(',').map((k) => k.trim()).filter(Boolean)
+      : null,
+    user_experience: step1Value.userExperience || null,
+    persona: step1Value.persona || null,
+    tone: step1Value.tone || null,
+    duration_sec: step1Value.durationSec || null,
+    script_json: script || null,
+    preset: presetKey || null,
+  }), [currentStep, step1Value, script, presetKey]);
+
+  // savedProjectId/autoSaving/autoSavedAt는 현재 UI에 사용 안함 — Phase I(SSE)에서 활용 예정
+  // eslint-disable-next-line no-unused-vars
+  const autoSave = useProjectAutoSave({
+    authToken: authTokenForSave,
+    enabled: !!(user && user.email),
+    snapshot: autoSaveSnapshot,
+    initialProjectId: restoredProjectId ? Number(restoredProjectId) : null,
+    debounceMs: 1500,
+  });
+
   // blog-writer 핸드오프 (Phase A: step1Value로 매핑)
   useEffect(() => {
     try {
@@ -200,6 +236,82 @@ export default function ShortformClient() {
       }
     } catch (_) {}
   }, []);
+
+  // === Phase H: ?projectId 쿼리로 Draft 복원 ===
+  useEffect(() => {
+    if (!projectId) return;
+    if (restoredProjectId === projectId) return;
+
+    const token = typeof window !== 'undefined'
+      ? localStorage.getItem('ddukddak_token')
+      : null;
+    if (!token) return;
+
+    setRestoring(true);
+    setRestoreError('');
+    fetch(`/api/shortform-projects/${projectId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data || !data.project) {
+          setRestoreError('프로젝트를 찾을 수 없습니다.');
+          return;
+        }
+        const p = data.project;
+
+        // Step 1 입력 복원 — step1Value 스키마로 역매핑
+        setStep1Value((prev) => ({
+          ...prev,
+          contentMode: p.blog_text ? 'blog' : (p.keywords ? 'keyword' : prev.contentMode),
+          blogText: p.blog_text || prev.blogText,
+          keywords: Array.isArray(p.keywords)
+            ? p.keywords.join(', ')
+            : (p.keywords || prev.keywords),
+          userExperience: p.user_experience || prev.userExperience,
+          persona: p.persona || prev.persona,
+          tone: p.tone || prev.tone,
+          durationSec: p.duration_sec || prev.durationSec,
+        }));
+
+        // 역호환 레거시 state
+        if (p.blog_text || p.keywords) {
+          setTopic(
+            p.blog_text ? p.blog_text.slice(0, 100)
+            : Array.isArray(p.keywords) ? p.keywords.join(', ')
+            : (p.keywords || ''),
+          );
+        }
+        if (p.user_experience) setMemo(p.user_experience);
+        if (p.tone) setTone(p.tone === 'casual' ? 'casual' : 'professional');
+        if (p.duration_sec) setTotalDurationSec(p.duration_sec);
+
+        // Step 3 대본 복원
+        if (p.script_json) {
+          setScript(p.script_json);
+          setScriptStatus('done');
+        }
+
+        // Step 6 프리셋 복원
+        if (p.preset) setPresetKey(p.preset);
+
+        // 완료된 단계 배지 (current_step 미만은 전부 completed로 마킹)
+        if (p.current_step && p.current_step > 1) {
+          const completed = [];
+          for (let i = 1; i < p.current_step; i += 1) completed.push(i);
+          setCompletedSteps(completed);
+          setCurrentStep(p.current_step);
+        }
+
+        setRestoredProjectId(projectId);
+      })
+      .catch((err) => {
+        setRestoreError(err?.message || '복원에 실패했습니다.');
+      })
+      .finally(() => {
+        setRestoring(false);
+      });
+  }, [projectId, restoredProjectId]);
 
   // Step 1 → 2 이동: step1Value를 레거시 state로 매핑하여 역호환 유지
   function handleStep1Next() {
@@ -418,6 +530,26 @@ export default function ShortformClient() {
         <h1>릴스·쇼츠를<br /><em>5분 만에 뚝딱</em></h1>
         <p>주제만 입력하면 AI 대본 + Ken Burns 이미지 + TTS로<br />프리미엄 숏폼 영상을 자동 생성합니다</p>
       </div>
+
+      {/* Phase H: Draft 복원 배너 */}
+      {restoring && (
+        <div className={styles.restoreBanner}>
+          작업 중이던 프로젝트를 불러오는 중...
+        </div>
+      )}
+      {restoreError && (
+        <div className={styles.restoreBannerError}>
+          <span>{restoreError}</span>
+          <a href="/shortform" className={styles.restoreBannerLink}>
+            새로 시작
+          </a>
+        </div>
+      )}
+      {restoredProjectId && !restoring && !restoreError && (
+        <div className={styles.restoreBannerSuccess}>
+          작업 중이던 프로젝트를 이어서 작업합니다 (Step {currentStep})
+        </div>
+      )}
 
       {/* Phase A: StepProgress 표시 */}
       <div className={styles.stepProgressWrap}>
@@ -667,5 +799,23 @@ export default function ShortformClient() {
         </div>
       )}
     </main>
+  );
+}
+
+// Next.js 15: useSearchParams는 Suspense 경계 내부여야 함.
+export default function ShortformClient() {
+  return (
+    <Suspense
+      fallback={
+        <main className={styles.root}>
+          <div className={styles.hero}>
+            <div className={styles.heroBadge}>NEW · 숏폼</div>
+            <h1>불러오는 중...</h1>
+          </div>
+        </main>
+      }
+    >
+      <ShortformClientInner />
+    </Suspense>
   );
 }
