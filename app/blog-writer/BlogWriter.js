@@ -67,8 +67,51 @@ const EXAMPLES = [
   },
 ];
 
+/**
+ * String value 안의 raw 줄바꿈/탭/제어 문자를 escape 시퀀스로 치환.
+ * Claude가 JSON 출력할 때 본문 내 literal newline을 넣어 JSON.parse가
+ * 실패하는 케이스 대응.
+ */
+function normalizeJsonEscape(text) {
+  let result = '';
+  let inStr = false;
+  let esc = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (esc) {
+      result += c;
+      esc = false;
+      continue;
+    }
+    if (c === '\\') {
+      result += c;
+      esc = true;
+      continue;
+    }
+    if (c === '"') {
+      result += c;
+      inStr = !inStr;
+      continue;
+    }
+    if (inStr) {
+      // 문자열 안에서 제어 문자는 escape 시퀀스로
+      if (c === '\n') { result += '\\n'; continue; }
+      if (c === '\r') { result += '\\r'; continue; }
+      if (c === '\t') { result += '\\t'; continue; }
+    }
+    result += c;
+  }
+  return result;
+}
+
 function safeParseJson(rawText) {
+  // 1차: 원본 그대로 시도
   try { return JSON.parse(rawText); } catch (_) {}
+
+  // 2차: escape 정규화 후 재시도
+  try { return JSON.parse(normalizeJsonEscape(rawText)); } catch (_) {}
+
+  // 3차: balanced brace 매칭으로 JSON 부분 추출
   const start = rawText.indexOf('{');
   if (start === -1) throw new Error('AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.');
   let depth = 0, inStr = false, esc = false;
@@ -81,7 +124,13 @@ function safeParseJson(rawText) {
     if (c === '{') depth++;
     else if (c === '}') {
       depth--;
-      if (depth === 0) return JSON.parse(rawText.substring(start, i + 1));
+      if (depth === 0) {
+        const extracted = rawText.substring(start, i + 1);
+        // 4차: 추출한 부분도 escape 정규화 시도
+        try { return JSON.parse(extracted); } catch (_) {}
+        try { return JSON.parse(normalizeJsonEscape(extracted)); } catch (_) {}
+        break;
+      }
     }
   }
   throw new Error('AI 응답을 파싱할 수 없습니다. 다시 시도해주세요.');
