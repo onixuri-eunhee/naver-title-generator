@@ -9,6 +9,13 @@ import {
 } from '@/lib/api-helpers';
 import { expandKeywords } from '@/lib/keyword-expansion';
 import { benchmarkSearch } from '@/lib/youtube-search';
+import {
+  publishProgress,
+  checkCancelled,
+  createJobId,
+  cleanupJob,
+} from '@/lib/job-progress';
+import { CancelledError } from '@/lib/cancelled-error';
 
 export const maxDuration = 30;
 
@@ -56,13 +63,35 @@ export async function POST(request) {
     return jsonResponse(request, { error: 'YouTube API가 설정되지 않았습니다.' }, { status: 500 });
   }
 
+  // ─ Phase I: jobId + SSE 진행 이벤트 ─
+  const jobId = body.jobId || createJobId();
+
   // ─ 캐시 확인 ─
   const cacheKey = makeCacheKey({ blogText, keywords });
   try {
     const cached = await getRedis().get(cacheKey);
     if (cached) {
       console.log(`[BENCHMARK] Cache hit: ${cacheKey}`);
-      return jsonResponse(request, { ...cached, cached: true });
+      // 캐시 적중도 진행 이벤트를 즉시 complete 로 발행
+      await publishProgress(jobId, {
+        type: 'step',
+        step: 'keyword-extraction',
+        status: 'done',
+        progress: 100,
+        result: { cached: true },
+      });
+      await publishProgress(jobId, {
+        type: 'step',
+        step: 'youtube-search',
+        status: 'done',
+        progress: 100,
+        result: { cached: true },
+      });
+      await publishProgress(jobId, {
+        type: 'complete',
+        result: { jobId, ...cached, cached: true },
+      });
+      return jsonResponse(request, { ...cached, jobId, cached: true });
     }
   } catch (e) {
     console.warn('[BENCHMARK] Cache read failed:', e.message);
@@ -71,23 +100,60 @@ export async function POST(request) {
   // ─ 파이프라인 실행 ─
   try {
     // 1) 키워드 확장 (Gemini Flash)
+    await publishProgress(jobId, {
+      type: 'step',
+      step: 'keyword-extraction',
+      status: 'running',
+      progress: 0,
+    });
+    await checkCancelled(jobId, 'keyword-extraction:start');
     console.log('[BENCHMARK] Expanding keywords...');
     const expansion = await expandKeywords({ blogText, keywords });
+    await publishProgress(jobId, {
+      type: 'step',
+      step: 'keyword-extraction',
+      status: 'done',
+      progress: 100,
+      result: {
+        queries: expansion.searchQueries?.length || 0,
+      },
+    });
 
     // 2) YouTube 5쿼리 병렬 검색
+    await publishProgress(jobId, {
+      type: 'step',
+      step: 'youtube-search',
+      status: 'running',
+      progress: 0,
+      subStep: `query-0/${expansion.searchQueries?.length || 5}`,
+    });
+    await checkCancelled(jobId, 'youtube-search:start');
     console.log(`[BENCHMARK] Parallel search: ${expansion.searchQueries.join(' | ')}`);
     const { videos, relaxed } = await benchmarkSearch(expansion.searchQueries, apiKey);
+    await publishProgress(jobId, {
+      type: 'step',
+      step: 'youtube-search',
+      status: 'done',
+      progress: 100,
+      result: { candidates: videos.length, relaxed },
+    });
 
     if (videos.length === 0) {
       // 폴백: 벤치마킹 없이 진행
-      return jsonResponse(request, {
+      const fallbackResult = {
+        jobId,
         candidates: [],
         searchKeywords: expansion.searchQueries,
         mainKeywords: expansion.mainKeywords,
         relatedKeywords: expansion.relatedKeywords,
         fallback: true,
         message: '검색 결과가 없어 벤치마킹 없이 진행합니다.',
+      };
+      await publishProgress(jobId, {
+        type: 'complete',
+        result: fallbackResult,
       });
+      return jsonResponse(request, fallbackResult);
     }
 
     // 3) 응답 구조 (스펙 §8 요청/응답)
@@ -124,15 +190,39 @@ export async function POST(request) {
       console.warn('[BENCHMARK] Cache write failed:', e.message);
     }
 
-    return jsonResponse(request, { ...result, cached: false });
+    await publishProgress(jobId, {
+      type: 'complete',
+      result: { jobId, ...result, cached: false },
+    });
+
+    return jsonResponse(request, { ...result, jobId, cached: false });
   } catch (error) {
+    if (error instanceof CancelledError) {
+      await publishProgress(jobId, {
+        type: 'cancelled',
+        cancelledAt: error.checkpoint,
+      });
+      return jsonResponse(
+        request,
+        { cancelled: true, checkpoint: error.checkpoint, jobId },
+        { status: 499 },
+      );
+    }
     console.error('[BENCHMARK] Pipeline error:', error.message);
+    await publishProgress(jobId, {
+      type: 'error',
+      error: error.message || 'benchmark pipeline error',
+      step: 'benchmark',
+    });
     return jsonResponse(request, {
       candidates: [],
       searchKeywords: [],
       fallback: true,
       message: '벤치마킹에 실패했습니다. 벤치마킹 없이 진행합니다.',
       error: error.message,
+      jobId,
     });
+  } finally {
+    await cleanupJob(jobId);
   }
 }
