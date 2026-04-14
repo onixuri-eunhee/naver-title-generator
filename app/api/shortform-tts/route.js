@@ -309,8 +309,28 @@ export async function POST(request) {
         provider = 'supertone';
         console.log(`[TTS] Supertone success: voice=${stVoiceId}, ${audioBuffer.length} bytes`);
       } catch (stError) {
-        console.error('[TTS] Supertone FAILED:', stError.message, '| voice:', stVoiceId);
-        return jsonResponse(request, { error: 'Supertone 음성 생성 실패: ' + stError.message }, { status: 502 });
+        // Supertone 실패 시 Google TTS 자동 폴백 (환경 변수 있으면)
+        console.error('[TTS] Supertone FAILED, trying Google fallback:', stError.message, '| voice:', stVoiceId);
+        try {
+          const sa = _parseServiceAccount();
+          if (!sa) throw new Error('Google 서비스 계정 미설정 — Supertone 복구 불가');
+          const fallbackVoice = DEFAULT_GOOGLE_VOICE;
+          console.log(`[TTS] Fallback to Google: voice=${fallbackVoice}, text=${text.length} chars`);
+          audioBuffer = await callGoogleTTS(text, fallbackVoice, GOOGLE_VOICES[fallbackVoice].gender);
+          provider = 'google-fallback';
+          console.log(`[TTS] Google fallback success: ${audioBuffer.length} bytes`);
+        } catch (fallbackError) {
+          console.error('[TTS] Google fallback also FAILED:', fallbackError.message);
+          return jsonResponse(
+            request,
+            {
+              error: `음성 생성 실패 — Supertone: ${stError.message} / Google fallback: ${fallbackError.message}`,
+              supertoneError: stError.message,
+              fallbackError: fallbackError.message,
+            },
+            { status: 502 }
+          );
+        }
       }
     } else {
       const gVoice = isGoogleVoice ? voiceId : DEFAULT_GOOGLE_VOICE;
