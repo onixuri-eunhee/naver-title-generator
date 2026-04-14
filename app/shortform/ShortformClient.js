@@ -14,6 +14,7 @@ import {
 } from '@/remotion/shortform/styles';
 import StepProgress from '@/components/StepProgress';
 import Step1Input from './components/Step1Input';
+import Step5VisualAccent from './components/Step5VisualAccent';
 import styles from './page.module.css';
 
 const STEP_LIST = [
@@ -49,6 +50,20 @@ function authHeaders() {
   const tk = getToken();
   if (tk) h.Authorization = `Bearer ${tk}`;
   return h;
+}
+
+/**
+ * Step 5 값 → 이미지 URL 배열로 병합
+ * 우선순위: 사용자 사진 → AI 이미지
+ * hook.imageUrl/body.imageUrl은 최대 2장까지 사용됨.
+ */
+function mergeShortformImages(step5) {
+  if (!step5) return [];
+  const userUrls = (step5.userPhotos || [])
+    .map((p) => p?.image?.public_url)
+    .filter(Boolean);
+  const aiUrls = step5.aiImages || [];
+  return [...userUrls, ...aiUrls];
 }
 
 /**
@@ -157,6 +172,14 @@ export default function ShortformClient() {
   const [error, setError] = useState('');
   const [ttsVoice, setTtsVoice] = useState('52dc253df44d06aa7f0867'); // Bella (Supertone)
 
+  // === Step 5 — 비주얼 액센트 (Phase E) ===
+  const [step5Value, setStep5Value] = useState({
+    userPhotos: [],    // [{ image, crop }]
+    aiImageCount: 1,   // 0 | 1 | 2
+    aiImages: [],      // [url]
+  });
+  const [aiImageGenStatus, setAiImageGenStatus] = useState('idle');
+
   // blog-writer 핸드오프 (Phase A: step1Value로 매핑)
   useEffect(() => {
     try {
@@ -193,11 +216,19 @@ export default function ShortformClient() {
     setCurrentStep(stepNum);
   }
 
+  // Step 5 사진(사용자 + AI)을 bodyImages로 병합 (Phase E)
+  const mergedImages = useMemo(
+    () => mergeShortformImages(step5Value),
+    [step5Value],
+  );
+
   // 미리보기 props + duration 계산
   const playerProps = useMemo(() => {
     if (!script) return null;
-    return scriptToProps(script, presetKey, totalDurationSec, images);
-  }, [script, presetKey, totalDurationSec, images]);
+    // Step 5 값이 있으면 우선, 비어있으면 기존 images state 폴백 (runAll 경로)
+    const bodyImages = mergedImages.length > 0 ? mergedImages : images;
+    return scriptToProps(script, presetKey, totalDurationSec, bodyImages);
+  }, [script, presetKey, totalDurationSec, images, mergedImages]);
 
   const playerDurationInFrames = useMemo(() => {
     if (!playerProps) return totalDurationSec * SHORTFORM_FPS;
@@ -281,6 +312,55 @@ export default function ShortformClient() {
     }
   }
 
+  /**
+   * Step 5 — AI 이미지 생성 핸들러 (Phase E)
+   * 기존 generateImages()와 달리 count 지정 가능 + Promise<string[]> 반환.
+   * runAll() 보조 모드는 영향 없음 — 기존 generateImages()를 그대로 사용.
+   */
+  async function generateAiImagesForStep5(count) {
+    setAiImageGenStatus('busy');
+    try {
+      const token = getToken();
+      if (!token) {
+        alert('로그인이 필요합니다.');
+        router.push('/login');
+        setAiImageGenStatus('error');
+        return [];
+      }
+      // step1Value가 있으면 그쪽 주제를 우선 사용, 없으면 레거시 topic state
+      const step1Topic = step1Value?.contentMode === 'keyword'
+        ? (step1Value?.keywords || '')
+        : (step1Value?.blogText || '').slice(0, 100);
+      const effectiveTopic = step1Topic || topic || '';
+      if (!effectiveTopic.trim()) {
+        setError('주제가 없어 AI 이미지를 생성할 수 없어요. Step 1에서 입력해주세요.');
+        setAiImageGenStatus('error');
+        return [];
+      }
+      const res = await fetch('/api/blog-image-pro', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          mode: 'direct',
+          topic: effectiveTopic,
+          mood: 'emotional',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '이미지 생성 실패');
+      const urls = (data.images || [])
+        .map((img) => img.r2Url || img.url)
+        .filter(Boolean)
+        .slice(0, count);
+      setAiImageGenStatus('done');
+      return urls;
+    } catch (err) {
+      setError(err.message || '이미지 생성 중 오류');
+      setAiImageGenStatus('error');
+      return [];
+    }
+  }
+
   async function generateTts() {
     setError('');
     if (!script) {
@@ -360,8 +440,22 @@ export default function ShortformClient() {
         </div>
       )}
 
-      {/* Step 2~7: 기존 UI를 임시 유지 (Phase B/C에서 단계별 교체) */}
-      {currentStep >= 2 && (
+      {/* Step 5: 비주얼 액센트 (Phase E) */}
+      {currentStep === 5 && (
+        <div className={styles.stepContainer}>
+          <Step5VisualAccent
+            value={step5Value}
+            onChange={setStep5Value}
+            onGenerateAI={generateAiImagesForStep5}
+            aiStatus={aiImageGenStatus}
+            onBack={() => setCurrentStep(4)}
+            onNext={() => setCurrentStep(6)}
+          />
+        </div>
+      )}
+
+      {/* Step 2~4, 6~7: 기존 UI를 임시 유지 (Phase B/C/D/F에서 단계별 교체) */}
+      {currentStep >= 2 && currentStep !== 5 && (
       <div className={styles.layout}>
         <div className={styles.left}>
           <div className={styles.card}>
@@ -559,6 +653,17 @@ export default function ShortformClient() {
           <p className={styles.skipHint}>
             바쁘시면 단계별 진행 없이 한 번에 영상을 만들 수 있어요. 다만 결과 품질은 단계 진행보다 낮습니다.
           </p>
+
+          {/* Phase E: Step 5 독립 테스트용 점프 버튼 (Phase D 완료 시 제거) */}
+          {currentStep !== 5 && (
+            <button
+              type="button"
+              className={styles.skipToStep5Btn}
+              onClick={() => setCurrentStep(5)}
+            >
+              Step 5 (사진 액센트)로 바로 가기 →
+            </button>
+          )}
         </div>
       )}
     </main>
