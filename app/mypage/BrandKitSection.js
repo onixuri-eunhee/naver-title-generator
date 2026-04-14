@@ -262,6 +262,57 @@ export default function BrandKitSection() {
             </div>
           </div>
         </div>
+        <div className={styles.field}>
+          <span className={styles.fieldLabel}>브랜드 컬러</span>
+          <div className={styles.colorRow}>
+            <div className={styles.colorField}>
+              <div className={styles.colorBox}>
+                <input
+                  type="color"
+                  className={styles.colorSwatch}
+                  value={form.primary_color || '#FF5F1F'}
+                  onChange={(e) => update('primary_color', e.target.value.toUpperCase())}
+                  aria-label="메인 컬러"
+                />
+                <input
+                  type="text"
+                  className={styles.colorHex}
+                  value={form.primary_color}
+                  onChange={(e) => {
+                    const v = e.target.value.toUpperCase();
+                    if (v === '' || /^#[0-9A-F]{0,6}$/.test(v)) update('primary_color', v);
+                  }}
+                  placeholder="#FF5F1F"
+                  maxLength={7}
+                />
+              </div>
+              <div className={styles.logoHint}>메인 (자막·강조)</div>
+            </div>
+            <div className={styles.colorField}>
+              <div className={styles.colorBox}>
+                <input
+                  type="color"
+                  className={styles.colorSwatch}
+                  value={form.secondary_color || '#1F2937'}
+                  onChange={(e) => update('secondary_color', e.target.value.toUpperCase())}
+                  aria-label="서브 컬러"
+                />
+                <input
+                  type="text"
+                  className={styles.colorHex}
+                  value={form.secondary_color}
+                  onChange={(e) => {
+                    const v = e.target.value.toUpperCase();
+                    if (v === '' || /^#[0-9A-F]{0,6}$/.test(v)) update('secondary_color', v);
+                  }}
+                  placeholder="#1F2937"
+                  maxLength={7}
+                />
+              </div>
+              <div className={styles.logoHint}>서브 (보조 그래픽)</div>
+            </div>
+          </div>
+        </div>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>추천 폰트</span>
           <select
