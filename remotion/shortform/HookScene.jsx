@@ -40,8 +40,8 @@ export const HookScene = ({
   const kineticVariant = preset.kineticHook || 'wordReveal';
 
   // Phase F: subtitle override 스타일
+  // 훅 제목은 항상 중앙 정렬 (textPosition은 자막에만 영향)
   const subtitleStyle = buildSubtitleStyle(subtitle, textPosition);
-  const justifyContent = textPositionToAlign(textPosition);
 
   return (
     <AbsoluteFill>
@@ -55,7 +55,7 @@ export const HookScene = ({
       )}
       <AbsoluteFill
         style={{
-          justifyContent,
+          justifyContent: 'center',
           alignItems: 'center',
           padding: 80,
         }}

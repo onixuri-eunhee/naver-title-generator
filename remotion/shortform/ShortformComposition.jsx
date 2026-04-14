@@ -54,7 +54,7 @@ export const ShortformComposition = ({
   cta,
   audio,
   subtitle,
-  textPosition = 'bottom',
+  textPosition = 'center',
   cameraMotion = 'ken-burns',
   sceneTransition = 'slide',
 }) => {
