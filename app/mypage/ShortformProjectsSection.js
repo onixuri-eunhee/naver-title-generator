@@ -50,6 +50,7 @@ export default function ShortformProjectsSection() {
   const [published, setPublished] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [toast, setToast] = useState(null);
 
   async function refresh() {
     const token = getToken();
@@ -112,7 +113,11 @@ export default function ShortformProjectsSection() {
       return;
     }
     if (data.project?.id) {
-      window.location.href = `/shortform?projectId=${data.project.id}`;
+      setToast({
+        msg: '복제되었습니다. 새 draft로 이동할까요?',
+        projectId: data.project.id,
+      });
+      await refresh();
     }
   }
 
@@ -157,6 +162,26 @@ export default function ShortformProjectsSection() {
           onDelete={deleteProject}
           onDuplicate={duplicateProject}
         />
+      )}
+
+      {toast && (
+        <div className={styles.toast}>
+          <span>{toast.msg}</span>
+          <a
+            href={`/shortform?projectId=${toast.projectId}`}
+            className={styles.toastBtn}
+          >
+            이동
+          </a>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className={styles.toastClose}
+            aria-label="닫기"
+          >
+            ×
+          </button>
+        </div>
       )}
     </div>
   );
@@ -261,7 +286,7 @@ function PublishedList({ items, onDelete, onDuplicate }) {
               {formatDate(p.published_at || p.updated_at)} 발행
             </div>
             <div className={styles.publishedActions}>
-              {p.video_r2_key && (
+              {p.video_r2_key ? (
                 <a
                   href={`/api/shortform-projects/${p.id}/download`}
                   className={styles.smallBtn}
@@ -269,6 +294,10 @@ function PublishedList({ items, onDelete, onDuplicate }) {
                 >
                   다운로드
                 </a>
+              ) : (
+                <span className={`${styles.smallBtn} ${styles.smallBtnDisabled}`}>
+                  처리 중
+                </span>
               )}
               <button
                 type="button"
