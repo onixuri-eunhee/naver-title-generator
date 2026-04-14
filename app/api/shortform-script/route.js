@@ -8,6 +8,8 @@ import {
   handleOptions,
 } from '@/lib/api-helpers';
 import { getDb, logUsage } from '@/lib/db';
+import { generateScriptFlow } from '@/lib/script-flow';
+import { buildPromptContextForEmail } from '@/lib/brand-kit';
 
 export const maxDuration = 60;
 
@@ -453,18 +455,36 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json().catch(() => ({}));
+
+    // 기존 필드 (역호환)
     const topic = toSentence(body.topic);
     const blogText = String(body.blogText || '').trim();
     const personaMemo = String(body.personaMemo || '').trim();
     const tone = body.tone === 'professional' ? 'professional' : 'casual';
-    const targetDurationSec = [30, 45, 60, 90].includes(Number(body.targetDurationSec)) ? Number(body.targetDurationSec) : 30;
+    const targetDurationSec = [30, 45, 60, 90].includes(Number(body.targetDurationSec))
+      ? Number(body.targetDurationSec)
+      : 30;
 
-    const conceptInput = ['cinematic', 'minimal', 'dynamic', 'natural', 'random'].includes(body.concept) ? body.concept : 'cinematic';
+    // Phase D 신규 필드
+    const personaId = String(body.personaId || body.persona || '').trim();
+    const customPersonaLabel = body.customPersonaLabel
+      ? String(body.customPersonaLabel).slice(0, 30)
+      : null;
+    const customPersonaHint = body.customPersonaHint
+      ? String(body.customPersonaHint).slice(0, 100)
+      : null;
+    const userExperience = String(body.userExperience || body.personaMemo || '').trim();
+    const keywords = String(body.keywords || '').trim();
+    const benchmarkAggregated = body.benchmarkAggregated || null;
+
+    const conceptInput = ['cinematic', 'minimal', 'dynamic', 'natural', 'random'].includes(body.concept)
+      ? body.concept
+      : 'cinematic';
     const concept = resolveConcept(conceptInput);
     const targetSceneCount = SCENE_COUNTS[targetDurationSec] || SCENE_COUNTS[30];
 
-    if (!topic && !blogText) {
-      return jsonResponse(request, { error: 'topic 또는 blogText 중 하나는 필요합니다.' }, { status: 400 });
+    if (!topic && !blogText && !keywords) {
+      return jsonResponse(request, { error: 'topic/blogText/keywords 중 하나는 필요합니다.' }, { status: 400 });
     }
 
     const isAdmin = await resolveAdmin(request);
@@ -473,14 +493,58 @@ export async function POST(request) {
       return jsonResponse(request, { error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
-    const benchmarkKeyword = topic || (blogText ? blogText.slice(0, 50).replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim() : '');
-    const authHeader = request.headers.get('authorization') || '';
-    const benchmark = benchmarkKeyword
-      ? await fetchBenchmark(benchmarkKeyword, authHeader)
-      : { fallback: true };
-    console.log(`[SHORTFORM-SCRIPT] Benchmark: ${benchmarkKeyword} → ${benchmark.fallback ? 'FALLBACK' : `${(benchmark.videos || []).length} videos`}`);
+    let script;
 
-    const script = await callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount, benchmark, personaMemo);
+    if (personaId) {
+      // Phase D 경로: Genkit flow + Claude + 페르소나 + 벤치마킹 aggregated + 브랜드킷
+      let brandContext = null;
+      if (email) {
+        brandContext = await buildPromptContextForEmail(email);
+      }
+
+      console.log(
+        `[SHORTFORM-SCRIPT] Phase D path: persona=${personaId} tone=${tone} dur=${targetDurationSec}s ` +
+        `benchmark=${benchmarkAggregated ? 'yes' : 'no'} brandKit=${brandContext ? 'yes' : 'no'}`
+      );
+
+      const flowResult = await generateScriptFlow({
+        blogText,
+        keywords: keywords || topic,
+        userExperience,
+        personaId,
+        customPersonaLabel,
+        customPersonaHint,
+        tone,
+        durationSec: targetDurationSec,
+        benchmarkAggregated,
+        brandContext,
+      });
+
+      // flow 결과를 기존 buildScriptPayload 형식으로 변환 (postProcessScenes 재사용)
+      script = buildScriptPayload(
+        {
+          scenes: flowResult.scenes,
+          totalDuration: flowResult.totalDuration,
+          presetUsed: flowResult.presetUsed,
+        },
+        concept,
+        targetSceneCount
+      );
+      script.caption = flowResult.caption;
+      script.warnings = flowResult.warnings;
+      script.personaId = personaId;
+    } else {
+      // 레거시 경로 (역호환): 기존 callClaude 그대로
+      const benchmarkKeyword = topic || (blogText ? blogText.slice(0, 50).replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim() : '');
+      const authHeader = request.headers.get('authorization') || '';
+      const benchmark = benchmarkKeyword
+        ? await fetchBenchmark(benchmarkKeyword, authHeader)
+        : { fallback: true };
+      console.log(`[SHORTFORM-SCRIPT] Legacy path: ${benchmarkKeyword} → ${benchmark.fallback ? 'FALLBACK' : `${(benchmark.videos || []).length} videos`}`);
+
+      script = await callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount, benchmark, personaMemo);
+    }
+
     await logUsage(email, 'shortform-script', tone, getClientIp(request));
 
     return jsonResponse(request, { script });
