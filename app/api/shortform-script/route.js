@@ -458,7 +458,7 @@ function buildScriptPayload(parsed, concept, targetSceneCount) {
   };
 }
 
-async function fetchBenchmark(keyword, authHeader) {
+async function fetchBenchmark(keyword, authHeader, jobId, contentType = 'shortform') {
   try {
     const baseUrl = process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
@@ -469,7 +469,9 @@ async function fetchBenchmark(keyword, authHeader) {
         'Content-Type': 'application/json',
         ...(authHeader ? { Authorization: authHeader } : {}),
       },
-      body: JSON.stringify({ keyword }),
+      // jobId 전달: shortform-benchmark가 같은 jobId로 진행 이벤트 발행
+      // → 클라이언트가 키워드추출/후보영상검색/영상분석 단계 SSE로 수신
+      body: JSON.stringify({ keyword, jobId, contentType }),
     });
     if (res.ok) return await res.json();
   } catch (e) {
@@ -710,10 +712,12 @@ export async function POST(request) {
       script.creditCost = creditCost;
     } else {
       // 레거시 경로 (역호환): 기존 callClaude 그대로
+      // jobId를 benchmark에도 전달해 키워드추출/후보영상검색/영상분석 SSE 이벤트가
+      // 클라이언트까지 전달되도록 함.
       const benchmarkKeyword = topic || (blogText ? blogText.slice(0, 50).replace(/[^가-힣a-zA-Z0-9\s]/g, '').trim() : '');
       const authHeader = request.headers.get('authorization') || '';
       const benchmark = benchmarkKeyword
-        ? await fetchBenchmark(benchmarkKeyword, authHeader)
+        ? await fetchBenchmark(benchmarkKeyword, authHeader, jobId, contentType)
         : { fallback: true };
       console.log(`[SHORTFORM-SCRIPT] Legacy path: ${benchmarkKeyword} → ${benchmark.fallback ? 'FALLBACK' : `${(benchmark.videos || []).length} videos`}`);
 
