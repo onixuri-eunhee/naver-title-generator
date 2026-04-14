@@ -122,7 +122,9 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
 
   const hookTitle = hookScene.script || script?.hook || '숏폼 영상';
   const hookBadge = hookScene.hookText || script?.hookText || 'STOP';
-  const underlineText = hookScene.hookType ? hookScene.hookType.replace('형', '') : '';
+  // hookType(공감형/질문형 등)은 내부 분류 메타데이터라 시청자에게 노출 금지.
+  // underlineText는 현재 사용하지 않음 (향후 필요시 별도 필드로 재정의).
+  const underlineText = '';
 
   const pointTexts = pointScenes.map((s) => s.script).filter(Boolean);
   const bodyHeader = pointTexts[0] || script?.points?.[0] || '';
