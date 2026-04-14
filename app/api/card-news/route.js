@@ -427,19 +427,26 @@ const SLIDE_SYSTEM_PROMPT = `당신은 블로그 글을 인스타그램 카드�
 - compare·flow는 \\n 줄바꿈 넣지 말 것 (레이아웃이 자동 배치)`;
 
 // AI가 JSON 응답에 리터럴 "\n"(2글자: 백슬래시+n)을 내보내는 경우가 있어
-// 실제 줄바꿈(1글자 LF)으로 정규화. compare.leftItems / flow.steps 같은 중첩 필드까지 재귀.
-function _denormNewlines(s) {
-  return typeof s === 'string' ? s.replace(/\\n/g, '\n') : s;
-}
-function _walkDenorm(slide) {
-  if (!slide || typeof slide !== 'object') return slide;
-  for (const k of Object.keys(slide)) {
-    const v = slide[k];
-    if (typeof v === 'string') slide[k] = _denormNewlines(v);
-    else if (Array.isArray(v)) slide[k] = v.map(item => typeof item === 'string' ? _denormNewlines(item) : (item && typeof item === 'object' ? _walkDenorm(item) : item));
-    else if (v && typeof v === 'object') _walkDenorm(v);
+// 실제 줄바꿈(1글자 LF)으로 정규화. compare.leftItems / flow.steps 같은 중첩 필드까지 in-place 재귀.
+function denormNewlinesDeep(node) {
+  if (!node || typeof node !== 'object') return;
+  for (const k of Object.keys(node)) {
+    const v = node[k];
+    if (typeof v === 'string') {
+      if (v.includes('\\n')) node[k] = v.replace(/\\n/g, '\n');
+    } else if (Array.isArray(v)) {
+      for (let i = 0; i < v.length; i++) {
+        const item = v[i];
+        if (typeof item === 'string') {
+          if (item.includes('\\n')) v[i] = item.replace(/\\n/g, '\n');
+        } else if (item && typeof item === 'object') {
+          denormNewlinesDeep(item);
+        }
+      }
+    } else if (v && typeof v === 'object') {
+      denormNewlinesDeep(v);
+    }
   }
-  return slide;
 }
 
 function validateSlides(parsed, requestedCount) {
@@ -447,8 +454,9 @@ function validateSlides(parsed, requestedCount) {
     throw new Error('slides 배열이 없습니다.');
   }
 
-  // 리터럴 "\n" → 실제 LF 정규화 (모든 레이아웃 공통)
-  let slides = parsed.slides.map(_walkDenorm);
+  // 리터럴 "\n" → 실제 LF 정규화 (모든 레이아웃 공통, in-place)
+  parsed.slides.forEach(denormNewlinesDeep);
+  let slides = parsed.slides;
 
   if (slides.length > requestedCount) {
     slides = slides.slice(0, requestedCount);
@@ -509,16 +517,10 @@ async function renderSlides(slidesData, theme, variant) {
   const fonts = await loadFonts();
   const pngs = [];
 
-  const layoutMap = {
-    cover: layouts.cover,
-    summary: layouts.summary,
-    content: layouts.content,
-    quote: layouts.quote,
-    data: layouts.data,
-    cta: layouts.cta,
-    compare: layouts.compare,
-    flow: layouts.flow,
-  };
+  // 공개 레이아웃만 노출 (_prefix는 content() 내부에서만 호출되는 변형)
+  const layoutMap = Object.fromEntries(
+    Object.entries(layouts).filter(([k]) => !k.startsWith('_'))
+  );
 
   // content 슬라이드 인덱스 카운터 — variant.getContentVariant(idx) 용
   let contentIdx = 0;
