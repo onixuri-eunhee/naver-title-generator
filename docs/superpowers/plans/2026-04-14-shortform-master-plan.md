@@ -189,6 +189,8 @@
 
 **의존성:** Phase B (Gemini 분석 JSON 형식 확정 후 시작)
 
+**상태:** ✅ 완료 (커밋 SHA: 9b3aa1c) — lib/script-prompts.js + script-validator.js + script-flow.js 추가, route.js 에 personaId 분기. 레거시 경로(personaMemo) 유지. Phase B aggregated JSON과 Phase G brand-kit 연결 완료.
+
 ---
 
 ### Phase E — Image Library Connection (Step 5 사진 액센트)
