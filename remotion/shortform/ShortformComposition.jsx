@@ -155,6 +155,8 @@ export const ShortformComposition = ({
             subtitle={subtitle}
             textPosition={textPosition}
             cameraMotion={cameraMotion}
+            type={body?.type}
+            typeProps={body?.typeProps}
           />
         </TransitionSeries.Sequence>
 

@@ -169,6 +169,12 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
   const hookImage = orderedHook || bodyImages?.[0] || undefined;
   const bodyImage = orderedBody || bodyImages?.[1] || bodyImages?.[0] || undefined;
 
+  // v2.1 — Claude가 내려준 scene.type / scene.typeProps 추출
+  // 첫 번째 point scene을 body 씬 타입의 source로 사용
+  const primaryPointScene = pointScenes[0] || {};
+  const bodyType = primaryPointScene.type || 'text';
+  const bodyTypeProps = primaryPointScene.typeProps || {};
+
   return {
     preset: presetKey,
     mode: 'kinetic',
@@ -184,6 +190,9 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
       caption: bodyCaption,
       imageUrl: bodyImage,
       durationInFrames: bodyFrames,
+      // v2.1 — type 라우팅
+      type: bodyType,
+      typeProps: bodyTypeProps,
     },
     cta: {
       headline: ctaText,

@@ -9,6 +9,11 @@ import { FONTS, RADIUS, SIZES, SPRING_CONFIG, buildSubtitleStyle, textPositionTo
 import { breathe } from './utils';
 import { KenBurnsImage } from './KenBurnsImage';
 import { KineticText } from './kineticText';
+import { ComparisonScene } from './scenes/ComparisonScene';
+import { EmphasisScene } from './scenes/EmphasisScene';
+import { TestimonialScene } from './scenes/TestimonialScene';
+import { DataScene } from './scenes/DataScene';
+import { FlowScene } from './scenes/FlowScene';
 
 const CARD_INITIAL_DELAY = 15;
 const CARD_STAGGER = 30;
@@ -286,6 +291,19 @@ const ImageMode = ({ header, caption, imageUrl, preset, subtitle, textPosition, 
   );
 };
 
+/**
+ * BodyScene — v2.1 type 라우터
+ *
+ * `type` 프롭으로 아래 씬 중 하나를 선택:
+ *  - 'comparison' → ComparisonScene (2열 비교)
+ *  - 'emphasis'   → EmphasisScene (강조 박스)
+ *  - 'testimonial'→ TestimonialScene (고객 후기)
+ *  - 'data'       → DataScene (숫자/통계 강조)
+ *  - 'flow'       → FlowScene (단계별 프로세스)
+ *  - 'text' | 기본 → 기존 cards/image 모드 (imageUrl 유무로 분기)
+ *
+ * typeProps는 각 씬에 그대로 전달. preset/subtitle/textPosition은 공통 주입.
+ */
 export const BodyScene = ({
   header,
   cards,
@@ -295,7 +313,31 @@ export const BodyScene = ({
   subtitle,
   textPosition,
   cameraMotion,
+  // v2.1
+  type,
+  typeProps,
 }) => {
+  // v2.1 — type 라우팅
+  const props = typeProps || {};
+  const common = { preset, subtitle, textPosition };
+
+  if (type === 'comparison') {
+    return <ComparisonScene {...props} {...common} />;
+  }
+  if (type === 'emphasis') {
+    return <EmphasisScene {...props} {...common} />;
+  }
+  if (type === 'testimonial') {
+    return <TestimonialScene {...props} {...common} />;
+  }
+  if (type === 'data') {
+    return <DataScene {...props} {...common} />;
+  }
+  if (type === 'flow') {
+    return <FlowScene {...props} {...common} />;
+  }
+
+  // Fallback — 기존 text/image/cards 모드 (type === 'text' 포함)
   if (imageUrl) {
     return (
       <ImageMode
