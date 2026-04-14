@@ -468,19 +468,7 @@ export default function ShortformClient() {
 
             {error && <div className={styles.errorBox}>{error}</div>}
 
-            <button
-              type="button"
-              className={styles.generateBtn}
-              onClick={runAll}
-              disabled={scriptStatus === 'busy' || imageStatus === 'busy' || ttsStatus === 'busy'}
-              style={{ marginTop: 12 }}
-            >
-              {scriptStatus === 'busy' || imageStatus === 'busy' || ttsStatus === 'busy'
-                ? '생성 중...'
-                : '⚡ 전체 자동 생성'}
-            </button>
-
-            <button type="button" className={styles.secondaryBtn} onClick={generateScript} disabled={scriptStatus === 'busy'}>
+            <button type="button" className={styles.secondaryBtn} onClick={generateScript} disabled={scriptStatus === 'busy'} style={{ marginTop: 12 }}>
               1단계만 (대본)
             </button>
             <button type="button" className={styles.secondaryBtn} onClick={generateImages} disabled={imageStatus === 'busy'}>
@@ -553,6 +541,25 @@ export default function ShortformClient() {
           )}
         </div>
       </div>
+      )}
+
+      {/* Phase A: '전체 자동 생성' 보조 버튼 (페이지 맨 아래) */}
+      {currentStep < 7 && (
+        <div className={styles.skipFooter}>
+          <button
+            type="button"
+            className={styles.skipBtn}
+            onClick={runAll}
+            disabled={scriptStatus === 'busy' || imageStatus === 'busy' || ttsStatus === 'busy'}
+          >
+            {scriptStatus === 'busy' || imageStatus === 'busy' || ttsStatus === 'busy'
+              ? '생성 중...'
+              : '한 번에 자동 생성 (벤치마킹·세부조정 없이 빠른 모드)'}
+          </button>
+          <p className={styles.skipHint}>
+            바쁘시면 단계별 진행 없이 한 번에 영상을 만들 수 있어요. 다만 결과 품질은 단계 진행보다 낮습니다.
+          </p>
+        </div>
       )}
     </main>
   );
