@@ -216,6 +216,116 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
   };
 }
 
+/**
+ * 영상 텍스트 인라인 편집기.
+ * - hook (scene 0) / point (scene 1~n-2) / cta (scene n-1) 의 script 필드를 수정
+ * - setScript로 즉시 script state 갱신 → playerProps useMemo → Player 재렌더
+ * - originalScript가 있으면 "되돌리기" 버튼으로 원본 복원
+ */
+function ScriptTextEditor({ script, setScript, originalScript }) {
+  if (!script || !Array.isArray(script.scenes)) return null;
+
+  function updateSceneScript(index, newText) {
+    const nextScenes = script.scenes.map((s, i) =>
+      i === index ? { ...s, script: newText } : s,
+    );
+    setScript({ ...script, scenes: nextScenes });
+  }
+
+  function restoreOriginal() {
+    if (originalScript) {
+      setScript(JSON.parse(JSON.stringify(originalScript)));
+    }
+  }
+
+  const hookScene = script.scenes[0];
+  const ctaScene = script.scenes[script.scenes.length - 1];
+  const pointScenes = script.scenes.slice(1, -1);
+
+  const fieldStyle = {
+    width: '100%',
+    padding: '8px 10px',
+    border: '1px solid #E5E7EB',
+    borderRadius: 6,
+    fontSize: 12,
+    fontFamily: 'inherit',
+    resize: 'vertical',
+    lineHeight: 1.5,
+    marginBottom: 10,
+  };
+  const labelStyle = {
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#6B7280',
+    display: 'block',
+    marginBottom: 4,
+  };
+
+  return (
+    <div>
+      {hookScene && (
+        <div>
+          <label style={labelStyle}>🎯 후킹 (첫 씬)</label>
+          <textarea
+            style={fieldStyle}
+            rows={2}
+            value={hookScene.script || ''}
+            onChange={(e) => updateSceneScript(0, e.target.value)}
+            placeholder="시청자의 시선을 멈추는 첫 문장"
+          />
+        </div>
+      )}
+
+      {pointScenes.map((scene, i) => (
+        <div key={i + 1}>
+          <label style={labelStyle}>📝 본문 {i + 1}</label>
+          <textarea
+            style={fieldStyle}
+            rows={3}
+            value={scene.script || ''}
+            onChange={(e) => updateSceneScript(i + 1, e.target.value)}
+            placeholder="본문 내용"
+          />
+        </div>
+      ))}
+
+      {ctaScene && script.scenes.length > 1 && (
+        <div>
+          <label style={labelStyle}>🔔 CTA (마무리)</label>
+          <textarea
+            style={fieldStyle}
+            rows={2}
+            value={ctaScene.script || ''}
+            onChange={(e) => updateSceneScript(script.scenes.length - 1, e.target.value)}
+            placeholder="행동 유도 문구"
+          />
+        </div>
+      )}
+
+      {originalScript && (
+        <button
+          type="button"
+          onClick={restoreOriginal}
+          style={{
+            width: '100%',
+            padding: '8px',
+            background: 'transparent',
+            border: '1px dashed #D1D5DB',
+            borderRadius: 6,
+            color: '#6B7280',
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: 'pointer',
+            marginTop: 4,
+          }}
+        >
+          ↺ 원본으로 되돌리기
+        </button>
+      )}
+    </div>
+  );
+}
+
 function Status({ status, label, meta }) {
   const dotClass =
     status === 'busy' ? styles.statusDotBusy
@@ -262,6 +372,8 @@ function ShortformClientInner() {
 
   // 결과
   const [script, setScript] = useState(null);
+  // 원본 대본 (수정 전). ScriptTextEditor에서 "되돌리기" 버튼 용도.
+  const [originalScript, setOriginalScript] = useState(null);
   const [images, setImages] = useState([]);
   const [audioUrl, setAudioUrl] = useState(null);
 
@@ -520,6 +632,8 @@ function ShortformClientInner() {
         // Step 3 대본 복원
         if (p.script_json) {
           setScript(p.script_json);
+          // Draft 복원 시 원본은 복원 데이터로 설정 (사용자 수정 이력은 손실됨)
+          setOriginalScript(JSON.parse(JSON.stringify(p.script_json)));
           setScriptStatus('done');
         }
 
@@ -635,6 +749,8 @@ function ShortformClientInner() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '대본 생성 실패');
       setScript(data.script);
+      // 원본 대본 저장 (ScriptTextEditor 되돌리기 버튼 용도)
+      setOriginalScript(JSON.parse(JSON.stringify(data.script)));
       setScriptStatus('done');
       // Phase K: 첫 영상 무료 적용됐으면 배너 숨김 (Agent D 가 응답에
       // freeFirstApplied 포함하도록 wire-up 한 뒤에만 동작)
@@ -1212,6 +1328,18 @@ function ShortformClientInner() {
               )}
             </div>
           </div>
+
+          {hasPreview && (
+            <div className={styles.card}>
+              <div className={styles.cardLabel}>영상 텍스트 수정</div>
+              <p style={{ fontSize: 11, color: '#6B7280', marginBottom: 12, lineHeight: 1.5 }}>
+                자막이 너무 길거나 어색하면 직접 수정하세요. 입력 즉시 미리보기에 반영됩니다.
+              </p>
+
+              {/* 인라인 자막 편집 */}
+              <ScriptTextEditor script={script} setScript={setScript} originalScript={originalScript} />
+            </div>
+          )}
 
           {hasPreview && (
             <div className={styles.card}>
