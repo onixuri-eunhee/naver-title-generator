@@ -407,6 +407,20 @@
   text-decoration: none;
 }
 
+/* === Phase K: 첫 영상 무료 배너 === */
+.freeFirstBanner {
+  max-width: 900px;
+  margin: 0 auto 16px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(255, 95, 31, 0.12), rgba(255, 95, 31, 0.04));
+  border: 1px solid rgba(255, 95, 31, 0.3);
+  border-radius: 10px;
+  color: var(--ds-accent, #ff5f1f);
+  font-weight: 600;
+  font-size: 14px;
+  text-align: center;
+}
+
 /* === Phase A: Step 진행 표시 === */
 .stepProgressWrap {
   max-width: 900px;

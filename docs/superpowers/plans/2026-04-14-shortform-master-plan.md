@@ -354,7 +354,25 @@
 
 ### Phase K — Onboarding Wizard (샘플 4종 + 첫 영상 무료)
 
+**상태:** ✅ 완료 (2026-04-14, worktree feat/shortform-v2 기준)
+
 **상세:** `2026-04-14-shortform-phase-k-onboarding.md`
+
+**완료 요약:**
+- `lib/shortform-samples.js` 샘플 4종 (매장 사장·강사·컨설턴트·블로거)
+- `app/shortform/components/OnboardingModal.js/.module.css` 첫 방문 모달
+- `lib/shortform-onboarding.js` users 컬럼 lazy migration + 무료 자격 헬퍼
+  (K3 파일명을 플랜의 `onboarding-helpers` 대신 에이전트 영역 구분을
+  위해 `shortform-onboarding` 으로 채택)
+- `/api/auth?action=me` 에 onboardingCompleted / firstShortformAt /
+  eligibleForFreeFirstShortform 필드 추가
+- `/api/auth/onboarding` POST 엔드포인트 (완료 표시)
+- `ShortformClient` 에 모달 마운트 + 무료 배너 + 샘플 pre-fill +
+  freeFirstApplied 응답 처리
+- `/api/shortform-script` 의 크레딧 차감 skip + markFirstShortform
+  호출은 Agent D 담당. 현재는 `lib/shortform-onboarding.js` 에
+  `checkFreeFirstShortform` 헬퍼를 문서화된 사용 패턴과 함께 제공해둠.
+  post-merge 통합 시점에 D 가 wire-up 예정.
 
 **범위:**
 - 첫 방문 모달 ("샘플로 시작" / "직접 입력")
