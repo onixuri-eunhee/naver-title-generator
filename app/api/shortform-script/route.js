@@ -20,8 +20,10 @@ import { CancelledError } from '@/lib/cancelled-error';
 
 export const maxDuration = 300;
 
-const SHORTFORM_CREDIT_COSTS = { 30: 7, 45: 10, 60: 14, 90: 18 };
-const LONGFORM_CREDIT_COSTS = { 180: 7, 300: 12, 600: 22 };
+// 원가 기반 70% 마진 통일 가격 (2026-04-15 개정)
+// 원가 분석 기반: 숏폼 Kling 2클립($0.56) / 롱폼 Kling 1클립($0.28) 고정
+const SHORTFORM_CREDIT_COSTS = { 30: 6, 45: 10, 60: 11, 90: 12 };
+const LONGFORM_CREDIT_COSTS = { 180: 12, 300: 17, 600: 29 };
 const CREDIT_COSTS = {
   shortform: SHORTFORM_CREDIT_COSTS,
   longform: LONGFORM_CREDIT_COSTS,

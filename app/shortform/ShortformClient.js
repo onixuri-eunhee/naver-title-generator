@@ -895,7 +895,7 @@ function ShortformClientInner() {
                   릴스·쇼츠·틱톡. 후킹 + 공감 루프 3씬.
                 </div>
                 <div style={{ fontSize: 11, marginTop: 6, color: 'var(--ds-muted, #77736B)' }}>
-                  7~18 크레딧
+                  6~12 크레딧
                 </div>
               </button>
               <button
@@ -929,7 +929,7 @@ function ShortformClientInner() {
                   유튜브 본편. Hook/Body×4/Conclusion/CTA 7씬.
                 </div>
                 <div style={{ fontSize: 11, marginTop: 6, color: 'var(--ds-muted, #77736B)' }}>
-                  7~22 크레딧
+                  12~29 크레딧
                 </div>
               </button>
             </div>

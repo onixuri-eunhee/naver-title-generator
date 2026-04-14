@@ -289,7 +289,7 @@ export default function GuidePage() {
                 <tr><th>항목</th><th>내용</th></tr>
                 <tr><td><strong>상품</strong></td><td>30크레딧 = 9,900원 (단일 상품)</td></tr>
                 <tr><td><strong>구매 제한</strong></td><td>1회 최대 5세트 (최대 150크레딧)</td></tr>
-                <tr><td><strong>차감 기준</strong></td><td>블로그 글 1cr / 프리미엄 이미지 3cr / 카드뉴스 1cr / 황금키워드 1cr / 숏폼 7~18cr</td></tr>
+                <tr><td><strong>차감 기준</strong></td><td>블로그 글 1cr / 프리미엄 이미지 3cr / 카드뉴스 1cr / 황금키워드 1cr / 숏폼 6~12cr / 롱폼 12~29cr</td></tr>
                 <tr><td><strong>무료 도구</strong></td><td>블로그 제목, 후킹문구, 스레드 글은 계속 무료</td></tr>
               </tbody>
             </table>
