@@ -5,7 +5,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
-import { FONTS, RADIUS, SIZES, SPRING_CONFIG } from './styles';
+import { FONTS, RADIUS, SIZES, SPRING_CONFIG, buildSubtitleStyle, textPositionToAlign } from './styles';
 import { breathe } from './utils';
 import { KenBurnsImage } from './KenBurnsImage';
 import { KineticText } from './kineticText';
@@ -127,12 +127,13 @@ const MethodRow = ({ card, delay, colors }) => {
   );
 };
 
-const CardsMode = ({ header, cards, preset }) => {
+const CardsMode = ({ header, cards, preset, subtitle, textPosition }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { colors } = preset;
   const breath = breathe(frame);
   const kineticVariant = preset.kineticBody || 'wordReveal';
+  const subtitleStyle = buildSubtitleStyle(subtitle, textPosition);
 
   return (
     <AbsoluteFill
@@ -177,6 +178,8 @@ const CardsMode = ({ header, cards, preset }) => {
               color: colors.textPrimary,
               transform: `scale(${breath})`,
               transformOrigin: 'left center',
+              // Phase F — subtitle override
+              ...(subtitleStyle || {}),
             }}
           />
         </div>
@@ -193,7 +196,7 @@ const CardsMode = ({ header, cards, preset }) => {
   );
 };
 
-const ImageMode = ({ header, caption, imageUrl, preset }) => {
+const ImageMode = ({ header, caption, imageUrl, preset, subtitle, textPosition, cameraMotion }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { colors } = preset;
@@ -204,14 +207,28 @@ const ImageMode = ({ header, caption, imageUrl, preset }) => {
   const headerY = interpolate(headerIn, [0, 1], [-40, 0]);
   const breath = breathe(frame);
 
+  const subtitleStyle = buildSubtitleStyle(subtitle, textPosition);
+  // textPosition이 top이면 header 강조, bottom이면 caption 강조
+  const justifyContent = textPosition === 'top'
+    ? 'flex-start'
+    : textPosition === 'center' || textPosition === 'center-large'
+    ? 'center'
+    : 'space-between';
+
   return (
     <AbsoluteFill>
-      <KenBurnsImage src={imageUrl} overlay={0.45} seed={`body-${header || caption || imageUrl}`} />
+      <KenBurnsImage
+        src={imageUrl}
+        overlay={0.45}
+        seed={`body-${header || caption || imageUrl}`}
+        cameraMotion={cameraMotion}
+      />
       <AbsoluteFill
         style={{
-          justifyContent: 'space-between',
+          justifyContent,
           alignItems: 'center',
           padding: '100px 60px',
+          gap: 40,
         }}
       >
         {header && (
@@ -226,6 +243,8 @@ const ImageMode = ({ header, caption, imageUrl, preset }) => {
               textAlign: 'center',
               lineHeight: 1.15,
               textShadow: '0 8px 32px rgba(0,0,0,0.7)',
+              // Phase F — subtitle override
+              ...(subtitleStyle || {}),
             }}
           >
             {header.split('\n').map((line, i) => (
@@ -262,9 +281,36 @@ const ImageMode = ({ header, caption, imageUrl, preset }) => {
   );
 };
 
-export const BodyScene = ({ header, cards, caption, imageUrl, preset }) => {
+export const BodyScene = ({
+  header,
+  cards,
+  caption,
+  imageUrl,
+  preset,
+  subtitle,
+  textPosition,
+  cameraMotion,
+}) => {
   if (imageUrl) {
-    return <ImageMode header={header} caption={caption} imageUrl={imageUrl} preset={preset} />;
+    return (
+      <ImageMode
+        header={header}
+        caption={caption}
+        imageUrl={imageUrl}
+        preset={preset}
+        subtitle={subtitle}
+        textPosition={textPosition}
+        cameraMotion={cameraMotion}
+      />
+    );
   }
-  return <CardsMode header={header} cards={cards || []} preset={preset} />;
+  return (
+    <CardsMode
+      header={header}
+      cards={cards || []}
+      preset={preset}
+      subtitle={subtitle}
+      textPosition={textPosition}
+    />
+  );
 };

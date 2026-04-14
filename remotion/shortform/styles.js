@@ -56,3 +56,59 @@ export const SPRING_CONFIG = { damping: 200 };
 export const SHORTFORM_FPS = 30;
 export const SHORTFORM_WIDTH = 1080;
 export const SHORTFORM_HEIGHT = 1920;
+
+/**
+ * Phase F — Step 6에서 커스터마이즈된 subtitle 값을 CSS로 변환
+ *
+ * subtitle: { color, font, size, position, bgColor, bgOpacity }
+ * textPosition: 'top'|'center'|'center-large'|'bottom'|'free'
+ */
+export function buildSubtitleStyle(subtitle, textPosition) {
+  if (!subtitle) return null;
+  const sizeBoost = textPosition === 'center-large' ? 1.25 : 1;
+  return {
+    color: subtitle.color || '#ffffff',
+    fontFamily: subtitle.font
+      ? `"${subtitle.font}", ${notoSansKR}`
+      : notoSansKR,
+    fontSize: Math.round((subtitle.size || 56) * sizeBoost),
+    backgroundColor: subtitle.bgColor
+      ? hexToRgba(subtitle.bgColor, subtitle.bgOpacity ?? 0.5)
+      : 'transparent',
+    padding: subtitle.bgColor ? '16px 28px' : 0,
+    borderRadius: 12,
+    fontWeight: 900,
+    lineHeight: 1.2,
+    letterSpacing: -0.5,
+    textAlign: 'center',
+    display: 'inline-block',
+  };
+}
+
+function hexToRgba(hex, alpha) {
+  if (!hex) return `rgba(0,0,0,${alpha})`;
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return hex;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/**
+ * textPosition → flex align 매핑
+ */
+export function textPositionToAlign(textPosition) {
+  switch (textPosition) {
+    case 'top':
+      return 'flex-start';
+    case 'center':
+    case 'center-large':
+      return 'center';
+    case 'free':
+      return 'center';
+    case 'bottom':
+    default:
+      return 'flex-end';
+  }
+}
