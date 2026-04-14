@@ -510,14 +510,16 @@ function validateSlides(parsed, requestedCount) {
 // 외부 URL → data URL (Satori는 외부 URL 대신 data URL 선호)
 async function fetchUserImageDataUrl(url) {
   try {
+    console.log(`[CARD-NEWS] fetching user image: ${url}`);
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`fetch ${res.status}`);
+    if (!res.ok) throw new Error(`fetch ${res.status} ${res.statusText}`);
     const buf = Buffer.from(await res.arrayBuffer());
     const mime = res.headers.get('content-type') || 'image/jpeg';
-    return `data:${mime};base64,${buf.toString('base64')}`;
+    console.log(`[CARD-NEWS] user image fetched OK: ${buf.length} bytes, ${mime}`);
+    return { dataUrl: `data:${mime};base64,${buf.toString('base64')}` };
   } catch (err) {
-    console.error('[CARD-NEWS] user image fetch failed:', err.message);
-    return null;
+    console.error(`[CARD-NEWS] user image fetch FAILED: ${url} | ${err.message}`);
+    return { error: err.message };
   }
 }
 
@@ -641,6 +643,7 @@ async function renderSlides(slidesData, theme, variant, userImages = []) {
   const { Resvg } = await getResvg();
   const fonts = await loadFonts();
   const pngs = [];
+  const fetchErrors = [];
 
   const layoutMap = {
     cover: layouts.cover,
@@ -657,8 +660,12 @@ async function renderSlides(slidesData, theme, variant, userImages = []) {
   const userImageDataUrls = new Map();
   await Promise.all(
     userImages.map(async (u) => {
-      const dataUrl = await fetchUserImageDataUrl(u.url);
-      if (dataUrl) userImageDataUrls.set(u.cardIndex, { ...u, dataUrl });
+      const result = await fetchUserImageDataUrl(u.url);
+      if (result.dataUrl) {
+        userImageDataUrls.set(u.cardIndex, { ...u, dataUrl: result.dataUrl });
+      } else {
+        fetchErrors.push({ cardIndex: u.cardIndex, url: u.url, error: result.error });
+      }
     }),
   );
 
@@ -714,7 +721,7 @@ async function renderSlides(slidesData, theme, variant, userImages = []) {
     pngs.push(base64);
   }
 
-  return pngs;
+  return { pngs, fetchErrors, appliedCount: userImageDataUrls.size };
 }
 
 export async function OPTIONS(request) {
@@ -918,9 +925,21 @@ ${blogText.substring(0, 8000)}`;
 
     const effectiveUserImages = sanitizedUserImages.filter((u) => u.cardIndex < validated.slides.length);
     if (effectiveUserImages.length > 0) {
-      console.log(`[CARD-NEWS] userImages: ${effectiveUserImages.length}장 적용`);
+      console.log(`[CARD-NEWS] userImages received: ${effectiveUserImages.length}장`);
     }
-    const pngs = await renderSlides(validated, theme, variant, effectiveUserImages);
+    const renderResult = await renderSlides(validated, theme, variant, effectiveUserImages);
+    const pngs = renderResult.pngs;
+    const userImageDebug = {
+      requested: effectiveUserImages.length,
+      applied: renderResult.appliedCount,
+      errors: renderResult.fetchErrors,
+    };
+    if (effectiveUserImages.length > 0) {
+      console.log(`[CARD-NEWS] userImages applied: ${renderResult.appliedCount}/${effectiveUserImages.length}`);
+      if (renderResult.fetchErrors.length > 0) {
+        console.error(`[CARD-NEWS] userImages fetch errors:`, JSON.stringify(renderResult.fetchErrors));
+      }
+    }
     console.log(`[CARD-NEWS] Rendered ${pngs.length} PNGs · variant: ${variant.typeScale}/${variant.accentPlacement}/${variant.numberStyle} · seed ${variant.seed}`);
 
     let r2Urls = [];
@@ -973,6 +992,7 @@ ${blogText.substring(0, 8000)}`;
         accentPlacement: variant.accentPlacement,
         numberStyle: variant.numberStyle,
       },
+      userImageDebug,
     });
   } catch (error) {
     console.error('[CARD-NEWS] Error:', error.message);
