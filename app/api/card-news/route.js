@@ -760,24 +760,27 @@ export async function POST(request) {
   try {
     const isAdmin = await resolveAdmin(request);
 
-    if (!isAdmin) {
+    // 관리자든 일반 회원이든 세션 이메일은 항상 해석 (사용자 이미지 소유권 검증에 필요)
+    {
       const authHeader = request.headers.get('authorization') || '';
       const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-      if (!token) {
+      if (token) {
+        const session = await getRedis().get(`session:${token}`);
+        if (session?.email) sessionEmail = session.email;
+      }
+    }
+
+    if (!isAdmin) {
+      if (!sessionEmail) {
         return jsonResponse(request, { error: '로그인이 필요합니다.' }, { status: 401 });
       }
-      const session = await getRedis().get(`session:${token}`);
-      if (!session) {
-        return jsonResponse(request, { error: '세션이 만료되었습니다. 다시 로그인해주세요.' }, { status: 401 });
-      }
-      const userData = await getRedis().get(`user:${session.email}`);
+      const userData = await getRedis().get(`user:${sessionEmail}`);
       if (!userData) {
         return jsonResponse(request, { error: '회원 정보를 찾을 수 없습니다.' }, { status: 401 });
       }
       if (!isCreditsActive() && new Date(userData.createdAt) > new Date(FREE_CUTOFF)) {
         return jsonResponse(request, { error: '4/24까지 가입한 회원만 무료 체험이 가능합니다.' }, { status: 403 });
       }
-      sessionEmail = session.email;
     }
 
     const body = await request.json().catch(() => ({}));
