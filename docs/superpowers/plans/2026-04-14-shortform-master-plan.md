@@ -286,6 +286,8 @@
 
 **의존성:** Phase C (shortform_projects API)
 
+**상태:** ✅ 완료 (커밋 SHA: c3455c7)
+
 ---
 
 ### Phase I — SSE Progress + Cancel (실시간 진행 표시)
