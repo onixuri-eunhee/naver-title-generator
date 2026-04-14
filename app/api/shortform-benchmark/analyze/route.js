@@ -17,6 +17,13 @@ import {
 } from '@/lib/api-helpers';
 import { getGenkit, resolveProModel } from '@/lib/gemini-vertex';
 import { AnalysisOutputSchema } from '@/lib/benchmark-schemas';
+import {
+  publishProgress,
+  checkCancelled,
+  createJobId,
+  cleanupJob,
+} from '@/lib/job-progress';
+import { CancelledError } from '@/lib/cancelled-error';
 
 export const maxDuration = 60; // 사고 모드 + 3영상 → 최대 45초 소요 가능
 
@@ -102,10 +109,21 @@ export async function POST(request) {
     return jsonResponse(request, { error: '유효한 YouTube URL이 없습니다.' }, { status: 400 });
   }
 
+  // ─ Phase I: jobId + 진행 이벤트 ─
+  const jobId = body.jobId || createJobId();
+
   const redis = getRedis();
   const cached = {};
   const missingUrls = [];
   const missingIds = [];
+
+  await publishProgress(jobId, {
+    type: 'step',
+    step: 'video-analysis',
+    status: 'running',
+    progress: 0,
+    subStep: `video-0/${videoIds.length}`,
+  });
 
   for (let i = 0; i < videoIds.length; i++) {
     const id = videoIds[i];
@@ -123,7 +141,25 @@ export async function POST(request) {
   // 모두 캐시 적중 → 집계만 재계산
   if (missingUrls.length === 0) {
     const aggregated = await computeAggregated(Object.values(cached));
+    await publishProgress(jobId, {
+      type: 'step',
+      step: 'video-analysis',
+      status: 'done',
+      progress: 100,
+      result: { fromCache: videoIds.length, fromGemini: 0 },
+    });
+    await publishProgress(jobId, {
+      type: 'complete',
+      result: {
+        jobId,
+        videos: Object.values(cached),
+        aggregated,
+        cached: true,
+      },
+    });
+    await cleanupJob(jobId);
     return jsonResponse(request, {
+      jobId,
       videos: Object.values(cached),
       aggregated,
       cached: true,
@@ -132,6 +168,15 @@ export async function POST(request) {
 
   // Gemini 호출
   try {
+    await checkCancelled(jobId, 'video-analysis:gemini');
+    await publishProgress(jobId, {
+      type: 'step',
+      step: 'video-analysis',
+      status: 'running',
+      progress: Math.round((Object.keys(cached).length / videoIds.length) * 100),
+      subStep: `video-${Object.keys(cached).length}/${videoIds.length}`,
+    });
+
     const ai = getGenkit();
     const response = await ai.generate({
       model: resolveProModel(),
@@ -167,7 +212,27 @@ export async function POST(request) {
       ? output.aggregated
       : await computeAggregated(allVideos);
 
+    await publishProgress(jobId, {
+      type: 'step',
+      step: 'video-analysis',
+      status: 'done',
+      progress: 100,
+      result: {
+        fromCache: Object.keys(cached).length,
+        fromGemini: (output.videos || []).length,
+      },
+    });
+    await publishProgress(jobId, {
+      type: 'complete',
+      result: {
+        jobId,
+        videos: allVideos,
+        aggregated,
+      },
+    });
+
     return jsonResponse(request, {
+      jobId,
       videos: allVideos,
       aggregated,
       cached: Object.keys(cached).length > 0,
@@ -175,14 +240,33 @@ export async function POST(request) {
       fromGemini: (output.videos || []).length,
     });
   } catch (err) {
+    if (err instanceof CancelledError) {
+      await publishProgress(jobId, {
+        type: 'cancelled',
+        cancelledAt: err.checkpoint,
+      });
+      return jsonResponse(
+        request,
+        { cancelled: true, checkpoint: err.checkpoint, jobId },
+        { status: 499 },
+      );
+    }
     console.error('[ANALYZE] Gemini error:', err.message);
+    await publishProgress(jobId, {
+      type: 'error',
+      error: err.message,
+      step: 'video-analysis',
+    });
     return jsonResponse(request, {
+      jobId,
       videos: Object.values(cached),
       aggregated: null,
       fallback: true,
       error: err.message,
       message: 'Gemini 분석에 실패했습니다. 벤치마킹 없이 진행합니다.',
     }, { status: 200 });
+  } finally {
+    await cleanupJob(jobId);
   }
 }
 
