@@ -140,6 +140,11 @@
   font-weight: 700;
 }
 
+.expireWarn {
+  color: #DC2626;
+  font-weight: 700;
+}
+
 .draftActions {
   display: flex;
   gap: 6px;

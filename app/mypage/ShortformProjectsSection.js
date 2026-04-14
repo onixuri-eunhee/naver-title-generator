@@ -37,6 +37,13 @@ function formatDuration(sec) {
   return `${sec}초`;
 }
 
+function daysUntilExpire(updatedAt) {
+  if (!updatedAt) return 30;
+  const updated = new Date(updatedAt).getTime();
+  const expire = updated + 30 * 24 * 60 * 60 * 1000;
+  return Math.max(0, Math.floor((expire - Date.now()) / (24 * 60 * 60 * 1000)));
+}
+
 export default function ShortformProjectsSection() {
   const [tab, setTab] = useState('drafts'); // 'drafts' | 'published'
   const [drafts, setDrafts] = useState([]);
@@ -166,50 +173,59 @@ function DraftsList({ items, onDelete }) {
   }
   return (
     <ul className={styles.list}>
-      {items.map((p) => (
-        <li key={p.id} className={styles.draftCard}>
-          <div className={styles.draftBody}>
-            <div className={styles.draftTitle}>
-              {p.title || p.blog_text?.slice(0, 40) || '제목 없음'}
+      {items.map((p) => {
+        const expireIn = daysUntilExpire(p.updated_at);
+        return (
+          <li key={p.id} className={styles.draftCard}>
+            <div className={styles.draftBody}>
+              <div className={styles.draftTitle}>
+                {p.title || p.blog_text?.slice(0, 40) || '제목 없음'}
+              </div>
+              <div className={styles.draftMeta}>
+                <span className={styles.stepPill}>
+                  {STEP_LABELS[p.current_step] || `Step ${p.current_step}`}
+                </span>
+                <span className={styles.metaDot}>·</span>
+                <span>{formatRelativeTime(p.updated_at)}</span>
+                {p.duration_sec && (
+                  <>
+                    <span className={styles.metaDot}>·</span>
+                    <span>{formatDuration(p.duration_sec)}</span>
+                  </>
+                )}
+                {p.tone && (
+                  <>
+                    <span className={styles.metaDot}>·</span>
+                    <span>{p.tone === 'casual' ? '친근 모드' : '전문가 모드'}</span>
+                  </>
+                )}
+                {expireIn <= 5 && (
+                  <>
+                    <span className={styles.metaDot}>·</span>
+                    <span className={styles.expireWarn}>{expireIn}일 후 자동 삭제</span>
+                  </>
+                )}
+              </div>
             </div>
-            <div className={styles.draftMeta}>
-              <span className={styles.stepPill}>
-                {STEP_LABELS[p.current_step] || `Step ${p.current_step}`}
-              </span>
-              <span className={styles.metaDot}>·</span>
-              <span>{formatRelativeTime(p.updated_at)}</span>
-              {p.duration_sec && (
-                <>
-                  <span className={styles.metaDot}>·</span>
-                  <span>{formatDuration(p.duration_sec)}</span>
-                </>
-              )}
-              {p.tone && (
-                <>
-                  <span className={styles.metaDot}>·</span>
-                  <span>{p.tone === 'casual' ? '친근 모드' : '전문가 모드'}</span>
-                </>
-              )}
+            <div className={styles.draftActions}>
+              <a
+                href={`/shortform?projectId=${p.id}`}
+                className={styles.resumeBtn}
+              >
+                이어서 작업
+              </a>
+              <button
+                type="button"
+                className={styles.iconBtn}
+                onClick={() => onDelete(p.id)}
+                aria-label="삭제"
+              >
+                ×
+              </button>
             </div>
-          </div>
-          <div className={styles.draftActions}>
-            <a
-              href={`/shortform?projectId=${p.id}`}
-              className={styles.resumeBtn}
-            >
-              이어서 작업
-            </a>
-            <button
-              type="button"
-              className={styles.iconBtn}
-              onClick={() => onDelete(p.id)}
-              aria-label="삭제"
-            >
-              ×
-            </button>
-          </div>
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ul>
   );
 }
