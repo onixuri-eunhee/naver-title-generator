@@ -503,7 +503,7 @@ export default function CardNewsClient() {
                     fontFamily: 'inherit',
                   }}
                 >
-                  🎲 다른 디자인으로 재생성
+                  🎲 다른 디자인으로 재생성 (1크레딧)
                 </button>
               </div>
             )}
