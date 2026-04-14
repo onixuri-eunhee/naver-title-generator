@@ -53,6 +53,20 @@ function authHeaders() {
 }
 
 /**
+ * Step 5 값 → 이미지 URL 배열로 병합
+ * 우선순위: 사용자 사진 → AI 이미지
+ * hook.imageUrl/body.imageUrl은 최대 2장까지 사용됨.
+ */
+function mergeShortformImages(step5) {
+  if (!step5) return [];
+  const userUrls = (step5.userPhotos || [])
+    .map((p) => p?.image?.public_url)
+    .filter(Boolean);
+  const aiUrls = step5.aiImages || [];
+  return [...userUrls, ...aiUrls];
+}
+
+/**
  * 스크립트 API 응답에서 shortform props로 변환
  *
  * script.scenes[] → hook (scene[0]) + body (scene[1..n-2]) + cta (scene[n-1])
@@ -202,11 +216,19 @@ export default function ShortformClient() {
     setCurrentStep(stepNum);
   }
 
+  // Step 5 사진(사용자 + AI)을 bodyImages로 병합 (Phase E)
+  const mergedImages = useMemo(
+    () => mergeShortformImages(step5Value),
+    [step5Value],
+  );
+
   // 미리보기 props + duration 계산
   const playerProps = useMemo(() => {
     if (!script) return null;
-    return scriptToProps(script, presetKey, totalDurationSec, images);
-  }, [script, presetKey, totalDurationSec, images]);
+    // Step 5 값이 있으면 우선, 비어있으면 기존 images state 폴백 (runAll 경로)
+    const bodyImages = mergedImages.length > 0 ? mergedImages : images;
+    return scriptToProps(script, presetKey, totalDurationSec, bodyImages);
+  }, [script, presetKey, totalDurationSec, images, mergedImages]);
 
   const playerDurationInFrames = useMemo(() => {
     if (!playerProps) return totalDurationSec * SHORTFORM_FPS;
