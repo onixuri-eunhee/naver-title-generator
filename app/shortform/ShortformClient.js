@@ -646,6 +646,38 @@ function ShortformClientInner() {
     } catch (_) {}
   }, []);
 
+  // blog-image-pro → 영상 페이지 핸드오프 (sessionStorage)
+  // 이미지 생성기에서 "영상 만들러 가기" 누르면 topic/blogText를 sessionStorage에 담아옴
+  const [handoffBanner, setHandoffBanner] = useState(null);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('video:handoff');
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      // 30분 이상 지난 핸드오프는 무시
+      if (!data.ts || Date.now() - data.ts > 30 * 60 * 1000) {
+        sessionStorage.removeItem('video:handoff');
+        return;
+      }
+      sessionStorage.removeItem('video:handoff');
+
+      const inferredTopic = data.topic || '';
+      const fullBlog = data.blogText || '';
+      setStep1Value((prev) => ({
+        ...prev,
+        contentMode: fullBlog ? 'blog' : 'keyword',
+        blogText: fullBlog || prev.blogText,
+        keywords: !fullBlog && inferredTopic ? inferredTopic : prev.keywords,
+      }));
+      if (inferredTopic) setTopic(inferredTopic);
+
+      setHandoffBanner({
+        source: data.source || 'blog-image-pro',
+        imageCount: Number(data.imageCount) || 0,
+      });
+    } catch (_) {}
+  }, []);
+
   // === Phase H: ?projectId 쿼리로 Draft 복원 ===
   useEffect(() => {
     if (!projectId) return;
@@ -1034,6 +1066,49 @@ function ShortformClientInner() {
       {isFreeFirst && !showOnboarding && (
         <div className={styles.freeFirstBanner}>
           첫 영상은 무료에요. 지금 바로 만들어보세요.
+        </div>
+      )}
+
+      {/* 크로스 프로덕트 핸드오프 배너 — blog-image-pro에서 넘어온 경우 */}
+      {handoffBanner && !showOnboarding && (
+        <div
+          style={{
+            margin: '8px 0 16px',
+            padding: '14px 18px',
+            borderRadius: 12,
+            border: '1px solid rgba(255, 95, 31, 0.3)',
+            background: 'linear-gradient(135deg, rgba(255, 95, 31, 0.06), rgba(255, 95, 31, 0.12))',
+            display: 'flex',
+            gap: 12,
+            alignItems: 'center',
+          }}
+        >
+          <div style={{ fontSize: 22 }}>🎬</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ds-text, #1F2937)', marginBottom: 2 }}>
+              방금 만든 이미지로 영상을 만들어볼까요?
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--ds-muted, #77736B)', lineHeight: 1.5 }}>
+              주제가 미리 입력됐어요.
+              {handoffBanner.imageCount > 0 && ` 보관함에 ${handoffBanner.imageCount}장이 저장되어 있으니 Step 5에서 바로 선택할 수 있어요.`}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setHandoffBanner(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: 18,
+              cursor: 'pointer',
+              color: 'var(--ds-muted, #77736B)',
+              padding: 4,
+              lineHeight: 1,
+            }}
+            aria-label="닫기"
+          >
+            ×
+          </button>
         </div>
       )}
 

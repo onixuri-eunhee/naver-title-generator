@@ -833,6 +833,60 @@ export default function BlogImagePro() {
             </p>
           </div>
         )}
+
+        {images.length > 0 && !loading && (
+          <div
+            className={styles.card}
+            style={{
+              marginTop: 16,
+              background: 'linear-gradient(135deg, rgba(255, 95, 31, 0.04), rgba(255, 95, 31, 0.10))',
+              border: '1px solid rgba(255, 95, 31, 0.25)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ds-accent, #F95A1F)' }}>다음 단계</span>
+              <span style={{ fontSize: 10, padding: '2px 6px', background: 'var(--ds-accent, #F95A1F)', color: '#fff', borderRadius: 4, fontWeight: 700 }}>NEW</span>
+            </div>
+            <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 6px', color: 'var(--ds-text, #1F2937)' }}>
+              이 주제로 영상도 만들어보세요
+            </h3>
+            <p style={{ fontSize: 12, color: 'var(--ds-muted, #77736B)', lineHeight: 1.6, margin: '0 0 12px' }}>
+              방금 만든 이미지는 보관함에 저장해두면 영상 생성기 Step 5에서 바로 배경으로 쓸 수 있어요.
+              첫 30초 영상은 무료입니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  // 맥락 승계: 영상 페이지에서 Step 1 prefill + 환영 배너용 데이터
+                  const handoff = {
+                    source: 'blog-image-pro',
+                    topic: currentMode === 'direct' ? topic : (blogText.slice(0, 100) || topic),
+                    blogText: currentMode === 'parse' ? blogText : '',
+                    imageCount: images.length,
+                    ts: Date.now(),
+                  };
+                  sessionStorage.setItem('video:handoff', JSON.stringify(handoff));
+                } catch (_) {}
+                router.push('/shortform');
+              }}
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                borderRadius: 10,
+                border: 'none',
+                background: 'var(--ds-accent, #F95A1F)',
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              영상 만들러 가기 →
+            </button>
+          </div>
+        )}
       </div>
     </main>
   );
