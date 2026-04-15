@@ -14,7 +14,7 @@
   border-radius: 14px;
   width: 100%;
   max-width: 720px;
-  max-height: 90vh;
+  height: min(90vh, 640px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -176,7 +176,7 @@
   position: relative;
   flex: 1;
   background: #111;
-  min-height: 320px;
+  min-height: 280px;
 }
 .cropControls {
   padding: 14px 20px;
