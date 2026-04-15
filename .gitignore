@@ -9,3 +9,8 @@ config.js
 .next/
 out/
 .worktrees/
+.claude/polling-state.json
+.claude/polling.log
+.claude/polling.stdout.log
+.claude/polling.stderr.log
+.worktrees/*/.claude/INBOX.md

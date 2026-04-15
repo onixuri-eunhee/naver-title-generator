@@ -2,22 +2,21 @@
 
 ## 4-에이전트 운영 현황
 
-| 세션 | Worktree | 브랜치 | 상태 | Impl commits |
-|---|---|---|---|---|
-| #1 Orchestrator | `~/Desktop/naver-title-generator` | main | 운영 중 | — |
-| #2 Lib-Leaf | `.worktrees/phase-a-bis-lib` | feat/shortform-a-bis-lib | **5 모듈 완료** (settings/cta-variants/error-messages/parse-claude-json/reasoning-copy) | 6 |
-| #3 API+Prompt | `.worktrees/phase-a-bis-api` | feat/shortform-a-bis-api | prompt.js / scene-timing.js / credit-service idempotency 완료. refine route + stats route + shortform-script/tts 라우트 수정 남음 | 3 |
-| #4 Remotion+UI | `.worktrees/phase-a-bis-remotion` | feat/shortform-a-bis-remotion | CTAVariantScene scaffold (4단계 폴백 포함) 완료. SceneCard·SceneSequenceComposition·ShortformClient 수정 남음 | 1 |
-| #5 Tests | `.worktrees/phase-a-bis-tests` | feat/shortform-a-bis-tests | Day 1 partial activation, working on settings.test.js + cta-variants.test.js + error-messages.test.js + parse-claude-json.test.js | 0 |
+| 세션 | Worktree | 브랜치 | 상태 |
+|---|---|---|---|
+| #1 Orchestrator | `~/Desktop/naver-title-generator` | main | 운영 중 |
+| #2 Lib-Leaf | `.worktrees/phase-a-bis-lib` | feat/shortform-a-bis-lib | **5 모듈 완료** (settings, cta-variants, error-messages, parse-claude-json, reasoning-copy + server-only deps) — **대기 or 지원 모드** |
+| #3 API+Prompt | `.worktrees/phase-a-bis-api` | feat/shortform-a-bis-api | **prompt.js 본 구현 완료** + scene-timing + credit-service + shortform-tts contentType + scene-timing-stats route. **#2 self-merge**. refine route + shortform-script route 수정 남음 |
+| #4 Remotion+UI | `.worktrees/phase-a-bis-remotion` | feat/shortform-a-bis-remotion | **CTAVariantScene + SceneCard First 3 Sec boost + SceneSequenceComposition scene-timing 연동** 완료. **#2 + #3 self-merge**. ShortformClient.js 수정 남음 |
+| #5 Tests | `.worktrees/phase-a-bis-tests` | feat/shortform-a-bis-tests | **112 unit tests passing** — settings(49) + error-messages(22) + cta-variants(21) + parse-claude-json(20). **#2 self-merge**. scene-timing/prompt/idempotency/json-retry 남음 |
 
-**누적 impl commits**: 10건 (+ guardrail CLAUDE.md 4건 = 14 commits ahead of main)
-**Day 1 진행 속도**: 1시간 만에 14 commits — 예상 외 고속 진행
+**Self-Integration Pattern** (Day 1 자발적 채택):
+Worker들이 서로의 브랜치를 로컬 merge해 자기 브랜치에서 통합 검증 실행. Orchestrator 수동 개입 없이 의존성 해소.
 
 **다음 동기화 포인트**:
-- #2 reasoning-copy.js 이후: error-messages/parse/reasoning 검증 (lib 완전 완료 확인)
-- #3 credit-service.js 이후: refine route + shortform-script route 수정 대기
-- #5 첫 테스트 커밋: settings.test.js 비용 회귀 테스트 비타협 검증
-- #4 cta-variants 대기 해제 (이미 완료) → SceneCard 수정으로 진입 예정
+- #3 refine route + shortform-script route 수정 완료 → #4 ShortformClient.js 최종 통합 블로커
+- #4 ShortformClient.js 완료 → Day 4 merge 진입 가능
+- #5 scene-timing/prompt/idempotency 테스트 → 비타협 회귀 커버리지
 
 ## 시작 순서 (의존성 그래프)
 
@@ -97,3 +96,54 @@ Day 5~6:
 각 worker 브랜치는 독립이므로 문제 발생 시 해당 브랜치만 reset.
 main은 spec commit(0099959)에서 안전하게 분기됨.
 my-video는 영구 분리, 통합 시도 없음.
+
+## 자동 폴링 시스템 (2026-04-16 도입)
+
+### 개요
+30분 간격으로 worker worktree의 commit 변화를 감지해 의존 worker의 `.claude/INBOX.md`에 신호를 append. Orchestrator 개입 없이 의존성 잠금 해제 자동화.
+
+### 파일 구성
+| 파일 | 역할 |
+|---|---|
+| `scripts/poll-workers.py` | 폴링 로직 (Python 3.14) |
+| `scripts/com.ddukddak.poll-workers.plist` | launchd schedule (30분 `StartInterval: 1800`) |
+| `scripts/LAUNCHD_INSTALL.md` | 설치 가이드 |
+| `.claude/polling-state.json` | 이전 poll HEAD 기록 (자동 생성) |
+| `.claude/polling.log` | 이벤트 로그 (자동 생성) |
+| `.worktrees/<worker>/.claude/INBOX.md` | worker 수신함 (자동 생성) |
+
+### 설치 (사용자 1회)
+```sh
+cp scripts/com.ddukddak.poll-workers.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.ddukddak.poll-workers.plist
+```
+
+### 신호 매핑 (`FILE_DEPENDENCY_MAP`)
+| 파일 | 신호 대상 worker |
+|---|---|
+| `lib/shortform/settings.js` | #3 API, #4 Remotion, #5 Tests |
+| `lib/shortform/cta-variants.js` | #4 Remotion, #5 Tests |
+| `lib/shortform/scene-timing.js` | #4 Remotion |
+| `lib/shortform/prompt.js` | #5 Tests |
+| `lib/shortform/error-messages.js` | #4 Remotion, #5 Tests |
+| `lib/shortform/parse-claude-json.js` | #5 Tests |
+| `lib/shortform/reasoning-copy.js` | #3 API, #5 Tests |
+| `lib/credit-service.js` | #5 Tests |
+| `app/api/**` | 없음 (다른 worker 의존 X) |
+
+### 신호 형식 (`.claude/INBOX.md` 끝에 append)
+```
+- [YYYY-MM-DD HH:MM:SS] 의존성 `<파일>` (<7자해시>) ready — 다음 작업 진행 가능 (from <source-worker>)
+```
+
+### 에스컬레이션 조건 (macOS notification 발동)
+**사용자 휴면 유지 원칙**. 아래 조건 중 1개 이상 충족 시만 깨움:
+1. worker 한 명이 **30분 이상** commit 없음
+2. 4명 전부 30분 이상 silent = deadlock 의심
+3. deny rule 발동 (현재 worker CLAUDE 세션 출력에 표시됨, 자동 감지는 미구현)
+4. spec 모호성 worker 자가 결정 불가 (worker가 INBOX에 flag 기록 시 수동 감지 가능, 자동 감지 미구현)
+
+정상 진행은 `.claude/polling.log`에만 기록됨.
+
+### Worker 측 수신 방법
+각 worker Claude Code 세션은 프롬프트 시작 시 `.claude/INBOX.md` 확인. 신규 signal 라인이 있으면 읽고 해당 의존성 import 시작. (worker CLAUDE.md에 inbox check 지침을 다음 사이클에 추가 예정)
