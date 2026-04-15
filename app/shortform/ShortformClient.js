@@ -383,6 +383,8 @@ function ShortformClientInner() {
   const [ttsStatus, setTtsStatus] = useState('idle');
   const [error, setError] = useState('');
   const [ttsVoice, setTtsVoice] = useState('52dc253df44d06aa7f0867'); // Bella (Supertone)
+  const [availableVoices, setAvailableVoices] = useState([]);
+  const [previewAudio, setPreviewAudio] = useState({ voiceId: null, url: null, loading: false });
 
   // === Step 5 — 비주얼 액센트 (Phase E) ===
   const [step5Value, setStep5Value] = useState({
@@ -456,6 +458,60 @@ function ShortformClientInner() {
       if (stored) setJobId(stored);
     } catch {}
   }, []);
+
+  // 음성 목록 fetch (Supertone + ElevenLabs + Google)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/shortform-tts');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.voices)) {
+            setAvailableVoices(data.voices);
+            // 기본 음성이 목록에 없으면 첫 번째로 fallback
+            if (!data.voices.some((v) => v.id === ttsVoice) && data.voices[0]) {
+              setTtsVoice(data.voices[0].id);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[TTS] 음성 목록 fetch 실패:', err.message);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 음성 미리듣기 — preview=true로 서버 호출 (짧은 샘플 텍스트)
+  async function previewVoice(voiceId) {
+    if (previewAudio.loading) return;
+    setPreviewAudio({ voiceId, url: null, loading: true });
+    try {
+      const res = await fetch('/api/shortform-tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preview: true, voiceId }),
+      });
+      if (!res.ok) throw new Error('미리듣기 실패');
+      const contentType = res.headers.get('content-type') || '';
+      let url;
+      if (contentType.includes('audio/')) {
+        const blob = await res.blob();
+        url = URL.createObjectURL(blob);
+      } else {
+        const data = await res.json();
+        if (data.audioBase64) {
+          const binary = atob(data.audioBase64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          url = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
+        }
+      }
+      setPreviewAudio({ voiceId, url, loading: false });
+    } catch (err) {
+      console.warn('[TTS] 미리듣기 실패:', err.message);
+      setPreviewAudio({ voiceId: null, url: null, loading: false });
+    }
+  }
 
   // jobId 변경 시 localStorage 동기화
   useEffect(() => {
@@ -1304,6 +1360,73 @@ function ShortformClientInner() {
             <button type="button" className={styles.secondaryBtn} onClick={generateTts} disabled={ttsStatus === 'busy' || !script}>
               3단계만 (TTS)
             </button>
+
+            {/* 음성 선택 */}
+            {availableVoices.length > 0 && (
+              <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--ds-border, #E5E7EB)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ds-muted, #77736B)', marginBottom: 8 }}>
+                  🎙 음성 선택 ({availableVoices.length}개)
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+                  {availableVoices.map((v) => {
+                    const selected = ttsVoice === v.id;
+                    const isLoading = previewAudio.loading && previewAudio.voiceId === v.id;
+                    return (
+                      <div
+                        key={v.id}
+                        style={{
+                          padding: '8px 10px',
+                          border: selected ? '1.5px solid var(--ds-accent, #F95A1F)' : '1px solid var(--ds-border, #E5E7EB)',
+                          borderRadius: 8,
+                          background: selected ? 'rgba(255, 95, 31, 0.06)' : '#fff',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 4,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setTtsVoice(v.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            fontSize: 11,
+                            fontWeight: selected ? 700 : 500,
+                            color: selected ? 'var(--ds-accent, #F95A1F)' : 'var(--ds-text, #1F2937)',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          {v.gender === 'female' ? '♀️' : '♂️'} {v.name} <span style={{ opacity: 0.5, fontSize: 9 }}>({v.provider})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => previewVoice(v.id)}
+                          disabled={isLoading}
+                          style={{
+                            background: 'transparent',
+                            border: '1px dashed #D1D5DB',
+                            padding: '3px 6px',
+                            borderRadius: 4,
+                            fontSize: 9,
+                            color: '#6B7280',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          {isLoading ? '...' : '🔊 샘플'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {previewAudio.url && (
+                  <audio src={previewAudio.url} autoPlay style={{ width: '100%', marginTop: 8, height: 32 }} controls />
+                )}
+              </div>
+            )}
           </div>
 
           {script && (
