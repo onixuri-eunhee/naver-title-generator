@@ -472,14 +472,17 @@ async function fetchBenchmark(keyword, authHeader, jobId, contentType = 'shortfo
         ...(authHeader ? { Authorization: authHeader } : {}),
       },
       // jobId 전달: shortform-benchmark가 같은 jobId로 진행 이벤트 발행
-      // → 클라이언트가 키워드추출/후보영상검색/영상분석 단계 SSE로 수신
-      body: JSON.stringify({ keyword, jobId, contentType }),
+      // → 클라이언트가 키워드추출/후보영상검색 단계 SSE로 수신.
+      // benchmark route는 body.keywords (복수) 를 읽으므로 keyword → keywords 매핑.
+      body: JSON.stringify({ keywords: keyword, jobId, contentType }),
     });
     if (res.ok) return await res.json();
+    const errText = await res.text().catch(() => '');
+    console.warn(`[SHORTFORM-SCRIPT] Benchmark HTTP ${res.status}: ${errText.slice(0, 200)}`);
   } catch (e) {
     console.warn('[SHORTFORM-SCRIPT] Benchmark fetch failed:', e.message);
   }
-  return { fallback: true, videos: [], patterns: null };
+  return { fallback: true, candidates: [], videos: [], patterns: null };
 }
 
 async function callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount, benchmark, personaMemo) {
@@ -720,8 +723,9 @@ export async function POST(request) {
       const authHeader = request.headers.get('authorization') || '';
       const benchmark = benchmarkKeyword
         ? await fetchBenchmark(benchmarkKeyword, authHeader, jobId, contentType)
-        : { fallback: true };
-      console.log(`[SHORTFORM-SCRIPT] Legacy path: ${benchmarkKeyword} → ${benchmark.fallback ? 'FALLBACK' : `${(benchmark.videos || []).length} videos`}`);
+        : { fallback: true, candidates: [] };
+      const candidateCount = (benchmark.candidates || benchmark.videos || []).length;
+      console.log(`[SHORTFORM-SCRIPT] Legacy path: ${benchmarkKeyword} → ${benchmark.fallback ? 'FALLBACK' : `${candidateCount} videos`}`);
 
       await publishProgress(jobId, {
         type: 'step',
@@ -733,6 +737,20 @@ export async function POST(request) {
       await checkCancelled(jobId, 'script:claude-call');
 
       script = await callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount, benchmark, personaMemo);
+
+      // 벤치마크 후보 영상을 script payload에 첨부 (UI 카드 노출용).
+      // 최대 6개, 가벼운 필드만 — 썸네일/제목/채널/조회수/링크.
+      const candidatesRaw = benchmark.candidates || benchmark.videos || [];
+      script.benchmarkCandidates = candidatesRaw.slice(0, 6).map((v) => ({
+        videoId: v.videoId || null,
+        title: v.title || '',
+        thumbnail: v.thumbnail || '',
+        channelName: v.channelName || v.channelTitle || '',
+        viewCount: v.viewCount || 0,
+        url: v.url || (v.videoId ? `https://www.youtube.com/watch?v=${v.videoId}` : ''),
+      }));
+      script.benchmarkKeywords = benchmark.searchKeywords || null;
+      script.benchmarkFallback = !!benchmark.fallback;
     }
 
     await publishProgress(jobId, {

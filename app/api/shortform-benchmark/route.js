@@ -67,6 +67,10 @@ export async function POST(request) {
   }
 
   // ─ Phase I: jobId + SSE 진행 이벤트 ─
+  // jobId가 body로 들어오면 상위 호출자(예: shortform-script)가 SSE를 소유한 sub-call.
+  // 이 경우 step 이벤트만 발행하고 'complete'는 발행하지 않아야 함
+  // (그러지 않으면 클라이언트 EventSource가 도중에 닫혀 후속 단계가 안 보임).
+  const isSubCall = !!body.jobId;
   const jobId = body.jobId || createJobId();
 
   // ─ 캐시 확인 (contentType 포함 — shortform과 longform 분리 캐시) ─
@@ -90,10 +94,12 @@ export async function POST(request) {
         progress: 100,
         result: { cached: true },
       });
-      await publishProgress(jobId, {
-        type: 'complete',
-        result: { jobId, ...cached, cached: true },
-      });
+      if (!isSubCall) {
+        await publishProgress(jobId, {
+          type: 'complete',
+          result: { jobId, ...cached, cached: true },
+        });
+      }
       return jsonResponse(request, { ...cached, jobId, cached: true });
     }
   } catch (e) {
@@ -152,10 +158,12 @@ export async function POST(request) {
         fallback: true,
         message: '검색 결과가 없어 벤치마킹 없이 진행합니다.',
       };
-      await publishProgress(jobId, {
-        type: 'complete',
-        result: fallbackResult,
-      });
+      if (!isSubCall) {
+        await publishProgress(jobId, {
+          type: 'complete',
+          result: fallbackResult,
+        });
+      }
       return jsonResponse(request, fallbackResult);
     }
 
@@ -193,10 +201,12 @@ export async function POST(request) {
       console.warn('[BENCHMARK] Cache write failed:', e.message);
     }
 
-    await publishProgress(jobId, {
-      type: 'complete',
-      result: { jobId, ...result, cached: false },
-    });
+    if (!isSubCall) {
+      await publishProgress(jobId, {
+        type: 'complete',
+        result: { jobId, ...result, cached: false },
+      });
+    }
 
     return jsonResponse(request, { ...result, jobId, cached: false });
   } catch (error) {

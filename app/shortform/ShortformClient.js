@@ -30,13 +30,14 @@ import OnboardingModal from './components/OnboardingModal';
 import { getSample, sampleToStep1Value } from '@/lib/shortform-samples';
 import styles from './page.module.css';
 
+// 실제로 publishProgress가 발행되는 단계만. video-analysis는 별도 /analyze
+// 엔드포인트라 현재 script flow에서는 호출 안 되고, tts-synthesis/video-render는
+// 아직 backend wire-up 전이라 늘 idle 상태로 보였음 → 사용자 혼란.
+// 해당 단계가 실제로 발행되면 다시 추가할 것.
 const PROGRESS_ACTIVE_STEPS = [
   'keyword-extraction',
   'youtube-search',
-  'video-analysis',
   'script-generation',
-  'tts-synthesis',
-  'video-render',
 ];
 
 const SHORTFORM_JOB_STORAGE_KEY = 'shortform:activeJobId';
@@ -1510,6 +1511,61 @@ function ShortformClientInner() {
               </div>
             )}
           </div>
+
+          {script && Array.isArray(script.benchmarkCandidates) && script.benchmarkCandidates.length > 0 && (
+            <div className={styles.card}>
+              <div className={styles.cardLabel}>벤치마킹한 영상 ({script.benchmarkCandidates.length}개)</div>
+              <p style={{ fontSize: 11, color: 'var(--ds-muted, #77736B)', marginBottom: 10, lineHeight: 1.5 }}>
+                AI가 이 영상들의 후킹·구조·길이를 분석해 대본에 반영했어요.
+              </p>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {script.benchmarkCandidates.map((v, i) => (
+                  <a
+                    key={v.videoId || i}
+                    href={v.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'flex',
+                      gap: 10,
+                      padding: 8,
+                      borderRadius: 8,
+                      border: '1px solid var(--ds-border, #E5E7EB)',
+                      background: '#fff',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                    }}
+                  >
+                    {v.thumbnail && (
+                      <img
+                        src={v.thumbnail}
+                        alt=""
+                        style={{ width: 96, height: 54, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }}
+                        loading="lazy"
+                      />
+                    )}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.4, color: 'var(--ds-text, #1F2937)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                        {v.title}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--ds-muted, #77736B)', marginTop: 4 }}>
+                        {v.channelName}
+                        {v.viewCount > 0 && ` · 조회수 ${Number(v.viewCount).toLocaleString('ko-KR')}`}
+                      </div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+          {script && script.benchmarkFallback && (
+            <div className={styles.card}>
+              <div className={styles.cardLabel}>벤치마킹</div>
+              <p style={{ fontSize: 12, color: 'var(--ds-muted, #77736B)', lineHeight: 1.5, margin: 0 }}>
+                해당 키워드에 대한 후보 영상을 찾지 못해 벤치마킹 없이 대본을 생성했어요.
+              </p>
+            </div>
+          )}
 
           {script && (
             <div className={styles.card}>
