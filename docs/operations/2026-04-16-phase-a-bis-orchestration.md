@@ -2,13 +2,22 @@
 
 ## 4-에이전트 운영 현황
 
-| 세션 | Worktree | 브랜치 | 상태 |
-|---|---|---|---|
-| #1 Orchestrator | `~/Desktop/naver-title-generator` | main | 운영 중 |
-| #2 Lib-Leaf | `.worktrees/phase-a-bis-lib` | feat/shortform-a-bis-lib | 대기 |
-| #3 API+Prompt | `.worktrees/phase-a-bis-api` | feat/shortform-a-bis-api | 대기 |
-| #4 Remotion+UI | `.worktrees/phase-a-bis-remotion` | feat/shortform-a-bis-remotion | 대기 |
-| #5 Tests | `.worktrees/phase-a-bis-tests` | feat/shortform-a-bis-tests | 대기 |
+| 세션 | Worktree | 브랜치 | 상태 | Impl commits |
+|---|---|---|---|---|
+| #1 Orchestrator | `~/Desktop/naver-title-generator` | main | 운영 중 | — |
+| #2 Lib-Leaf | `.worktrees/phase-a-bis-lib` | feat/shortform-a-bis-lib | **5 모듈 완료** (settings/cta-variants/error-messages/parse-claude-json/reasoning-copy) | 6 |
+| #3 API+Prompt | `.worktrees/phase-a-bis-api` | feat/shortform-a-bis-api | prompt.js / scene-timing.js / credit-service idempotency 완료. refine route + stats route + shortform-script/tts 라우트 수정 남음 | 3 |
+| #4 Remotion+UI | `.worktrees/phase-a-bis-remotion` | feat/shortform-a-bis-remotion | CTAVariantScene scaffold (4단계 폴백 포함) 완료. SceneCard·SceneSequenceComposition·ShortformClient 수정 남음 | 1 |
+| #5 Tests | `.worktrees/phase-a-bis-tests` | feat/shortform-a-bis-tests | Day 1 partial activation, working on settings.test.js + cta-variants.test.js + error-messages.test.js + parse-claude-json.test.js | 0 |
+
+**누적 impl commits**: 10건 (+ guardrail CLAUDE.md 4건 = 14 commits ahead of main)
+**Day 1 진행 속도**: 1시간 만에 14 commits — 예상 외 고속 진행
+
+**다음 동기화 포인트**:
+- #2 reasoning-copy.js 이후: error-messages/parse/reasoning 검증 (lib 완전 완료 확인)
+- #3 credit-service.js 이후: refine route + shortform-script route 수정 대기
+- #5 첫 테스트 커밋: settings.test.js 비용 회귀 테스트 비타협 검증
+- #4 cta-variants 대기 해제 (이미 완료) → SceneCard 수정으로 진입 예정
 
 ## 시작 순서 (의존성 그래프)
 
