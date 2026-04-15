@@ -382,7 +382,7 @@ function ShortformClientInner() {
   const [imageStatus, setImageStatus] = useState('idle');
   const [ttsStatus, setTtsStatus] = useState('idle');
   const [error, setError] = useState('');
-  const [ttsVoice, setTtsVoice] = useState('52dc253df44d06aa7f0867'); // Bella (Supertone)
+  const [ttsVoice, setTtsVoice] = useState('21m00Tcm4TlvDq8ikWAM'); // Rachel (ElevenLabs) — Supertone 일시 장애로 기본값 변경
   const [availableVoices, setAvailableVoices] = useState([]);
   const [previewAudio, setPreviewAudio] = useState({ voiceId: null, url: null, loading: false });
 
