@@ -2,21 +2,26 @@
 
 ## 4-에이전트 운영 현황
 
-| 세션 | Worktree | 브랜치 | 상태 |
-|---|---|---|---|
-| #1 Orchestrator | `~/Desktop/naver-title-generator` | main | 운영 중 |
-| #2 Lib-Leaf | `.worktrees/phase-a-bis-lib` | feat/shortform-a-bis-lib | **5 모듈 완료** (settings, cta-variants, error-messages, parse-claude-json, reasoning-copy + server-only deps) — **대기 or 지원 모드** |
-| #3 API+Prompt | `.worktrees/phase-a-bis-api` | feat/shortform-a-bis-api | **prompt.js 본 구현 완료** + scene-timing + credit-service + shortform-tts contentType + scene-timing-stats route. **#2 self-merge**. refine route + shortform-script route 수정 남음 |
-| #4 Remotion+UI | `.worktrees/phase-a-bis-remotion` | feat/shortform-a-bis-remotion | **CTAVariantScene + SceneCard First 3 Sec boost + SceneSequenceComposition scene-timing 연동** 완료. **#2 + #3 self-merge**. ShortformClient.js 수정 남음 |
-| #5 Tests | `.worktrees/phase-a-bis-tests` | feat/shortform-a-bis-tests | **112 unit tests passing** — settings(49) + error-messages(22) + cta-variants(21) + parse-claude-json(20). **#2 self-merge**. scene-timing/prompt/idempotency/json-retry 남음 |
+| 세션 | Worktree | 브랜치 | HEAD | 상태 | Progress |
+|---|---|---|---|---|---|
+| #1 Orchestrator | `~/Desktop/naver-title-generator` | main | `1cb7f5e` | 운영 중 | — |
+| #2 Lib-Leaf | `.worktrees/phase-a-bis-lib` | feat/shortform-a-bis-lib | `976f2a1` | **스코프 완료** (settings / cta-variants / error-messages / parse-claude-json / reasoning-copy + server-only deps) | **100%** (6/6) |
+| #3 API+Prompt | `.worktrees/phase-a-bis-api` | feat/shortform-a-bis-api | `13e2381` | **스코프 완료** (prompt.js 본 / scene-timing / credit-service idempotent / shortform-tts contentType / scene-timing-stats route / refine route / shortform-script route 수정). **#2 self-merge** 포함 | **100%** (7/7) |
+| #4 Remotion+UI | `.worktrees/phase-a-bis-remotion` | feat/shortform-a-bis-remotion | `35c8763` | **스코프 완료** (CTAVariantScene 4단계 폴백 / SceneCard First 3 Sec boost / SceneSequenceComposition scene-timing + CTAVariant 분기 / ShortformClient CHIP_SCHEMA 칩 + refine + CTA variant). **#2+#3 self-merge** 포함 | **100%** (4/4) |
+| #5 Tests | `.worktrees/phase-a-bis-tests` | feat/shortform-a-bis-tests | `ea7b09c` | **112 unit tests passing** — settings(49) + error-messages(22) + cta-variants(21) + parse-claude-json(20). **#2 self-merge** 포함 | **44%** (4/9) |
+
+**전체 A-bis 진행률**: **~85%** (핵심 구현 3트랙 100%, 테스트 커버리지 44%)
 
 **Self-Integration Pattern** (Day 1 자발적 채택):
 Worker들이 서로의 브랜치를 로컬 merge해 자기 브랜치에서 통합 검증 실행. Orchestrator 수동 개입 없이 의존성 해소.
+- #3 ← #2 (`2c9c1b4`): lib 모듈 import 용
+- #4 ← #2+#3 (`f41fcb8`, `2bc7b8c`): scene-timing + cta-variants import 용
+- #5 ← #2 (`c450ba7`): 테스트 실행 위한 실제 lib 파일 로컬 참조
 
 **다음 동기화 포인트**:
-- #3 refine route + shortform-script route 수정 완료 → #4 ShortformClient.js 최종 통합 블로커
-- #4 ShortformClient.js 완료 → Day 4 merge 진입 가능
-- #5 scene-timing/prompt/idempotency 테스트 → 비타협 회귀 커버리지
+- #5 잔여 5 테스트 파일 (scene-timing / prompt / idempotency / json-retry / benchmark fixture)
+- Day 4 merge 진입 (조기 가능, 검증 완료 후)
+- Q6 desync 6항목 체크리스트 실측
 
 ## 시작 순서 (의존성 그래프)
 
