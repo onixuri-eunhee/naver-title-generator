@@ -909,10 +909,18 @@ function ShortformClientInner() {
     try {
       // 전체 대본을 한 번에 TTS. 편집한 내용 반영.
       // scene.script만 사용 (hookText/type 등 메타데이터는 TTS 대상 아님).
-      const sceneTexts = (script.scenes || []).map((s) => s.script).filter(Boolean);
-      const text = script.fullScript || sceneTexts.join(' ');
+      // filter(Boolean) 제거 — 빈 scene도 포함해서 CTA 누락 방지.
+      // (ScriptTextEditor에서 편집 시 script.fullScript는 stale이므로 무시하고
+      //  현재 scenes만 조합.)
+      const scenesArr = Array.isArray(script.scenes) ? script.scenes : [];
+      const sceneTexts = scenesArr.map((s) => (s?.script || '').trim());
+      const text = sceneTexts.filter(Boolean).join(' ');
 
-      console.log(`[TTS] 요청 문자 수: ${text.length}, 씬 수: ${sceneTexts.length}`);
+      // 디버그: 각 씬의 section + script 길이 로깅
+      console.log(
+        `[TTS] 총 ${scenesArr.length}씬, 최종 텍스트 ${text.length}자:`,
+        scenesArr.map((s, i) => `[${i}]${s?.section || '?'}(${(s?.script || '').length}자)`).join(' → '),
+      );
 
       // 문자 수 제한 체크 (Supertone 5000자 한계 근접 시 경고)
       if (text.length > 4500) {
