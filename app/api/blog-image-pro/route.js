@@ -9,6 +9,8 @@ import {
 } from '@/lib/api-helpers';
 import { replaceUrlsWithR2, uploadImageUrlToR2 } from '@/lib/r2';
 import { logUsage, chargeCredits, refundCredits, getUserCredits } from '@/lib/db';
+import { registerFromUrl } from '@/lib/user-images';
+import { checkQuota } from '@/lib/user-quota';
 import { renderToBase64 } from '@/lib/satori-renderer';
 import { renderTemplate } from '@/lib/satori-templates';
 
@@ -649,7 +651,15 @@ export async function POST(request) {
 
   // ─── POST: 횟수 제한 / 크레딧 차감 ───
   const reqMode = body?.mode;
-  const creditCost = reqMode === 'regenerate_single' ? SINGLE_REGEN_COST : FULL_COST;
+  // shortform_quick: 숏폼 Step 5 전용 라이트 모드 — count만큼만 생성, 1 credit/장
+  const shortformCount = reqMode === 'shortform_quick'
+    ? Math.max(1, Math.min(2, Number(body?.count) || 1))
+    : 0;
+  const creditCost = reqMode === 'regenerate_single'
+    ? SINGLE_REGEN_COST
+    : reqMode === 'shortform_quick'
+      ? shortformCount // 1 credit/장
+      : FULL_COST;
   let remaining = isAdmin ? 999 : FREE_DAILY_LIMIT;
   let rateLimitKey = null;
   let creditCharged = false;
@@ -766,6 +776,89 @@ export async function POST(request) {
         if (rateLimitKey) { try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {} }
         return jsonResponse(request, { error: '이미지 재생성에 실패했습니다.' }, { status: 500 });
       }
+    }
+
+    // ===== SHORTFORM_QUICK 모드 (숏폼 Step 5 전용) =====
+    // - count(1~2)만큼만 생성 — DIRECT 모드의 8장 낭비 제거
+    // - 1 credit/장 과금 (위에서 이미 shortformCount로 차감됨)
+    // - 생성된 이미지를 user_images 보관함에 자동 등록 (쿼터 초과 시 생성만 반환)
+    if (mode === 'shortform_quick') {
+      const { topic, mood } = body;
+      if (!topic || !topic.trim()) {
+        if (rateLimitKey) { try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {} }
+        if (creditCharged && sessionEmail) {
+          await refundCredits(sessionEmail, creditCost, 'shortform-quick-invalid');
+        }
+        return jsonResponse(request, { error: '주제가 필요합니다.' }, { status: 400 });
+      }
+
+      const quickSystem = 'You are an image prompt translator. Convert the Korean topic into a concise English still-life or environment description (1-2 sentences). Describe ONLY inanimate objects, documents, or empty spaces as overhead flat-lay, macro close-up, or vacant environment. Compose for square 1024x1024. Always end with: ", no text, no letters, photography style". Output only the prompt.';
+      const englishTopic = await callClaude(quickSystem, topic, 150);
+      const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
+      const basePrompt = `${englishTopic}, ${moodStyle}, high quality editorial still-life photography, inanimate objects only, uninhabited empty scene, overhead or macro camera angle, clean Korean aesthetic, no text, no letters, photography style`;
+
+      const variationHints = [
+        'wide angle composition',
+        'close-up detail shot',
+      ];
+
+      console.log(`[IMAGE-PRO] Mode: shortform_quick | count: ${shortformCount} | topic: ${topic}`);
+
+      const urls = [];
+      for (let i = 0; i < shortformCount; i++) {
+        const variedPrompt = `${basePrompt}, ${variationHints[i % variationHints.length]}`;
+        try {
+          const url = await callFluxRealism(variedPrompt);
+          if (url) urls.push(url);
+        } catch (err) {
+          console.error(`[IMAGE-PRO] shortform_quick FLUX error slot ${i}:`, err?.message || err);
+        }
+      }
+
+      if (urls.length === 0) {
+        if (rateLimitKey) { try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {} }
+        if (creditCharged && sessionEmail) {
+          await refundCredits(sessionEmail, creditCost, 'shortform-quick-all-failed');
+        }
+        return jsonResponse(request, { error: '이미지 생성에 실패했습니다.' }, { status: 500 });
+      }
+
+      // 부분 성공 시 미생성분만큼 크레딧 환불
+      if (urls.length < shortformCount && creditCharged && sessionEmail) {
+        const refundAmount = shortformCount - urls.length;
+        await refundCredits(sessionEmail, refundAmount, 'shortform-quick-partial');
+      }
+
+      // 보관함 자동 등록 — 쿼터 초과/에러는 비치명(이미지 자체는 반환)
+      const savedImages = [];
+      for (const url of urls) {
+        try {
+          // 쿼터 사전 체크 (대략 400KB 가정)
+          const quota = await checkQuota(sessionEmail, 400 * 1024);
+          if (!quota.ok) {
+            console.warn('[IMAGE-PRO] shortform_quick: user quota exceeded, skipping auto-save');
+            savedImages.push({ public_url: url, saved: false, reason: 'quota-exceeded' });
+            continue;
+          }
+          const row = await registerFromUrl({
+            email: sessionEmail,
+            sourceUrl: url,
+            tag: 'shortform-ai',
+          });
+          savedImages.push({ id: row.id, public_url: row.public_url, thumb_url: row.thumb_url, saved: true });
+        } catch (err) {
+          console.warn('[IMAGE-PRO] shortform_quick auto-save failed:', err.message);
+          savedImages.push({ public_url: url, saved: false, reason: err.message });
+        }
+      }
+
+      await logUsage(sessionEmail, 'image-pro', 'shortform-quick', getClientIp(request));
+      return jsonResponse(request, {
+        mode: 'shortform_quick',
+        images: savedImages,
+        count: savedImages.length,
+        credits: creditCost,
+      });
     }
 
     // ===== PARSE 모드 =====

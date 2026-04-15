@@ -4,7 +4,7 @@ import {
   jsonResponse,
   handleOptions,
 } from '@/lib/api-helpers';
-import { uploadUserImage, listUserImages } from '@/lib/user-images';
+import { uploadUserImage, listUserImages, registerFromUrl } from '@/lib/user-images';
 import { checkQuota } from '@/lib/user-quota';
 
 export const maxDuration = 60;
@@ -23,6 +23,56 @@ export async function POST(request) {
   const email = await requireAuth(request);
   if (!email) {
     return jsonResponse(request, { error: '로그인이 필요합니다.' }, { status: 401 });
+  }
+
+  // JSON 분기: { sourceUrl, filename?, tag? } — 이미 R2/외부에 있는 이미지를 보관함에 등록.
+  // blog-image-pro "보관함 저장" 버튼, shortform Step 5 AI 이미지 자동 저장에서 사용.
+  const contentType = request.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonResponse(request, { error: '잘못된 JSON 형식입니다.' }, { status: 400 });
+    }
+    const { sourceUrl, filename, tag } = body || {};
+    if (!sourceUrl || typeof sourceUrl !== 'string') {
+      return jsonResponse(request, { error: 'sourceUrl이 필요합니다.' }, { status: 400 });
+    }
+
+    // 쿼터 사전 체크 — 실제 바이트는 HEAD로 확인
+    let incomingBytes = 0;
+    try {
+      const head = await fetch(sourceUrl, { method: 'HEAD' });
+      incomingBytes = Number(head.headers.get('content-length') || 0);
+    } catch {}
+    // HEAD 못 읽으면 평균값 400KB로 가정 — sharp 처리 후 실제 크기 기준 DB row에 반영됨
+    const assumedBytes = incomingBytes || 400 * 1024;
+    const quota = await checkQuota(email, assumedBytes);
+    if (!quota.ok) {
+      return jsonResponse(request, {
+        error: '용량이 부족합니다. 기존 이미지를 삭제하거나 크레딧 결제 시 용량이 확장됩니다.',
+        quota: quota.quota,
+        used: quota.used,
+        available: quota.available,
+      }, { status: 409 });
+    }
+
+    try {
+      const row = await registerFromUrl({
+        email,
+        sourceUrl,
+        filename: filename || null,
+        tag: tag ? String(tag) : null,
+      });
+      return jsonResponse(request, {
+        image: row,
+        quota: { ...quota, used: quota.used + row.file_size, available: quota.available - row.file_size },
+      }, { status: 201 });
+    } catch (err) {
+      console.error('[MY-IMAGES] registerFromUrl failed:', err.message);
+      return jsonResponse(request, { error: err.message || '저장에 실패했습니다.' }, { status: 500 });
+    }
   }
 
   let formData;

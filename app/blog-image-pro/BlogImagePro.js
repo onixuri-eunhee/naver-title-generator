@@ -99,12 +99,53 @@ function ImageCard({ item, index, thumbnailText, currentMode, onRegenerate, rege
   const isThumbnail = index === 0 && !!thumbnailText;
   const itemType = item.type || 'photo';
   const isInfographic = itemType !== 'photo';
+  const [saveState, setSaveState] = useState('idle'); // idle | saving | saved | error
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     if (isThumbnail && canvasRef.current) {
       renderThumbnailCanvas(canvasRef.current, item.url, thumbnailText);
     }
   }, [isThumbnail, item.url, thumbnailText]);
+
+  async function saveToLibrary() {
+    if (saveState === 'saving' || saveState === 'saved') return;
+    // 썸네일은 canvas로 합성된 결과라 R2 URL로 저장 불가 — 다운로드 후 업로드 안내
+    if (isThumbnail) {
+      setSaveState('error');
+      setSaveError('썸네일은 다운로드 후 보관함 페이지에서 업로드해주세요.');
+      return;
+    }
+    const sourceUrl = item.r2Url || item.url;
+    if (!sourceUrl || sourceUrl.startsWith('data:')) {
+      setSaveState('error');
+      setSaveError('저장 가능한 URL이 없습니다.');
+      return;
+    }
+    setSaveState('saving');
+    setSaveError('');
+    try {
+      const res = await fetch('/api/my-images', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          sourceUrl,
+          tag: 'blog-image-pro',
+          filename: `blog-image-${index + 1}.jpg`,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSaveState('error');
+        setSaveError(data.error || '저장에 실패했습니다.');
+        return;
+      }
+      setSaveState('saved');
+    } catch (err) {
+      setSaveState('error');
+      setSaveError(err.message || '저장 중 오류');
+    }
+  }
 
   function download() {
     if (isThumbnail && canvasRef.current) {
@@ -168,7 +209,29 @@ function ImageCard({ item, index, thumbnailText, currentMode, onRegenerate, rege
           <button type="button" className={styles.downloadBtn} onClick={download}>
             다운로드
           </button>
+          <button
+            type="button"
+            className={styles.downloadBtn}
+            onClick={saveToLibrary}
+            disabled={saveState === 'saving' || saveState === 'saved'}
+            title={saveState === 'saved' ? '내 보관함에 저장됨' : '내 보관함에 저장하면 카드뉴스·숏폼에서 재사용 가능'}
+            style={
+              saveState === 'saved'
+                ? { background: '#10B981', color: '#fff', borderColor: '#10B981' }
+                : saveState === 'error'
+                  ? { background: '#FEE2E2', color: '#B91C1C', borderColor: '#FCA5A5' }
+                  : undefined
+            }
+          >
+            {saveState === 'saving' && '저장 중...'}
+            {saveState === 'saved' && '✓ 저장됨'}
+            {saveState === 'error' && '⚠ 재시도'}
+            {saveState === 'idle' && '💾 보관함'}
+          </button>
         </div>
+        {saveState === 'error' && saveError && (
+          <div style={{ fontSize: 11, color: '#B91C1C', marginTop: 4 }}>{saveError}</div>
+        )}
       </div>
       {regenBusy && (
         <div className={styles.cardLoadingOverlay}>

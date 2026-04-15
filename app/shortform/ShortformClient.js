@@ -884,11 +884,13 @@ function ShortformClientInner() {
         setAiImageGenStatus('error');
         return [];
       }
+      // shortform_quick: count(1~2)만큼만 생성, 1 credit/장, user-images 보관함 자동 등록
       const res = await fetch('/api/blog-image-pro', {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({
-          mode: 'direct',
+          mode: 'shortform_quick',
+          count,
           topic: effectiveTopic,
           mood: 'emotional',
         }),
@@ -896,9 +898,8 @@ function ShortformClientInner() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '이미지 생성 실패');
       const urls = (data.images || [])
-        .map((img) => img.r2Url || img.url)
-        .filter(Boolean)
-        .slice(0, count);
+        .map((img) => img.public_url)
+        .filter(Boolean);
       setAiImageGenStatus('done');
       return urls;
     } catch (err) {
