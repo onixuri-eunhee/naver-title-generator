@@ -110,16 +110,21 @@ function ImageCard({ item, index, thumbnailText, currentMode, onRegenerate, rege
 
   async function saveToLibrary() {
     if (saveState === 'saving' || saveState === 'saved') return;
-    // 썸네일은 canvas로 합성된 결과라 R2 URL로 저장 불가 — 다운로드 후 업로드 안내
+    // 썸네일은 canvas 합성 결과 — canvas → dataURL로 변환해 보낸다
+    let sourceUrl;
     if (isThumbnail) {
-      setSaveState('error');
-      setSaveError('썸네일은 다운로드 후 보관함 페이지에서 업로드해주세요.');
-      return;
+      if (!canvasRef.current) {
+        setSaveState('error');
+        setSaveError('썸네일이 아직 렌더링되지 않았습니다.');
+        return;
+      }
+      sourceUrl = canvasRef.current.toDataURL('image/png');
+    } else {
+      sourceUrl = item.r2Url || item.url;
     }
-    const sourceUrl = item.r2Url || item.url;
-    if (!sourceUrl || sourceUrl.startsWith('data:')) {
+    if (!sourceUrl) {
       setSaveState('error');
-      setSaveError('저장 가능한 URL이 없습니다.');
+      setSaveError('저장할 이미지가 없습니다.');
       return;
     }
     setSaveState('saving');
@@ -397,6 +402,7 @@ export default function BlogImagePro() {
       setCurrentThumbnailText(thumbText1);
       setImages(data.images.map((img, i) => ({
         url: img.url,
+        r2Url: img.r2Url || null,
         marker: img.marker,
         prompt: img.prompt,
         type: img.type || 'photo',
@@ -445,6 +451,7 @@ export default function BlogImagePro() {
       setCurrentThumbnailText(thumbText2);
       setImages(data.images.map((img, i) => ({
         url: img.url,
+        r2Url: img.r2Url || null,
         marker: null,
         prompt: img.prompt,
         type: img.type || 'photo',
@@ -489,6 +496,7 @@ export default function BlogImagePro() {
         setImages((prev) => prev.map((it, i) => i === index ? {
           ...it,
           url: data.image.url,
+          r2Url: data.image.r2Url || null,
           prompt: data.image.prompt,
           type: data.image.type || it.type,
           model: data.image.model || it.model,
@@ -543,6 +551,7 @@ export default function BlogImagePro() {
       } else if (res.ok && data.images?.length > 0) {
         setImages(data.images.map((img, i) => ({
           url: img.url,
+          r2Url: img.r2Url || null,
           marker: img.marker,
           prompt: img.prompt,
           type: img.type || 'photo',
