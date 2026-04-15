@@ -131,7 +131,50 @@ function mergeShortformImages(step5) {
  * sceneImageOrder (Phase F): [{ sceneId: 'hook'|'body', imageUrl }] 형태로
  * 사용자가 지정한 씬별 이미지 우선 적용. 없으면 bodyImages 배열 순서대로 폴백.
  */
-function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneImageOrder, mode = 'kinetic') {
+/**
+ * TTS word timestamps에서 각 씬의 시작/종료 시간을 찾아 duration을 계산.
+ * 실패하면 null 반환 → 호출자가 char count 비례 폴백 사용.
+ *
+ * wordTimestamps: [{ word: '안녕하세요', start: 0.0, end: 0.45 }, ...]
+ * scenes: [{ script, ... }]
+ *
+ * 전략: 씬 텍스트를 순서대로 이어붙이고, 각 씬 끝 위치까지 누적 단어 수를 세어
+ * 해당 단어의 end time을 씬 경계로 사용. Remotion fps로 프레임 환산.
+ */
+function deriveSceneDurationsFromWordTimestamps(scenes, wordTimestamps, fps) {
+  if (!Array.isArray(wordTimestamps) || wordTimestamps.length === 0) return null;
+  if (!Array.isArray(scenes) || scenes.length === 0) return null;
+
+  // 각 씬의 "단어 수" 계산 (공백 분할)
+  const sceneWordCounts = scenes.map(
+    (s) => String(s?.script || '').trim().split(/\s+/).filter(Boolean).length,
+  );
+  const totalScriptWords = sceneWordCounts.reduce((a, b) => a + b, 0);
+  if (totalScriptWords === 0) return null;
+
+  // word timestamps가 텍스트와 정확히 매치되지 않을 수 있음 — 비율 기반 매핑.
+  const totalWords = wordTimestamps.length;
+  const durations = [];
+  let prevEndSec = 0;
+  let cumulativeScriptWords = 0;
+
+  for (let i = 0; i < scenes.length; i++) {
+    cumulativeScriptWords += sceneWordCounts[i];
+    const targetWordIdx = Math.min(
+      totalWords - 1,
+      Math.round((cumulativeScriptWords / totalScriptWords) * totalWords) - 1,
+    );
+    const boundary = wordTimestamps[Math.max(0, targetWordIdx)];
+    const endSec = boundary ? boundary.end : prevEndSec + 1;
+    const durationSec = Math.max(endSec - prevEndSec, 1);
+    durations.push(Math.max(Math.round(durationSec * fps), 30));
+    prevEndSec = endSec;
+  }
+
+  return durations;
+}
+
+function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneImageOrder, mode = 'scene-sequence', wordTimestamps = null) {
   const fps = SHORTFORM_FPS;
   const totalFrames = Math.round(totalDurationSec * fps);
 
@@ -139,6 +182,63 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
   const hookScene = scenes.find((s) => s.section === 'hook') || scenes[0] || {};
   const pointScenes = scenes.filter((s) => s.section === 'point');
   const ctaScene = scenes.find((s) => s.section === 'cta') || scenes[scenes.length - 1] || {};
+
+  // ── Scene Sequence 모드 (Phase A 신규, 기본값) ──
+  // script.scenes 전체를 1:1로 렌더. 씬 duration은 word timestamps 우선,
+  // 없으면 글자수 비례. 이미지는 sceneImageOrder → bodyImages 순환 fallback.
+  if (mode === 'scene-sequence') {
+    const validScenes = scenes.filter((s) => s && typeof s.script === 'string' && s.script.trim());
+    if (validScenes.length === 0) {
+      return { preset: presetKey, mode: 'scene-sequence', scenes: [] };
+    }
+
+    // 1) Duration 계산
+    let sceneDurations = deriveSceneDurationsFromWordTimestamps(validScenes, wordTimestamps, fps);
+    if (!sceneDurations) {
+      // 폴백: 글자수 비례 분배
+      const charCounts = validScenes.map((s) => s.script.replace(/\s+/g, '').length || 1);
+      const totalChars = charCounts.reduce((a, b) => a + b, 0);
+      sceneDurations = charCounts.map((c) =>
+        Math.max(Math.round((c / totalChars) * totalFrames), 30),
+      );
+    }
+
+    // 2) 이미지 매핑 — sceneImageOrder 우선, 그 다음 bodyImages 순환
+    const orderedImages = Array.isArray(sceneImageOrder) ? sceneImageOrder : [];
+    const imgs = Array.isArray(bodyImages) ? bodyImages : [];
+    function pickImage(idx, sceneObj) {
+      // sceneImageOrder는 [{ sceneId: 'hook'|'body'|..., imageUrl }]
+      const orderHit = orderedImages.find((o) => o?.imageUrl && (
+        (o.sceneId === 'hook' && sceneObj.section === 'hook') ||
+        (o.sceneId === 'body' && sceneObj.section === 'point' && idx === 1)
+      ));
+      if (orderHit) return orderHit.imageUrl;
+      if (imgs.length === 0) return undefined;
+      // 씬 인덱스 기반 순환 — 같은 이미지가 연속되지 않도록
+      return imgs[idx % imgs.length];
+    }
+
+    const mappedScenes = validScenes.map((s, i) => {
+      const isHook = s.section === 'hook' || i === 0;
+      const isCta = s.section === 'cta' || i === validScenes.length - 1;
+      const sectionKey = isHook ? 'hook' : isCta ? 'cta' : 'point';
+      return {
+        text: s.script,
+        section: sectionKey,
+        durationInFrames: sceneDurations[i],
+        imageUrl: pickImage(i, s),
+        badge: isHook ? (s.hookText || script?.hookText || 'STOP').slice(0, 12) : undefined,
+        ctaButtonText: isCta ? '지금 시작 →' : undefined,
+      };
+    });
+
+    return {
+      preset: presetKey,
+      mode: 'scene-sequence',
+      scenes: mappedScenes,
+      totalDurationInFrames: totalFrames,
+    };
+  }
 
   // ── Slideshow 모드: 각 scene을 슬라이드로 변환 ──
   if (mode === 'slideshow') {
@@ -406,8 +506,13 @@ function ShortformClientInner() {
   });
   const [aiImageGenStatus, setAiImageGenStatus] = useState('idle');
 
-  // === 영상 모드 (kinetic = 기존, slideshow = 이미지 슬라이드쇼) ===
-  const [videoMode, setVideoMode] = useState('kinetic');
+  // === 영상 모드 ===
+  // Phase A 신규: scene-sequence (기본) — 대본 씬 1:1 → Remotion Sequence
+  // kinetic (레거시) — Hook/Body/CTA 3씬 강제
+  // slideshow (레거시) — 각 씬을 이미지 슬라이드로
+  const [videoMode, setVideoMode] = useState('scene-sequence');
+  // Phase A: TTS word timestamps (ElevenLabs) — 씬 duration 정밀 동기용
+  const [audioWordTimestamps, setAudioWordTimestamps] = useState(null);
 
   // === Step 6 — 미리보기 + 커스터마이징 (Phase F) ===
   const [step6Value, setStep6Value] = useState(() =>
@@ -779,6 +884,7 @@ function ShortformClientInner() {
 
   // 미리보기 props + duration 계산
   // Phase F: step6Value.sceneImageOrder를 scriptToProps에 전달
+  // Phase A: audioWordTimestamps 전달 → scene-sequence 모드에서 TTS 정밀 동기
   const playerProps = useMemo(() => {
     if (!script) return null;
     // Step 5 값이 있으면 우선, 비어있으면 기존 images state 폴백 (runAll 경로)
@@ -790,8 +896,9 @@ function ShortformClientInner() {
       bodyImages,
       step6Value?.sceneImageOrder,
       videoMode,
+      audioWordTimestamps,
     );
-  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder, videoMode]);
+  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder, videoMode, audioWordTimestamps]);
 
   const playerDurationInFrames = useMemo(() => {
     if (!playerProps) return totalDurationSec * SHORTFORM_FPS;
@@ -998,17 +1105,20 @@ function ShortformClientInner() {
       }
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('audio/')) {
-        // Google 폴백: 바이너리
+        // Google 폴백: 바이너리 — word timestamps 없음
         const blob = await res.blob();
         setAudioUrl(URL.createObjectURL(blob));
+        setAudioWordTimestamps(null);
       } else {
-        // ElevenLabs: JSON { audioBase64 }
+        // ElevenLabs: JSON { audioBase64, wordTimestamps }
         const data = await res.json();
         const binary = atob(data.audioBase64);
         const bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
         const blob = new Blob([bytes], { type: 'audio/mpeg' });
         setAudioUrl(URL.createObjectURL(blob));
+        // Phase A: word timestamps 포착 — Scene Sequence Renderer duration 계산에 사용
+        setAudioWordTimestamps(Array.isArray(data.wordTimestamps) ? data.wordTimestamps : null);
       }
       setTtsStatus('done');
     } catch (err) {
@@ -1285,12 +1395,32 @@ function ShortformClientInner() {
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: 'var(--ds-text, #1F2937)' }}>
               영상 모드
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setVideoMode('scene-sequence')}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  border: videoMode === 'scene-sequence' ? '2px solid var(--ds-accent, #F95A1F)' : '1.5px solid var(--ds-border, #E5E7EB)',
+                  background: videoMode === 'scene-sequence' ? 'rgba(255, 95, 31, 0.06)' : '#fff',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
+                  🎬 씬 시퀀스 (기본)
+                  <span style={{ fontSize: 9, padding: '1px 5px', background: 'var(--ds-accent, #F95A1F)', color: '#fff', borderRadius: 3, marginLeft: 4, verticalAlign: 'middle' }}>NEW</span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--ds-muted, #77736B)', lineHeight: 1.4 }}>
+                  대본 씬 수만큼 화면 전환. 바이럴 숏폼 리듬.
+                </div>
+              </button>
               <button
                 type="button"
                 onClick={() => setVideoMode('kinetic')}
                 style={{
-                  flex: 1,
                   padding: '12px 14px',
                   borderRadius: 10,
                   border: videoMode === 'kinetic' ? '2px solid var(--ds-accent, #F95A1F)' : '1.5px solid var(--ds-border, #E5E7EB)',
@@ -1300,16 +1430,15 @@ function ShortformClientInner() {
                   fontFamily: 'inherit',
                 }}
               >
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>🎨 키네틱 모드 (기본)</div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>🎨 키네틱 3씬</div>
                 <div style={{ fontSize: 11, color: 'var(--ds-muted, #77736B)', lineHeight: 1.4 }}>
-                  Hook/Body/CTA 3씬 + 키네틱 타이포. 이미지 최대 2장.
+                  Hook/Body/CTA 3씬 전통 구조. 이미지 최대 2장.
                 </div>
               </button>
               <button
                 type="button"
                 onClick={() => setVideoMode('slideshow')}
                 style={{
-                  flex: 1,
                   padding: '12px 14px',
                   borderRadius: 10,
                   border: videoMode === 'slideshow' ? '2px solid var(--ds-accent, #F95A1F)' : '1.5px solid var(--ds-border, #E5E7EB)',
@@ -1319,9 +1448,9 @@ function ShortformClientInner() {
                   fontFamily: 'inherit',
                 }}
               >
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>📸 슬라이드쇼 모드</div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>📸 슬라이드쇼</div>
                 <div style={{ fontSize: 11, color: 'var(--ds-muted, #77736B)', lineHeight: 1.4 }}>
-                  각 씬마다 1장씩 (5~8장). 매장 투어/메뉴 소개에 적합.
+                  각 씬마다 1장. 매장·메뉴 소개.
                 </div>
               </button>
             </div>

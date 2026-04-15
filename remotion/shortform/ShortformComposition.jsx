@@ -11,6 +11,10 @@ import { HookScene } from './HookScene';
 import { BodyScene } from './BodyScene';
 import { CTAScene } from './CTAScene';
 import { SlideshowScene } from './SlideshowScene';
+import {
+  SceneSequenceComposition,
+  buildSceneSequenceTimeline,
+} from './SceneSequenceComposition';
 import { getPreset, DEFAULT_PRESET_KEY } from './presets';
 import { SHORTFORM_FPS } from './styles';
 
@@ -50,9 +54,10 @@ function resolveTransition(kind) {
  */
 export const ShortformComposition = ({
   preset: presetKey = DEFAULT_PRESET_KEY,
-  mode = 'kinetic',                // 'kinetic' | 'slideshow'
+  mode = 'scene-sequence',         // 'scene-sequence' (기본) | 'kinetic' | 'slideshow'
+  scenes,                          // scene-sequence 모드: [{ text, section, durationInFrames, imageUrl?, badge?, ctaButtonText? }]
   slides,                          // slideshow 모드용 [{ imageUrl, text, badge?, ctaButton? }]
-  totalDurationInFrames,           // slideshow 모드: 전체 프레임 수
+  totalDurationInFrames,           // slideshow/scene-sequence 모드: 전체 프레임 수
   hook,
   body,
   cta,
@@ -63,6 +68,23 @@ export const ShortformComposition = ({
   sceneTransition = 'slide',
 }) => {
   const preset = getPreset(presetKey);
+
+  // ── Scene Sequence 모드 (Phase A 신규, 기본값) ──
+  if (mode === 'scene-sequence') {
+    return (
+      <SceneSequenceComposition
+        preset={presetKey}
+        scenes={scenes || []}
+        totalDurationInFrames={totalDurationInFrames}
+        audio={audio}
+        subtitle={subtitle}
+        textPosition={textPosition}
+        cameraMotion={cameraMotion}
+        sceneTransition={sceneTransition === 'slide' ? 'auto' : sceneTransition}
+      />
+    );
+  }
+
   const hookFrames = hook?.durationInFrames || 90;
   const bodyFrames = body?.durationInFrames || 270;
   const ctaFrames = cta?.durationInFrames || 90;
@@ -187,6 +209,14 @@ export const ShortformComposition = ({
 };
 
 export function buildShortformTimeline(props) {
+  // Scene Sequence 모드 (Phase A 신규, 기본)
+  if (props?.mode === 'scene-sequence') {
+    return buildSceneSequenceTimeline({
+      ...props,
+      sceneTransition: props?.sceneTransition === 'slide' ? 'auto' : (props?.sceneTransition || 'auto'),
+    });
+  }
+
   const { transitionFrames } = resolveTransition(props?.sceneTransition || 'slide');
 
   // Slideshow 모드: totalDurationInFrames 우선, 없으면 slide 수 × 180 (6초) 폴백
