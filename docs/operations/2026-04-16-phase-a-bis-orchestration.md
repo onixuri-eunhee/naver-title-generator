@@ -11,6 +11,42 @@
 | #5 Tests | `.worktrees/phase-a-bis-tests` | feat/shortform-a-bis-tests | 대기 |
 
 ## 시작 순서 (의존성 그래프)
+
+```
+Day 0 (ESM 셋업): 완료 (commit 5c5d25b). 4개 worker 동시 출발 가능.
+
+Day 1:
+  #2 Lib-Leaf 시작
+    ├─ settings.js 빈 껍데기 + 시그니처 commit → #3, #5 대기 해제
+    └─ cta-variants.js commit → #4 대기 해제 (부분)
+
+Day 1~2:
+  #3 API+Prompt 시작 (#2 settings.js 이후)
+    ├─ prompt.js 5 섹션 함수 헤더 commit
+    ├─ scene-timing.js export 시그니처 commit → #4 대기 완전 해제
+    └─ credit-service idempotency 보강
+
+Day 2~3:
+  #4 Remotion+UI 시작 (#2 cta-variants + #3 scene-timing 둘 다 commit 후)
+    ├─ CTAVariantScene.jsx 신규
+    ├─ SceneCard.jsx 수정
+    ├─ SceneSequenceComposition.jsx 수정
+    └─ ShortformClient.js (가장 큼, 마지막)
+
+Day 1~3 병렬:
+  #5 Tests — 해당 모듈 commit 직후 각각 테스트 작성
+    ├─ settings.test.mjs (#2 commit 직후)
+    ├─ error-messages/parse/cta-variants (#2 commit 직후)
+    ├─ scene-timing/prompt (#3 commit 직후)
+    └─ idempotency/json-retry (integration, Neon 브랜치 DB 필요)
+
+Day 4:
+  통합 검증 (Orchestrator가 순차 merge: #2 → #3 → #4 → #5)
+
+Day 5~6:
+  Q6 desync 체크리스트 + Smoke + Regression + 배포
+```
+
 ## Orchestrator 책임
 
 1. 각 worker 세션 진행 보고 수집
