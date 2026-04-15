@@ -8,3 +8,4 @@ config.js
 *.bak
 .next/
 out/
+.worktrees/
