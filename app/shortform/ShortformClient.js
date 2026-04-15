@@ -96,6 +96,17 @@ function authHeaders() {
   return h;
 }
 
+function formatSavedAt(date) {
+  if (!date) return '';
+  const d = date instanceof Date ? date : new Date(date);
+  const now = Date.now();
+  const diffSec = Math.floor((now - d.getTime()) / 1000);
+  if (diffSec < 5) return '방금';
+  if (diffSec < 60) return `${diffSec}초 전`;
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}분 전`;
+  return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+}
+
 /**
  * Step 5 값 → 이미지 URL 배열로 병합
  * 우선순위: 사용자 사진 → AI 이미지
@@ -382,7 +393,7 @@ function ShortformClientInner() {
   const [imageStatus, setImageStatus] = useState('idle');
   const [ttsStatus, setTtsStatus] = useState('idle');
   const [error, setError] = useState('');
-  const [ttsVoice, setTtsVoice] = useState('21m00Tcm4TlvDq8ikWAM'); // Rachel (ElevenLabs) — Supertone 일시 장애로 기본값 변경
+  const [ttsVoice, setTtsVoice] = useState('21m00Tcm4TlvDq8ikWAM'); // Rachel (ElevenLabs)
   const [availableVoices, setAvailableVoices] = useState([]);
   const [previewAudio, setPreviewAudio] = useState({ voiceId: null, url: null, loading: false });
 
@@ -425,8 +436,6 @@ function ShortformClientInner() {
     preset: presetKey || null,
   }), [currentStep, step1Value, script, presetKey]);
 
-  // savedProjectId/autoSaving/autoSavedAt는 현재 UI에 사용 안함 — Phase I(SSE)에서 활용 예정
-  // eslint-disable-next-line no-unused-vars
   const autoSave = useProjectAutoSave({
     authToken: authTokenForSave,
     enabled: !!(user && user.email),
@@ -459,7 +468,7 @@ function ShortformClientInner() {
     } catch {}
   }, []);
 
-  // 음성 목록 fetch (Supertone + ElevenLabs + Google)
+  // 음성 목록 fetch (ElevenLabs + Google 폴백)
   useEffect(() => {
     (async () => {
       try {
@@ -922,10 +931,9 @@ function ShortformClientInner() {
         scenesArr.map((s, i) => `[${i}]${s?.section || '?'}(${(s?.script || '').length}자)`).join(' → '),
       );
 
-      // 문자 수 제한 체크 (Supertone 5000자 한계 근접 시 경고)
       if (text.length > 4500) {
         throw new Error(
-          `대본이 너무 길어요 (${text.length}자). Supertone은 최대 5000자까지 지원합니다. ` +
+          `대본이 너무 길어요 (${text.length}자). 최대 5000자까지 지원합니다. ` +
           `대본 편집기에서 본문 일부를 줄여주세요.`
         );
       }
@@ -956,7 +964,7 @@ function ShortformClientInner() {
       }
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('audio/')) {
-        // Supertone/Google: 바이너리
+        // Google 폴백: 바이너리
         const blob = await res.blob();
         setAudioUrl(URL.createObjectURL(blob));
       } else {
@@ -1027,7 +1035,7 @@ function ShortformClientInner() {
         </div>
       )}
 
-      {/* Phase A: StepProgress 표시 */}
+      {/* Phase A: StepProgress + 자동 저장 상태 */}
       <div className={styles.stepProgressWrap}>
         <StepProgress
           steps={STEP_LIST}
@@ -1035,6 +1043,37 @@ function ShortformClientInner() {
           completedSteps={completedSteps}
           onStepClick={handleStepClick}
         />
+        {user && user.email && (
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 11,
+              color: 'var(--ds-muted, #77736B)',
+              textAlign: 'right',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {autoSave.error
+              ? <span style={{ color: '#DC2626' }}>⚠ 저장 실패: {autoSave.error}</span>
+              : autoSave.isSaving
+                ? '저장 중…'
+                : autoSave.lastSavedAt
+                  ? `✓ 저장됨 ${formatSavedAt(autoSave.lastSavedAt)}`
+                  : '입력하면 자동 저장됩니다'}
+          </div>
+        )}
+        {!(user && user.email) && (
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 11,
+              color: 'var(--ds-muted, #77736B)',
+              textAlign: 'right',
+            }}
+          >
+            로그인하면 작업이 자동 저장됩니다
+          </div>
+        )}
       </div>
 
       {/* Phase I: SSE 실시간 진행 표시 + 취소 */}
@@ -1352,7 +1391,7 @@ function ShortformClientInner() {
               />
               <Status
                 status={ttsStatus}
-                label="3. TTS 음성 (Supertone)"
+                label="3. TTS 음성 (ElevenLabs)"
                 meta={audioUrl ? '생성됨' : ''}
               />
             </div>
@@ -1432,6 +1471,41 @@ function ShortformClientInner() {
                 </div>
                 {previewAudio.url && (
                   <audio src={previewAudio.url} autoPlay style={{ width: '100%', marginTop: 8, height: 32 }} controls />
+                )}
+              </div>
+            )}
+
+            {/* 다음 단계 CTA — Step 2~4 공용 (legacy UI 동선 보강) */}
+            {currentStep !== 7 && (
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--ds-border, #E5E7EB)' }}>
+                {audioUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(5)}
+                    style={{
+                      width: '100%',
+                      padding: '14px 16px',
+                      borderRadius: 10,
+                      border: 'none',
+                      background: 'var(--ds-accent, #F95A1F)',
+                      color: '#fff',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    다음 단계: 비주얼 액센트 →
+                  </button>
+                ) : script ? (
+                  <div style={{ fontSize: 12, color: 'var(--ds-muted, #77736B)', textAlign: 'center', lineHeight: 1.5 }}>
+                    👆 위에서 음성을 선택하고<br />
+                    <strong style={{ color: 'var(--ds-text, #1F2937)' }}>"3단계만 (TTS)"</strong> 버튼을 눌러 음성을 만들어주세요.
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: 'var(--ds-muted, #77736B)', textAlign: 'center', lineHeight: 1.5 }}>
+                    👆 먼저 <strong style={{ color: 'var(--ds-text, #1F2937)' }}>"1단계만 (대본)"</strong> 버튼으로 대본을 만들어주세요.
+                  </div>
                 )}
               </div>
             )}
@@ -1529,17 +1603,6 @@ function ShortformClientInner() {
           <p className={styles.skipHint}>
             바쁘시면 단계별 진행 없이 한 번에 영상을 만들 수 있어요. 다만 결과 품질은 단계 진행보다 낮습니다.
           </p>
-
-          {/* Phase E: Step 5 독립 테스트용 점프 버튼 (Phase D 완료 시 제거) */}
-          {currentStep !== 5 && (
-            <button
-              type="button"
-              className={styles.skipToStep5Btn}
-              onClick={() => setCurrentStep(5)}
-            >
-              Step 5 (사진 액센트)로 바로 가기 →
-            </button>
-          )}
         </div>
       )}
     </main>

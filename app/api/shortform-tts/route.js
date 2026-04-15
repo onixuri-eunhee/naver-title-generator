@@ -15,19 +15,7 @@ const PREVIEW_CACHE_TTL = 60 * 60 * 24 * 30; // 30일
 
 export const maxDuration = 30;
 
-// ── Supertone Play API (메인) ──
-const SUPERTONE_API_BASE = 'https://supertoneapi.com/v1';
-
-const SUPERTONE_VOICES = {
-  'e5f6fb1a53d0add87afb4f': { name: 'Agatha', gender: 'female' },
-  '1f6b70f879da125bfec245': { name: 'Audrey', gender: 'female' },
-  '52dc253df44d06aa7f0867': { name: 'Bella', gender: 'female' },
-  '91992bbd4758bdcf9c9b01': { name: 'Adam', gender: 'male' },
-  '4653d63d07d5340656b6bc': { name: 'Andrew', gender: 'male' },
-  'ead6b9de6beb66dc8f6d2d': { name: 'Andy', gender: 'male' },
-};
-
-// ── ElevenLabs (정밀 자막용) ──
+// ── ElevenLabs (메인 — 유일한 외부 TTS) ──
 const ELEVENLABS_API_BASE = 'https://api.elevenlabs.io/v1';
 const ELEVENLABS_MODEL = 'eleven_multilingual_v2';
 
@@ -126,39 +114,7 @@ const GOOGLE_VOICES = {
   'ko-KR-Standard-D': { name: '현우', gender: 'MALE' },
 };
 
-const DEFAULT_SUPERTONE_VOICE = '52dc253df44d06aa7f0867';
-const DEFAULT_GOOGLE_VOICE = 'ko-KR-Neural2-A';
-
-async function callSupertone(text, voiceId) {
-  const apiKey = process.env.SUPERTONE_API_KEY;
-  if (!apiKey) throw new Error('SUPERTONE_API_KEY is missing');
-
-  const res = await fetch(`${SUPERTONE_API_BASE}/text-to-speech/${voiceId}/stream`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-sup-api-key': apiKey,
-    },
-    body: JSON.stringify({
-      text,
-      language: 'ko',
-      model: 'sona_speech_1',
-      output_format: 'mp3',
-      voice_settings: {
-        speed: 1.1,
-        similarity: 1,
-      },
-    }),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Supertone TTS failed: ${res.status} ${errText.slice(0, 200)}`);
-  }
-
-  const arrayBuffer = await res.arrayBuffer();
-  return Buffer.from(arrayBuffer);
-}
+const DEFAULT_ELEVENLABS_VOICE = '21m00Tcm4TlvDq8ikWAM'; // Rachel
 
 // ── Google Cloud TTS (폴백) ──
 let _tokenCache = { token: null, expiresAt: 0 };
@@ -229,14 +185,8 @@ export async function OPTIONS(request) {
 }
 
 export async function GET(request) {
-  const hasSupertone = !!process.env.SUPERTONE_API_KEY;
   const hasEleven = !!process.env.ELEVENLABS_API_KEY;
   const voices = [];
-  if (hasSupertone) {
-    for (const [id, v] of Object.entries(SUPERTONE_VOICES)) {
-      voices.push({ id, name: v.name, gender: v.gender, provider: 'supertone' });
-    }
-  }
   if (hasEleven) {
     for (const [id, v] of Object.entries(ELEVENLABS_VOICES)) {
       voices.push({ id, name: v.name, gender: v.gender, provider: 'elevenlabs' });
@@ -247,7 +197,7 @@ export async function GET(request) {
       voices.push({ id, name: v.name, gender: v.gender, provider: 'google' });
     }
   }
-  return jsonResponse(request, { voices, provider: hasSupertone ? 'supertone' : (hasEleven ? 'elevenlabs' : 'google') });
+  return jsonResponse(request, { voices, provider: hasEleven ? 'elevenlabs' : 'google' });
 }
 
 export async function POST(request) {
@@ -286,55 +236,28 @@ export async function POST(request) {
     let provider;
 
     const isElevenVoice = !!ELEVENLABS_VOICES[voiceId];
-    const isSupertoneVoice = !!SUPERTONE_VOICES[voiceId];
     const isGoogleVoice = !!GOOGLE_VOICES[voiceId];
 
-    // 엄격 매칭: voiceId 기반으로 provider 결정. fallback은 같은 provider 내에서만.
-    // silent fallback 금지 — 선택한 음성이 실제로 쓰이도록.
-    console.log(`[TTS] 요청 — voiceId=${voiceId}, text=${text.length}자, eleven=${isElevenVoice}, supertone=${isSupertoneVoice}, google=${isGoogleVoice}`);
+    console.log(`[TTS] 요청 — voiceId=${voiceId}, text=${text.length}자, eleven=${isElevenVoice}, google=${isGoogleVoice}`);
+
+    const tryEleven = async (vId) => {
+      if (!process.env.ELEVENLABS_API_KEY) {
+        throw new Error('ELEVENLABS_API_KEY가 설정되지 않았습니다. 관리자에게 문의하세요.');
+      }
+      console.log(`[TTS] → ElevenLabs: voice=${vId}`);
+      const result = await callElevenLabs(text, vId);
+      audioBuffer = result.audioBuffer;
+      wordTimestamps = result.wordTimestamps;
+      provider = 'elevenlabs';
+      console.log(`[TTS] ✅ ElevenLabs success: ${audioBuffer.length} bytes, ${wordTimestamps.length} words`);
+    };
 
     if (isElevenVoice) {
-      if (!process.env.ELEVENLABS_API_KEY) {
-        return jsonResponse(
-          request,
-          { error: 'ElevenLabs 음성이 선택됐으나 API 키가 설정되지 않았습니다. Supertone 음성을 선택하거나 관리자에게 문의하세요.' },
-          { status: 500 }
-        );
-      }
       try {
-        console.log(`[TTS] → ElevenLabs: voice=${voiceId}`);
-        const result = await callElevenLabs(text, voiceId);
-        audioBuffer = result.audioBuffer;
-        wordTimestamps = result.wordTimestamps;
-        provider = 'elevenlabs';
-        console.log(`[TTS] ✅ ElevenLabs success: ${audioBuffer.length} bytes, ${wordTimestamps.length} words`);
+        await tryEleven(voiceId);
       } catch (elError) {
         console.error('[TTS] ❌ ElevenLabs FAILED:', elError.message);
         return jsonResponse(request, { error: 'ElevenLabs 음성 생성 실패: ' + elError.message }, { status: 502 });
-      }
-    } else if (isSupertoneVoice) {
-      if (!process.env.SUPERTONE_API_KEY) {
-        return jsonResponse(
-          request,
-          { error: 'Supertone 음성이 선택됐으나 API 키가 설정되지 않았습니다.' },
-          { status: 500 }
-        );
-      }
-      try {
-        console.log(`[TTS] → Supertone: voice=${voiceId}`);
-        audioBuffer = await callSupertone(text, voiceId);
-        provider = 'supertone';
-        console.log(`[TTS] ✅ Supertone success: ${audioBuffer.length} bytes`);
-      } catch (stError) {
-        console.error('[TTS] ❌ Supertone FAILED:', stError.message, '| voice:', voiceId);
-        return jsonResponse(
-          request,
-          {
-            error: `Supertone 음성 생성 실패 (${stError.message}). 다른 음성을 선택해보세요.`,
-            supertoneError: stError.message,
-          },
-          { status: 502 }
-        );
       }
     } else if (isGoogleVoice) {
       try {
@@ -347,19 +270,10 @@ export async function POST(request) {
         return jsonResponse(request, { error: 'Google TTS 음성 생성 실패: ' + gError.message }, { status: 502 });
       }
     } else {
-      // 알 수 없는 voiceId — 기본값으로 fallback
-      console.warn(`[TTS] 알 수 없는 voiceId: ${voiceId} — 기본 Supertone Bella로 fallback`);
-      if (!process.env.SUPERTONE_API_KEY) {
-        return jsonResponse(
-          request,
-          { error: `알 수 없는 음성 ID (${voiceId}). 음성을 다시 선택해주세요.` },
-          { status: 400 }
-        );
-      }
+      console.warn(`[TTS] 알 수 없는 voiceId: ${voiceId} — 기본 ElevenLabs Rachel로 fallback`);
       try {
-        audioBuffer = await callSupertone(text, DEFAULT_SUPERTONE_VOICE);
-        provider = 'supertone-default';
-        console.log(`[TTS] ✅ Default Supertone Bella: ${audioBuffer.length} bytes`);
+        await tryEleven(DEFAULT_ELEVENLABS_VOICE);
+        provider = 'elevenlabs-default';
       } catch (err) {
         return jsonResponse(request, { error: '기본 음성 생성 실패: ' + err.message }, { status: 502 });
       }
