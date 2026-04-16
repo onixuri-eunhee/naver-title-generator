@@ -53,6 +53,7 @@ export function SceneRouter({
       <LayoutComponent
         text={scene.text}
         startFrame={0}
+        preset={preset}
         {...layoutProps}
       />
     );

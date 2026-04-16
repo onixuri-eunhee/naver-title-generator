@@ -632,7 +632,7 @@ function ShortformClientInner() {
   // v2.1: 콘텐츠 타입 (shortform | longform) — Step 1 최상단 토글
   const [contentType, setContentType] = useState('shortform');
   // Week 1: 비주얼 스타일 (image | kinetic) — Step 1 영상 타입 아래 토글
-  const [visualStyle, setVisualStyle] = useState('image');
+  const [layoutMode, setLayoutMode] = useState('image');
   const [step1Value, setStep1Value] = useState({
     contentMode: 'blog', // 'blog' | 'keyword'
     blogText: '',
@@ -1230,7 +1230,7 @@ function ShortformClientInner() {
           concept: 'cinematic',
           // Phase A-bis — Step 1 category override (null 또는 'auto' 이면 서버가 자동 감지)
           category: step1Value.category && step1Value.category !== 'auto' ? step1Value.category : undefined,
-          visualStyle,
+          visualStyle: layoutMode,
         }),
       });
       const data = await res.json();
@@ -1420,8 +1420,6 @@ function ShortformClientInner() {
 
   async function runAll() {
     await generateScript();
-    // 순차 실행 (한 번에 하나씩)
-    await generateImages();
     await generateTts();
   }
 
@@ -1678,11 +1676,11 @@ function ShortformClientInner() {
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 type="button"
-                onClick={() => setVisualStyle('image')}
+                onClick={() => setLayoutMode('image')}
                 style={{
                   flex: 1, padding: '14px 16px', borderRadius: 10,
-                  border: visualStyle === 'image' ? '2px solid #ff6f61' : '1.5px solid var(--ds-border, #E5E7EB)',
-                  background: visualStyle === 'image' ? 'rgba(255, 111, 97, 0.06)' : '#fff',
+                  border: layoutMode === 'image' ? '2px solid #ff6f61' : '1.5px solid var(--ds-border, #E5E7EB)',
+                  background: layoutMode === 'image' ? 'rgba(255, 111, 97, 0.06)' : '#fff',
                   cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
                 }}
               >
@@ -1693,11 +1691,11 @@ function ShortformClientInner() {
               </button>
               <button
                 type="button"
-                onClick={() => setVisualStyle('kinetic')}
+                onClick={() => setLayoutMode('kinetic')}
                 style={{
                   flex: 1, padding: '14px 16px', borderRadius: 10,
-                  border: visualStyle === 'kinetic' ? '2px solid #ff6f61' : '1.5px solid var(--ds-border, #E5E7EB)',
-                  background: visualStyle === 'kinetic' ? 'rgba(255, 111, 97, 0.06)' : '#fff',
+                  border: layoutMode === 'kinetic' ? '2px solid #ff6f61' : '1.5px solid var(--ds-border, #E5E7EB)',
+                  background: layoutMode === 'kinetic' ? 'rgba(255, 111, 97, 0.06)' : '#fff',
                   cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
                 }}
               >
@@ -1992,13 +1990,8 @@ function ShortformClientInner() {
                 meta={script ? `${script.scenes?.length || 0}씬` : ''}
               />
               <Status
-                status={imageStatus}
-                label="2. Ken Burns 이미지 × 2"
-                meta={images.length > 0 ? `${images.length}장` : ''}
-              />
-              <Status
                 status={ttsStatus}
-                label="3. TTS 음성 (ElevenLabs)"
+                label="2. TTS 음성 (ElevenLabs)"
                 meta={audioUrl ? '생성됨' : ''}
               />
             </div>
@@ -2008,11 +2001,8 @@ function ShortformClientInner() {
             <button type="button" className={styles.secondaryBtn} onClick={generateScript} disabled={scriptStatus === 'busy'} style={{ marginTop: 12 }}>
               1단계만 (대본)
             </button>
-            <button type="button" className={styles.secondaryBtn} onClick={generateImages} disabled={imageStatus === 'busy'}>
-              2단계만 (이미지)
-            </button>
             <button type="button" className={styles.secondaryBtn} onClick={generateTts} disabled={ttsStatus === 'busy' || !script}>
-              3단계만 (TTS)
+              2단계만 (TTS)
             </button>
 
             {/* 음성 선택 */}
@@ -2266,9 +2256,9 @@ function ShortformClientInner() {
             type="button"
             className={styles.skipBtn}
             onClick={runAll}
-            disabled={scriptStatus === 'busy' || imageStatus === 'busy' || ttsStatus === 'busy'}
+            disabled={scriptStatus === 'busy' || ttsStatus === 'busy'}
           >
-            {scriptStatus === 'busy' || imageStatus === 'busy' || ttsStatus === 'busy'
+            {scriptStatus === 'busy' || ttsStatus === 'busy'
               ? '생성 중...'
               : '한 번에 자동 생성 (벤치마킹·세부조정 없이 빠른 모드)'}
           </button>
