@@ -1,25 +1,22 @@
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { resolveColors, KT_FONT, KT_WEIGHTS, KT_SPRING } from "../styles";
 
-const CARD_RADIUS = 24;
-
 const Check = ({ positive, colors }) => {
-  const bg = positive ? colors.coral : colors.gray;
+  const bg = positive ? colors.coral : `${colors.gray}60`;
   return (
     <div
       style={{
-        width: 32,
-        height: 32,
-        borderRadius: "50%",
+        width: 40,
+        height: 40,
+        borderRadius: 12,
         backgroundColor: bg,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: "#ffffff",
+        color: "#fff",
         fontFamily: KT_FONT,
         fontWeight: KT_WEIGHTS.black,
-        fontSize: 20,
-        lineHeight: 1,
+        fontSize: 22,
       }}
     >
       {positive ? "\u2713" : "\u2715"}
@@ -40,9 +37,10 @@ const Cell = ({ value, emphasize, colors }) => {
       style={{
         fontFamily: KT_FONT,
         fontWeight: emphasize ? KT_WEIGHTS.extraBold : KT_WEIGHTS.medium,
-        fontSize: 28,
+        fontSize: 34,
         color: emphasize ? colors.coral : colors.gray,
         textAlign: "center",
+        lineHeight: 1.3,
       }}
     >
       {value}
@@ -68,27 +66,16 @@ export const ComparisonChart = ({
     fps,
     config: KT_SPRING,
   });
-  const headerY = interpolate(headerIn, [0, 1], [-20, 0]);
-
-  /* Derived card tokens from resolved colors */
-  const cardBg = "rgba(255, 255, 255, 0.7)";
-  const cardBorder = `1px solid ${colors.coralLight}40`;
-  const cardShadow = [
-    `0 1px 1px ${colors.coral}0D`,
-    `0 4px 8px ${colors.coral}0F`,
-    `0 12px 24px ${colors.coral}12`,
-    `0 24px 48px ${colors.coral}0D`,
-    "inset 0 1px 0 rgba(255, 255, 255, 0.7)",
-  ].join(", ");
+  const headerY = interpolate(headerIn, [0, 1], [-16, 0]);
 
   return (
     <div
       style={{
         width: "100%",
-        backgroundColor: cardBg,
-        border: cardBorder,
-        borderRadius: CARD_RADIUS,
-        boxShadow: cardShadow,
+        maxWidth: 800,
+        backgroundColor: `${colors.coral}06`,
+        border: `2px solid ${colors.coralLight}30`,
+        borderRadius: 24,
         overflow: "hidden",
       }}
     >
@@ -97,30 +84,26 @@ export const ComparisonChart = ({
           opacity: headerIn,
           transform: `translateY(${headerY}px)`,
           display: "grid",
-          gridTemplateColumns: "1.2fr 1fr 1fr",
+          gridTemplateColumns: "1.4fr 1fr 1fr",
           alignItems: "center",
-          padding: "22px 28px",
+          padding: "28px 32px",
           backgroundColor: `${colors.coral}10`,
-          borderBottom: `1px solid ${colors.coral}20`,
+          borderBottom: `2px solid ${colors.coral}15`,
         }}
       >
         <div
           style={{
             fontFamily: KT_FONT,
-            fontWeight: KT_WEIGHTS.medium,
-            fontSize: 22,
+            fontWeight: KT_WEIGHTS.bold,
+            fontSize: 28,
             color: colors.gray,
-            letterSpacing: 1,
-            textTransform: "uppercase",
           }}
-        >
-          Feature
-        </div>
+        />
         <div
           style={{
             fontFamily: KT_FONT,
             fontWeight: KT_WEIGHTS.bold,
-            fontSize: 26,
+            fontSize: 32,
             color: colors.gray,
             textAlign: "center",
           }}
@@ -130,8 +113,8 @@ export const ComparisonChart = ({
         <div
           style={{
             fontFamily: KT_FONT,
-            fontWeight: KT_WEIGHTS.extraBold,
-            fontSize: 26,
+            fontWeight: KT_WEIGHTS.black,
+            fontSize: 32,
             color: highlightRight ? colors.coral : colors.gray,
             textAlign: "center",
           }}
@@ -147,7 +130,7 @@ export const ComparisonChart = ({
           fps,
           config: KT_SPRING,
         });
-        const rowX = interpolate(rowIn, [0, 1], [-16, 0]);
+        const rowX = interpolate(rowIn, [0, 1], [-12, 0]);
         return (
           <div
             key={i}
@@ -155,21 +138,19 @@ export const ComparisonChart = ({
               opacity: rowIn,
               transform: `translateX(${rowX}px)`,
               display: "grid",
-              gridTemplateColumns: "1.2fr 1fr 1fr",
+              gridTemplateColumns: "1.4fr 1fr 1fr",
               alignItems: "center",
-              padding: "22px 28px",
-              borderBottom:
-                i < rows.length - 1
-                  ? `1px solid ${colors.coral}20`
-                  : "none",
+              padding: "24px 32px",
+              borderBottom: i < rows.length - 1 ? `1px solid ${colors.coral}12` : "none",
             }}
           >
             <div
               style={{
                 fontFamily: KT_FONT,
                 fontWeight: KT_WEIGHTS.bold,
-                fontSize: 28,
+                fontSize: 34,
                 color: colors.white,
+                lineHeight: 1.3,
               }}
             >
               {row.feature}

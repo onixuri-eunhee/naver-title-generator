@@ -1,11 +1,8 @@
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { resolveColors, KT_FONT, KT_WEIGHTS, KT_SPRING } from "../styles";
 
-const CARD_RADIUS = 24;
-
 export const FlowDiagram = ({
   steps,
-  direction = "vertical",
   startFrame = 0,
   stepStagger = 12,
   activeIndex,
@@ -15,25 +12,15 @@ export const FlowDiagram = ({
   const { fps } = useVideoConfig();
   const colors = resolveColors(preset);
 
-  const isH = direction === "horizontal";
-
-  /* Derived card styles from resolved colors */
-  const cardShadow = [
-    `0 1px 1px ${colors.coral}0D`,
-    `0 4px 8px ${colors.coral}0F`,
-    `0 12px 24px ${colors.coral}12`,
-    `0 24px 48px ${colors.coral}0D`,
-    "inset 0 1px 0 rgba(255, 255, 255, 0.7)",
-  ].join(", ");
-
   return (
     <div
       style={{
         display: "flex",
-        flexDirection: isH ? "row" : "column",
-        alignItems: isH ? "center" : "stretch",
-        gap: 18,
+        flexDirection: "column",
+        alignItems: "stretch",
+        gap: 0,
         width: "100%",
+        maxWidth: 700,
       }}
     >
       {steps.map((step, i) => {
@@ -43,57 +30,45 @@ export const FlowDiagram = ({
           fps,
           config: KT_SPRING,
         });
-        const stepShift = interpolate(stepIn, [0, 1], [20, 0]);
-        const arrowStart = stepStart + 6;
-        const arrowIn = spring({
-          frame: frame - arrowStart,
-          fps,
-          config: KT_SPRING,
-        });
+        const stepY = interpolate(stepIn, [0, 1], [24, 0]);
         const isActive = activeIndex === i;
-        const borderColor = isActive ? colors.coral : colors.coralLight;
 
         return (
           <div
             key={i}
             style={{
               display: "flex",
-              flexDirection: isH ? "row" : "column",
+              flexDirection: "column",
               alignItems: "center",
-              flex: isH ? 1 : undefined,
             }}
           >
             <div
               style={{
                 opacity: stepIn,
-                transform: isH
-                  ? `translateY(${stepShift}px)`
-                  : `translateX(${stepShift}px)`,
-                backgroundColor: `${colors.coral}08`,
-                border: `1.5px solid ${borderColor}`,
-                borderRadius: CARD_RADIUS,
-                padding: "22px 28px",
+                transform: `translateY(${stepY}px)`,
+                backgroundColor: isActive ? `${colors.coral}15` : `${colors.coral}08`,
+                border: `2px solid ${isActive ? colors.coral : `${colors.coralLight}60`}`,
+                borderRadius: 20,
+                padding: "28px 36px",
                 display: "flex",
                 alignItems: "center",
-                gap: 18,
+                gap: 24,
                 width: "100%",
-                boxShadow: isActive ? cardShadow : "none",
               }}
             >
               <div
                 style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: "50%",
-                  backgroundColor: `${colors.coral}10`,
-                  border: `1.5px solid ${colors.coralLight}`,
+                  width: 56,
+                  height: 56,
+                  borderRadius: 16,
+                  backgroundColor: isActive ? colors.coral : `${colors.coral}20`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontFamily: KT_FONT,
-                  fontWeight: KT_WEIGHTS.extraBold,
-                  fontSize: 20,
-                  color: colors.coral,
+                  fontWeight: KT_WEIGHTS.black,
+                  fontSize: 24,
+                  color: isActive ? "#fff" : colors.coral,
                   flexShrink: 0,
                 }}
               >
@@ -103,31 +78,24 @@ export const FlowDiagram = ({
                 style={{
                   fontFamily: KT_FONT,
                   fontWeight: KT_WEIGHTS.bold,
-                  fontSize: 28,
+                  fontSize: 36,
                   color: colors.white,
+                  lineHeight: 1.3,
                 }}
               >
                 {step.title}
               </div>
             </div>
-            {i < steps.length - 1 ? (
+            {i < steps.length - 1 && (
               <div
                 style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  padding: isH ? "0 8px" : "8px 0",
-                  opacity: arrowIn,
-                  color: colors.coralLight,
-                  fontFamily: KT_FONT,
-                  fontSize: 32,
-                  fontWeight: KT_WEIGHTS.bold,
-                  transform: isH ? "none" : "rotate(90deg)",
+                  width: 3,
+                  height: 32,
+                  backgroundColor: `${colors.coralLight}50`,
+                  opacity: stepIn,
                 }}
-              >
-                →
-              </div>
-            ) : null}
+              />
+            )}
           </div>
         );
       })}
