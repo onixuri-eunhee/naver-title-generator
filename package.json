@@ -9,7 +9,9 @@
     "start": "next start",
     "obfuscate": "node scripts/obfuscate.mjs",
     "railway:shortform-stt": "node services/shortform-stt-service/server.js",
-    "remotion:render-shortform": "node scripts/render-shortform-remotion.mjs"
+    "remotion:render-shortform": "node scripts/render-shortform-remotion.mjs",
+    "test": "node --test tests/unit/*.test.js",
+    "test:integration": "node --test tests/integration/*.test.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1019.0",
