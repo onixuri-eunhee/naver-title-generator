@@ -577,7 +577,7 @@ async function classifyScriptType(topic) {
 
 async function callClaudeABis({
   topic, blogText, tone, targetDurationSec,
-  concept, targetSceneCount, benchmark, personaMemo, settings,
+  concept, targetSceneCount, benchmark, personaMemo, settings, layoutMode,
 }) {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY is not configured.');
@@ -606,7 +606,7 @@ async function callClaudeABis({
       firstThreeSeconds: settings.firstThreeSeconds || 'auto',
       reasoningExamples,
       contentType: 'short',
-      visualStyle: concept?.visualStyle || 'image',
+      visualStyle: layoutMode === 'kinetic' ? 'kinetic' : (concept?.visualStyle || 'image'),
       retryAttempt,
     });
 
@@ -797,6 +797,8 @@ export async function POST(request) {
     const keywords = String(body.keywords || '').trim();
     const benchmarkAggregated = body.benchmarkAggregated || null;
 
+    const layoutMode = body.visualStyle === 'kinetic' ? 'kinetic' : 'image';
+
     const conceptInput = ['cinematic', 'minimal', 'dynamic', 'natural', 'random'].includes(body.concept)
       ? body.concept
       : 'cinematic';
@@ -913,7 +915,7 @@ export async function POST(request) {
 
       script = await callClaudeABis({
         topic, blogText, tone, targetDurationSec,
-        concept, targetSceneCount, benchmark, personaMemo, settings,
+        concept, targetSceneCount, benchmark, personaMemo, settings, layoutMode,
       });
 
       // 벤치마크 후보 영상을 script payload에 첨부 (UI 카드 노출용).
