@@ -664,7 +664,6 @@ function ShortformClientInner() {
 
   // 상태
   const [scriptStatus, setScriptStatus] = useState('idle');
-  const [imageStatus, setImageStatus] = useState('idle');
   const [ttsStatus, setTtsStatus] = useState('idle');
   const [error, setError] = useState('');
 
@@ -1244,8 +1243,8 @@ function ShortformClientInner() {
         setSettings(migrateSettings(data.settings));
       }
       setScriptStatus('done');
-      // 대본 완료 → 벤치마킹(2) + 대본(3) 단계 마킹
-      setCompletedSteps((prev) => Array.from(new Set([...prev, 2, 3])));
+      // 대본 완료 → 입력(1) + 벤치마킹(2) + 대본(3) 단계 마킹
+      setCompletedSteps((prev) => Array.from(new Set([...prev, 1, 2, 3])));
       // Phase K: 첫 영상 무료 적용됐으면 배너 숨김 (Agent D 가 응답에
       // freeFirstApplied 포함하도록 wire-up 한 뒤에만 동작)
       if (data.freeFirstApplied) {
@@ -1257,35 +1256,6 @@ function ShortformClientInner() {
     }
   }
 
-  async function generateImages() {
-    setError('');
-    if (!topic.trim()) {
-      setError('주제를 입력해주세요.');
-      return;
-    }
-    setImageStatus('busy');
-    setImages([]);
-    try {
-      const res = await fetch('/api/blog-image-pro', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({
-          mode: 'direct',
-          topic,
-          mood: 'emotional',
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '이미지 생성 실패');
-      // direct 모드는 8장 반환 — 처음 2장만 사용
-      const imgs = (data.images || []).slice(0, 2).map((img) => img.r2Url || img.url).filter(Boolean);
-      setImages(imgs);
-      setImageStatus('done');
-    } catch (err) {
-      setError(err.message || '이미지 생성 중 오류');
-      setImageStatus('error');
-    }
-  }
 
   /**
    * Step 5 — AI 이미지 생성 핸들러 (Phase E)
@@ -1413,8 +1383,8 @@ function ShortformClientInner() {
         setAudioCharAlignment(data.charAlignment || null);
       }
       setTtsStatus('done');
-      // TTS 완료 → 음성(4) 단계 마킹
-      setCompletedSteps((prev) => Array.from(new Set([...prev, 4])));
+      // TTS 완료 → 음성(4) + 비주얼(5) 단계 마킹
+      setCompletedSteps((prev) => Array.from(new Set([...prev, 4, 5])));
     } catch (err) {
       console.error('[TTS] 최종 에러:', err);
       setError(err.message || 'TTS 중 오류');
@@ -1425,8 +1395,7 @@ function ShortformClientInner() {
   async function runAll() {
     await generateScript();
     await generateTts();
-    // 자동 생성 완료 → 중간 단계 전부 완료 마킹 + 미리보기 이동
-    setCompletedSteps((prev) => Array.from(new Set([...prev, 1, 2, 3, 4, 5])));
+    // generateScript → [1,2,3], generateTts → [4,5] 이미 마킹됨. 미리보기 이동만.
     setCurrentStep(6);
   }
 

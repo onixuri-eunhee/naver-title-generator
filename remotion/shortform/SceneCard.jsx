@@ -81,8 +81,7 @@ export const SceneCard = ({
     }
   }
 
-  // ── 텍스트 크기: 섹션별 기본값 + 길이 적응 ──
-  // hook/cta는 고유 크기 + 적응, point 씬은 안정적 크기로 널뛰기 방지.
+  // ── 텍스트 크기: hook 적응 / point 고정 / cta 고정 ──
   const textLen = (text || '').length;
   let fontSize;
   if (section === 'hook') {
