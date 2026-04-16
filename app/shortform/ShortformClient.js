@@ -1667,16 +1667,15 @@ function ShortformClientInner() {
               </button>
               <button
                 type="button"
-                disabled
+                onClick={() => setLayoutMode('kinetic')}
                 style={{
                   flex: 1, padding: '14px 16px', borderRadius: 10,
-                  border: '1.5px solid var(--ds-border, #E5E7EB)',
-                  background: '#f9f9f9',
-                  cursor: 'not-allowed', textAlign: 'left', fontFamily: 'inherit',
-                  opacity: 0.55,
+                  border: layoutMode === 'kinetic' ? '2px solid #ff6f61' : '1.5px solid var(--ds-border, #E5E7EB)',
+                  background: layoutMode === 'kinetic' ? 'rgba(255, 111, 97, 0.06)' : '#fff',
+                  cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
                 }}
               >
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>✍️ 텍스트형 <span style={{ fontSize: 10, fontWeight: 500, color: '#ff6f61' }}>준비중</span></div>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>✍️ 텍스트형</div>
                 <div style={{ fontSize: 11, color: 'var(--ds-muted, #77736B)', lineHeight: 1.4 }}>
                   키네틱 타이포 + 데이터 시각화
                 </div>

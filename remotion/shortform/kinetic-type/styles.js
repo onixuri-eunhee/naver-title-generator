@@ -9,6 +9,22 @@ export const KT_COLORS = {
   warning: "#F59E0B",
 } ;
 
+/**
+ * preset.colors → KT_COLORS 매핑. preset 없으면 KT_COLORS fallback.
+ */
+export function resolveColors(preset) {
+  const c = preset?.colors;
+  if (!c) return KT_COLORS;
+  return {
+    bg: c.bgBase || KT_COLORS.bg,
+    coral: c.accent || KT_COLORS.coral,
+    coralLight: c.accentLight || KT_COLORS.coralLight,
+    white: c.textPrimary || KT_COLORS.white,
+    gray: c.textSecondary || KT_COLORS.gray,
+    warning: KT_COLORS.warning,
+  };
+}
+
 export const KT_FONT = PRETENDARD;
 
 export const KT_SIZES = {

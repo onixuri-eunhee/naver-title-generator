@@ -1,11 +1,11 @@
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import {
-  KT_COLORS,
   KT_CORAL_GLOW,
   KT_FONT,
   KT_SPRING,
   KT_TEXT_SHADOW,
   KT_WEIGHTS,
+  resolveColors,
 } from "../styles";
 
 const ICONS = {
@@ -14,7 +14,8 @@ const ICONS = {
   info: "i",
 };
 
-export const EmphasisBox = ({ text, variant = "check", startFrame = 0 }) => {
+export const EmphasisBox = ({ text, variant = "check", startFrame = 0, preset }) => {
+  const KT_COLORS = resolveColors(preset);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const progress = spring({

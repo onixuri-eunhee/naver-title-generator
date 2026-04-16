@@ -1,12 +1,13 @@
 import { interpolate, useCurrentFrame } from "remotion";
 import {
-  KT_COLORS,
   KT_FONT,
   KT_TEXT_SHADOW,
   KT_WEIGHTS,
+  resolveColors,
 } from "../styles";
 
-export const ProgressBarBlock = ({ label, percent, startFrame = 0, durationInFrames = 60 }) => {
+export const ProgressBarBlock = ({ label, percent, startFrame = 0, durationInFrames = 60, preset }) => {
+  const KT_COLORS = resolveColors(preset);
   const frame = useCurrentFrame();
   const progress = interpolate(
     frame,

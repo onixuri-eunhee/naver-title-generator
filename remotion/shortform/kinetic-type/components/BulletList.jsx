@@ -1,7 +1,8 @@
 import { interpolate, useCurrentFrame } from "remotion";
-import { KT_COLORS, KT_FONT, KT_TEXT_SHADOW, KT_WEIGHTS } from "../styles";
+import { KT_FONT, KT_TEXT_SHADOW, KT_WEIGHTS, resolveColors } from "../styles";
 
-export const BulletList = ({ items, highlight = true, startFrame = 0, stagger = 10 }) => {
+export const BulletList = ({ items, highlight = true, startFrame = 0, stagger = 10, preset }) => {
+  const KT_COLORS = resolveColors(preset);
   const frame = useCurrentFrame();
   const accent = highlight ? KT_COLORS.coral : KT_COLORS.white;
 

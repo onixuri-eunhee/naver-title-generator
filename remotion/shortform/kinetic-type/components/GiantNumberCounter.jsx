@@ -1,11 +1,11 @@
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import {
-  KT_COLORS,
   KT_FONT,
   KT_SIZES,
   KT_SPRING,
   KT_TEXT_SHADOW,
   KT_WEIGHTS,
+  resolveColors,
 } from "../styles";
 
 export const GiantNumberCounter = ({
@@ -16,7 +16,9 @@ export const GiantNumberCounter = ({
   decimals = 0,
   startFrame = 0,
   durationInFrames = 30,
+  preset,
 }) => {
+  const KT_COLORS = resolveColors(preset);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
