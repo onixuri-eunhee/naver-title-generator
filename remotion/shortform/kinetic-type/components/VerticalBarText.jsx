@@ -2,7 +2,6 @@ import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import {
   KT_FONT,
   KT_SPRING,
-  KT_TEXT_SHADOW,
   KT_WEIGHTS,
   resolveColors,
 } from "../styles";
@@ -16,7 +15,7 @@ export const VerticalBarText = ({ text, startFrame = 0, preset }) => {
     fps,
     config: KT_SPRING,
   });
-  const barHeight = interpolate(progress, [0, 1], [0, 72]);
+  const barHeight = interpolate(progress, [0, 1], [0, 80]);
   const textOp = interpolate(
     frame,
     [startFrame + 6, startFrame + 20],
@@ -35,11 +34,12 @@ export const VerticalBarText = ({ text, startFrame = 0, preset }) => {
         display: "flex",
         alignItems: "center",
         gap: 24,
+        maxWidth: 800,
       }}
     >
       <div
         style={{
-          width: 6,
+          width: 8,
           height: barHeight,
           backgroundColor: KT_COLORS.coral,
           borderRadius: 3,
@@ -51,11 +51,11 @@ export const VerticalBarText = ({ text, startFrame = 0, preset }) => {
           transform: `translateX(${textX}px)`,
           fontFamily: KT_FONT,
           fontWeight: KT_WEIGHTS.extraBold,
-          fontSize: 72,
+          fontSize: 80,
           color: KT_COLORS.white,
           letterSpacing: -1,
           lineHeight: 1.1,
-          textShadow: KT_TEXT_SHADOW,
+          wordBreak: "keep-all",
         }}
       >
         {text}

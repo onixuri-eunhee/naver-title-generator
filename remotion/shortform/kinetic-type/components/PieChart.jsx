@@ -17,8 +17,8 @@ function sliceColors(colors) {
 
 export const PieChart = ({
   slices,
-  size = 400,
-  strokeWidth = 56,
+  size = 480,
+  strokeWidth = 64,
   startFrame = 0,
   sliceDuration = 18,
   centerLabel,
@@ -102,10 +102,11 @@ export const PieChart = ({
               style={{
                 fontFamily: KT_FONT,
                 fontWeight: KT_WEIGHTS.black,
-                fontSize: 72,
+                fontSize: 96,
                 color: colors.white,
                 letterSpacing: -2,
                 lineHeight: 1,
+                wordBreak: "keep-all",
               }}
             >
               {centerValue}
@@ -117,8 +118,9 @@ export const PieChart = ({
                 marginTop: 8,
                 fontFamily: KT_FONT,
                 fontWeight: KT_WEIGHTS.medium,
-                fontSize: 22,
+                fontSize: 28,
                 color: colors.gray,
+                wordBreak: "keep-all",
               }}
             >
               {centerLabel}

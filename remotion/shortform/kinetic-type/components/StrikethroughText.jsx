@@ -8,7 +8,6 @@ import {
 import {
   KT_FONT,
   KT_SIZES,
-  KT_TEXT_SHADOW,
   KT_WEIGHTS,
   resolveColors,
 } from "../styles";
@@ -59,7 +58,7 @@ export const StrikethroughText = ({
             letterSpacing: -3,
             textAlign: "center",
             lineHeight: 1.1,
-            textShadow: KT_TEXT_SHADOW,
+            wordBreak: "keep-all",
           }}
         >
           {text}
@@ -86,7 +85,7 @@ export const StrikethroughText = ({
           lineHeight: 1.1,
           position: "relative",
           display: "inline-block",
-          textShadow: KT_TEXT_SHADOW,
+          wordBreak: "keep-all",
         }}
       >
         {before && <span>{before}</span>}

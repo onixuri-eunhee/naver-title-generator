@@ -1,5 +1,5 @@
 import { interpolate, useCurrentFrame } from "remotion";
-import { KT_FONT, KT_TEXT_SHADOW, KT_WEIGHTS, resolveColors } from "../styles";
+import { KT_FONT, KT_WEIGHTS, resolveColors } from "../styles";
 
 export const BulletList = ({ items, highlight = true, startFrame = 0, stagger = 10, preset }) => {
   const KT_COLORS = resolveColors(preset);
@@ -13,6 +13,7 @@ export const BulletList = ({ items, highlight = true, startFrame = 0, stagger = 
         flexDirection: "column",
         gap: 18,
         alignItems: "flex-start",
+        maxWidth: 800,
       }}
     >
       {items.map((item, i) => {
@@ -43,13 +44,13 @@ export const BulletList = ({ items, highlight = true, startFrame = 0, stagger = 
               fontSize: 56,
               color: KT_COLORS.white,
               letterSpacing: -0.5,
-              textShadow: KT_TEXT_SHADOW,
+              wordBreak: "keep-all",
             }}
           >
             <span
               style={{
-                width: 14,
-                height: 14,
+                width: 18,
+                height: 18,
                 borderRadius: "50%",
                 backgroundColor: accent,
                 display: "inline-block",

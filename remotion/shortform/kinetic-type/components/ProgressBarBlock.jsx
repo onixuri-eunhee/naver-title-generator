@@ -1,7 +1,6 @@
 import { interpolate, useCurrentFrame } from "remotion";
 import {
   KT_FONT,
-  KT_TEXT_SHADOW,
   KT_WEIGHTS,
   resolveColors,
 } from "../styles";
@@ -30,8 +29,9 @@ export const ProgressBarBlock = ({ label, percent, startFrame = 0, durationInFra
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 14,
+        gap: 18,
         width: "100%",
+        maxWidth: 800,
         opacity: labelOp,
       }}
     >
@@ -46,10 +46,10 @@ export const ProgressBarBlock = ({ label, percent, startFrame = 0, durationInFra
           style={{
             fontFamily: KT_FONT,
             fontWeight: KT_WEIGHTS.bold,
-            fontSize: 44,
+            fontSize: 52,
             color: KT_COLORS.white,
             letterSpacing: -0.5,
-            textShadow: KT_TEXT_SHADOW,
+            wordBreak: "keep-all",
           }}
         >
           {label}
@@ -58,11 +58,10 @@ export const ProgressBarBlock = ({ label, percent, startFrame = 0, durationInFra
           style={{
             fontFamily: KT_FONT,
             fontWeight: KT_WEIGHTS.black,
-            fontSize: 56,
+            fontSize: 72,
             color: KT_COLORS.coral,
             letterSpacing: -1,
             fontVariantNumeric: "tabular-nums",
-            textShadow: KT_TEXT_SHADOW,
           }}
         >
           {countDisplay}%
@@ -71,9 +70,9 @@ export const ProgressBarBlock = ({ label, percent, startFrame = 0, durationInFra
       <div
         style={{
           width: "100%",
-          height: 16,
+          height: 24,
           backgroundColor: "rgba(255, 255, 255, 0.1)",
-          borderRadius: 8,
+          borderRadius: 12,
           overflow: "hidden",
         }}
       >

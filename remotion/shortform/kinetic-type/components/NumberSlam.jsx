@@ -8,7 +8,6 @@ import {
 import {
   KT_FONT,
   KT_SIZES,
-  KT_TEXT_SHADOW,
   KT_WEIGHTS,
   resolveColors,
 } from "../styles";
@@ -45,6 +44,7 @@ export const NumberSlam = ({ text, subtitle, preset, startFrame = 0 }) => {
         justifyContent: "center",
         alignItems: "center",
         gap: 24,
+        maxWidth: 900,
       }}
     >
       <div
@@ -57,7 +57,7 @@ export const NumberSlam = ({ text, subtitle, preset, startFrame = 0 }) => {
           color: colors.coral,
           letterSpacing: -10,
           lineHeight: 0.9,
-          textShadow: KT_TEXT_SHADOW,
+          wordBreak: "keep-all",
         }}
       >
         {text}

@@ -3,7 +3,6 @@ import {
   KT_FONT,
   KT_SIZES,
   KT_SPRING,
-  KT_TEXT_SHADOW,
   KT_WEIGHTS,
   resolveColors,
 } from "../styles";
@@ -55,6 +54,7 @@ export const GiantNumberCounter = ({
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        maxWidth: 800,
       }}
     >
       {label && (
@@ -82,7 +82,7 @@ export const GiantNumberCounter = ({
           letterSpacing: -6,
           lineHeight: 0.9,
           fontVariantNumeric: "tabular-nums",
-          textShadow: KT_TEXT_SHADOW,
+          wordBreak: "keep-all",
         }}
       >
         {display}
