@@ -1,6 +1,9 @@
 export { BigImpactText } from "./BigImpactText";
 export { BulletList } from "./BulletList";
 export { ComparisonColumns } from "./ComparisonColumns";
+export { ConnectingNetwork } from "./ConnectingNetwork";
+export { NumberSlam } from "./NumberSlam";
+export { StrikethroughText } from "./StrikethroughText";
 export { EmphasisBox } from "./EmphasisBox";
 export { GiantNumberCounter } from "./GiantNumberCounter";
 export { IconWithLabel } from "./IconWithLabel";

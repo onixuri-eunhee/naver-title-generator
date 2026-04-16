@@ -19,6 +19,14 @@ import { ProgressBarBlock } from './kinetic-type/components/ProgressBarBlock';
 import { SmallLabel } from './kinetic-type/components/SmallLabel';
 import { SubtitleBar } from './kinetic-type/components/SubtitleBar';
 import { VerticalBarText } from './kinetic-type/components/VerticalBarText';
+import { VennDiagram } from './kinetic-type/components/VennDiagram';
+import { BarGraph } from './kinetic-type/components/BarGraph';
+import { PieChart } from './kinetic-type/components/PieChart';
+import { FlowDiagram } from './kinetic-type/components/FlowDiagram';
+import { ComparisonChart } from './kinetic-type/components/ComparisonChart';
+import { ConnectingNetwork } from './kinetic-type/components/ConnectingNetwork';
+import { StrikethroughText } from './kinetic-type/components/StrikethroughText';
+import { NumberSlam } from './kinetic-type/components/NumberSlam';
 
 const LAYOUT_REGISTRY = {
   'big-impact-text': BigImpactText,
@@ -31,6 +39,14 @@ const LAYOUT_REGISTRY = {
   'small-label': SmallLabel,
   'subtitle-bar': SubtitleBar,
   'vertical-bar': VerticalBarText,
+  'venn-diagram': VennDiagram,
+  'bar-chart': BarGraph,
+  'pie-chart': PieChart,
+  'flow-diagram': FlowDiagram,
+  'comparison-chart': ComparisonChart,
+  'network': ConnectingNetwork,
+  'strikethrough': StrikethroughText,
+  'number-slam': NumberSlam,
 };
 
 export const LAYOUT_TYPES = Object.keys(LAYOUT_REGISTRY);
