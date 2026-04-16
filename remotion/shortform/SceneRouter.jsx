@@ -80,12 +80,21 @@ export function SceneRouter({
 
     return (
       <AbsoluteFill>
-        <LayoutComponent
-          text={scene.text}
-          startFrame={0}
-          preset={preset}
-          {...layoutProps}
-        />
+        <AbsoluteFill
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '120px 60px',
+          }}
+        >
+          <LayoutComponent
+            text={scene.text}
+            startFrame={0}
+            preset={preset}
+            {...layoutProps}
+          />
+        </AbsoluteFill>
         {EffectOverlay && <EffectOverlay preset={preset} startFrame={5} />}
         <LottieOverlay layoutType={layoutType} section={section} />
       </AbsoluteFill>

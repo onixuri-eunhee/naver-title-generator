@@ -96,7 +96,7 @@ export const SceneSequenceComposition = ({
   if (!Array.isArray(scenes) || scenes.length === 0) {
     // 폴백: 빈 상태
     return (
-      <BackgroundLayer colors={preset.colors} meshCircles={preset.mesh}>
+      <BackgroundLayer colors={preset.colors} >
         <div />
       </BackgroundLayer>
     );
@@ -152,7 +152,7 @@ export const SceneSequenceComposition = ({
   });
 
   return (
-    <BackgroundLayer colors={preset.colors} meshCircles={preset.mesh}>
+    <BackgroundLayer colors={preset.colors} >
       <TransitionSeries>{children}</TransitionSeries>
       <ProgressBar color={preset.colors.accent} />
       {audio?.url && (

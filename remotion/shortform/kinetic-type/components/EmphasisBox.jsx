@@ -1,9 +1,7 @@
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import {
-  KT_CORAL_GLOW,
   KT_FONT,
   KT_SPRING,
-  KT_TEXT_SHADOW,
   KT_WEIGHTS,
   resolveColors,
 } from "../styles";
@@ -14,8 +12,14 @@ const ICONS = {
   info: "i",
 };
 
+const VARIANT_STYLES = {
+  check: (c) => ({ border: `2px solid ${c.coral}40`, bg: `${c.coral}08`, iconBg: c.coral }),
+  warning: (c) => ({ border: `2px solid ${c.warning}40`, bg: `${c.warning}08`, iconBg: c.warning }),
+  info: (c) => ({ border: `2px solid ${c.gray}40`, bg: `${c.gray}08`, iconBg: c.gray }),
+};
+
 export const EmphasisBox = ({ text, variant = "check", startFrame = 0, preset }) => {
-  const KT_COLORS = resolveColors(preset);
+  const colors = resolveColors(preset);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const progress = spring({
@@ -23,41 +27,39 @@ export const EmphasisBox = ({ text, variant = "check", startFrame = 0, preset })
     fps,
     config: KT_SPRING,
   });
-  const scale = interpolate(
-    progress,
-    [0, 0.6, 1],
-    [0.8, 1.02, 1],
-  );
+  const scale = interpolate(progress, [0, 0.6, 1], [0.9, 1.01, 1]);
   const op = progress;
+
+  const vs = (VARIANT_STYLES[variant] || VARIANT_STYLES.check)(colors);
 
   return (
     <div
       style={{
         opacity: op,
         transform: `scale(${scale})`,
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 20,
-        padding: "22px 36px",
-        backgroundColor: "rgba(255, 111, 97, 0.08)",
-        border: `2px solid ${KT_COLORS.coral}`,
-        borderRadius: 16,
-        boxShadow: KT_CORAL_GLOW,
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 24,
+        padding: "32px 40px",
+        backgroundColor: vs.bg,
+        border: vs.border,
+        borderRadius: 20,
+        maxWidth: 800,
       }}
     >
       <div
         style={{
-          width: 48,
-          height: 48,
-          borderRadius: "50%",
-          backgroundColor: KT_COLORS.coral,
-          color: KT_COLORS.white,
+          width: 52,
+          height: 52,
+          borderRadius: 14,
+          backgroundColor: vs.iconBg,
+          color: "#fff",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           fontFamily: KT_FONT,
           fontWeight: KT_WEIGHTS.black,
-          fontSize: 28,
+          fontSize: 26,
           flexShrink: 0,
         }}
       >
@@ -66,11 +68,12 @@ export const EmphasisBox = ({ text, variant = "check", startFrame = 0, preset })
       <div
         style={{
           fontFamily: KT_FONT,
-          fontWeight: KT_WEIGHTS.extraBold,
-          fontSize: 44,
-          color: KT_COLORS.white,
+          fontWeight: KT_WEIGHTS.bold,
+          fontSize: 38,
+          color: colors.white,
           letterSpacing: -0.5,
-          textShadow: KT_TEXT_SHADOW,
+          lineHeight: 1.4,
+          wordBreak: "keep-all",
         }}
       >
         {text}

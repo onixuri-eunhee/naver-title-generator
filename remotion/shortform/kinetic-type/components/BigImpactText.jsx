@@ -1,15 +1,13 @@
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import {
   KT_FONT,
-  KT_SIZES,
   KT_SPRING,
-  KT_TEXT_SHADOW,
   KT_WEIGHTS,
   resolveColors,
 } from "../styles";
 
 export const BigImpactText = ({ text, highlight, startFrame = 0, preset }) => {
-  const KT_COLORS = resolveColors(preset);
+  const colors = resolveColors(preset);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const progress = spring({
@@ -17,22 +15,26 @@ export const BigImpactText = ({ text, highlight, startFrame = 0, preset }) => {
     fps,
     config: KT_SPRING,
   });
-  const scale = interpolate(progress, [0, 1], [0.82, 1]);
+  const scale = interpolate(progress, [0, 1], [0.85, 1]);
   const op = progress;
+
+  // 텍스트 길이에 따라 폰트 크기 자동 조절
+  const len = text?.length || 1;
+  const fontSize = len <= 10 ? 120 : len <= 20 ? 88 : len <= 30 ? 68 : 56;
 
   const renderText = () => {
     if (!highlight) {
-      return <span style={{ color: KT_COLORS.coral }}>{text}</span>;
+      return <span style={{ color: colors.white }}>{text}</span>;
     }
     const idx = text.indexOf(highlight);
-    if (idx === -1) return <span>{text}</span>;
+    if (idx === -1) return <span style={{ color: colors.white }}>{text}</span>;
     const before = text.slice(0, idx);
     const after = text.slice(idx + highlight.length);
     return (
       <>
-        {before && <span style={{ color: KT_COLORS.white }}>{before}</span>}
-        <span style={{ color: KT_COLORS.coral }}>{highlight}</span>
-        {after && <span style={{ color: KT_COLORS.white }}>{after}</span>}
+        {before && <span style={{ color: colors.white }}>{before}</span>}
+        <span style={{ color: colors.coral }}>{highlight}</span>
+        {after && <span style={{ color: colors.white }}>{after}</span>}
       </>
     );
   };
@@ -44,11 +46,12 @@ export const BigImpactText = ({ text, highlight, startFrame = 0, preset }) => {
         transform: `scale(${scale})`,
         fontFamily: KT_FONT,
         fontWeight: KT_WEIGHTS.black,
-        fontSize: KT_SIZES.impact,
-        letterSpacing: -4,
-        lineHeight: 1.05,
+        fontSize,
+        letterSpacing: -2,
+        lineHeight: 1.25,
         textAlign: "center",
-        textShadow: KT_TEXT_SHADOW,
+        maxWidth: 900,
+        wordBreak: "keep-all",
       }}
     >
       {renderText()}
