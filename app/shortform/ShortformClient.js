@@ -7,6 +7,17 @@ import { getToken } from '@/lib/auth';
 import { useAuth } from '@/components/AuthProvider';
 import { ShortformComposition, buildShortformTimeline } from '@/remotion/shortform/ShortformComposition.jsx';
 import { PRESETS, PRESET_KEYS, DEFAULT_PRESET_KEY } from '@/remotion/shortform/presets';
+// Phase A-bis — Conversion Primitives SSOT + CTA registry
+import {
+  CHIP_SCHEMA,
+  DEFAULT_SETTINGS,
+  getChipCost,
+  getRefineRoute,
+  migrateSettings,
+  validateSettings,
+  formatCredit,
+} from '@/lib/shortform/settings.js';
+import { getCTAVariant } from '@/lib/shortform/cta-variants.js';
 import {
   SHORTFORM_FPS,
   SHORTFORM_WIDTH,
@@ -174,7 +185,7 @@ function deriveSceneDurationsFromWordTimestamps(scenes, wordTimestamps, fps) {
   return durations;
 }
 
-function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneImageOrder, mode = 'scene-sequence', wordTimestamps = null) {
+function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneImageOrder, mode = 'scene-sequence', wordTimestamps = null, settings = null, brandKit = null) {
   const fps = SHORTFORM_FPS;
   const totalFrames = Math.round(totalDurationSec * fps);
 
@@ -218,11 +229,15 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
       return imgs[idx % imgs.length];
     }
 
+    // Phase A-bis — CTA 변형 resolve (last scene 전용, settings.ctaTone 기반)
+    const ctaTone = settings?.ctaTone === 'professional' ? 'professional' : 'casual';
+    const ctaVariant = getCTAVariant(`save_follow_${ctaTone}`);
+
     const mappedScenes = validScenes.map((s, i) => {
       const isHook = s.section === 'hook' || i === 0;
       const isCta = s.section === 'cta' || i === validScenes.length - 1;
       const sectionKey = isHook ? 'hook' : isCta ? 'cta' : 'point';
-      return {
+      const base = {
         text: s.script,
         section: sectionKey,
         durationInFrames: sceneDurations[i],
@@ -230,6 +245,14 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
         badge: isHook ? (s.hookText || script?.hookText || 'STOP').slice(0, 12) : undefined,
         ctaButtonText: isCta ? '지금 시작 →' : undefined,
       };
+      // Phase A-bis — 마지막 씬에만 CTAVariantScene 입력 필드 첨부.
+      // SceneSequenceComposition이 scene.ctaVariantProps 존재 여부로 분기.
+      if (isCta && ctaVariant) {
+        base.ctaVariantProps = { variant: ctaVariant.variant };
+        base.ctaCopy = ctaVariant.copy;
+        base.brandKit = brandKit;
+      }
+      return base;
     });
 
     return {
@@ -438,6 +461,138 @@ function ScriptTextEditor({ script, setScript, originalScript }) {
   );
 }
 
+/**
+ * Phase A-bis — Q9 칩 5종 (category, firstThreeSeconds, scriptType, ctaTone, voiceSpeed).
+ *
+ * 원칙 (spec §4.11): 비즈니스 로직 금지, 마크업과 settings.js 호출만.
+ * - 드롭다운/슬라이더 → onChange → 부모의 handleChipChange 호출
+ * - 비용 배지 (cost 0 은 '무료 ✨', 그 외 formatCredit)
+ * - disabled 시 refine 진행 중 (전부 비활성화)
+ */
+function Step3ChipRow({ settings, onChange, disabled, errorMessage, reasoning }) {
+  const chips = Object.values(CHIP_SCHEMA); // 5종, Object key insertion 순서 = scan 우선순위
+
+  const rowStyle = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  };
+  const chipStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    padding: '8px 10px',
+    background: disabled ? '#F3F4F6' : '#FAFAFA',
+    border: '1px solid #E5E7EB',
+    borderRadius: 8,
+    fontSize: 11,
+    flex: '1 1 140px',
+    minWidth: 140,
+    opacity: disabled ? 0.55 : 1,
+  };
+  const labelStyle = {
+    fontWeight: 700,
+    color: '#374151',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  };
+  const selectStyle = {
+    width: '100%',
+    padding: '4px 6px',
+    fontSize: 11,
+    border: '1px solid #D1D5DB',
+    borderRadius: 4,
+    background: disabled ? '#E5E7EB' : 'white',
+    color: '#111827',
+  };
+  const badgeStyle = (cost) => ({
+    fontSize: 10,
+    padding: '1px 6px',
+    borderRadius: 10,
+    background: cost === 0 ? '#DCFCE7' : '#FEF3C7',
+    color: cost === 0 ? '#166534' : '#92400E',
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+  });
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', marginBottom: 6 }}>
+        AI 판정 + 세부 조정
+      </div>
+      <div style={rowStyle}>
+        {chips.map((chip) => {
+          const value = settings[chip.id];
+          const cost = getChipCost(chip.id, value);
+          const costLabel = cost === 0 ? '무료 ✨' : formatCredit(cost);
+          const tip = reasoning?.[chip.id] || null;
+
+          return (
+            <label key={chip.id} style={chipStyle} title={tip || undefined}>
+              <div style={labelStyle}>
+                <span>{chip.label}</span>
+                <span style={badgeStyle(cost)}>{costLabel}</span>
+              </div>
+              {chip.type === 'select' && (
+                <select
+                  style={selectStyle}
+                  value={value}
+                  disabled={disabled}
+                  onChange={(e) => onChange(chip.id, e.target.value)}
+                >
+                  {chip.options.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {chip.type === 'slider' && (
+                <>
+                  <input
+                    type="range"
+                    min={chip.min}
+                    max={chip.max}
+                    step={chip.step}
+                    value={value}
+                    disabled={disabled}
+                    onChange={(e) => onChange(chip.id, Number(e.target.value))}
+                    style={{ width: '100%' }}
+                  />
+                  <div style={{ fontSize: 10, color: '#6B7280', textAlign: 'right' }}>
+                    x{Number(value).toFixed(2)}
+                  </div>
+                </>
+              )}
+            </label>
+          );
+        })}
+      </div>
+      {errorMessage && (
+        <div
+          style={{
+            marginTop: 8,
+            padding: '6px 10px',
+            background: '#FEE2E2',
+            color: '#991B1B',
+            fontSize: 11,
+            borderRadius: 6,
+          }}
+        >
+          {errorMessage === 'invalid_settings' && '설정 형식 오류 — 다시 시도해주세요.'}
+          {errorMessage === 'no_script' && '대본이 아직 없어요. 먼저 대본을 생성해주세요.'}
+          {errorMessage === 'network' && '네트워크 오류 — 잠시 후 다시 시도해주세요.'}
+          {errorMessage === 'refine_failed' && '부분 재생성에 실패했어요. 1~2분 후 다시 시도해주세요.'}
+          {!['invalid_settings', 'no_script', 'network', 'refine_failed'].includes(errorMessage) && errorMessage}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Status({ status, label, meta }) {
   const dotClass =
     status === 'busy' ? styles.statusDotBusy
@@ -472,6 +627,8 @@ function ShortformClientInner() {
     customPersonaLabel: '',
     tone: 'casual',
     durationSec: 45,
+    // Phase A-bis — optional category override ('auto' = 서버 자동 감지)
+    category: 'auto',
   });
   const [completedSteps, setCompletedSteps] = useState([]);
 
@@ -494,6 +651,19 @@ function ShortformClientInner() {
   const [imageStatus, setImageStatus] = useState('idle');
   const [ttsStatus, setTtsStatus] = useState('idle');
   const [error, setError] = useState('');
+
+  // Phase A-bis — Conversion Primitives
+  // settings: Q9 칩 5종 (category, firstThreeSeconds, scriptType, ctaTone, voiceSpeed)
+  // refineStatus: 'idle'|'busy' — 하나의 refine이 진행 중이면 모든 칩 비활성화 (spec §4.11 concurrency)
+  // refineError: null | errCode — 칩 row 하단에 토스트로 표시
+  // brandKit: null | { logoUrl, primaryColor, handle } — CTAVariantScene 폴백 3단계 입력
+  const [settings, setSettings] = useState(() => migrateSettings(DEFAULT_SETTINGS));
+  const [refineStatus, setRefineStatus] = useState('idle');
+  const [refineError, setRefineError] = useState(null);
+  const [brandKit, setBrandKit] = useState(null);
+  // Phase G React hook 미정 — 일단 flag로 one-shot fetch 제어. 기본 off.
+  // TODO: Phase G useBrandKit() 도입 시 이 블록 교체.
+  const brandKitFetchEnabled = false;
   const [ttsVoice, setTtsVoice] = useState('21m00Tcm4TlvDq8ikWAM'); // Rachel (ElevenLabs)
   const [availableVoices, setAvailableVoices] = useState([]);
   const [previewAudio, setPreviewAudio] = useState({ voiceId: null, url: null, loading: false });
@@ -861,6 +1031,91 @@ function ShortformClientInner() {
       });
   }, [projectId, restoredProjectId]);
 
+  // Phase A-bis — brandKit one-shot fetch (flag로 gate).
+  // Phase G useBrandKit hook이 도입되면 이 블록 교체.
+  useEffect(() => {
+    if (!brandKitFetchEnabled) return;
+    const token = getToken();
+    if (!token) return;
+    let cancelled = false;
+    fetch('/api/brand-kit', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        // 정상 응답 shape: { logoUrl, primaryColor, handle } 중 존재하는 것만.
+        setBrandKit({
+          logoUrl: data.logoUrl || null,
+          primaryColor: data.primaryColor || null,
+          handle: data.handle || null,
+        });
+      })
+      .catch(() => {
+        // 실패 시 null 유지 → CTAVariantScene 폴백 3단계 타게 됨. 조용히 무시.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Phase A-bis — 칩 변경 dispatcher.
+  // inline (route === null): 로컬 state만, 크레딧 0
+  // refine-route: /api/shortform-script/refine 호출 + 크레딧 차감
+  async function handleChipChange(chipId, newValue) {
+    setRefineError(null);
+
+    const nextSettings = { ...settings, [chipId]: newValue };
+    const validation = validateSettings(nextSettings);
+    if (!validation.ok) {
+      setRefineError('invalid_settings');
+      return;
+    }
+
+    const route = getRefineRoute(chipId);
+
+    // Inline — ctaTone, voiceSpeed (cost 0)
+    if (route === null) {
+      setSettings(nextSettings);
+      return;
+    }
+
+    // Refine-route — category-refine, script-type-refine, first-three-refine
+    if (!script) {
+      setRefineError('no_script');
+      return;
+    }
+
+    setRefineStatus('busy');
+    try {
+      const requestId = generateClientJobId();
+      const res = await fetch('/api/shortform-script/refine', {
+        method: 'POST',
+        headers: {
+          ...authHeaders(),
+          'X-Request-Id': requestId,
+        },
+        body: JSON.stringify({
+          originalScript: script,
+          field: chipId,
+          newValue,
+          settings: nextSettings,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRefineError(data?.error || 'refine_failed');
+        return;
+      }
+      if (data.updatedScript) {
+        setScript(data.updatedScript);
+      }
+      setSettings(nextSettings);
+    } catch (err) {
+      setRefineError(err?.name === 'AbortError' ? 'aborted' : 'network');
+    } finally {
+      setRefineStatus('idle');
+    }
+  }
+
   // Step 1 → 2 이동: step1Value를 레거시 state로 매핑하여 역호환 유지
   function handleStep1Next() {
     setTopic(step1Value.contentMode === 'keyword' ? step1Value.keywords : (step1Value.blogText.slice(0, 100) || ''));
@@ -897,8 +1152,10 @@ function ShortformClientInner() {
       step6Value?.sceneImageOrder,
       videoMode,
       audioWordTimestamps,
+      settings,    // Phase A-bis — CTA tone resolve
+      brandKit,    // Phase A-bis — CTAVariantScene brandKit (null이면 폴백 3단계)
     );
-  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder, videoMode, audioWordTimestamps]);
+  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder, videoMode, audioWordTimestamps, settings, brandKit]);
 
   const playerDurationInFrames = useMemo(() => {
     if (!playerProps) return totalDurationSec * SHORTFORM_FPS;
@@ -938,7 +1195,11 @@ function ShortformClientInner() {
     try {
       const res = await fetch('/api/shortform-script', {
         method: 'POST',
-        headers: authHeaders(),
+        headers: {
+          ...authHeaders(),
+          // Phase A-bis §6.1 idempotency — jobId = X-Request-Id (retry는 같은 ID)
+          'X-Request-Id': newJobId,
+        },
         body: JSON.stringify({
           jobId: newJobId,
           topic,
@@ -949,6 +1210,8 @@ function ShortformClientInner() {
           contentType,
           targetDurationSec: totalDurationSec,
           concept: 'cinematic',
+          // Phase A-bis — Step 1 category override (null 또는 'auto' 이면 서버가 자동 감지)
+          category: step1Value.category && step1Value.category !== 'auto' ? step1Value.category : undefined,
         }),
       });
       const data = await res.json();
@@ -956,6 +1219,11 @@ function ShortformClientInner() {
       setScript(data.script);
       // 원본 대본 저장 (ScriptTextEditor 되돌리기 버튼 용도)
       setOriginalScript(JSON.parse(JSON.stringify(data.script)));
+      // Phase A-bis — 서버가 settings 내려주면 migrateSettings로 병합 후 state 갱신.
+      // 없으면 DEFAULT_SETTINGS 유지 (역호환).
+      if (data.settings && typeof data.settings === 'object') {
+        setSettings(migrateSettings(data.settings));
+      }
       setScriptStatus('done');
       // Phase K: 첫 영상 무료 적용됐으면 배너 숨김 (Agent D 가 응답에
       // freeFirstApplied 포함하도록 wire-up 한 뒤에만 동작)
@@ -1833,6 +2101,15 @@ function ShortformClientInner() {
 
               {/* 인라인 자막 편집 */}
               <ScriptTextEditor script={script} setScript={setScript} originalScript={originalScript} />
+
+              {/* Phase A-bis — Q9 칩 5종 (AI 판정 + 세부 조정) */}
+              <Step3ChipRow
+                settings={settings}
+                onChange={handleChipChange}
+                disabled={refineStatus === 'busy'}
+                errorMessage={refineError}
+                reasoning={script?.reasoning || null}
+              />
             </div>
           )}
 

@@ -9,6 +9,16 @@ import { FONTS, SIZES, SPRING_CONFIG, buildSubtitleStyle } from './styles';
 import { KenBurnsImage } from './KenBurnsImage';
 import { KineticText, KINETIC_VARIANTS } from './kineticText';
 
+// Phase A-bis §4.10 — First 3 Seconds 시각 boost.
+// 프레임 단위 상수는 파일 내 localConst (lib/*로 추출 금지 — 애니메이션 내부 구현).
+const FIRST_SCENE_BOOST = {
+  textScale: 1.12,
+  saturateFrames: [0, 5, 10],
+  saturateValues: [1, 1.18, 1],
+  flashFrames: [0, 2, 5],
+  flashOpacity: [0, 0.25, 0],
+};
+
 /**
  * SceneCard — Phase A Scene Sequence Renderer 의 단일 씬 렌더러.
  *
@@ -45,6 +55,7 @@ export const SceneCard = ({
   textPosition = 'center',
   badge,
   ctaButtonText,
+  isFirst = false,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -94,6 +105,26 @@ export const SceneCard = ({
         ? 'flex-end'
         : 'center';
 
+  // First 3 Seconds 시각 boost — isFirst 일 때만.
+  const boostSaturate = isFirst
+    ? interpolate(
+        frame,
+        FIRST_SCENE_BOOST.saturateFrames,
+        FIRST_SCENE_BOOST.saturateValues,
+        { extrapolateRight: 'clamp' },
+      )
+    : 1;
+  const boostFlashOpacity = isFirst
+    ? interpolate(
+        frame,
+        FIRST_SCENE_BOOST.flashFrames,
+        FIRST_SCENE_BOOST.flashOpacity,
+        { extrapolateRight: 'clamp' },
+      )
+    : 0;
+  const effectiveCameraMotion = isFirst ? 'zoom-in' : cameraMotion;
+  const textWrapperTransform = isFirst ? `scale(${FIRST_SCENE_BOOST.textScale})` : 'none';
+
   return (
     <AbsoluteFill>
       {imageUrl && (
@@ -101,7 +132,17 @@ export const SceneCard = ({
           src={imageUrl}
           overlay={0.55}
           seed={`scene-${sceneIndex}-${text?.slice(0, 10) || ''}`}
-          cameraMotion={cameraMotion}
+          cameraMotion={effectiveCameraMotion}
+        />
+      )}
+      {/* First 3 Seconds 화이트 플래시 — 5f(167ms) 지속 */}
+      {isFirst && boostFlashOpacity > 0 && (
+        <AbsoluteFill
+          style={{
+            backgroundColor: '#ffffff',
+            opacity: boostFlashOpacity,
+            pointerEvents: 'none',
+          }}
         />
       )}
       <AbsoluteFill
@@ -135,26 +176,34 @@ export const SceneCard = ({
           </div>
         )}
 
-        {/* 메인 텍스트 */}
-        <KineticText
-          variant={kineticVariant}
-          text={text || ''}
-          frame={frame}
-          fps={fps}
-          delay={0}
-          baseStyle={{
-            fontFamily: FONTS.primary,
-            fontWeight: FONTS.weight.black,
-            fontSize,
-            color: imageUrl ? colors.white : colors.textPrimary,
-            textAlign: 'center',
-            lineHeight: 1.2,
-            letterSpacing: -0.5,
-            textShadow: imageUrl ? '0 8px 32px rgba(0,0,0,0.65)' : 'none',
-            maxWidth: 900,
-            ...(subtitleStyle || {}),
+        {/* 메인 텍스트 — First 3 Sec boost 래퍼 (scale + saturate) */}
+        <div
+          style={{
+            transform: textWrapperTransform,
+            transformOrigin: 'center',
+            filter: isFirst ? `saturate(${boostSaturate})` : 'none',
           }}
-        />
+        >
+          <KineticText
+            variant={kineticVariant}
+            text={text || ''}
+            frame={frame}
+            fps={fps}
+            delay={0}
+            baseStyle={{
+              fontFamily: FONTS.primary,
+              fontWeight: FONTS.weight.black,
+              fontSize,
+              color: imageUrl ? colors.white : colors.textPrimary,
+              textAlign: 'center',
+              lineHeight: 1.2,
+              letterSpacing: -0.5,
+              textShadow: imageUrl ? '0 8px 32px rgba(0,0,0,0.65)' : 'none',
+              maxWidth: 900,
+              ...(subtitleStyle || {}),
+            }}
+          />
+        </div>
 
         {/* CTA 씬 버튼 */}
         {section === 'cta' && ctaButtonText && (

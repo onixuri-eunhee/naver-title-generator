@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { PERSONAS, TONES } from '@/lib/shortform-personas';
+// Phase A-bis — 카테고리 options 는 lib/shortform/settings.js SSOT에서 파생
+import { CHIP_SCHEMA } from '@/lib/shortform/settings.js';
 import styles from './Step1Input.module.css';
 
 const SHORTFORM_DURATIONS = [
@@ -180,6 +182,27 @@ export default function Step1Input({ value, onChange, onNext, contentType = 'sho
               {d.label}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Phase A-bis — optional 카테고리 override. 기본 'auto' = 서버 자동 감지 */}
+      <div className={styles.section}>
+        <div className={styles.sectionTitle}>5. 카테고리 (선택)</div>
+        <div className={styles.fieldGroup}>
+          <select
+            className={styles.select}
+            value={value.category || 'auto'}
+            onChange={(e) => update({ category: e.target.value })}
+          >
+            {CHIP_SCHEMA.category.options.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
+            기본 자동 감지 — 직접 선택하면 대본이 해당 업종 관점으로 생성돼요.
+          </div>
         </div>
       </div>
 

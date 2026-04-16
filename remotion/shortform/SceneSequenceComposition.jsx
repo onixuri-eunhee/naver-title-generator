@@ -8,8 +8,14 @@ import { fade } from '@remotion/transitions/fade';
 import { BackgroundLayer } from './BackgroundLayer';
 import { ProgressBar } from './ProgressBar';
 import { SceneCard } from './SceneCard';
+import { CTAVariantScene } from './CTAVariantScene';
 import { getPreset, DEFAULT_PRESET_KEY } from './presets';
 import { SHORTFORM_FPS } from './styles';
+import { getTransitionOverlapFrames } from '../../lib/shortform/scene-timing.js';
+
+// Phase A-bis auto 전환 로테이션 — lib/shortform/scene-timing.js 의 내부 상수와 동일 순서.
+// getTransitionOverlapFrames()는 'auto' 파라미터에 평균값을 주므로, 씬별 값은 이 배열로 조회.
+const AUTO_TRANSITION_ROTATION = ['slide-fast', 'fade', 'slide', 'fade-long'];
 
 /**
  * SceneSequenceComposition — Phase A "script.scenes[] 1:1 매핑" 렌더러.
@@ -32,25 +38,31 @@ import { SHORTFORM_FPS } from './styles';
  */
 
 function resolveTransition(kind) {
+  // transitionFrames는 lib/shortform/scene-timing.js 의 TRANSITION_OVERLAP_BY_KIND와
+  // 동기화되어 있어야 한다. 두 곳에서 한 진실의 근원을 가지도록 getTransitionOverlapFrames로
+  // 조회. transitionPresentation은 Remotion 타입이라 여기서 직접 생성.
+  const transitionFrames = getTransitionOverlapFrames(kind, SHORTFORM_FPS);
   switch (kind) {
     case 'cut':
-      return { transitionFrames: 1, transitionPresentation: fade() };
+      return { transitionFrames, transitionPresentation: fade() };
     case 'fade':
-      return { transitionFrames: 15, transitionPresentation: fade() };
     case 'fade-long':
-      return { transitionFrames: 30, transitionPresentation: fade() };
+      return { transitionFrames, transitionPresentation: fade() };
     case 'slide-fast':
-      return { transitionFrames: 8, transitionPresentation: slide({ direction: 'from-right' }) };
     case 'slide':
     default:
-      return { transitionFrames: 15, transitionPresentation: slide({ direction: 'from-right' }) };
+      return {
+        transitionFrames,
+        transitionPresentation: slide({ direction: 'from-right' }),
+      };
   }
 }
 
 // sceneTransition === 'auto' 일 때 인덱스 기반 로테이션
 function resolveAutoTransition(sceneIndex) {
-  const variants = ['slide-fast', 'fade', 'slide', 'fade-long'];
-  return resolveTransition(variants[sceneIndex % variants.length]);
+  return resolveTransition(
+    AUTO_TRANSITION_ROTATION[sceneIndex % AUTO_TRANSITION_ROTATION.length],
+  );
 }
 
 export const SceneSequenceComposition = ({
@@ -77,24 +89,39 @@ export const SceneSequenceComposition = ({
 
   const children = [];
   scenes.forEach((scene, i) => {
+    const isLast = i === scenes.length - 1;
+    const isFirst = i === 0;
+    // Phase A-bis: 마지막 씬이 Phase A-bis 필드(ctaVariantProps)를 가지면 CTAVariantScene으로 렌더.
+    // 레거시 scriptToProps 출력은 이 필드가 없으므로 기존 SceneCard 경로 유지 — 가드레일.
+    const useCtaVariant = isLast && scene.ctaVariantProps;
+
     children.push(
       <TransitionSeries.Sequence
         key={`seq-${i}`}
         durationInFrames={Math.max(scene.durationInFrames || 30, 30)}
       >
-        <SceneCard
-          text={scene.text}
-          section={scene.section || 'point'}
-          sceneIndex={i}
-          totalScenes={scenes.length}
-          preset={preset}
-          imageUrl={scene.imageUrl}
-          cameraMotion={cameraMotion}
-          subtitle={subtitle}
-          textPosition={textPosition}
-          badge={scene.badge}
-          ctaButtonText={scene.ctaButtonText}
-        />
+        {useCtaVariant ? (
+          <CTAVariantScene
+            variantProps={scene.ctaVariantProps}
+            copy={scene.ctaCopy}
+            brandKit={scene.brandKit}
+          />
+        ) : (
+          <SceneCard
+            text={scene.text}
+            section={scene.section || 'point'}
+            sceneIndex={i}
+            totalScenes={scenes.length}
+            preset={preset}
+            imageUrl={scene.imageUrl}
+            cameraMotion={cameraMotion}
+            subtitle={subtitle}
+            textPosition={textPosition}
+            badge={scene.badge}
+            ctaButtonText={scene.ctaButtonText}
+            isFirst={isFirst}
+          />
+        )}
       </TransitionSeries.Sequence>,
     );
 
@@ -139,14 +166,14 @@ export function buildSceneSequenceTimeline(props) {
     return { durationInFrames: SHORTFORM_FPS };
   }
 
-  // 'auto' 전환은 씬 간마다 transition 프레임이 다름 — 평균(~17)로 계산
-  // 'auto'가 아닌 경우는 단일 transition 값
+  // 'auto' 전환은 씬 간마다 transition 프레임이 다름 — AUTO_TRANSITION_ROTATION 순회.
+  // 값은 lib/shortform/scene-timing.js 의 TRANSITION_OVERLAP_BY_KIND가 진실의 근원.
   const sceneTransition = props?.sceneTransition || 'auto';
   let totalTransition = 0;
   if (sceneTransition === 'auto') {
-    const autoVariants = [8, 15, 15, 30]; // slide-fast, fade, slide, fade-long
     for (let i = 0; i < scenes.length - 1; i++) {
-      totalTransition += autoVariants[i % autoVariants.length];
+      const kind = AUTO_TRANSITION_ROTATION[i % AUTO_TRANSITION_ROTATION.length];
+      totalTransition += getTransitionOverlapFrames(kind, SHORTFORM_FPS);
     }
   } else {
     const { transitionFrames } = resolveTransition(sceneTransition);
