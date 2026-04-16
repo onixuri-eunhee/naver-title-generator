@@ -81,7 +81,7 @@ export const SceneCard = ({
     }
   }
 
-  // ── 텍스트 크기: 섹션별 + 길이 적응 ──
+  // ── 텍스트 크기: 섹션별 기본값 + 길이 적응 (전 섹션 공통) ──
   const textLen = (text || '').length;
   const baseFontSize =
     section === 'hook'
@@ -89,9 +89,10 @@ export const SceneCard = ({
       : section === 'cta'
         ? SIZES.ctaHeadline // 56
         : SIZES.bodyHeader; // 64
+  const adaptThreshold = section === 'hook' ? 14 : 20;
   const fontSize =
-    section === 'point' && textLen > 25
-      ? Math.max(baseFontSize - Math.min(Math.floor((textLen - 25) * 0.4), 16), 48)
+    textLen > adaptThreshold
+      ? Math.max(baseFontSize - Math.min(Math.floor((textLen - adaptThreshold) * 0.6), baseFontSize - 48), 48)
       : baseFontSize;
 
   // ── 진입 애니메이션 ──
@@ -181,12 +182,14 @@ export const SceneCard = ({
           </div>
         )}
 
-        {/* 메인 텍스트 — First 3 Sec boost 래퍼 (scale + saturate) */}
+        {/* 메인 텍스트 — First 3 Sec boost 래퍼 (scale + saturate) + overflow guard */}
         <div
           style={{
             transform: textWrapperTransform,
             transformOrigin: 'center',
             filter: isFirst ? `saturate(${boostSaturate})` : 'none',
+            maxHeight: 800,
+            overflow: 'hidden',
           }}
         >
           <KineticText
