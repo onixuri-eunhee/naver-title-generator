@@ -5,9 +5,7 @@ import {
 } from '@remotion/transitions';
 import { slide } from '@remotion/transitions/slide';
 import { fade } from '@remotion/transitions/fade';
-import { clockWipe } from '@remotion/transitions/clock-wipe';
 import { wipe } from '@remotion/transitions/wipe';
-import { flip } from '@remotion/transitions/flip';
 import { BackgroundLayer } from './BackgroundLayer';
 import { ProgressBar } from './ProgressBar';
 import { SceneRouter } from './SceneRouter';
@@ -52,7 +50,6 @@ function resolveTransition(kind) {
     case 'fade-long':
       return { transitionFrames, transitionPresentation: fade() };
     case 'clock-wipe':
-      return { transitionFrames, transitionPresentation: clockWipe() };
     case 'wipe':
       return {
         transitionFrames,
@@ -61,7 +58,7 @@ function resolveTransition(kind) {
     case 'flip':
       return {
         transitionFrames,
-        transitionPresentation: flip({ direction: 'from-right' }),
+        transitionPresentation: wipe({ direction: 'from-top' }),
       };
     case 'slide-fast':
     case 'slide':
