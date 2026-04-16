@@ -7,7 +7,7 @@ import { slide } from '@remotion/transitions/slide';
 import { fade } from '@remotion/transitions/fade';
 import { BackgroundLayer } from './BackgroundLayer';
 import { ProgressBar } from './ProgressBar';
-import { SceneCard } from './SceneCard';
+import { SceneRouter } from './SceneRouter';
 import { CTAVariantScene } from './CTAVariantScene';
 import { getPreset, DEFAULT_PRESET_KEY } from './presets';
 import { SHORTFORM_FPS } from './styles';
@@ -107,19 +107,14 @@ export const SceneSequenceComposition = ({
             brandKit={scene.brandKit}
           />
         ) : (
-          <SceneCard
-            text={scene.text}
-            section={scene.section || 'point'}
+          <SceneRouter
+            scene={{ ...scene, isFirst }}
             sceneIndex={i}
             totalScenes={scenes.length}
             preset={preset}
-            imageUrl={scene.imageUrl}
             cameraMotion={cameraMotion}
             subtitle={subtitle}
             textPosition={textPosition}
-            badge={scene.badge}
-            ctaButtonText={scene.ctaButtonText}
-            isFirst={isFirst}
           />
         )}
       </TransitionSeries.Sequence>,

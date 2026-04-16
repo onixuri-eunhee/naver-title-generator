@@ -11,20 +11,21 @@ const FACES = [
   { weight: "900", file: "Pretendard-Black.woff2" },
 ];
 
-const handle = delayRender("Loading Pretendard font");
-
-Promise.all(
-  FACES.map((f) => {
-    const face = new FontFace("Pretendard", `url(${CDN}/${f.file})`, {
-      weight: f.weight,
-      display: "block",
-    });
-    return face.load().then((loaded) => {
-      document.fonts.add(loaded);
-    });
-  }),
-)
-  .then(() => continueRender(handle))
-  .catch((err) => cancelRender(err));
+if (typeof window !== "undefined" && typeof FontFace !== "undefined") {
+  const handle = delayRender("Loading Pretendard font");
+  Promise.all(
+    FACES.map((f) => {
+      const face = new FontFace("Pretendard", `url(${CDN}/${f.file})`, {
+        weight: f.weight,
+        display: "block",
+      });
+      return face.load().then((loaded) => {
+        document.fonts.add(loaded);
+      });
+    }),
+  )
+    .then(() => continueRender(handle))
+    .catch((err) => cancelRender(err));
+}
 
 export const PRETENDARD = "Pretendard, -apple-system, sans-serif";

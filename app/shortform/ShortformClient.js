@@ -254,6 +254,8 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
         imageUrl: pickImage(i, s),
         badge: isHook ? (s.hookText || script?.hookText || 'STOP').slice(0, 12) : undefined,
         ctaButtonText: isCta ? '지금 시작 →' : undefined,
+        layoutType: s.layoutType || null,
+        layoutProps: s.layoutProps || null,
       };
       // Phase A-bis — 마지막 씬에만 CTAVariantScene 입력 필드 첨부.
       // SceneSequenceComposition이 scene.ctaVariantProps 존재 여부로 분기.
@@ -628,6 +630,8 @@ function ShortformClientInner() {
   const [currentStep, setCurrentStep] = useState(1);
   // v2.1: 콘텐츠 타입 (shortform | longform) — Step 1 최상단 토글
   const [contentType, setContentType] = useState('shortform');
+  // Week 1: 비주얼 스타일 (image | kinetic) — Step 1 영상 타입 아래 토글
+  const [visualStyle, setVisualStyle] = useState('image');
   const [step1Value, setStep1Value] = useState({
     contentMode: 'blog', // 'blog' | 'keyword'
     blogText: '',
@@ -1225,6 +1229,7 @@ function ShortformClientInner() {
           concept: 'cinematic',
           // Phase A-bis — Step 1 category override (null 또는 'auto' 이면 서버가 자동 감지)
           category: step1Value.category && step1Value.category !== 'auto' ? step1Value.category : undefined,
+          visualStyle,
         }),
       });
       const data = await res.json();
@@ -1651,6 +1656,53 @@ function ShortformClientInner() {
                 </div>
                 <div style={{ fontSize: 11, marginTop: 6, color: 'var(--ds-muted, #77736B)' }}>
                   12~29 크레딧
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Week 1: 비주얼 스타일 토글 (이미지형 / 텍스트형) */}
+          <div
+            style={{
+              marginBottom: 20,
+              padding: '16px 20px',
+              background: 'var(--ds-bg-soft, #F4F2EC)',
+              border: '1px solid var(--ds-border, #ECE9E2)',
+              borderRadius: 12,
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: 'var(--ds-text, #1F2937)' }}>
+              비주얼 스타일
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setVisualStyle('image')}
+                style={{
+                  flex: 1, padding: '14px 16px', borderRadius: 10,
+                  border: visualStyle === 'image' ? '2px solid #ff6f61' : '1.5px solid var(--ds-border, #E5E7EB)',
+                  background: visualStyle === 'image' ? 'rgba(255, 111, 97, 0.06)' : '#fff',
+                  cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                }}
+              >
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>📸 이미지형</div>
+                <div style={{ fontSize: 11, color: 'var(--ds-muted, #77736B)', lineHeight: 1.4 }}>
+                  AI 이미지 + 자막 슬라이드
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setVisualStyle('kinetic')}
+                style={{
+                  flex: 1, padding: '14px 16px', borderRadius: 10,
+                  border: visualStyle === 'kinetic' ? '2px solid #ff6f61' : '1.5px solid var(--ds-border, #E5E7EB)',
+                  background: visualStyle === 'kinetic' ? 'rgba(255, 111, 97, 0.06)' : '#fff',
+                  cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                }}
+              >
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>✍️ 텍스트형</div>
+                <div style={{ fontSize: 11, color: 'var(--ds-muted, #77736B)', lineHeight: 1.4 }}>
+                  키네틱 타이포 + 데이터 시각화
                 </div>
               </button>
             </div>
