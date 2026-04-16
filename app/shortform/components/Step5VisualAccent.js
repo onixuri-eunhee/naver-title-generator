@@ -161,8 +161,8 @@ export default function Step5VisualAccent({
               ]
             : [
                 { value: 0, label: '사용 안 함', meta: '' },
-                { value: 1, label: '1장 생성', meta: '3 크레딧' },
-                { value: 2, label: '2장 생성', meta: '6 크레딧' },
+                { value: 1, label: '1장 생성', meta: '1 크레딧' },
+                { value: 2, label: '2장 생성', meta: '2 크레딧' },
               ]
           ).map((opt) => (
             <button
