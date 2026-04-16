@@ -606,7 +606,7 @@ async function callClaudeABis({
       firstThreeSeconds: settings.firstThreeSeconds || 'auto',
       reasoningExamples,
       contentType: 'short',
-      visualStyle: body.visualStyle || 'image',
+      visualStyle: concept?.visualStyle || 'image',
       retryAttempt,
     });
 
