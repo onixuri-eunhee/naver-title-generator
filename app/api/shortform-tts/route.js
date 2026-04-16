@@ -28,9 +28,13 @@ const ELEVENLABS_VOICES = {
   'TxGEqnHWrfWFTfGW9XjX': { name: 'Josh', gender: 'male' },
 };
 
-async function callElevenLabs(text, voiceId) {
+async function callElevenLabs(text, voiceId, speed = 1.0) {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) throw new Error('ELEVENLABS_API_KEY is missing');
+
+  // ElevenLabs voice_settings.speed — 신형 모델에서만 반영, 구형 모델은 무시.
+  // Phase A-bis Q5: 숏폼 1.12, 롱폼 1.05. 한국어는 1.15+ 부터 발음 뭉개짐 → 1.2 상한 clamp.
+  const safeSpeed = Math.min(Math.max(Number(speed) || 1.0, 0.7), 1.2);
 
   const res = await fetch(`${ELEVENLABS_API_BASE}/text-to-speech/${voiceId}/with-timestamps`, {
     method: 'POST',
@@ -42,7 +46,7 @@ async function callElevenLabs(text, voiceId) {
     body: JSON.stringify({
       text,
       model_id: ELEVENLABS_MODEL,
-      voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+      voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: safeSpeed },
     }),
   });
 
@@ -152,15 +156,17 @@ async function getGoogleAccessToken() {
   return data.access_token;
 }
 
-async function callGoogleTTS(text, voiceName, voiceGender) {
+async function callGoogleTTS(text, voiceName, voiceGender, speakingRate = 1.1) {
   const accessToken = await getGoogleAccessToken();
+  // Google TTS speakingRate 유효 범위 0.25 ~ 4.0. Phase A-bis 기준 0.7~1.2 clamp.
+  const safeRate = Math.min(Math.max(Number(speakingRate) || 1.1, 0.7), 1.2);
   const res = await fetch(GOOGLE_TTS_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
     body: JSON.stringify({
       input: { text },
       voice: { languageCode: 'ko-KR', name: voiceName, ssmlGender: voiceGender },
-      audioConfig: { audioEncoding: 'MP3', speakingRate: 1.1, pitch: 0 },
+      audioConfig: { audioEncoding: 'MP3', speakingRate: safeRate, pitch: 0 },
     }),
   });
   if (!res.ok) throw new Error(`Google TTS failed: ${res.status}`);
@@ -218,6 +224,18 @@ export async function POST(request) {
 
     const voiceId = body.voiceId || '';
 
+    // Phase A-bis Q5 — contentType 기반 TTS speed.
+    // settings.voiceSpeed는 숏폼 Step 3 칩에서 조정(1.05~1.20, 기본 1.12),
+    // 롱폼은 고정 1.05(발음 품질 우선). 프리뷰는 1.0(샘플링 목적).
+    // ElevenLabs voice_settings.speed + Google speakingRate 양쪽에 전달.
+    const contentType = body.contentType === 'long' ? 'long' : 'short';
+    const userVoiceSpeed = Number(body.settings?.voiceSpeed);
+    const ttsSpeed = isPreview
+      ? 1.0
+      : contentType === 'short'
+        ? (Number.isFinite(userVoiceSpeed) ? userVoiceSpeed : 1.12)
+        : 1.05;
+
     if (isPreview) {
       const redis = getRedis();
       const cacheKey = `tts-preview:${voiceId || 'default'}`;
@@ -244,8 +262,8 @@ export async function POST(request) {
       if (!process.env.ELEVENLABS_API_KEY) {
         throw new Error('ELEVENLABS_API_KEY가 설정되지 않았습니다. 관리자에게 문의하세요.');
       }
-      console.log(`[TTS] → ElevenLabs: voice=${vId}`);
-      const result = await callElevenLabs(text, vId);
+      console.log(`[TTS] → ElevenLabs: voice=${vId} speed=${ttsSpeed}`);
+      const result = await callElevenLabs(text, vId, ttsSpeed);
       audioBuffer = result.audioBuffer;
       wordTimestamps = result.wordTimestamps;
       provider = 'elevenlabs';
@@ -261,8 +279,8 @@ export async function POST(request) {
       }
     } else if (isGoogleVoice) {
       try {
-        console.log(`[TTS] → Google: voice=${voiceId}`);
-        audioBuffer = await callGoogleTTS(text, voiceId, GOOGLE_VOICES[voiceId].gender);
+        console.log(`[TTS] → Google: voice=${voiceId} speakingRate=${ttsSpeed}`);
+        audioBuffer = await callGoogleTTS(text, voiceId, GOOGLE_VOICES[voiceId].gender, ttsSpeed);
         provider = 'google';
         console.log(`[TTS] ✅ Google success: ${audioBuffer.length} bytes`);
       } catch (gError) {

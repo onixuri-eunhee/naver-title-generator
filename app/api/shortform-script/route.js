@@ -17,6 +17,18 @@ import {
   cleanupJob,
 } from '@/lib/job-progress';
 import { CancelledError } from '@/lib/cancelled-error';
+// Phase A-bis: settings SSOT — migrate + validate + _version 주입
+import {
+  migrateSettings,
+  validateSettings,
+  SETTINGS_SCHEMA_VERSION,
+} from '@/lib/shortform/settings.js';
+import {
+  buildSystemPrompt as buildSystemPromptABis,
+  buildUserPrompt as buildUserPromptABis,
+} from '@/lib/shortform/prompt.js';
+import { safeParseJson } from '@/lib/shortform/parse-claude-json.js';
+import { getReasoningExamples } from '@/lib/shortform/reasoning-copy.js';
 
 export const maxDuration = 300;
 
@@ -63,6 +75,11 @@ function resolveConcept(concept) {
   return CONCEPTS[concept] ? { key: concept, ...CONCEPTS[concept] } : { key: 'cinematic', ...CONCEPTS.cinematic };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LEGACY: 기존 SYSTEM_PROMPT — Phase A-bis prompt.js로 교체됨.
+// scripts/test-shortform-prompt.mjs 역호환용으로 export 유지.
+// 본 POST 핸들러는 이 상수를 더 이상 사용하지 않음.
+// ─────────────────────────────────────────────────────────────────────────────
 export const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입니다. 사용자의 입력을 바탕으로 숏폼 대본을 scenes 배열로 작성하세요.
 
 [절대 규칙]
@@ -187,6 +204,7 @@ export const SYSTEM_PROMPT = `당신은 한국어 숏폼 영상 대본 작가입
 - hookText와 hookType은 scenes[0]에만 포함, 나머지 씬에는 생략
 `;
 
+// LEGACY: scripts/test-shortform-prompt.mjs 역호환용 export
 export function buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount, benchmark, personaMemo) {
   const inputSummary = [
     `tone: ${tone}`,
@@ -485,39 +503,183 @@ async function fetchBenchmark(keyword, authHeader, jobId, contentType = 'shortfo
   return { fallback: true, candidates: [], videos: [], patterns: null };
 }
 
-async function callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount, benchmark, personaMemo) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase A-bis: inferCategory + classifyScriptType + callClaudeABis + withRetry
+// spec §5.1 Happy Path 완전 이행. refine/route.js와 동일 패턴.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+const MAX_RETRIES = 2;
+const BASE_DELAY_MS = 1000;
+const JITTER_MAX_MS = 300;
+const VALID_CATEGORIES = ['wedding', 'food', 'realestate', 'ai_education', 'beauty', 'fitness', 'lifestyle', 'business', 'other'];
+const VALID_SCRIPT_TYPES = ['question', 'list', 'story'];
+
+async function inferCategory(topic) {
+  if (!process.env.ANTHROPIC_API_KEY || !topic) return 'other';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: HAIKU_MODEL,
+        max_tokens: 50,
+        temperature: 0,
+        messages: [{
+          role: 'user',
+          content: `주제: "${topic}"\n\n위 주제의 카테고리를 아래 9종 중 정확히 하나만 답하세요. 모르면 가장 가까운 것을 고르세요.\n${VALID_CATEGORIES.join(' / ')}\n\n답(한 단어만):`,
+        }],
+      }),
+    });
+    const data = await res.json();
+    const text = extractClaudeText(data).trim().toLowerCase();
+    const match = VALID_CATEGORIES.find((c) => text.includes(c));
+    return match || 'other';
+  } catch (err) {
+    console.warn('[shortform-script] inferCategory failed, fallback=other:', err?.message);
+    return 'other';
+  }
+}
+
+async function classifyScriptType(topic) {
+  if (!process.env.ANTHROPIC_API_KEY || !topic) return 'question';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 50,
+        temperature: 0,
+        messages: [{
+          role: 'user',
+          content: `주제: "${topic}"\n\n위 주제에 가장 어울리는 숏폼 스크립트 유형을 하나만 답하세요.\n- question: 질문으로 시작, 질문으로 끝나는 순환형\n- list: 핵심 포인트 나열 후 요약\n- story: 스토리텔링 흐름\n\n답(한 단어만):`,
+        }],
+      }),
+    });
+    const data = await res.json();
+    const text = extractClaudeText(data).trim().toLowerCase();
+    const match = VALID_SCRIPT_TYPES.find((t) => text.includes(t));
+    return match || 'question';
+  } catch (err) {
+    console.warn('[shortform-script] classifyScriptType failed, fallback=question:', err?.message);
+    return 'question';
+  }
+}
+
+async function callClaudeABis({
+  topic, blogText, tone, targetDurationSec,
+  concept, targetSceneCount, benchmark, personaMemo, settings,
+}) {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY is not configured.');
   }
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 4000,
-      temperature: 0.7,
-      system: [
-        {
-          type: 'text',
-          text: SYSTEM_PROMPT,
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
-      messages: [{ role: 'user', content: buildUserPrompt(topic, blogText, tone, targetDurationSec, targetSceneCount, benchmark, personaMemo) }],
-    }),
-  });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(JSON.stringify(data));
+  // 1. settings 기반 category / scriptType 결정
+  let category = settings.category;
+  let scriptType = settings.scriptType;
+  if (category === 'auto') {
+    category = await inferCategory(topic || (blogText || '').slice(0, 100));
+    console.log(`[SHORTFORM-SCRIPT] inferCategory → ${category}`);
+  }
+  if (scriptType === 'auto') {
+    scriptType = await classifyScriptType(topic || (blogText || '').slice(0, 100));
+    console.log(`[SHORTFORM-SCRIPT] classifyScriptType → ${scriptType}`);
   }
 
-  return buildScriptPayload(extractJsonObject(extractClaudeText(data)), concept, targetSceneCount);
+  // 2. reasoning 주입
+  const reasoningExamples = getReasoningExamples(category);
+
+  // 3. withRetry + safeParseJson
+  const runOnce = async (retryAttempt) => {
+    const systemPrompt = buildSystemPromptABis({
+      category,
+      scriptType,
+      firstThreeSeconds: settings.firstThreeSeconds || 'auto',
+      reasoningExamples,
+      contentType: 'short',
+      retryAttempt,
+    });
+
+    const userPrompt = buildUserPromptABis({
+      topic,
+      tone,
+      targetSceneCount,
+      targetDurationSec,
+      blogText,
+      personaMemo,
+      benchmark,
+    });
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 4000,
+        temperature: 0.7,
+        system: [
+          { type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } },
+        ],
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      const e = new Error(`Claude HTTP ${response.status}`);
+      e.status = response.status;
+      throw e;
+    }
+
+    const rawText = extractClaudeText(data);
+    const parsed = safeParseJson(rawText);
+    if (!parsed || !Array.isArray(parsed.scenes)) {
+      // fallback: extractJsonObject (기존 파서도 시도)
+      try {
+        return extractJsonObject(rawText);
+      } catch (_) {}
+      const e = new Error('claude_json_parse_failed');
+      e.code = 'claude_json_parse_failed';
+      throw e;
+    }
+    return parsed;
+  };
+
+  let lastErr;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const parsed = await runOnce(attempt);
+      const payload = buildScriptPayload(parsed, concept, targetSceneCount);
+      // A-bis 메타데이터 주입
+      payload._resolvedCategory = category;
+      payload._resolvedScriptType = scriptType;
+      return payload;
+    } catch (err) {
+      lastErr = err;
+      const retriable =
+        err?.code === 'claude_json_parse_failed' ||
+        (typeof err?.status === 'number' && (err.status >= 500 || err.status === 429)) ||
+        /ECONNRESET|ETIMEDOUT|fetch failed/i.test(err?.message || '');
+      if (!retriable || attempt === MAX_RETRIES) throw err;
+      const delay = BASE_DELAY_MS * Math.pow(2, attempt) + Math.random() * JITTER_MAX_MS;
+      console.warn(`[shortform-script] retry attempt=${attempt + 1} delay=${Math.round(delay)}ms: ${err?.message}`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
 }
 
 export async function OPTIONS(request) {
@@ -596,6 +758,18 @@ export async function POST(request) {
     const blogText = String(body.blogText || '').trim();
     const personaMemo = String(body.personaMemo || '').trim();
     const tone = body.tone === 'professional' ? 'professional' : 'casual';
+
+    // Phase A-bis: settings 수신 + 마이그레이션 + 검증
+    // 누락 시 DEFAULT_SETTINGS 병합(_version 자동 주입), 실패 시 경고만 로그 후 계속 진행.
+    // 기존 SYSTEM_PROMPT 경로는 settings와 무관하게 그대로 유지 — 점진 전환 원칙.
+    const settings = migrateSettings(body.settings || {});
+    const settingsCheck = validateSettings(settings);
+    if (!settingsCheck.ok) {
+      console.warn(
+        `[shortform-script] settings validation failed, continuing with merged defaults:`,
+        settingsCheck.errors,
+      );
+    }
 
     // v2.1: contentType 분기 (shortform | longform)
     const contentType = body.contentType === 'longform' ? 'longform' : 'shortform';
@@ -736,7 +910,10 @@ export async function POST(request) {
       });
       await checkCancelled(jobId, 'script:claude-call');
 
-      script = await callClaude(topic, blogText, tone, targetDurationSec, concept, targetSceneCount, benchmark, personaMemo);
+      script = await callClaudeABis({
+        topic, blogText, tone, targetDurationSec,
+        concept, targetSceneCount, benchmark, personaMemo, settings,
+      });
 
       // 벤치마크 후보 영상을 script payload에 첨부 (UI 카드 노출용).
       // 최대 6개, 가벼운 필드만 — 썸네일/제목/채널/조회수/링크.
@@ -763,12 +940,21 @@ export async function POST(request) {
 
     await logUsage(email, 'shortform-script', tone, getClientIp(request));
 
+    // Phase A-bis: 응답에 settings + _version 포함 (Step 3 칩 렌더에 사용).
+    // 기존 소비자는 script 필드만 읽으므로 역호환 OK.
+    const responsePayload = {
+      jobId,
+      script,
+      settings,
+      settingsVersion: SETTINGS_SCHEMA_VERSION,
+    };
+
     await publishProgress(jobId, {
       type: 'complete',
-      result: { jobId, script },
+      result: { jobId, script, settings },
     });
 
-    return jsonResponse(request, { jobId, script });
+    return jsonResponse(request, responsePayload);
   } catch (error) {
     if (error instanceof CancelledError) {
       await publishProgress(jobId, {
