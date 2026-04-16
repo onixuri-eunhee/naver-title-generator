@@ -9,8 +9,13 @@ import {
   SHORTFORM_HEIGHT,
   SHORTFORM_WIDTH,
 } from './shortform/styles.js';
+import {
+  KineticType,
+  KINETIC_TYPE_DURATION,
+} from './shortform/kinetic-type/KineticType.jsx';
 
 export const SHORTFORM_REMOTION_ID = 'ShortformRemotion';
+export const KINETIC_TYPE_ID = 'KineticType';
 
 const defaultProps = {
   preset: 'ddukddak-basic',
@@ -39,23 +44,33 @@ const defaultProps = {
 
 export const RemotionRoot = () => {
   return (
-    <Composition
-      id={SHORTFORM_REMOTION_ID}
-      component={ShortformComposition}
-      width={SHORTFORM_WIDTH}
-      height={SHORTFORM_HEIGHT}
-      fps={SHORTFORM_FPS}
-      durationInFrames={450}
-      defaultProps={defaultProps}
-      calculateMetadata={({ props }) => {
-        const { durationInFrames } = buildShortformTimeline(props);
-        return {
-          durationInFrames,
-          fps: SHORTFORM_FPS,
-          width: SHORTFORM_WIDTH,
-          height: SHORTFORM_HEIGHT,
-        };
-      }}
-    />
+    <>
+      <Composition
+        id={SHORTFORM_REMOTION_ID}
+        component={ShortformComposition}
+        width={SHORTFORM_WIDTH}
+        height={SHORTFORM_HEIGHT}
+        fps={SHORTFORM_FPS}
+        durationInFrames={450}
+        defaultProps={defaultProps}
+        calculateMetadata={({ props }) => {
+          const { durationInFrames } = buildShortformTimeline(props);
+          return {
+            durationInFrames,
+            fps: SHORTFORM_FPS,
+            width: SHORTFORM_WIDTH,
+            height: SHORTFORM_HEIGHT,
+          };
+        }}
+      />
+      <Composition
+        id={KINETIC_TYPE_ID}
+        component={KineticType}
+        width={SHORTFORM_WIDTH}
+        height={SHORTFORM_HEIGHT}
+        fps={SHORTFORM_FPS}
+        durationInFrames={KINETIC_TYPE_DURATION}
+      />
+    </>
   );
 };
