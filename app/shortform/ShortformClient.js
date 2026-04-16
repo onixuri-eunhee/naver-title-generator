@@ -1244,6 +1244,8 @@ function ShortformClientInner() {
         setSettings(migrateSettings(data.settings));
       }
       setScriptStatus('done');
+      // 대본 완료 → 벤치마킹(2) + 대본(3) 단계 마킹
+      setCompletedSteps((prev) => Array.from(new Set([...prev, 2, 3])));
       // Phase K: 첫 영상 무료 적용됐으면 배너 숨김 (Agent D 가 응답에
       // freeFirstApplied 포함하도록 wire-up 한 뒤에만 동작)
       if (data.freeFirstApplied) {
@@ -1411,6 +1413,8 @@ function ShortformClientInner() {
         setAudioCharAlignment(data.charAlignment || null);
       }
       setTtsStatus('done');
+      // TTS 완료 → 음성(4) 단계 마킹
+      setCompletedSteps((prev) => Array.from(new Set([...prev, 4])));
     } catch (err) {
       console.error('[TTS] 최종 에러:', err);
       setError(err.message || 'TTS 중 오류');
@@ -1421,6 +1425,9 @@ function ShortformClientInner() {
   async function runAll() {
     await generateScript();
     await generateTts();
+    // 자동 생성 완료 → 중간 단계 전부 완료 마킹 + 미리보기 이동
+    setCompletedSteps((prev) => Array.from(new Set([...prev, 1, 2, 3, 4, 5])));
+    setCurrentStep(6);
   }
 
   const hasPreview = !!audioInputProps;
