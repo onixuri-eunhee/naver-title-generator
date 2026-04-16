@@ -81,13 +81,18 @@ export const SceneCard = ({
     }
   }
 
-  // ── 텍스트 크기: 섹션별로 다르게 ──
-  const fontSize =
+  // ── 텍스트 크기: 섹션별 + 길이 적응 ──
+  const textLen = (text || '').length;
+  const baseFontSize =
     section === 'hook'
       ? SIZES.hookTitle // 88
       : section === 'cta'
         ? SIZES.ctaHeadline // 56
         : SIZES.bodyHeader; // 64
+  const fontSize =
+    section === 'point' && textLen > 25
+      ? Math.max(baseFontSize - Math.min(Math.floor((textLen - 25) * 0.4), 16), 48)
+      : baseFontSize;
 
   // ── 진입 애니메이션 ──
   const badgeIn = spring({ frame: frame - 5, fps, config: SPRING_CONFIG });

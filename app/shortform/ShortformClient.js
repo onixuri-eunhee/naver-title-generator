@@ -18,6 +18,7 @@ import {
   formatCredit,
 } from '@/lib/shortform/settings.js';
 import { getCTAVariant } from '@/lib/shortform/cta-variants.js';
+import { deriveSceneDurationsFromCharTimestamps } from '@/lib/shortform/scene-timing.js';
 import {
   SHORTFORM_FPS,
   SHORTFORM_WIDTH,
@@ -185,7 +186,7 @@ function deriveSceneDurationsFromWordTimestamps(scenes, wordTimestamps, fps) {
   return durations;
 }
 
-function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneImageOrder, mode = 'scene-sequence', wordTimestamps = null, settings = null, brandKit = null) {
+function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneImageOrder, mode = 'scene-sequence', wordTimestamps = null, settings = null, brandKit = null, charAlignment = null) {
   const fps = SHORTFORM_FPS;
   const totalFrames = Math.round(totalDurationSec * fps);
 
@@ -203,10 +204,19 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
       return { preset: presetKey, mode: 'scene-sequence', scenes: [] };
     }
 
-    // 1) Duration 계산
-    let sceneDurations = deriveSceneDurationsFromWordTimestamps(validScenes, wordTimestamps, fps);
+    // 1) Duration 계산 — charAlignment 우선 (글자 단위 정확), word timestamps fallback, 글자수 비례 최후 수단
+    let sceneDurations = null;
+    if (charAlignment?.characters?.length) {
+      try {
+        sceneDurations = deriveSceneDurationsFromCharTimestamps(charAlignment, validScenes, { fps });
+      } catch (err) {
+        console.warn('[scriptToProps] charTimestamps fallback:', err.message);
+      }
+    }
     if (!sceneDurations) {
-      // 폴백: 글자수 비례 분배
+      sceneDurations = deriveSceneDurationsFromWordTimestamps(validScenes, wordTimestamps, fps);
+    }
+    if (!sceneDurations) {
       const charCounts = validScenes.map((s) => s.script.replace(/\s+/g, '').length || 1);
       const totalChars = charCounts.reduce((a, b) => a + b, 0);
       sceneDurations = charCounts.map((c) =>
@@ -684,6 +694,7 @@ function ShortformClientInner() {
   const [videoMode, setVideoMode] = useState('scene-sequence');
   // Phase A: TTS word timestamps (ElevenLabs) — 씬 duration 정밀 동기용
   const [audioWordTimestamps, setAudioWordTimestamps] = useState(null);
+  const [audioCharAlignment, setAudioCharAlignment] = useState(null);
 
   // === Step 6 — 미리보기 + 커스터마이징 (Phase F) ===
   const [step6Value, setStep6Value] = useState(() =>
@@ -1155,8 +1166,9 @@ function ShortformClientInner() {
       audioWordTimestamps,
       settings,    // Phase A-bis — CTA tone resolve
       brandKit,    // Phase A-bis — CTAVariantScene brandKit (null이면 폴백 3단계)
+      audioCharAlignment,  // ElevenLabs character-level timestamps (정밀 동기)
     );
-  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder, videoMode, audioWordTimestamps, settings, brandKit]);
+  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder, videoMode, audioWordTimestamps, settings, brandKit, audioCharAlignment]);
 
   const playerDurationInFrames = useMemo(() => {
     if (!playerProps) return totalDurationSec * SHORTFORM_FPS;
@@ -1379,8 +1391,9 @@ function ShortformClientInner() {
         audioBlobRef.current = blob;
         setAudioUrl(URL.createObjectURL(blob));
         setAudioWordTimestamps(null);
+        setAudioCharAlignment(null);
       } else {
-        // ElevenLabs: JSON { audioBase64, wordTimestamps }
+        // ElevenLabs: JSON { audioBase64, wordTimestamps, charAlignment }
         const data = await res.json();
         const binary = atob(data.audioBase64);
         const bytes = new Uint8Array(binary.length);
@@ -1388,8 +1401,8 @@ function ShortformClientInner() {
         const blob = new Blob([bytes], { type: 'audio/mpeg' });
         audioBlobRef.current = blob;
         setAudioUrl(URL.createObjectURL(blob));
-        // Phase A: word timestamps 포착 — Scene Sequence Renderer duration 계산에 사용
         setAudioWordTimestamps(Array.isArray(data.wordTimestamps) ? data.wordTimestamps : null);
+        setAudioCharAlignment(data.charAlignment || null);
       }
       setTtsStatus('done');
     } catch (err) {

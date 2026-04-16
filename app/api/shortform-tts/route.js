@@ -63,6 +63,11 @@ async function callElevenLabs(text, voiceId, speed = 1.0) {
   return {
     audioBuffer: Buffer.from(audioBase64, 'base64'),
     wordTimestamps: alignment ? charsToWordTimestamps(alignment) : [],
+    charAlignment: alignment ? {
+      characters: alignment.characters || [],
+      starts: alignment.character_start_times_seconds || [],
+      ends: alignment.character_end_times_seconds || [],
+    } : null,
   };
 }
 
@@ -251,6 +256,7 @@ export async function POST(request) {
     }
     let audioBuffer;
     let wordTimestamps = null;
+    let charAlignment = null;
     let provider;
 
     const isElevenVoice = !!ELEVENLABS_VOICES[voiceId];
@@ -266,8 +272,9 @@ export async function POST(request) {
       const result = await callElevenLabs(text, vId, ttsSpeed);
       audioBuffer = result.audioBuffer;
       wordTimestamps = result.wordTimestamps;
+      charAlignment = result.charAlignment;
       provider = 'elevenlabs';
-      console.log(`[TTS] ✅ ElevenLabs success: ${audioBuffer.length} bytes, ${wordTimestamps.length} words`);
+      console.log(`[TTS] ✅ ElevenLabs success: ${audioBuffer.length} bytes, ${wordTimestamps.length} words, ${charAlignment?.characters?.length || 0} chars`);
     };
 
     if (isElevenVoice) {
@@ -312,6 +319,7 @@ export async function POST(request) {
         skipWhisper: true,
         audioBase64: audioBuffer.toString('base64'),
         wordTimestamps: wordTimestamps || [],
+        charAlignment: charAlignment || null,
       });
     }
 
