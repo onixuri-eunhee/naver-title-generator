@@ -87,12 +87,20 @@ Day 5~6:
 
 ## 체크포인트
 
-- [ ] Day 1 종료: #2 settings.js + cta-variants.js commit
-- [ ] Day 2 종료: #3 prompt.js + scene-timing.js commit
-- [ ] Day 3 종료: #4 CTAVariantScene + SceneCard commit
-- [ ] Day 4 종료: ShortformClient.js + 통합 검증
-- [ ] Day 5: Q6 desync 6항목 체크리스트 (수동)
-- [ ] Day 5: 검토자 1차 review
+- [x] Day 1 종료: #2 settings.js + cta-variants.js commit ✅ (71a9334, 3668546)
+- [x] Day 1 추가: #2 5 모듈 전체 완료 ✅ + #3 prompt.js + scene-timing + credit-service ✅
+- [x] Day 1 추가: #4 CTAVariantScene + SceneCard + SceneSequenceComposition ✅
+- [x] Day 1 추가: #5 112 unit tests pass ✅
+- [x] Day 2: #3 refine route + shortform-script prompt.js 완전 연동 ✅ (323bde4, 85a0c3f)
+- [x] Day 2: #4 ShortformClient CHIP_SCHEMA 칩 + refine + CTA variant ✅ (35c8763)
+- [x] Day 4: Squash merge #2→#3→#4→#5 (dc21eb2→1cf46f6→2e44c8a→a787882) ✅
+- [x] Day 4: 빌드 4회 전부 통과 + 112 tests pass ✅
+- [x] Day 4: P0 next.config.cjs → .mjs 복구 (9ae17c4) ✅
+- [x] Day 4: Worktree 4개 + 브랜치 4개 정리 ✅
+- [x] Day 5: 잔여 테스트 5파일 (scene-timing/prompt/idempotency/json-retry/fixture) ✅
+- [x] Day 5: DB 마이그레이션 SQL (scripts/migrations/001-phase-a-bis-tables.sql) ✅
+- [x] Day 5: **150 tests pass** (146 unit + 4 integration) ✅
+- [ ] Day 5: Q6 desync 6항목 체크리스트 (사용자 직접)
 - [ ] Day 6: Smoke 10단계 + Regression 9항목
 - [ ] Day 6: 배포
 
