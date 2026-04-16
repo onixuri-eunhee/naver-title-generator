@@ -1437,7 +1437,7 @@ function ShortformClientInner() {
       <div className={styles.hero}>
         <div className={styles.heroBadge}>NEW · 숏폼</div>
         <h1>릴스·쇼츠를<br /><em>5분 만에 뚝딱</em></h1>
-        <p>주제만 입력하면 AI 대본 + Ken Burns 이미지 + TTS로<br />프리미엄 숏폼 영상을 자동 생성합니다</p>
+        <p>주제만 입력하면 AI 대본 + TTS 음성으로<br />프리미엄 숏폼 영상을 자동 생성합니다</p>
       </div>
 
       {/* Phase H: Draft 복원 배너 */}

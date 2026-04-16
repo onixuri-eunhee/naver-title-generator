@@ -181,16 +181,16 @@ test('fallback: 빈 scenes → 빈 배열', () => {
 // getTransitionOverlapFrames
 // ─────────────────────────────────────────────────────────────────────────────
 
-test('transition overlap: fade = 15', () => {
-  assert.equal(getTransitionOverlapFrames('fade', 30), 15);
+test('transition overlap: fade = 8', () => {
+  assert.equal(getTransitionOverlapFrames('fade', 30), 8);
 });
 
-test('transition overlap: slide-fast = 8', () => {
-  assert.equal(getTransitionOverlapFrames('slide-fast', 30), 8);
+test('transition overlap: slide-fast = 4', () => {
+  assert.equal(getTransitionOverlapFrames('slide-fast', 30), 4);
 });
 
-test('transition overlap: fade-long = 30', () => {
-  assert.equal(getTransitionOverlapFrames('fade-long', 30), 30);
+test('transition overlap: fade-long = 15', () => {
+  assert.equal(getTransitionOverlapFrames('fade-long', 30), 15);
 });
 
 test('transition overlap: cut = 1', () => {
@@ -199,12 +199,12 @@ test('transition overlap: cut = 1', () => {
 
 test('transition overlap: auto = 평균', () => {
   const avg = getTransitionOverlapFrames('auto', 30);
-  // (8+15+15+30)/4 = 17
-  assert.equal(avg, 17);
+  // (4+8+8+15)/4 = 8.75 → 9
+  assert.equal(avg, 9);
 });
 
-test('transition overlap: unknown → slide fallback (15)', () => {
-  assert.equal(getTransitionOverlapFrames('nonexistent', 30), 15);
+test('transition overlap: unknown → slide fallback (8)', () => {
+  assert.equal(getTransitionOverlapFrames('nonexistent', 30), 8);
 });
 
 test('transition overlap: fps 필수', () => {
