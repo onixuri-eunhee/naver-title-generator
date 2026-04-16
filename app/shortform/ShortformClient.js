@@ -19,6 +19,14 @@ import {
 } from '@/lib/shortform/settings.js';
 import { getCTAVariant } from '@/lib/shortform/cta-variants.js';
 import { deriveSceneDurationsFromCharTimestamps } from '@/lib/shortform/scene-timing.js';
+
+// SceneRouter LAYOUT_REGISTRY 키와 동기화 — 잘못된 layoutType fallback용
+const VALID_LAYOUT_TYPES = [
+  'big-impact-text', 'bullet-list', 'comparison', 'emphasis-box', 'counter',
+  'icon-label', 'progress-bar', 'small-label', 'subtitle-bar', 'vertical-bar',
+  'venn-diagram', 'bar-chart', 'pie-chart', 'flow-diagram', 'comparison-chart',
+  'network', 'strikethrough', 'number-slam',
+];
 import {
   SHORTFORM_FPS,
   SHORTFORM_WIDTH,
@@ -255,8 +263,10 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
         imageUrl: pickImage(i, s),
         badge: isHook ? (s.hookText || script?.hookText || 'STOP').slice(0, 12) : undefined,
         ctaButtonText: isCta ? '지금 시작 →' : undefined,
-        layoutType: s.layoutType || null,
-        layoutProps: s.layoutProps || null,
+        layoutType: s.layoutType && VALID_LAYOUT_TYPES.includes(s.layoutType)
+          ? s.layoutType
+          : (() => { if (s.layoutType) console.warn(`[scriptToProps] unknown layoutType "${s.layoutType}" → null fallback`); return null; })(),
+        layoutProps: s.layoutType && VALID_LAYOUT_TYPES.includes(s.layoutType) ? (s.layoutProps || null) : null,
       };
       // Phase A-bis — 마지막 씬에만 CTAVariantScene 입력 필드 첨부.
       // SceneSequenceComposition이 scene.ctaVariantProps 존재 여부로 분기.

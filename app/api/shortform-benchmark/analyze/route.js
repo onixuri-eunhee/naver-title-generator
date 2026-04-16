@@ -88,9 +88,14 @@ export async function OPTIONS(request) {
 }
 
 export async function POST(request) {
-  const isAdmin = await resolveAdmin(request);
+  // 내부 self-call 바이패스 (shortform-script → benchmark 체인 호출 시)
+  const internalSecret = request.headers.get('x-internal-secret');
+  const expectedSecret = process.env.CRON_SECRET || process.env.INTERNAL_API_SECRET || '';
+  const isInternalCall = !!(internalSecret && expectedSecret && internalSecret === expectedSecret);
+
+  const isAdmin = isInternalCall || await resolveAdmin(request);
   const token = extractToken(request);
-  const email = await resolveSessionEmail(token);
+  const email = isInternalCall ? '_internal_' : await resolveSessionEmail(token);
   if (!isAdmin && !email) {
     return jsonResponse(request, { error: '로그인이 필요합니다.' }, { status: 401 });
   }

@@ -478,6 +478,10 @@ function buildScriptPayload(parsed, concept, targetSceneCount) {
   };
 }
 
+// 내부 self-call 비밀키: Vercel Deployment Protection 우회 + 인증 바이패스용
+// CRON_SECRET이 없으면 랜덤 fallback (매 cold-start마다 다름 → 사실상 비활성)
+const INTERNAL_SECRET = process.env.CRON_SECRET || process.env.INTERNAL_API_SECRET || '';
+
 async function fetchBenchmark(keyword, authHeader, jobId, contentType = 'shortform') {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
@@ -488,6 +492,8 @@ async function fetchBenchmark(keyword, authHeader, jobId, contentType = 'shortfo
       headers: {
         'Content-Type': 'application/json',
         ...(authHeader ? { Authorization: authHeader } : {}),
+        // 내부 self-call 식별 헤더: benchmark route에서 인증 바이패스 허용
+        ...(INTERNAL_SECRET ? { 'x-internal-secret': INTERNAL_SECRET } : {}),
       },
       // jobId 전달: shortform-benchmark가 같은 jobId로 진행 이벤트 발행
       // → 클라이언트가 키워드추출/후보영상검색 단계 SSE로 수신.

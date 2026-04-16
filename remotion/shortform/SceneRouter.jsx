@@ -19,7 +19,6 @@ import { BulletList } from './kinetic-type/components/BulletList';
 import { ComparisonColumns } from './kinetic-type/components/ComparisonColumns';
 import { EmphasisBox } from './kinetic-type/components/EmphasisBox';
 import { GiantNumberCounter } from './kinetic-type/components/GiantNumberCounter';
-import { IconWithLabel } from './kinetic-type/components/IconWithLabel';
 import { ProgressBarBlock } from './kinetic-type/components/ProgressBarBlock';
 import { SmallLabel } from './kinetic-type/components/SmallLabel';
 import { SubtitleBar } from './kinetic-type/components/SubtitleBar';
@@ -39,7 +38,6 @@ const LAYOUT_REGISTRY = {
   'comparison': ComparisonColumns,
   'emphasis-box': EmphasisBox,
   'counter': GiantNumberCounter,
-  'icon-label': IconWithLabel,
   'progress-bar': ProgressBarBlock,
   'small-label': SmallLabel,
   'subtitle-bar': SubtitleBar,
