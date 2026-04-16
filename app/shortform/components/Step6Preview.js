@@ -146,6 +146,7 @@ export default function Step6Preview({
                 controls
                 loop
                 style={{ width: '100%', height: '100%' }}
+                acknowledgeRemotionLicense
               />
             )}
           </div>

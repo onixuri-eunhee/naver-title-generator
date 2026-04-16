@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getToken } from '@/lib/auth';
@@ -249,7 +249,7 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
       // SceneSequenceComposition이 scene.ctaVariantProps 존재 여부로 분기.
       if (isCta && ctaVariant) {
         base.ctaVariantProps = { variant: ctaVariant.variant };
-        base.ctaCopy = ctaVariant.copy;
+        base.ctaCopy = s.script || ctaVariant.copy;
         base.brandKit = brandKit;
       }
       return base;
@@ -645,6 +645,7 @@ function ShortformClientInner() {
   const [originalScript, setOriginalScript] = useState(null);
   const [images, setImages] = useState([]);
   const [audioUrl, setAudioUrl] = useState(null);
+  const audioBlobRef = useRef(null); // Blob GC 방지 — URL.createObjectURL 수명 보존
 
   // 상태
   const [scriptStatus, setScriptStatus] = useState('idle');
@@ -1375,6 +1376,7 @@ function ShortformClientInner() {
       if (contentType.includes('audio/')) {
         // Google 폴백: 바이너리 — word timestamps 없음
         const blob = await res.blob();
+        audioBlobRef.current = blob;
         setAudioUrl(URL.createObjectURL(blob));
         setAudioWordTimestamps(null);
       } else {
@@ -1384,6 +1386,7 @@ function ShortformClientInner() {
         const bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
         const blob = new Blob([bytes], { type: 'audio/mpeg' });
+        audioBlobRef.current = blob;
         setAudioUrl(URL.createObjectURL(blob));
         // Phase A: word timestamps 포착 — Scene Sequence Renderer duration 계산에 사용
         setAudioWordTimestamps(Array.isArray(data.wordTimestamps) ? data.wordTimestamps : null);
@@ -1764,8 +1767,72 @@ function ShortformClientInner() {
         </div>
       )}
 
-      {/* Step 2~4, 7: 기존 UI를 임시 유지 (Phase B/C/D에서 단계별 교체) */}
-      {currentStep >= 2 && currentStep !== 5 && currentStep !== 6 && (
+      {/* Step 7: 다운로드 / 완료 */}
+      {currentStep === 7 && (
+        <div className={styles.layout}>
+          <div className={styles.left}>
+            <div className={styles.card}>
+              <div className={styles.cardLabel}>영상 완성</div>
+              <div style={{ padding: '24px 0', textAlign: 'center' }}>
+                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
+                  영상이 준비되었어요!
+                </h3>
+                <p style={{ color: '#666', fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
+                  아래 미리보기에서 최종 결과를 확인하세요.<br />
+                  서버 렌더링 + 다운로드 기능은 곧 추가됩니다.
+                </p>
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => setCurrentStep(6)}
+                  >
+                    ← 이전 단계로
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => {
+                      setCurrentStep(1);
+                      setScript(null);
+                      setAudioUrl(null);
+                      audioBlobRef.current = null;
+                    }}
+                  >
+                    새 영상 만들기
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className={styles.right}>
+            <div className={styles.card}>
+              <div className={styles.cardLabel}>최종 미리보기</div>
+              <div className={styles.playerWrap}>
+                {audioInputProps ? (
+                  <Player
+                    component={ShortformComposition}
+                    inputProps={audioInputProps}
+                    durationInFrames={playerDurationInFrames}
+                    fps={SHORTFORM_FPS}
+                    compositionWidth={SHORTFORM_WIDTH}
+                    compositionHeight={SHORTFORM_HEIGHT}
+                    style={{ width: '100%', height: '100%' }}
+                    controls
+                    loop
+                    acknowledgeRemotionLicense
+                  />
+                ) : (
+                  <div className={styles.playerPlaceholder}>미리보기를 불러오는 중...</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2~4: 기존 UI를 임시 유지 (Phase B/C/D에서 단계별 교체) */}
+      {currentStep >= 2 && currentStep !== 5 && currentStep !== 6 && currentStep !== 7 && (
       <div className={styles.layout}>
         <div className={styles.left}>
           <div className={styles.card}>
@@ -2083,6 +2150,7 @@ function ShortformClientInner() {
                   style={{ width: '100%', height: '100%' }}
                   controls
                   loop
+                  acknowledgeRemotionLicense
                 />
               ) : (
                 <div className={styles.playerPlaceholder}>
