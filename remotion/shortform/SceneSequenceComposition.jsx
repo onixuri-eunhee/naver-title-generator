@@ -5,6 +5,9 @@ import {
 } from '@remotion/transitions';
 import { slide } from '@remotion/transitions/slide';
 import { fade } from '@remotion/transitions/fade';
+import { clockWipe } from '@remotion/transitions/clock-wipe';
+import { wipe } from '@remotion/transitions/wipe';
+import { flip } from '@remotion/transitions/flip';
 import { BackgroundLayer } from './BackgroundLayer';
 import { ProgressBar } from './ProgressBar';
 import { SceneRouter } from './SceneRouter';
@@ -15,7 +18,7 @@ import { getTransitionOverlapFrames } from '../../lib/shortform/scene-timing.js'
 
 // Phase A-bis auto 전환 로테이션 — lib/shortform/scene-timing.js 의 내부 상수와 동일 순서.
 // getTransitionOverlapFrames()는 'auto' 파라미터에 평균값을 주므로, 씬별 값은 이 배열로 조회.
-const AUTO_TRANSITION_ROTATION = ['slide-fast', 'fade', 'slide', 'fade-long'];
+const AUTO_TRANSITION_ROTATION = ['slide-fast', 'fade', 'wipe', 'fade-long', 'slide', 'clock-wipe', 'fade', 'flip'];
 
 /**
  * SceneSequenceComposition — Phase A "script.scenes[] 1:1 매핑" 렌더러.
@@ -48,6 +51,18 @@ function resolveTransition(kind) {
     case 'fade':
     case 'fade-long':
       return { transitionFrames, transitionPresentation: fade() };
+    case 'clock-wipe':
+      return { transitionFrames, transitionPresentation: clockWipe() };
+    case 'wipe':
+      return {
+        transitionFrames,
+        transitionPresentation: wipe({ direction: 'from-left' }),
+      };
+    case 'flip':
+      return {
+        transitionFrames,
+        transitionPresentation: flip({ direction: 'from-right' }),
+      };
     case 'slide-fast':
     case 'slide':
     default:

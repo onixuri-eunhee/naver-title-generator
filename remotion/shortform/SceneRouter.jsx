@@ -8,7 +8,12 @@
  * 새 레이아웃 추가 시 여기 1줄 + 컴포넌트 파일 1개만 추가.
  */
 
+import { AbsoluteFill } from 'remotion';
 import { SceneCard } from './SceneCard';
+import { LottieOverlay } from './kinetic-type/components/effects/LottieOverlay';
+import { ConfettiOverlay } from './kinetic-type/components/effects/ConfettiOverlay';
+import { SparkleOverlay } from './kinetic-type/components/effects/SparkleOverlay';
+import { CheckmarkDraw } from './kinetic-type/components/effects/CheckmarkDraw';
 import { BigImpactText } from './kinetic-type/components/BigImpactText';
 import { BulletList } from './kinetic-type/components/BulletList';
 import { ComparisonColumns } from './kinetic-type/components/ComparisonColumns';
@@ -65,13 +70,25 @@ export function SceneRouter({
 
   if (LayoutComponent) {
     const layoutProps = scene.layoutProps || {};
+    const section = scene.section || 'point';
+
+    // 이펙트 오버레이 자동 매칭
+    let EffectOverlay = null;
+    if (section === 'cta') EffectOverlay = ConfettiOverlay;
+    else if (layoutType === 'counter' || layoutType === 'number-slam') EffectOverlay = SparkleOverlay;
+    else if (layoutType === 'emphasis-box' && layoutProps.variant === 'check') EffectOverlay = CheckmarkDraw;
+
     return (
-      <LayoutComponent
-        text={scene.text}
-        startFrame={0}
-        preset={preset}
-        {...layoutProps}
-      />
+      <AbsoluteFill>
+        <LayoutComponent
+          text={scene.text}
+          startFrame={0}
+          preset={preset}
+          {...layoutProps}
+        />
+        {EffectOverlay && <EffectOverlay preset={preset} startFrame={5} />}
+        <LottieOverlay layoutType={layoutType} section={section} />
+      </AbsoluteFill>
     );
   }
 
