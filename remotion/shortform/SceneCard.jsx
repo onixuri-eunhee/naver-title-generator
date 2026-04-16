@@ -81,19 +81,22 @@ export const SceneCard = ({
     }
   }
 
-  // ── 텍스트 크기: 섹션별 기본값 + 길이 적응 (전 섹션 공통) ──
+  // ── 텍스트 크기: 섹션별 기본값 + 길이 적응 ──
+  // hook/cta는 고유 크기 + 적응, point 씬은 안정적 크기로 널뛰기 방지.
   const textLen = (text || '').length;
-  const baseFontSize =
-    section === 'hook'
-      ? SIZES.hookTitle // 88
-      : section === 'cta'
-        ? SIZES.ctaHeadline // 56
-        : SIZES.bodyHeader; // 64
-  const adaptThreshold = section === 'hook' ? 14 : 20;
-  const fontSize =
-    textLen > adaptThreshold
-      ? Math.max(baseFontSize - Math.min(Math.floor((textLen - adaptThreshold) * 0.6), baseFontSize - 48), 48)
-      : baseFontSize;
+  let fontSize;
+  if (section === 'hook') {
+    // Hook: 88 → 최소 56 (임팩트 유지)
+    fontSize = textLen > 14
+      ? Math.max(SIZES.hookTitle - Math.floor((textLen - 14) * 0.8), 56)
+      : SIZES.hookTitle;
+  } else if (section === 'cta') {
+    fontSize = SIZES.ctaHeadline; // 56 고정
+  } else {
+    // Point 씬: 60 고정 (길이에 무관하게 일관된 크기 → 널뛰기 방지)
+    // 매우 긴 문장(40자+)만 축소
+    fontSize = textLen > 40 ? Math.max(60 - Math.floor((textLen - 40) * 0.3), 48) : 60;
+  }
 
   // ── 진입 애니메이션 ──
   const badgeIn = spring({ frame: frame - 5, fps, config: SPRING_CONFIG });

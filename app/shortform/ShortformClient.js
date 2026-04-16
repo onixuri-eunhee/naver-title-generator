@@ -235,8 +235,9 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
       ));
       if (orderHit) return orderHit.imageUrl;
       if (imgs.length === 0) return undefined;
-      // 씬 인덱스 기반 순환 — 같은 이미지가 연속되지 않도록
-      return imgs[idx % imgs.length];
+      // 이미지 수 ≥ 씬 수: 순환 배정. 이미지 수 < 씬 수: 초과 씬은 텍스트 전용.
+      // 2장으로 7씬 반복하면 단조로움 → 이미지 있는 씬/없는 씬 구분이 시각적 변화 생성.
+      return idx < imgs.length ? imgs[idx] : undefined;
     }
 
     // Phase A-bis — CTA 변형 resolve (last scene 전용, settings.ctaTone 기반)
@@ -287,7 +288,7 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
     const imgs = Array.isArray(bodyImages) ? bodyImages : [];
 
     const slides = orderedScenes.map((s, i) => ({
-      imageUrl: imgs[i] || imgs[i % Math.max(imgs.length, 1)] || undefined,
+      imageUrl: i < imgs.length ? imgs[i] : undefined,
       text: s.script,
       badge: s._kind === 'hook' ? (s.hookText || 'STOP').slice(0, 12) : undefined,
       ctaButton: s._kind === 'cta' ? '지금 시작 →' : undefined,

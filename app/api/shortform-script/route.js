@@ -249,7 +249,7 @@ ${videoList}
 
 위 입력을 바탕으로 숏폼 영상 대본을 scenes 배열로 작성하세요.
 - scenes 개수: 정확히 ${targetSceneCount}개
-- 각 scene의 script를 합산한 총 글자수(공백 제외)가 ${targetDurationSec}초 분량에 맞아야 합니다 (약 ${targetDurationSec * 5}자).
+- 각 scene의 script를 합산한 총 글자수(공백 제외)가 ${targetDurationSec}초 분량에 맞아야 합니다. 최소 ${Math.round(targetDurationSec * 4.8)}자, 목표 ${targetDurationSec * 5}자. 부족하면 Point 씬을 보강하세요.
 - Hook → Point(공감 루프) → CTA가 각각 뚜렷해야 합니다.
 - 너무 긴 서론 없이 바로 몰입되게 시작하세요.
 - 위 [대본 구조] base를 따르되 매번 변주하세요. 템플릿화 금지.
@@ -929,6 +929,16 @@ export async function POST(request) {
       }));
       script.benchmarkKeywords = benchmark.searchKeywords || null;
       script.benchmarkFallback = !!benchmark.fallback;
+    }
+
+    // 대본 분량 체크: 목표 대비 85% 미만이면 경고 로그
+    if (script?.estimatedSeconds && script.estimatedSeconds < targetDurationSec * 0.85) {
+      const fullText = (script.scenes || []).map((s) => s.script || '').join('');
+      const charCount = fullText.replace(/\s+/g, '').length;
+      console.warn(
+        `[SHORTFORM-SCRIPT] 분량 부족: ${charCount}자 (목표 ${targetDurationSec * 5}자), ` +
+        `추정 ${script.estimatedSeconds}초 (목표 ${targetDurationSec}초)`
+      );
     }
 
     await publishProgress(jobId, {
