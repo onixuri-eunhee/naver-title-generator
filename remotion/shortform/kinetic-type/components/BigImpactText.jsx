@@ -20,7 +20,7 @@ export const BigImpactText = ({ text, highlight, startFrame = 0, preset }) => {
 
   // 텍스트 길이에 따라 폰트 크기 자동 조절
   const len = text?.length || 1;
-  const fontSize = len <= 10 ? 120 : len <= 20 ? 88 : len <= 30 ? 68 : 56;
+  const fontSize = len <= 8 ? 120 : len <= 15 ? 96 : len <= 25 ? 80 : 64;
 
   const renderText = () => {
     if (!highlight) {

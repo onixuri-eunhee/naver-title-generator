@@ -82,8 +82,8 @@ export function SceneRouter({
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            padding: '180px 72px',
+            justifyContent: 'flex-start',
+            padding: '320px 72px 120px',
           }}
         >
           <LayoutComponent
