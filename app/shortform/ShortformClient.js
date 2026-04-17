@@ -37,6 +37,7 @@ import ProgressIndicator from '@/components/ProgressIndicator';
 import Step1Input from './components/Step1Input';
 import Step5VisualAccent from './components/Step5VisualAccent';
 import Step6Preview from './components/Step6Preview';
+import Step7Download from './components/Step7Download';
 import {
   buildStep6ValueFromPreset,
   DEFAULT_SHORTFORM_PRESET,
@@ -677,6 +678,11 @@ function ShortformClientInner() {
   const [ttsStatus, setTtsStatus] = useState('idle');
   const [error, setError] = useState('');
 
+  // Step 7: 렌더링 상태
+  const [renderStatus, setRenderStatus] = useState('idle'); // idle | rendering | complete | error
+  const [renderVideoUrl, setRenderVideoUrl] = useState(null);
+  const [renderError, setRenderError] = useState(null);
+
   // Phase A-bis — Conversion Primitives
   // settings: Q9 칩 5종 (category, firstThreeSeconds, scriptType, ctaTone, voiceSpeed)
   // refineStatus: 'idle'|'busy' — 하나의 refine이 진행 중이면 모든 칩 비활성화 (spec §4.11 concurrency)
@@ -1197,6 +1203,46 @@ function ShortformClientInner() {
       audio: audioUrl ? { url: audioUrl, durationInFrames: playerDurationInFrames } : undefined,
     };
   }, [playerProps, audioUrl, playerDurationInFrames]);
+
+  // Step 7: 서버 렌더링 요청
+  async function handleRender() {
+    const token = getToken();
+    if (!token) {
+      alert('로그인이 필요합니다.');
+      router.push('/login');
+      return;
+    }
+    if (!audioInputProps) return;
+
+    setRenderStatus('rendering');
+    setRenderError(null);
+
+    try {
+      const res = await fetch('/api/shortform-render', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          jobId: jobId || generateClientJobId(),
+          inputProps: audioInputProps,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setRenderStatus('error');
+        setRenderError(data.error || '렌더링에 실패했습니다.');
+        return;
+      }
+
+      setRenderVideoUrl(data.url);
+      setRenderStatus('complete');
+    } catch (err) {
+      console.error('[handleRender]', err);
+      setRenderStatus('error');
+      setRenderError('네트워크 오류가 발생했습니다.');
+    }
+  }
 
   async function generateScript() {
     setError('');
@@ -1817,68 +1863,24 @@ function ShortformClientInner() {
         </div>
       )}
 
-      {/* Step 7: 다운로드 / 완료 */}
+      {/* Step 7: 렌더링 + 다운로드 */}
       {currentStep === 7 && (
-        <div className={styles.layout}>
-          <div className={styles.left}>
-            <div className={styles.card}>
-              <div className={styles.cardLabel}>영상 완성</div>
-              <div style={{ padding: '24px 0', textAlign: 'center' }}>
-                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
-                  영상이 준비되었어요!
-                </h3>
-                <p style={{ color: '#666', fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
-                  아래 미리보기에서 최종 결과를 확인하세요.<br />
-                  서버 렌더링 + 다운로드 기능은 곧 추가됩니다.
-                </p>
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                  <button
-                    type="button"
-                    className={styles.secondaryButton}
-                    onClick={() => setCurrentStep(6)}
-                  >
-                    ← 이전 단계로
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.secondaryButton}
-                    onClick={() => {
-                      setCurrentStep(1);
-                      setScript(null);
-                      setAudioUrl(null);
-                      audioBlobRef.current = null;
-                    }}
-                  >
-                    새 영상 만들기
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className={styles.right}>
-            <div className={styles.card}>
-              <div className={styles.cardLabel}>최종 미리보기</div>
-              <div className={styles.playerWrap}>
-                {audioInputProps ? (
-                  <Player
-                    component={ShortformComposition}
-                    inputProps={audioInputProps}
-                    durationInFrames={playerDurationInFrames}
-                    fps={SHORTFORM_FPS}
-                    compositionWidth={SHORTFORM_WIDTH}
-                    compositionHeight={SHORTFORM_HEIGHT}
-                    style={{ width: '100%', height: '100%' }}
-                    controls
-                    loop
-                    acknowledgeRemotionLicense
-                  />
-                ) : (
-                  <div className={styles.playerPlaceholder}>미리보기를 불러오는 중...</div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <Step7Download
+          videoUrl={renderVideoUrl}
+          onRender={handleRender}
+          renderStatus={renderStatus}
+          renderError={renderError}
+          onBack={() => setCurrentStep(6)}
+          onReset={() => {
+            setCurrentStep(1);
+            setScript(null);
+            setAudioUrl(null);
+            audioBlobRef.current = null;
+            setRenderStatus('idle');
+            setRenderVideoUrl(null);
+            setRenderError(null);
+          }}
+        />
       )}
 
       {/* Step 2~4: 기존 UI를 임시 유지 (Phase B/C/D에서 단계별 교체) */}
