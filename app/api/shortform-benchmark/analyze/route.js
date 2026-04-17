@@ -17,6 +17,7 @@ import {
 } from '@/lib/api-helpers';
 import { getGenkit, resolveProModel } from '@/lib/gemini-vertex';
 import { AnalysisOutputSchema } from '@/lib/benchmark-schemas';
+import { aggregateDesignTokens, saveDesignTokens } from '@/lib/shortform/design-tokens';
 import {
   publishProgress,
   checkCancelled,
@@ -76,12 +77,21 @@ const ANALYSIS_PROMPT = `당신은 한국어 YouTube 숏폼 영상 분석 전문
 - **recommendedPreset**: 전문가 | 친근 | 임팩트 | 차분 | 트렌디 | 비즈니스 중 1개
 - advice: 사용자가 자기 영상 만들 때 참고할 한국어 조언 (2~3 문장)
 
+## 디자인 메타 분석 (영상별 designMeta 필드로 응답)
+- titleSizeRatio: 제목 텍스트가 화면 폭에서 차지하는 비율 (0.0~1.0)
+- titlePositionPercent: 제목이 화면 상단에서 몇 % 위치에 있는지 (0~100)
+- backgroundTone: 배경이 어두운지 밝은지 ("dark" | "light" | "mixed")
+- avgSceneDurationSec: 평균 씬/컷 길이 (초, 소수점 1자리)
+- textContrast: 텍스트와 배경의 대비 ("high" | "medium")
+- transitionStyle: 주로 사용하는 전환 효과 ("cut" | "fade" | "slide" | "mixed")
+
 ## 절대 규칙
 1. 반드시 JSON만 출력. 설명 텍스트 금지.
 2. 모든 문자열 필드는 한국어 또는 소문자 영어 enum.
 3. 숫자 필드는 실제 영상 분석 결과에 근거 (추측 금지).
 4. recommendedPreset은 반드시 6개 enum 중 하나.
-5. advice는 "~하세요" 체 (반말 금지).`;
+5. advice는 "~하세요" 체 (반말 금지).
+6. designMeta의 모든 필드는 실제 영상 화면 분석 결과에 근거.`;
 
 export async function OPTIONS(request) {
   return handleOptions(request);
@@ -101,6 +111,7 @@ export async function POST(request) {
   }
 
   const body = await request.json().catch(() => ({}));
+  const category = typeof body.category === 'string' ? body.category.trim() : '';
   const rawUrls = Array.isArray(body.videoUrls) ? body.videoUrls : [];
   const urls = rawUrls.slice(0, MAX_VIDEOS_PER_REQUEST).filter(Boolean);
 
@@ -145,7 +156,19 @@ export async function POST(request) {
 
   // 모두 캐시 적중 → 집계만 재계산
   if (missingUrls.length === 0) {
-    const aggregated = await computeAggregated(Object.values(cached));
+    const allVideos = Object.values(cached);
+    const aggregated = await computeAggregated(allVideos);
+
+    // 디자인 토큰 집계 + 저장
+    if (category) {
+      try {
+        const designTokens = aggregateDesignTokens(allVideos);
+        await saveDesignTokens(category, designTokens);
+      } catch (e) {
+        console.warn('[ANALYZE] Design token save failed (cached):', e.message);
+      }
+    }
+
     await publishProgress(jobId, {
       type: 'step',
       step: 'video-analysis',
@@ -157,7 +180,7 @@ export async function POST(request) {
       type: 'complete',
       result: {
         jobId,
-        videos: Object.values(cached),
+        videos: allVideos,
         aggregated,
         cached: true,
       },
@@ -165,7 +188,7 @@ export async function POST(request) {
     await cleanupJob(jobId);
     return jsonResponse(request, {
       jobId,
-      videos: Object.values(cached),
+      videos: allVideos,
       aggregated,
       cached: true,
     });
@@ -216,6 +239,16 @@ export async function POST(request) {
     const aggregated = output.aggregated && allVideos.length === (output.videos || []).length
       ? output.aggregated
       : await computeAggregated(allVideos);
+
+    // 디자인 토큰 집계 + 저장
+    if (category) {
+      try {
+        const designTokens = aggregateDesignTokens(allVideos);
+        await saveDesignTokens(category, designTokens);
+      } catch (e) {
+        console.warn('[ANALYZE] Design token save failed:', e.message);
+      }
+    }
 
     await publishProgress(jobId, {
       type: 'step',

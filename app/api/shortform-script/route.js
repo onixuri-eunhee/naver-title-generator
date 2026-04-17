@@ -29,6 +29,7 @@ import {
 } from '@/lib/shortform/prompt.js';
 import { safeParseJson } from '@/lib/shortform/parse-claude-json.js';
 import { getReasoningExamples } from '@/lib/shortform/reasoning-copy.js';
+import { getDesignTokens } from '@/lib/shortform/design-tokens.js';
 
 export const maxDuration = 300;
 
@@ -959,6 +960,12 @@ export async function POST(request) {
 
     await logUsage(email, 'shortform-script', tone, getClientIp(request));
 
+    // 카테고리별 디자인 토큰 조회 (Remotion props로 전달)
+    const resolvedCategory = script?._resolvedCategory || settings?.category || '';
+    const designTokens = resolvedCategory && resolvedCategory !== 'auto'
+      ? await getDesignTokens(resolvedCategory)
+      : await getDesignTokens('other');
+
     // Phase A-bis: 응답에 settings + _version 포함 (Step 3 칩 렌더에 사용).
     // 기존 소비자는 script 필드만 읽으므로 역호환 OK.
     const responsePayload = {
@@ -966,6 +973,7 @@ export async function POST(request) {
       script,
       settings,
       settingsVersion: SETTINGS_SCHEMA_VERSION,
+      designTokens,
     };
 
     await publishProgress(jobId, {
