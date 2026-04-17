@@ -9,7 +9,6 @@ import { Lottie } from '@remotion/lottie';
 const LOTTIE_MAP = {
   'counter': '/lottie/sparkle.json',
   'number-slam': '/lottie/sparkle.json',
-  'emphasis-box': '/lottie/checkmark.json',
 };
 
 const CTA_LOTTIE = '/lottie/confetti.json';
