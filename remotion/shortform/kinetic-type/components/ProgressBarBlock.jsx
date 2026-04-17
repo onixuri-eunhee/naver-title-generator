@@ -14,7 +14,7 @@ export const ProgressBarBlock = ({ label, percent, startFrame = 0, durationInFra
     [0, 1],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );
-  const filled = progress * percent;
+  const filled = progress * (Number(percent) || 0);
   const countDisplay = Math.round(filled);
 
   const labelOp = interpolate(

@@ -10,6 +10,7 @@ import {
 export const GiantNumberCounter = ({
   from = 0,
   to,
+  value,
   suffix = "",
   label,
   decimals = 0,
@@ -21,10 +22,14 @@ export const GiantNumberCounter = ({
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
+  // Claude가 value 또는 to로 보낼 수 있음 + 문자열 방어
+  const numFrom = Number(from) || 0;
+  const numTo = Number(to ?? value) || 0;
+
   const raw = interpolate(
     frame,
     [startFrame, startFrame + durationInFrames],
-    [from, to],
+    [numFrom, numTo],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );
   const factor = Math.pow(10, decimals);
