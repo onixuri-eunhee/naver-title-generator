@@ -49,7 +49,7 @@ export const FlowDiagram = ({
                 backgroundColor: isActive ? `${colors.coral}15` : `${colors.coral}08`,
                 border: `2px solid ${isActive ? colors.coral : `${colors.coralLight}60`}`,
                 borderRadius: 20,
-                padding: "28px 36px",
+                padding: "36px 44px",
                 display: "flex",
                 alignItems: "center",
                 gap: 24,
@@ -58,16 +58,16 @@ export const FlowDiagram = ({
             >
               <div
                 style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 16,
+                  width: 72,
+                  height: 72,
+                  borderRadius: 20,
                   backgroundColor: isActive ? colors.coral : `${colors.coral}20`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontFamily: KT_FONT,
                   fontWeight: KT_WEIGHTS.black,
-                  fontSize: 24,
+                  fontSize: 32,
                   color: isActive ? "#fff" : colors.coral,
                   flexShrink: 0,
                 }}
@@ -78,7 +78,7 @@ export const FlowDiagram = ({
                 style={{
                   fontFamily: KT_FONT,
                   fontWeight: KT_WEIGHTS.bold,
-                  fontSize: 36,
+                  fontSize: 48,
                   color: colors.white,
                   lineHeight: 1.3,
                 }}

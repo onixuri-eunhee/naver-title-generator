@@ -149,7 +149,7 @@ export const BarGraph = ({
                 textAlign: "center",
                 fontFamily: KT_FONT,
                 fontWeight: KT_WEIGHTS.bold,
-                fontSize: 24,
+                fontSize: 32,
                 color: colors.gray,
                 opacity: labelOp,
                 lineHeight: 1.3,

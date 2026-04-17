@@ -40,7 +40,7 @@ export const EmphasisBox = ({ text, variant = "check", startFrame = 0, preset })
         display: "flex",
         alignItems: "flex-start",
         gap: 24,
-        padding: "32px 40px",
+        padding: "40px 48px",
         backgroundColor: vs.bg,
         border: vs.border,
         borderRadius: 20,
@@ -49,9 +49,9 @@ export const EmphasisBox = ({ text, variant = "check", startFrame = 0, preset })
     >
       <div
         style={{
-          width: 52,
-          height: 52,
-          borderRadius: 14,
+          width: 64,
+          height: 64,
+          borderRadius: 18,
           backgroundColor: vs.iconBg,
           color: "#fff",
           display: "flex",
@@ -69,7 +69,7 @@ export const EmphasisBox = ({ text, variant = "check", startFrame = 0, preset })
         style={{
           fontFamily: KT_FONT,
           fontWeight: KT_WEIGHTS.bold,
-          fontSize: 38,
+          fontSize: 48,
           color: colors.white,
           letterSpacing: -0.5,
           lineHeight: 1.4,
