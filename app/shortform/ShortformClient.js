@@ -19,6 +19,7 @@ import {
 } from '@/lib/shortform/settings.js';
 import { getCTAVariant } from '@/lib/shortform/cta-variants.js';
 import { deriveSceneDurationsFromCharTimestamps } from '@/lib/shortform/scene-timing.js';
+import { DEFAULT_DESIGN_TOKENS } from '@/lib/shortform/design-tokens-shared.js';
 
 // SceneRouter LAYOUT_REGISTRY 키와 동기화 — 잘못된 layoutType fallback용
 const VALID_LAYOUT_TYPES = [
@@ -195,7 +196,7 @@ function deriveSceneDurationsFromWordTimestamps(scenes, wordTimestamps, fps) {
   return durations;
 }
 
-function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneImageOrder, mode = 'scene-sequence', wordTimestamps = null, settings = null, brandKit = null, charAlignment = null) {
+function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneImageOrder, mode = 'scene-sequence', wordTimestamps = null, settings = null, brandKit = null, charAlignment = null, designTokens = null) {
   const fps = SHORTFORM_FPS;
   const totalFrames = Math.round(totalDurationSec * fps);
 
@@ -284,6 +285,7 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
       mode: 'scene-sequence',
       scenes: mappedScenes,
       totalDurationInFrames: totalFrames,
+      designTokens: designTokens || DEFAULT_DESIGN_TOKENS,
     };
   }
 
@@ -666,6 +668,7 @@ function ShortformClientInner() {
   const [totalDurationSec, setTotalDurationSec] = useState(30);
 
   // 결과
+  const [designTokens, setDesignTokens] = useState(null);
   const [script, setScript] = useState(null);
   // 원본 대본 (수정 전). ScriptTextEditor에서 "되돌리기" 버튼 용도.
   const [originalScript, setOriginalScript] = useState(null);
@@ -1187,8 +1190,9 @@ function ShortformClientInner() {
       settings,    // Phase A-bis — CTA tone resolve
       brandKit,    // Phase A-bis — CTAVariantScene brandKit (null이면 폴백 3단계)
       audioCharAlignment,  // ElevenLabs character-level timestamps (정밀 동기)
+      designTokens,  // 카테고리별 디자인 토큰 (서버 응답 or null → DEFAULT fallback)
     );
-  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder, videoMode, audioWordTimestamps, settings, brandKit, audioCharAlignment]);
+  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder, videoMode, audioWordTimestamps, settings, brandKit, audioCharAlignment, designTokens]);
 
   const playerDurationInFrames = useMemo(() => {
     if (!playerProps) return totalDurationSec * SHORTFORM_FPS;
@@ -1293,6 +1297,10 @@ function ShortformClientInner() {
       setScript(data.script);
       // 원본 대본 저장 (ScriptTextEditor 되돌리기 버튼 용도)
       setOriginalScript(JSON.parse(JSON.stringify(data.script)));
+      // designTokens — 서버가 카테고리별 토큰 내려주면 state 갱신, 없으면 null (DEFAULT fallback)
+      if (data.designTokens && typeof data.designTokens === 'object') {
+        setDesignTokens(data.designTokens);
+      }
       // Phase A-bis — 서버가 settings 내려주면 migrateSettings로 병합 후 state 갱신.
       // 없으면 DEFAULT_SETTINGS 유지 (역호환).
       if (data.settings && typeof data.settings === 'object') {

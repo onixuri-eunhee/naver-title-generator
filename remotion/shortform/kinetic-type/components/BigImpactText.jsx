@@ -6,7 +6,7 @@ import {
   resolveColors,
 } from "../styles";
 
-export const BigImpactText = ({ text, highlight, startFrame = 0, preset }) => {
+export const BigImpactText = ({ text, highlight, startFrame = 0, preset, designTokens }) => {
   const colors = resolveColors(preset);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -18,9 +18,11 @@ export const BigImpactText = ({ text, highlight, startFrame = 0, preset }) => {
   const scale = interpolate(progress, [0, 1], [0.85, 1]);
   const op = progress;
 
-  // 텍스트 길이에 따라 폰트 크기 자동 조절
+  // 텍스트 길이에 따라 폰트 크기 자동 조절 — designTokens.titleSize 기준 스케일
   const len = text?.length || 1;
-  const fontSize = len <= 8 ? 120 : len <= 15 ? 96 : len <= 25 ? 80 : 64;
+  const baseSize = designTokens?.titleSize || 88;
+  const tokenScale = baseSize / 88;
+  const fontSize = Math.round((len <= 8 ? 120 : len <= 15 ? 96 : len <= 25 ? 80 : 64) * tokenScale);
 
   const renderText = () => {
     if (!highlight) {

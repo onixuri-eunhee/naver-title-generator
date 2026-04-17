@@ -87,6 +87,7 @@ export const SceneSequenceComposition = ({
   textPosition = 'center',
   cameraMotion = 'ken-burns',
   sceneTransition = 'auto',
+  designTokens,
 }) => {
   const preset = getPreset(presetKey);
 
@@ -127,6 +128,7 @@ export const SceneSequenceComposition = ({
             cameraMotion={cameraMotion}
             subtitle={subtitle}
             textPosition={textPosition}
+            designTokens={designTokens}
           />
         )}
       </TransitionSeries.Sequence>,

@@ -14,6 +14,7 @@ import { LottieOverlay } from './kinetic-type/components/effects/LottieOverlay';
 import { ConfettiOverlay } from './kinetic-type/components/effects/ConfettiOverlay';
 import { SparkleOverlay } from './kinetic-type/components/effects/SparkleOverlay';
 import { CheckmarkDraw } from './kinetic-type/components/effects/CheckmarkDraw';
+import { DEFAULT_DESIGN_TOKENS } from '../../lib/shortform/design-tokens-shared.js';
 import { BigImpactText } from './kinetic-type/components/BigImpactText';
 import { BulletList } from './kinetic-type/components/BulletList';
 import { ComparisonColumns } from './kinetic-type/components/ComparisonColumns';
@@ -62,13 +63,18 @@ export function SceneRouter({
   cameraMotion,
   subtitle,
   textPosition,
+  designTokens,
 }) {
+  const tokens = designTokens || DEFAULT_DESIGN_TOKENS;
   const layoutType = scene?.layoutType;
   const LayoutComponent = layoutType ? LAYOUT_REGISTRY[layoutType] : null;
 
   if (LayoutComponent) {
     const layoutProps = scene.layoutProps || {};
     const section = scene.section || 'point';
+
+    // designTokens 기반 동적 패딩 — titlePositionPercent를 1920px 세로 기준으로 변환
+    const topPadding = Math.round(1920 * (tokens.titlePositionPercent / 100));
 
     // 이펙트 오버레이 자동 매칭
     let EffectOverlay = null;
@@ -83,13 +89,14 @@ export function SceneRouter({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-start',
-            padding: '320px 72px 120px',
+            padding: `${topPadding}px 72px 120px`,
           }}
         >
           <LayoutComponent
             text={scene.text}
             startFrame={0}
             preset={preset}
+            designTokens={tokens}
             {...layoutProps}
           />
         </AbsoluteFill>
