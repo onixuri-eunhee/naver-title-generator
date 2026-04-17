@@ -5,8 +5,8 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
-import { FONTS, RADIUS, SIZES, SPRING_CONFIG, buildSubtitleStyle } from './styles';
-import { breathe } from './utils';
+import { FONTS, RADIUS, SIZES, SPRING_CONFIG, buildSubtitleStyle } from './styles.js';
+import { breathe } from './utils.js';
 
 export const CTAScene = ({
   headline,

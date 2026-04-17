@@ -11,8 +11,8 @@ import {
   SIZES,
   SPRING_CONFIG,
   buildSubtitleStyle,
-} from '../styles';
-import { breathe } from '../utils';
+} from '../styles.js';
+import { breathe } from '../utils.js';
 
 /**
  * EmphasisScene — 강조 박스 (중요 포인트, CTA 강조)

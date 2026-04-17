@@ -9,8 +9,8 @@ import {
   FONTS,
   SPRING_CONFIG,
   buildSubtitleStyle,
-} from '../styles';
-import { breathe } from '../utils';
+} from '../styles.js';
+import { breathe } from '../utils.js';
 
 /**
  * DataScene — 숫자/통계 강조

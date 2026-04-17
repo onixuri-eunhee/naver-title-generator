@@ -5,9 +5,9 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
-import { FONTS, RADIUS, SIZES, SPRING_CONFIG, buildSubtitleStyle } from './styles';
-import { breathe } from './utils';
-import { KenBurnsImage } from './KenBurnsImage';
+import { FONTS, RADIUS, SIZES, SPRING_CONFIG, buildSubtitleStyle } from './styles.js';
+import { breathe } from './utils.js';
+import { KenBurnsImage } from './KenBurnsImage.jsx';
 
 /**
  * SlideshowScene — 슬라이드쇼 모드의 단일 슬라이드

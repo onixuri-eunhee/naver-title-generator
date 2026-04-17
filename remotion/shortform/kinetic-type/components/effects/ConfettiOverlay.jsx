@@ -1,5 +1,5 @@
 import { useCurrentFrame, interpolate } from 'remotion';
-import { resolveColors } from '../../styles';
+import { resolveColors } from '../../styles.js';
 
 /**
  * Deterministic seeded random — index-based, no Math.random().

@@ -5,13 +5,13 @@ import {
 } from '@remotion/transitions';
 import { slide } from '@remotion/transitions/slide';
 import { fade } from '@remotion/transitions/fade';
-import { BackgroundLayer } from '../shortform/BackgroundLayer';
-import { ProgressBar } from '../shortform/ProgressBar';
-import { HookScene } from '../shortform/HookScene';
-import { BodyScene } from '../shortform/BodyScene';
-import { CTAScene } from '../shortform/CTAScene';
-import { getPreset, DEFAULT_PRESET_KEY } from '../shortform/presets';
-import { SHORTFORM_FPS } from '../shortform/styles';
+import { BackgroundLayer } from '../shortform/BackgroundLayer.jsx';
+import { ProgressBar } from '../shortform/ProgressBar.jsx';
+import { HookScene } from '../shortform/HookScene.jsx';
+import { BodyScene } from '../shortform/BodyScene.jsx';
+import { CTAScene } from '../shortform/CTAScene.jsx';
+import { getPreset, DEFAULT_PRESET_KEY } from '../shortform/presets.js';
+import { SHORTFORM_FPS } from '../shortform/styles.js';
 
 /**
  * LongformComposition — 7씬 (Hook → Body1~4 → Conclusion → CTA)

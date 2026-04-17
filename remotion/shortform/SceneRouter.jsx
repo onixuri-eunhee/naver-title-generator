@@ -9,29 +9,29 @@
  */
 
 import { AbsoluteFill } from 'remotion';
-import { SceneCard } from './SceneCard';
-import { LottieOverlay } from './kinetic-type/components/effects/LottieOverlay';
-import { ConfettiOverlay } from './kinetic-type/components/effects/ConfettiOverlay';
-import { SparkleOverlay } from './kinetic-type/components/effects/SparkleOverlay';
-import { CheckmarkDraw } from './kinetic-type/components/effects/CheckmarkDraw';
+import { SceneCard } from './SceneCard.jsx';
+import { LottieOverlay } from './kinetic-type/components/effects/LottieOverlay.jsx';
+import { ConfettiOverlay } from './kinetic-type/components/effects/ConfettiOverlay.jsx';
+import { SparkleOverlay } from './kinetic-type/components/effects/SparkleOverlay.jsx';
+import { CheckmarkDraw } from './kinetic-type/components/effects/CheckmarkDraw.jsx';
 import { DEFAULT_DESIGN_TOKENS } from '../../lib/shortform/design-tokens-shared.js';
-import { BigImpactText } from './kinetic-type/components/BigImpactText';
-import { BulletList } from './kinetic-type/components/BulletList';
-import { ComparisonColumns } from './kinetic-type/components/ComparisonColumns';
-import { EmphasisBox } from './kinetic-type/components/EmphasisBox';
-import { GiantNumberCounter } from './kinetic-type/components/GiantNumberCounter';
-import { ProgressBarBlock } from './kinetic-type/components/ProgressBarBlock';
-import { SmallLabel } from './kinetic-type/components/SmallLabel';
-import { SubtitleBar } from './kinetic-type/components/SubtitleBar';
-import { VerticalBarText } from './kinetic-type/components/VerticalBarText';
-import { VennDiagram } from './kinetic-type/components/VennDiagram';
-import { BarGraph } from './kinetic-type/components/BarGraph';
-import { PieChart } from './kinetic-type/components/PieChart';
-import { FlowDiagram } from './kinetic-type/components/FlowDiagram';
-import { ComparisonChart } from './kinetic-type/components/ComparisonChart';
-import { ConnectingNetwork } from './kinetic-type/components/ConnectingNetwork';
-import { StrikethroughText } from './kinetic-type/components/StrikethroughText';
-import { NumberSlam } from './kinetic-type/components/NumberSlam';
+import { BigImpactText } from './kinetic-type/components/BigImpactText.jsx';
+import { BulletList } from './kinetic-type/components/BulletList.jsx';
+import { ComparisonColumns } from './kinetic-type/components/ComparisonColumns.jsx';
+import { EmphasisBox } from './kinetic-type/components/EmphasisBox.jsx';
+import { GiantNumberCounter } from './kinetic-type/components/GiantNumberCounter.jsx';
+import { ProgressBarBlock } from './kinetic-type/components/ProgressBarBlock.jsx';
+import { SmallLabel } from './kinetic-type/components/SmallLabel.jsx';
+import { SubtitleBar } from './kinetic-type/components/SubtitleBar.jsx';
+import { VerticalBarText } from './kinetic-type/components/VerticalBarText.jsx';
+import { VennDiagram } from './kinetic-type/components/VennDiagram.jsx';
+import { BarGraph } from './kinetic-type/components/BarGraph.jsx';
+import { PieChart } from './kinetic-type/components/PieChart.jsx';
+import { FlowDiagram } from './kinetic-type/components/FlowDiagram.jsx';
+import { ComparisonChart } from './kinetic-type/components/ComparisonChart.jsx';
+import { ConnectingNetwork } from './kinetic-type/components/ConnectingNetwork.jsx';
+import { StrikethroughText } from './kinetic-type/components/StrikethroughText.jsx';
+import { NumberSlam } from './kinetic-type/components/NumberSlam.jsx';
 
 const LAYOUT_REGISTRY = {
   'big-impact-text': BigImpactText,

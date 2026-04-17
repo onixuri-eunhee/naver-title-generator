@@ -5,15 +5,15 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
-import { FONTS, RADIUS, SIZES, SPRING_CONFIG, buildSubtitleStyle, textPositionToAlign } from './styles';
-import { breathe } from './utils';
-import { KenBurnsImage } from './KenBurnsImage';
-import { KineticText } from './kineticText';
-import { ComparisonScene } from './scenes/ComparisonScene';
-import { EmphasisScene } from './scenes/EmphasisScene';
-import { TestimonialScene } from './scenes/TestimonialScene';
-import { DataScene } from './scenes/DataScene';
-import { FlowScene } from './scenes/FlowScene';
+import { FONTS, RADIUS, SIZES, SPRING_CONFIG, buildSubtitleStyle, textPositionToAlign } from './styles.js';
+import { breathe } from './utils.js';
+import { KenBurnsImage } from './KenBurnsImage.jsx';
+import { KineticText } from './kineticText.js';
+import { ComparisonScene } from './scenes/ComparisonScene.jsx';
+import { EmphasisScene } from './scenes/EmphasisScene.jsx';
+import { TestimonialScene } from './scenes/TestimonialScene.jsx';
+import { DataScene } from './scenes/DataScene.jsx';
+import { FlowScene } from './scenes/FlowScene.jsx';
 
 const CARD_INITIAL_DELAY = 15;
 const CARD_STAGGER = 30;

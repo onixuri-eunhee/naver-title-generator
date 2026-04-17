@@ -5,10 +5,10 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
-import { FONTS, SIZES, SPRING_CONFIG, buildSubtitleStyle, textPositionToAlign } from './styles';
-import { breathe } from './utils';
-import { KenBurnsImage } from './KenBurnsImage';
-import { KineticText } from './kineticText';
+import { FONTS, SIZES, SPRING_CONFIG, buildSubtitleStyle, textPositionToAlign } from './styles.js';
+import { breathe } from './utils.js';
+import { KenBurnsImage } from './KenBurnsImage.jsx';
+import { KineticText } from './kineticText.js';
 
 const CORNER_DOT_POSITIONS = [
   { top: 120, left: 120 },

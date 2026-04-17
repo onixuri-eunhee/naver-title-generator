@@ -1,4 +1,4 @@
-import { PRETENDARD } from './fonts';
+import { PRETENDARD } from './fonts.js';
 
 export const KT_COLORS = {
   bg: "#0A0A0A",

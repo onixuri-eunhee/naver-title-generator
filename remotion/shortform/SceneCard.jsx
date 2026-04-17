@@ -5,9 +5,9 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
-import { FONTS, SIZES, SPRING_CONFIG, buildSubtitleStyle } from './styles';
-import { KenBurnsImage } from './KenBurnsImage';
-import { KineticText, KINETIC_VARIANTS } from './kineticText';
+import { FONTS, SIZES, SPRING_CONFIG, buildSubtitleStyle } from './styles.js';
+import { KenBurnsImage } from './KenBurnsImage.jsx';
+import { KineticText, KINETIC_VARIANTS } from './kineticText.js';
 
 // Phase A-bis §4.10 — First 3 Seconds 시각 boost.
 // 프레임 단위 상수는 파일 내 localConst (lib/*로 추출 금지 — 애니메이션 내부 구현).

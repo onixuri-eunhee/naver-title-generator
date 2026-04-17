@@ -1,6 +1,6 @@
 import { useCurrentFrame, spring, interpolate } from 'remotion';
-import { resolveColors } from '../../styles';
-import { SHORTFORM_FPS } from '../../../styles';
+import { resolveColors } from '../../styles.js';
+import { SHORTFORM_FPS } from '../../../styles.js';
 
 /**
  * Deterministic seeded random.

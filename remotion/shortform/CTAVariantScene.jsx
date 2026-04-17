@@ -1,5 +1,5 @@
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
-import { FONTS, SIZES, SPRING_CONFIG } from './styles';
+import { FONTS, SIZES, SPRING_CONFIG } from './styles.js';
 
 // Phase A-bis CTAVariantScene — spec §4.9 / §6.3
 //

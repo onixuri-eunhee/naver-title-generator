@@ -5,18 +5,18 @@ import {
 } from '@remotion/transitions';
 import { slide } from '@remotion/transitions/slide';
 import { fade } from '@remotion/transitions/fade';
-import { BackgroundLayer } from './BackgroundLayer';
-import { ProgressBar } from './ProgressBar';
-import { HookScene } from './HookScene';
-import { BodyScene } from './BodyScene';
-import { CTAScene } from './CTAScene';
-import { SlideshowScene } from './SlideshowScene';
+import { BackgroundLayer } from './BackgroundLayer.jsx';
+import { ProgressBar } from './ProgressBar.jsx';
+import { HookScene } from './HookScene.jsx';
+import { BodyScene } from './BodyScene.jsx';
+import { CTAScene } from './CTAScene.jsx';
+import { SlideshowScene } from './SlideshowScene.jsx';
 import {
   SceneSequenceComposition,
   buildSceneSequenceTimeline,
-} from './SceneSequenceComposition';
-import { getPreset, DEFAULT_PRESET_KEY } from './presets';
-import { SHORTFORM_FPS } from './styles';
+} from './SceneSequenceComposition.jsx';
+import { getPreset, DEFAULT_PRESET_KEY } from './presets.js';
+import { SHORTFORM_FPS } from './styles.js';
 
 /**
  * sceneTransition 값을 Remotion transition 프리셋으로 변환

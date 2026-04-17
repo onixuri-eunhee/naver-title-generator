@@ -6,12 +6,12 @@ import {
 import { slide } from '@remotion/transitions/slide';
 import { fade } from '@remotion/transitions/fade';
 import { wipe } from '@remotion/transitions/wipe';
-import { BackgroundLayer } from './BackgroundLayer';
-import { ProgressBar } from './ProgressBar';
-import { SceneRouter } from './SceneRouter';
-import { CTAVariantScene } from './CTAVariantScene';
-import { getPreset, DEFAULT_PRESET_KEY } from './presets';
-import { SHORTFORM_FPS } from './styles';
+import { BackgroundLayer } from './BackgroundLayer.jsx';
+import { ProgressBar } from './ProgressBar.jsx';
+import { SceneRouter } from './SceneRouter.jsx';
+import { CTAVariantScene } from './CTAVariantScene.jsx';
+import { getPreset, DEFAULT_PRESET_KEY } from './presets.js';
+import { SHORTFORM_FPS } from './styles.js';
 import { getTransitionOverlapFrames } from '../../lib/shortform/scene-timing.js';
 
 // Phase A-bis auto 전환 로테이션 — lib/shortform/scene-timing.js 의 내부 상수와 동일 순서.

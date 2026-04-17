@@ -11,8 +11,8 @@ import {
   SIZES,
   SPRING_CONFIG,
   buildSubtitleStyle,
-} from '../styles';
-import { breathe } from '../utils';
+} from '../styles.js';
+import { breathe } from '../utils.js';
 
 /**
  * ComparisonScene — 2열 비교 (Before/After, A vs B)
