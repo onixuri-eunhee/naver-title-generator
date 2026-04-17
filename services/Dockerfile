@@ -11,12 +11,13 @@ ENV PUPPETEER_SKIP_DOWNLOAD=1
 
 WORKDIR /app
 
-# 1) Install services dependencies
+# 1) Install root dependencies (Remotion components need @remotion/*, react, etc.)
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# 2) Install services dependencies
 COPY services/package.json services/package-lock.json ./services/
 RUN cd services && npm ci --omit=dev
-
-# 2) Copy root package.json (needed by Remotion bundler resolution)
-COPY package.json ./
 
 # 3) Copy Remotion components (bundler entry point)
 COPY remotion/ ./remotion/
