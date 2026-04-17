@@ -50,6 +50,7 @@ const Cell = ({ value, emphasize, colors }) => {
 
 export const ComparisonChart = ({
   leftLabel,
+  text,
   rightLabel,
   rows,
   highlightRight = true,
@@ -70,9 +71,18 @@ export const ComparisonChart = ({
 
   return (
     <div
+      style={{ width: "100%", maxWidth: 800 }}
+    >
+      {text && (
+        <div style={{
+          fontFamily: KT_FONT, fontWeight: KT_WEIGHTS.bold, fontSize: 40,
+          color: colors.white, marginBottom: 24, lineHeight: 1.4,
+          wordBreak: "keep-all", textAlign: "center",
+        }}>{text}</div>
+      )}
+      <div
       style={{
         width: "100%",
-        maxWidth: 800,
         backgroundColor: `${colors.coral}06`,
         border: `2px solid ${colors.coralLight}30`,
         borderRadius: 24,
@@ -160,6 +170,7 @@ export const ComparisonChart = ({
           </div>
         );
       })}
+      </div>
     </div>
   );
 };

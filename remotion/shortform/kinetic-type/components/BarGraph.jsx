@@ -3,6 +3,7 @@ import { resolveColors, KT_FONT, KT_WEIGHTS, KT_SPRING } from "../styles";
 
 export const BarGraph = ({
   bars,
+  text,
   height = 520,
   startFrame = 0,
   barStagger = 8,
@@ -12,12 +13,28 @@ export const BarGraph = ({
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const colors = resolveColors(preset);
-  const max = maxValue ?? Math.max(...bars.map((b) => b.value));
+  const max = maxValue ?? Math.max(...bars.map((b) => Number(b.value) || 0));
 
   const chartHeight = height - 100;
 
   return (
     <div style={{ width: "100%", maxWidth: 800 }}>
+      {text && (
+        <div
+          style={{
+            fontFamily: KT_FONT,
+            fontWeight: KT_WEIGHTS.bold,
+            fontSize: 40,
+            color: colors.white,
+            marginBottom: 28,
+            lineHeight: 1.4,
+            wordBreak: "keep-all",
+            textAlign: "center",
+          }}
+        >
+          {text}
+        </div>
+      )}
       <div
         style={{
           position: "relative",

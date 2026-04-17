@@ -36,13 +36,17 @@ export const CheckmarkDraw = ({
   });
   const checkOffset = checkPathLength * (1 - checkProgress);
 
+  const s = Math.min(size, 48);
   return (
     <div
       style={{
         position: 'absolute',
-        width: size,
-        height: size,
+        right: 80,
+        top: 160,
+        width: s,
+        height: s,
         pointerEvents: 'none',
+        opacity: 0.7,
       }}
     >
       <svg

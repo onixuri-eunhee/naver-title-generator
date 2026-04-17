@@ -33,7 +33,7 @@ export const SparkleOverlay = ({
     // Center 60% = x: 216..864, y: 384..1536
     const cx = 216 + r(i * 5 + 1) * 648;
     const cy = 384 + r(i * 5 + 2) * 1152;
-    const size = 8 + r(i * 5 + 3) * 12;
+    const size = 4 + r(i * 5 + 3) * 6;
     const delay = Math.floor(r(i * 5 + 4) * 20); // stagger up to 20 frames
     const color = i % 2 === 0 ? colors.coral : colors.coralLight;
 
@@ -51,7 +51,7 @@ export const SparkleOverlay = ({
       config: { damping: 12, stiffness: 150 },
     });
 
-    const opacity = interpolate(scale, [0, 1], [0, 1], {
+    const opacity = interpolate(scale, [0, 1], [0, 0.5], {
       extrapolateRight: 'clamp',
     });
 
