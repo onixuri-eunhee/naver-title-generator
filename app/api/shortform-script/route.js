@@ -904,6 +904,17 @@ export async function POST(request) {
         `cost=${creditCost}cr benchmark=${benchmarkAggregated ? 'yes' : 'no'} brandKit=${brandContext ? 'yes' : 'no'}`
       );
 
+      console.log(
+        '[SHORTFORM-METRICS]',
+        JSON.stringify({
+          mode: 'phaseD_bypass',
+          personaId,
+          contentType,
+          emailPrefix: (email || 'anon').slice(0, 3) + '***',
+          timestamp: new Date().toISOString(),
+        }),
+      );
+
       const flowResult = await generateScriptFlow({
         blogText,
         keywords: keywords || topic,
