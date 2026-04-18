@@ -28,6 +28,7 @@ RUN npm install --no-package-lock --omit=dev \
     @remotion/paths@4.0.446 \
     @remotion/motion-blur@4.0.446 \
     @remotion/media-utils@4.0.446 \
+    @remotion/media@4.0.446 \
     @remotion/player@4.0.446 \
     react@18.3.1 \
     react-dom@18.3.1
