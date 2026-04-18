@@ -12,13 +12,12 @@ import { SceneRouter } from './SceneRouter.jsx';
 import { CTAVariantScene } from './CTAVariantScene.jsx';
 import { getPreset, DEFAULT_PRESET_KEY } from './presets.js';
 import { SHORTFORM_FPS } from './styles.js';
-import { getTransitionOverlapFrames, AUDIO_PREROLL_FRAMES } from '../../lib/shortform/scene-timing.js';
-
-// Phase A-bis auto 전환 로테이션 — lib/shortform/scene-timing.js 의 내부 상수와 동일 순서.
-// getTransitionOverlapFrames()는 'auto' 파라미터에 평균값을 주므로, 씬별 값은 이 배열로 조회.
-// Phase 2 (2026-04-18): wipe/clock-wipe/flip 제거 — 복잡 레이아웃(ComparisonColumns 등)에서
-// 중첩 프레임이 시각적으로 "tear"를 만드는 문제. fade 중심 + 제한적 slide-fast로 교체.
-const AUTO_TRANSITION_ROTATION = ['fade', 'slide-fast', 'fade-long', 'fade', 'slide-fast', 'fade', 'fade-long', 'slide-fast'];
+import {
+  getTransitionOverlapFrames,
+  getAutoTransitionTotalOverlap,
+  AUDIO_PREROLL_FRAMES,
+  AUTO_TRANSITION_ROTATION,
+} from '../../lib/shortform/scene-timing.js';
 
 /**
  * SceneSequenceComposition — Phase A "script.scenes[] 1:1 매핑" 렌더러.
@@ -183,19 +182,10 @@ export function buildSceneSequenceTimeline(props) {
     return { durationInFrames: SHORTFORM_FPS };
   }
 
-  // 'auto' 전환은 씬 간마다 transition 프레임이 다름 — AUTO_TRANSITION_ROTATION 순회.
-  // 값은 lib/shortform/scene-timing.js 의 TRANSITION_OVERLAP_BY_KIND가 진실의 근원.
   const sceneTransition = props?.sceneTransition || 'auto';
-  let totalTransition = 0;
-  if (sceneTransition === 'auto') {
-    for (let i = 0; i < scenes.length - 1; i++) {
-      const kind = AUTO_TRANSITION_ROTATION[i % AUTO_TRANSITION_ROTATION.length];
-      totalTransition += getTransitionOverlapFrames(kind, SHORTFORM_FPS);
-    }
-  } else {
-    const { transitionFrames } = resolveTransition(sceneTransition);
-    totalTransition = transitionFrames * Math.max(scenes.length - 1, 0);
-  }
+  const totalTransition = sceneTransition === 'auto'
+    ? getAutoTransitionTotalOverlap(scenes.length)
+    : resolveTransition(sceneTransition).transitionFrames * Math.max(scenes.length - 1, 0);
 
   const totalSceneFrames = scenes.reduce(
     (sum, s) => sum + Math.max(s.durationInFrames || 30, 30),

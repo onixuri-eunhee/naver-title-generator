@@ -1257,9 +1257,11 @@ function ShortformClientInner() {
   // 미리보기 props + duration 계산
   // Phase F: step6Value.sceneImageOrder를 scriptToProps에 전달
   // Phase A: audioWordTimestamps 전달 → scene-sequence 모드에서 TTS 정밀 동기
+  // scriptToProps는 settings에서 ctaTone만 읽으므로 의존성을 ctaTone으로 좁혀
+  // 다른 settings 필드 변경(e.g. firstThreeSeconds) 때 불필요한 재계산 방지.
+  const ctaTone = settings?.ctaTone;
   const playerProps = useMemo(() => {
     if (!script) return null;
-    // Step 5 값이 있으면 우선, 비어있으면 기존 images state 폴백 (runAll 경로)
     const bodyImages = mergedImages.length > 0 ? mergedImages : images;
     return scriptToProps(
       script,
@@ -1269,12 +1271,12 @@ function ShortformClientInner() {
       step6Value?.sceneImageOrder,
       videoMode,
       audioWordTimestamps,
-      settings,    // Phase A-bis — CTA tone resolve
-      brandKit,    // Phase A-bis — CTAVariantScene brandKit (null이면 폴백 3단계)
-      audioCharAlignment,  // ElevenLabs character-level timestamps (정밀 동기)
-      designTokens,  // 카테고리별 디자인 토큰 (서버 응답 or null → DEFAULT fallback)
+      { ctaTone },
+      brandKit,
+      audioCharAlignment,
+      designTokens,
     );
-  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder, videoMode, audioWordTimestamps, settings, brandKit, audioCharAlignment, designTokens]);
+  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder, videoMode, audioWordTimestamps, ctaTone, brandKit, audioCharAlignment, designTokens]);
 
   const playerDurationInFrames = useMemo(() => {
     if (!playerProps) return totalDurationSec * SHORTFORM_FPS;
@@ -1284,18 +1286,10 @@ function ShortformClientInner() {
 
   const audioInputProps = useMemo(() => {
     if (!playerProps) return null;
-    const next = {
+    return {
       ...playerProps,
       audio: audioUrl ? { url: audioUrl, durationInFrames: playerDurationInFrames } : undefined,
     };
-    if (typeof window !== 'undefined') {
-      console.log('[shortform:inputProps] keys=', Object.keys(next));
-      console.log('[shortform:inputProps] value=', next);
-      try {
-        console.log('[shortform:inputProps] json=', JSON.stringify(next, null, 2));
-      } catch {}
-    }
-    return next;
   }, [playerProps, audioUrl, playerDurationInFrames]);
 
   // Step 7: 서버 렌더링 요청
