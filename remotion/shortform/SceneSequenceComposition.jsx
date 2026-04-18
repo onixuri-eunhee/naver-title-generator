@@ -1,5 +1,4 @@
-import { Sequence } from 'remotion';
-import { Audio } from '@remotion/media';
+import { Audio, Sequence } from 'remotion';
 import {
   linearTiming,
   TransitionSeries,
@@ -161,13 +160,10 @@ export const SceneSequenceComposition = ({
         /* Phase 2 (2026-04-18): 오디오를 AUDIO_PREROLL_FRAMES 뒤에 시작.
            LayoutComponent spring 진입 애니메이션이 완료된 뒤 음성이 나오도록 하여
            "음성이 영상보다 빠르다" 느낌 제거.
-           premountFor (Remotion best practice): 오디오 버퍼링 사전 로드로 playback 끊김 방지.
-           layout="none": Audio는 visual이 없어 AbsoluteFill 래퍼 불필요. */
-        <Sequence
-          from={AUDIO_PREROLL_FRAMES}
-          layout="none"
-          premountFor={SHORTFORM_FPS}
-        >
+           layout="none": Audio는 visual이 없어 AbsoluteFill 래퍼 불필요.
+           premountFor 제거 (2026-04-18): blob URL 기반 TTS 오디오에서 preload/resume
+           사이클이 "속삭이는" 볼륨 감쇠를 만드는 것으로 관찰됨. */
+        <Sequence from={AUDIO_PREROLL_FRAMES} layout="none">
           <Audio src={audio.url} />
         </Sequence>
       )}

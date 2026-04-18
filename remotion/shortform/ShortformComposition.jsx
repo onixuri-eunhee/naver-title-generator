@@ -1,5 +1,4 @@
-import { Sequence } from 'remotion';
-import { Audio } from '@remotion/media';
+import { Audio, Sequence } from 'remotion';
 import {
   linearTiming,
   TransitionSeries,
