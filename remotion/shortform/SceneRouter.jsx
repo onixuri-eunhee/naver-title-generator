@@ -67,7 +67,12 @@ export function SceneRouter({
 }) {
   const tokens = designTokens || DEFAULT_DESIGN_TOKENS;
   const layoutType = scene?.layoutType;
-  const LayoutComponent = layoutType ? LAYOUT_REGISTRY[layoutType] : null;
+  // 사용자가 Step 6에서 배치한 이미지가 있으면 SceneCard 경로로 강제 라우팅.
+  // Claude는 모든 씬에 layoutType을 넣지만, 업로드/AI 이미지가 있는 씬은 사용자 의도가
+  // 명시적이므로 KineticType 시각화 대신 이미지 배경 렌더링을 우선한다.
+  const hasUserImage = Boolean(scene?.imageUrl);
+  const LayoutComponent =
+    !hasUserImage && layoutType ? LAYOUT_REGISTRY[layoutType] : null;
 
   if (LayoutComponent) {
     const layoutProps = scene.layoutProps || {};
