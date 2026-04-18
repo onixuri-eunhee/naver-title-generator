@@ -886,6 +886,7 @@ function ShortformClientInner() {
   // 음성 미리듣기 — preview=true로 서버 호출 (짧은 샘플 텍스트)
   async function previewVoice(voiceId) {
     if (previewAudio.loading) return;
+    if (previewAudio.url?.startsWith('blob:')) URL.revokeObjectURL(previewAudio.url);
     setPreviewAudio({ voiceId, url: null, loading: true });
     try {
       const res = await fetch('/api/shortform-tts', {
@@ -1511,20 +1512,21 @@ function ShortformClientInner() {
         throw new Error(errMsg);
       }
       const contentType = res.headers.get('content-type') || '';
+      // Railway 렌더 서버는 blob:// URL을 resolve할 수 없어, non-preview 응답은
+      // 서버가 R2 업로드까지 마친 HTTPS audioUrl을 돌려준다.
       if (contentType.includes('application/json')) {
-        // non-preview: 서버가 R2 업로드 후 audioUrl(HTTPS) 반환
-        // Railway 렌더 서버가 다운로드할 수 있도록 blob:// 절대 금지.
         const data = await res.json();
         if (!data.audioUrl) {
           throw new Error('TTS 응답에 audioUrl이 없습니다.');
         }
+        if (audioUrl?.startsWith('blob:')) URL.revokeObjectURL(audioUrl);
         audioBlobRef.current = null;
         setAudioUrl(data.audioUrl);
         setAudioWordTimestamps(Array.isArray(data.wordTimestamps) ? data.wordTimestamps : null);
         setAudioCharAlignment(data.charAlignment || null);
       } else {
-        // binary (preview만 해당 — 실제로 여기 오면 과거 백엔드와 호환 목적)
         const blob = await res.blob();
+        if (audioUrl?.startsWith('blob:')) URL.revokeObjectURL(audioUrl);
         audioBlobRef.current = blob;
         setAudioUrl(URL.createObjectURL(blob));
         setAudioWordTimestamps(null);
@@ -1968,6 +1970,7 @@ function ShortformClientInner() {
           onReset={() => {
             setCurrentStep(1);
             setScript(null);
+            if (audioUrl?.startsWith('blob:')) URL.revokeObjectURL(audioUrl);
             setAudioUrl(null);
             audioBlobRef.current = null;
             setRenderStatus('idle');
