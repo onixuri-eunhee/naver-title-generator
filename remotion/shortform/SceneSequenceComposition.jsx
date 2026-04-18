@@ -1,4 +1,5 @@
-import { Audio, Sequence } from 'remotion';
+import { Sequence } from 'remotion';
+import { Audio } from '@remotion/media';
 import {
   linearTiming,
   TransitionSeries,
@@ -12,11 +13,13 @@ import { SceneRouter } from './SceneRouter.jsx';
 import { CTAVariantScene } from './CTAVariantScene.jsx';
 import { getPreset, DEFAULT_PRESET_KEY } from './presets.js';
 import { SHORTFORM_FPS } from './styles.js';
-import { getTransitionOverlapFrames } from '../../lib/shortform/scene-timing.js';
+import { getTransitionOverlapFrames, AUDIO_PREROLL_FRAMES } from '../../lib/shortform/scene-timing.js';
 
 // Phase A-bis auto 전환 로테이션 — lib/shortform/scene-timing.js 의 내부 상수와 동일 순서.
 // getTransitionOverlapFrames()는 'auto' 파라미터에 평균값을 주므로, 씬별 값은 이 배열로 조회.
-const AUTO_TRANSITION_ROTATION = ['slide-fast', 'fade', 'wipe', 'fade-long', 'slide', 'clock-wipe', 'fade', 'flip'];
+// Phase 2 (2026-04-18): wipe/clock-wipe/flip 제거 — 복잡 레이아웃(ComparisonColumns 등)에서
+// 중첩 프레임이 시각적으로 "tear"를 만드는 문제. fade 중심 + 제한적 slide-fast로 교체.
+const AUTO_TRANSITION_ROTATION = ['fade', 'slide-fast', 'fade-long', 'fade', 'slide-fast', 'fade', 'fade-long', 'slide-fast'];
 
 /**
  * SceneSequenceComposition — Phase A "script.scenes[] 1:1 매핑" 렌더러.
@@ -155,7 +158,16 @@ export const SceneSequenceComposition = ({
       <TransitionSeries>{children}</TransitionSeries>
       <ProgressBar color={preset.colors.accent} />
       {audio?.url && (
-        <Sequence from={0}>
+        /* Phase 2 (2026-04-18): 오디오를 AUDIO_PREROLL_FRAMES 뒤에 시작.
+           LayoutComponent spring 진입 애니메이션이 완료된 뒤 음성이 나오도록 하여
+           "음성이 영상보다 빠르다" 느낌 제거.
+           premountFor (Remotion best practice): 오디오 버퍼링 사전 로드로 playback 끊김 방지.
+           layout="none": Audio는 visual이 없어 AbsoluteFill 래퍼 불필요. */
+        <Sequence
+          from={AUDIO_PREROLL_FRAMES}
+          layout="none"
+          premountFor={SHORTFORM_FPS}
+        >
           <Audio src={audio.url} />
         </Sequence>
       )}

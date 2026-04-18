@@ -53,7 +53,13 @@ export const NumberSlam = ({ text, subtitle, preset, startFrame = 0 }) => {
           transform: `scale(${scale})`,
           fontFamily: KT_FONT,
           fontWeight: KT_WEIGHTS.black,
-          fontSize: KT_SIZES.giant,
+          // Phase 1 방어: text가 4자 초과면 축소 (giant=220은 1~4자 기준 임팩트).
+          fontSize:
+            (text || "").length <= 4
+              ? KT_SIZES.giant
+              : (text || "").length <= 7
+                ? KT_SIZES.giant * 0.7
+                : KT_SIZES.giant * 0.55,
           color: colors.coral,
           letterSpacing: -10,
           lineHeight: 0.9,

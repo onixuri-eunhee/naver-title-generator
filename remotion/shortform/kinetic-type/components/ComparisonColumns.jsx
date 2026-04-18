@@ -39,12 +39,14 @@ export const ComparisonColumns = ({
   const Column = ({
     icon,
     title,
-    points,
+    points: rawPoints,
     highlight,
     delay,
     op,
     x,
   }) => {
+    // Phase 1 safe area: 5개+ 포인트 세로 넘침 → 최대 4개로 클램프.
+    const points = Array.isArray(rawPoints) ? rawPoints.slice(0, 4) : [];
     const accentColor = highlight ? KT_COLORS.coral : KT_COLORS.gray;
     return (
       <div

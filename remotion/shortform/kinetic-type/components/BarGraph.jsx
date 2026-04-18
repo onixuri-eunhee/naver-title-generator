@@ -2,7 +2,7 @@ import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { resolveColors, KT_FONT, KT_WEIGHTS, KT_SPRING } from "../styles";
 
 export const BarGraph = ({
-  bars,
+  bars: rawBars,
   text,
   height = 520,
   startFrame = 0,
@@ -13,7 +13,9 @@ export const BarGraph = ({
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const colors = resolveColors(preset);
-  const max = maxValue ?? Math.max(...bars.map((b) => Number(b.value) || 0));
+  // Phase 1 safe area: 7개+에서 bar 폭 < 100px → 최대 6개로 클램프.
+  const bars = Array.isArray(rawBars) ? rawBars.slice(0, 6) : [];
+  const max = maxValue ?? Math.max(...bars.map((b) => Number(b.value) || 0), 1);
 
   const chartHeight = height - 100;
 

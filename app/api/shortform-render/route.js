@@ -29,7 +29,7 @@ export async function POST(request) {
   const token = extractToken(request);
   const email = await resolveSessionEmail(token);
   if (!email) {
-    return jsonResponse({ error: '로그인이 필요합니다.' }, 401);
+    return jsonResponse(request, { error: '로그인이 필요합니다.' }, { status: 401 });
   }
 
   // 2. Body 파싱
@@ -37,12 +37,12 @@ export async function POST(request) {
   try {
     body = await request.json();
   } catch {
-    return jsonResponse({ error: '잘못된 요청입니다.' }, 400);
+    return jsonResponse(request, { error: '잘못된 요청입니다.' }, { status: 400 });
   }
 
   const { jobId: clientJobId, inputProps } = body;
   if (!inputProps || typeof inputProps !== 'object') {
-    return jsonResponse({ error: 'inputProps가 필요합니다.' }, 400);
+    return jsonResponse(request, { error: 'inputProps가 필요합니다.' }, { status: 400 });
   }
 
   const jobId = clientJobId || createJobId();
@@ -53,7 +53,7 @@ export async function POST(request) {
 
   if (!railwayUrl) {
     console.error('[shortform-render] RAILWAY_RENDER_URL 미설정');
-    return jsonResponse({ error: '렌더 서버가 아직 준비되지 않았습니다.' }, 503);
+    return jsonResponse(request, { error: '렌더 서버가 아직 준비되지 않았습니다.' }, { status: 503 });
   }
 
   // 4. 진행률 업데이트: 렌더링 시작
@@ -77,6 +77,9 @@ export async function POST(request) {
         jobId,
         userId: email,
         inputProps,
+        // Phase 2 (2026-04-18): Railway 렌더 서버가 outputFilename 필수 요구.
+        // jobId 기반 고유 파일명으로 R2 업로드 충돌 방지.
+        outputFilename: `shortform-${jobId}.mp4`,
       }),
     });
 
@@ -91,8 +94,9 @@ export async function POST(request) {
       });
 
       return jsonResponse(
+        request,
         { error: '렌더링에 실패했습니다. 잠시 후 다시 시도해주세요.' },
-        502,
+        { status: 502 },
       );
     }
 
@@ -108,7 +112,7 @@ export async function POST(request) {
     });
 
     // Railway 서버가 { url: 'https://cdn.ddukddaktool.co.kr/...' } 형태로 반환
-    return jsonResponse({
+    return jsonResponse(request, {
       url: result.url,
       duration: Math.round(durationMs / 1000),
       jobId,
@@ -123,8 +127,9 @@ export async function POST(request) {
     });
 
     return jsonResponse(
+      request,
       { error: '렌더 서버에 연결할 수 없습니다.' },
-      502,
+      { status: 502 },
     );
   }
 }

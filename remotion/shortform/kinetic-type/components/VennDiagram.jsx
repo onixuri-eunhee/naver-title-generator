@@ -4,7 +4,7 @@ import { resolveColors, KT_FONT, KT_WEIGHTS } from "../styles";
 
 
 export const VennDiagram = ({
-  circles,
+  circles: rawCircles,
   intersectionLabel,
   size = 500,
   startFrame = 0,
@@ -16,6 +16,9 @@ export const VennDiagram = ({
   const r = size * 0.3;
   const cx = size / 2;
   const cy = size / 2;
+  // Phase 1 safe area: 2 또는 3만 허용. 4+ 시 첫 3개만. 1 이하는 렌더 스킵.
+  const circles = Array.isArray(rawCircles) ? rawCircles.slice(0, 3) : [];
+  if (circles.length < 2) return null;
 
   const CIRCLE_COLORS = [colors.coralLight, colors.coral, colors.coral];
 

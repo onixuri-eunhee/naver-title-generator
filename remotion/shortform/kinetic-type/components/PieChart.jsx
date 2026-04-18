@@ -16,7 +16,7 @@ function sliceColors(colors) {
 }
 
 export const PieChart = ({
-  slices,
+  slices: rawSlices,
   size = 480,
   strokeWidth = 64,
   startFrame = 0,
@@ -28,7 +28,9 @@ export const PieChart = ({
   const frame = useCurrentFrame();
   const colors = resolveColors(preset);
   const palette = sliceColors(colors);
-  const total = slices.reduce((s, x) => s + x.value, 0);
+  // Phase 1 safe area: 3~5개 강제. 2개 이하/6개 초과는 식별 어려움 → 클램프.
+  const slices = Array.isArray(rawSlices) ? rawSlices.slice(0, 5) : [];
+  const total = slices.reduce((s, x) => s + (Number(x?.value) || 0), 0) || 1;
   const r = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * r;
 

@@ -18,7 +18,12 @@ import {
   formatCredit,
 } from '@/lib/shortform/settings.js';
 import { getCTAVariant } from '@/lib/shortform/cta-variants.js';
-import { deriveSceneDurationsFromCharTimestamps } from '@/lib/shortform/scene-timing.js';
+import {
+  deriveSceneDurationsFromCharTimestamps,
+  TAIL_PADDING_FRAMES,
+  AUDIO_PREROLL_FRAMES,
+  getAutoTransitionTotalOverlap,
+} from '@/lib/shortform/scene-timing.js';
 import { DEFAULT_DESIGN_TOKENS } from '@/lib/shortform/design-tokens-shared.js';
 
 // SceneRouter LAYOUT_REGISTRY 키와 동기화 — 잘못된 layoutType fallback용
@@ -196,6 +201,54 @@ function deriveSceneDurationsFromWordTimestamps(scenes, wordTimestamps, fps) {
   return durations;
 }
 
+/**
+ * Claude가 가끔 틀리는 외래어 표기 후처리. prompt.js에 규칙이 있어도
+ * 대본 길이가 길면 일부 누락 — 런타임 방어.
+ */
+const TYPO_CORRECTIONS = [
+  [/볼랙/g, '블랙'],
+  [/발랙/g, '블랙'],
+  [/그레(?![이])/g, '그레이'],
+  [/네비이?/g, '네이비'],
+  [/카키이/g, '카키'],
+  [/배지(?![가-힣])/g, '베이지'],
+  [/아이보리이/g, '아이보리'],
+];
+function correctTypos(text) {
+  if (!text || typeof text !== 'string') return text;
+  return TYPO_CORRECTIONS.reduce((acc, [re, sub]) => acc.replace(re, sub), text);
+}
+
+/**
+ * 내레이션에서 화면 표시용 짧은 구문 추출.
+ * Claude가 onScreenText를 안 줬거나 8자 제한을 어겼을 때 4단계 폴백.
+ * 1순위: 숫자+단위 / 2순위: 따옴표 / 3순위: 첫 어절 2개 / 4순위: hard truncate.
+ */
+function extractKeyPhrase(narration, hardLimit = 15) {
+  if (!narration || typeof narration !== 'string') return '';
+  const text = narration.trim();
+  const numMatch = text.match(/\d+(?:\.\d+)?(?:%|분|초|배|억|만|원|명|시간|년|쌍|개)/);
+  if (numMatch) return numMatch[0];
+  const quoteMatch = text.match(/["'「『]([^"'」』]{1,12})["'」』]/);
+  if (quoteMatch) return quoteMatch[1];
+  const words = text.split(/\s+/).slice(0, 2).join(' ');
+  if (words.length <= hardLimit) return words;
+  return words.slice(0, hardLimit - 1) + '…';
+}
+
+/** layoutProps 내부 string 필드 재귀적으로 오타 교정. */
+function correctLayoutPropsTypos(obj) {
+  if (obj == null) return obj;
+  if (typeof obj === 'string') return correctTypos(obj);
+  if (Array.isArray(obj)) return obj.map(correctLayoutPropsTypos);
+  if (typeof obj === 'object') {
+    const out = {};
+    for (const k in obj) out[k] = correctLayoutPropsTypos(obj[k]);
+    return out;
+  }
+  return obj;
+}
+
 function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneImageOrder, mode = 'scene-sequence', wordTimestamps = null, settings = null, brandKit = null, charAlignment = null, designTokens = null) {
   const fps = SHORTFORM_FPS;
   const totalFrames = Math.round(totalDurationSec * fps);
@@ -234,6 +287,18 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
       );
     }
 
+    // Phase 2 (2026-04-18): composition 길이 보정.
+    // 1) AUDIO_PREROLL — 오디오가 프레임 15에서 시작하므로 composition도 +15f 필요.
+    // 2) transition overlap 보정 — TransitionSeries가 합계 sum - transitions로 단축,
+    //    따라서 그 손실만큼 마지막 씬에 추가해야 오디오 끝이 잘리지 않음.
+    // 3) TAIL_PADDING — CTA 발화 꼬리(잔향/숨 포즈)를 위한 여유 프레임.
+    if (sceneDurations.length > 0) {
+      sceneDurations = [...sceneDurations];
+      const transitionLoss = getAutoTransitionTotalOverlap(sceneDurations.length);
+      sceneDurations[sceneDurations.length - 1] +=
+        AUDIO_PREROLL_FRAMES + transitionLoss + TAIL_PADDING_FRAMES;
+    }
+
     // 2) 이미지 매핑 — sceneImageOrder 우선, 그 다음 bodyImages 순환
     const orderedImages = Array.isArray(sceneImageOrder) ? sceneImageOrder : [];
     const imgs = Array.isArray(bodyImages) ? bodyImages : [];
@@ -258,8 +323,15 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
       const isHook = s.section === 'hook' || i === 0;
       const isCta = s.section === 'cta' || i === validScenes.length - 1;
       const sectionKey = isHook ? 'hook' : isCta ? 'cta' : 'point';
+      // onScreenText — Claude가 준 값 우선, 없거나 너무 길면 추출기 fallback.
+      // 15자를 hard ceiling으로 고정 (컴포넌트 safe area 초과 방지).
+      const rawOnScreen = typeof s.onScreenText === 'string' ? s.onScreenText.trim() : '';
+      const onScreenTextRaw = rawOnScreen && rawOnScreen.length <= 15
+        ? rawOnScreen
+        : extractKeyPhrase(s.script, 15);
       const base = {
-        text: s.script,
+        text: correctTypos(onScreenTextRaw),     // 화면 표시용 짧은 구문 (≤15자) + 오타 교정
+        narration: correctTypos(s.script),       // 음성/자막용 원본 + 오타 교정
         section: sectionKey,
         durationInFrames: sceneDurations[i],
         imageUrl: pickImage(i, s),
@@ -268,7 +340,9 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
         layoutType: s.layoutType && VALID_LAYOUT_TYPES.includes(s.layoutType)
           ? s.layoutType
           : (() => { if (s.layoutType) console.warn(`[scriptToProps] unknown layoutType "${s.layoutType}" → null fallback`); return null; })(),
-        layoutProps: s.layoutType && VALID_LAYOUT_TYPES.includes(s.layoutType) ? (s.layoutProps || null) : null,
+        layoutProps: s.layoutType && VALID_LAYOUT_TYPES.includes(s.layoutType)
+          ? correctLayoutPropsTypos(s.layoutProps || null)
+          : null,
       };
       // Phase A-bis — 마지막 씬에만 CTAVariantScene 입력 필드 첨부.
       // SceneSequenceComposition이 scene.ctaVariantProps 존재 여부로 분기.
@@ -1202,10 +1276,18 @@ function ShortformClientInner() {
 
   const audioInputProps = useMemo(() => {
     if (!playerProps) return null;
-    return {
+    const next = {
       ...playerProps,
       audio: audioUrl ? { url: audioUrl, durationInFrames: playerDurationInFrames } : undefined,
     };
+    if (typeof window !== 'undefined') {
+      console.log('[shortform:inputProps] keys=', Object.keys(next));
+      console.log('[shortform:inputProps] value=', next);
+      try {
+        console.log('[shortform:inputProps] json=', JSON.stringify(next, null, 2));
+      } catch {}
+    }
+    return next;
   }, [playerProps, audioUrl, playerDurationInFrames]);
 
   // Step 7: 서버 렌더링 요청
@@ -1859,6 +1941,8 @@ function ShortformClientInner() {
               }
             }}
             playerProps={playerProps}
+            audioUrl={audioUrl}
+            playerDurationInFrames={playerDurationInFrames}
             mergedImages={mergedImages}
             /* Phase B가 도달하기 전까지는 undefined — 배너 자동 숨김 */
             benchmarkAggregated={undefined}

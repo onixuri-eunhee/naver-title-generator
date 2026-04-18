@@ -53,7 +53,13 @@ export const StrikethroughText = ({
             transform: `translateY(${dyMain}px)`,
             fontFamily: KT_FONT,
             fontWeight: KT_WEIGHTS.black,
-            fontSize: KT_SIZES.title,
+            // Phase 1 방어: title=110은 ~14자 기준. 20자+면 축소.
+            fontSize:
+              (text || "").length <= 14
+                ? KT_SIZES.title
+                : (text || "").length <= 20
+                  ? 80
+                  : 60,
             color: colors.white,
             letterSpacing: -3,
             textAlign: "center",

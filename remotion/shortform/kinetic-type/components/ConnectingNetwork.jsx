@@ -7,8 +7,9 @@ export const ConnectingNetwork = ({
   startFrame = 0,
   staggerInFrames = 8,
   fadeInFrames = 20,
-  width,
-  height,
+  // Phase 1 safe area: 부모가 생략해도 800×800으로 렌더.
+  width = 800,
+  height = 800,
   x = 0,
   y = 0,
   nodeRadius = 5,

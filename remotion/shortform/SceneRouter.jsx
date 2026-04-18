@@ -109,6 +109,7 @@ export function SceneRouter({
   return (
     <SceneCard
       text={scene.text}
+      narration={scene.narration}
       section={scene.section || 'point'}
       sceneIndex={sceneIndex}
       totalScenes={totalScenes}

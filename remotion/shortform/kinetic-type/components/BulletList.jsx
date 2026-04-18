@@ -6,6 +6,9 @@ export const BulletList = ({ items, highlight = true, startFrame = 0, stagger = 
   const frame = useCurrentFrame();
   const accent = highlight ? KT_COLORS.coral : KT_COLORS.white;
 
+  // Phase 1 safe area: 6개+ 세로 넘침 → 최대 5개로 클램프.
+  const safeItems = Array.isArray(items) ? items.slice(0, 5) : [];
+
   return (
     <div
       style={{
@@ -16,7 +19,7 @@ export const BulletList = ({ items, highlight = true, startFrame = 0, stagger = 
         maxWidth: 800,
       }}
     >
-      {items.map((item, i) => {
+      {safeItems.map((item, i) => {
         const start = startFrame + i * stagger;
         const op = interpolate(
           frame,

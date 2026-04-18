@@ -45,6 +45,7 @@ const FIRST_SCENE_BOOST = {
  */
 export const SceneCard = ({
   text,
+  narration,
   section = 'point',
   sceneIndex = 0,
   totalScenes = 1,
@@ -238,22 +239,28 @@ export const SceneCard = ({
         )}
       </AbsoluteFill>
 
-      {/* 씬 인덱스 표시 (디버그용 — 후에 제거하거나 옵션화) */}
-      {sceneIndex === 0 && (
+      {/* 내레이션 하단 자막 — onScreenText와 narration이 다를 때만 */}
+      {narration && narration !== text && (
         <div
           style={{
             position: 'absolute',
-            top: 80,
-            right: 80,
+            bottom: '12%',
+            left: 0,
+            right: 0,
+            padding: '0 72px',
+            textAlign: 'center',
             fontFamily: FONTS.primary,
             fontWeight: FONTS.weight.bold,
-            fontSize: 24,
-            color: colors.accent,
-            opacity: 0.7,
-            letterSpacing: 1,
+            fontSize: 44,
+            color: imageUrl ? colors.white : colors.textPrimary,
+            letterSpacing: -0.5,
+            lineHeight: 1.35,
+            textShadow: imageUrl ? '0 4px 16px rgba(0,0,0,0.6)' : 'none',
+            wordBreak: 'keep-all',
+            opacity: 0.92,
           }}
         >
-          {`${sceneIndex + 1} / ${totalScenes}`}
+          {narration}
         </div>
       )}
     </AbsoluteFill>

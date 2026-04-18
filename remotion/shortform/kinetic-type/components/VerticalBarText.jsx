@@ -51,7 +51,13 @@ export const VerticalBarText = ({ text, startFrame = 0, preset }) => {
           transform: `translateX(${textX}px)`,
           fontFamily: KT_FONT,
           fontWeight: KT_WEIGHTS.extraBold,
-          fontSize: 80,
+          // Phase 1 방어: 10자+면 56, 14자+면 44로 축소 (safe area 초과 방지).
+          fontSize:
+            (text || "").length <= 10
+              ? 80
+              : (text || "").length <= 14
+                ? 56
+                : 44,
           color: KT_COLORS.white,
           letterSpacing: -1,
           lineHeight: 1.1,

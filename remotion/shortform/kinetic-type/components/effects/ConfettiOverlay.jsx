@@ -19,23 +19,25 @@ function seededRandom(seed) {
 export const ConfettiOverlay = ({
   preset,
   startFrame = 0,
-  particleCount = 35,
+  // Phase 2 (2026-04-18): 35→14로 축소. "유함" 피드백 반영 (성숙한 톤).
+  particleCount = 14,
 }) => {
   const frame = useCurrentFrame();
   const f = frame - startFrame;
   if (f < 0) return null;
 
   const colors = resolveColors(preset);
-  const palette = [colors.coral, colors.coralLight, colors.white, colors.gray];
+  // 브랜드 코랄 전용 — white/gray 제거해 난잡함 감소
+  const palette = [colors.coral, colors.coralLight];
   const FADE_DURATION = 45;
   const GRAVITY = 0.12;
 
   const particles = Array.from({ length: particleCount }, (_, i) => {
     const r = seededRandom;
     const angle = r(i * 7 + 1) * Math.PI * 2;
-    const speed = 4 + r(i * 7 + 2) * 8;
-    const rotSpeed = (r(i * 7 + 3) - 0.5) * 12;
-    const size = 6 + r(i * 7 + 4) * 10;
+    const speed = 3 + r(i * 7 + 2) * 5;       // 4+8 → 3+5 (더 부드러운 확산)
+    const rotSpeed = (r(i * 7 + 3) - 0.5) * 8;  // 12 → 8
+    const size = 4 + r(i * 7 + 4) * 6;          // 6+10 → 4+6 (더 미니멀)
     const isCircle = r(i * 7 + 5) > 0.5;
     const color = palette[Math.floor(r(i * 7 + 6) * palette.length)];
 
@@ -46,7 +48,8 @@ export const ConfettiOverlay = ({
     const y = 960 + vy * f + 0.5 * GRAVITY * f * f;
     const rotation = rotSpeed * f;
 
-    const opacity = interpolate(f, [0, 10, FADE_DURATION], [0, 1, 0], {
+    // opacity 피크 1→0.75로 낮춤 (차분한 축하감)
+    const opacity = interpolate(f, [0, 10, FADE_DURATION], [0, 0.75, 0], {
       extrapolateRight: 'clamp',
       extrapolateLeft: 'clamp',
     });

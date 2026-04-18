@@ -52,7 +52,7 @@ export const ComparisonChart = ({
   leftLabel,
   text,
   rightLabel,
-  rows,
+  rows: rawRows,
   highlightRight = true,
   rowStagger = 8,
   startFrame = 0,
@@ -61,6 +61,8 @@ export const ComparisonChart = ({
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const colors = resolveColors(preset);
+  // Phase 1 safe area: 7행+ 세로 넘침 → 최대 6행 클램프.
+  const rows = Array.isArray(rawRows) ? rawRows.slice(0, 6) : [];
 
   const headerIn = spring({
     frame: frame - startFrame,

@@ -2,7 +2,7 @@ import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { resolveColors, KT_FONT, KT_WEIGHTS, KT_SPRING } from "../styles";
 
 export const FlowDiagram = ({
-  steps,
+  steps: rawSteps,
   startFrame = 0,
   stepStagger = 12,
   activeIndex,
@@ -11,6 +11,8 @@ export const FlowDiagram = ({
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const colors = resolveColors(preset);
+  // Phase 1 safe area: 6단계+ 세로 1060px+ → 최대 5단계로 클램프.
+  const steps = Array.isArray(rawSteps) ? rawSteps.slice(0, 5) : [];
 
   return (
     <div

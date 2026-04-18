@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/settings.json",
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
       "Read(**)",
@@ -46,17 +46,11 @@
       "Write(remotion/shortform/BodyScene.jsx)",
       "Write(remotion/shortform/HookScene.jsx)",
       "Write(remotion/shortform/CTAScene.jsx)",
-      "Write(remotion/shortform/ShortformComposition.jsx)",
-      "Write(remotion/longform/**)",
-      "Write(app/shortform/components/Step6Preview.js)",
       "Edit(remotion/shortform/_legacy/**)",
       "Edit(remotion/shortform/scenes/**)",
       "Edit(remotion/shortform/BodyScene.jsx)",
       "Edit(remotion/shortform/HookScene.jsx)",
-      "Edit(remotion/shortform/CTAScene.jsx)",
-      "Edit(remotion/shortform/ShortformComposition.jsx)",
-      "Edit(remotion/longform/**)",
-      "Edit(app/shortform/components/Step6Preview.js)"
+      "Edit(remotion/shortform/CTAScene.jsx)"
     ]
   }
 }
