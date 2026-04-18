@@ -1,5 +1,5 @@
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
-import { resolveColors, KT_FONT, KT_WEIGHTS, KT_SPRING } from "../styles";
+import { resolveColors, KT_FONT, KT_WEIGHTS, KT_SPRING } from "../styles.js";
 
 export const FlowDiagram = ({
   steps: rawSteps,

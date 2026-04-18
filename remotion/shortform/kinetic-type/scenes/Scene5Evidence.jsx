@@ -3,7 +3,7 @@ import {
   ProgressBarBlock,
   SmallLabel,
   SubtitleBar,
-} from "../components";
+} from "../components/index.js";
 
 export const Scene5Evidence = () => {
   return (

@@ -5,7 +5,7 @@ import {
   KT_TEXT_SHADOW,
   KT_WEIGHTS,
   resolveColors,
-} from "../styles";
+} from "../styles.js";
 
 export const IconWithLabel = ({ icon, label, sublabel, startFrame = 0, preset }) => {
   const KT_COLORS = resolveColors(preset);

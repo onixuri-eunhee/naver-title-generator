@@ -5,7 +5,7 @@ import {
   KT_TEXT_SHADOW,
   KT_WEIGHTS,
   resolveColors,
-} from "../styles";
+} from "../styles.js";
 
 export const ComparisonColumns = ({
   leftIcon,

@@ -3,7 +3,7 @@ import {
   BigImpactText,
   BulletList,
   SubtitleBar,
-} from "../components";
+} from "../components/index.js";
 
 export const Scene6Promise = () => {
   return (

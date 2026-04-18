@@ -3,7 +3,7 @@ import {
   ComparisonColumns,
   SmallLabel,
   SubtitleBar,
-} from "../components";
+} from "../components/index.js";
 
 export const Scene3Comparison = () => {
   return (

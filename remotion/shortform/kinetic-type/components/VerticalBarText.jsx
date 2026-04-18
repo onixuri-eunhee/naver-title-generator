@@ -4,7 +4,7 @@ import {
   KT_SPRING,
   KT_WEIGHTS,
   resolveColors,
-} from "../styles";
+} from "../styles.js";
 
 export const VerticalBarText = ({ text, startFrame = 0, preset }) => {
   const KT_COLORS = resolveColors(preset);

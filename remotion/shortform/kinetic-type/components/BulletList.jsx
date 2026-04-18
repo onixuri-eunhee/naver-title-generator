@@ -1,5 +1,5 @@
 import { interpolate, useCurrentFrame } from "remotion";
-import { KT_FONT, KT_WEIGHTS, resolveColors } from "../styles";
+import { KT_FONT, KT_WEIGHTS, resolveColors } from "../styles.js";
 
 export const BulletList = ({ items, highlight = true, startFrame = 0, stagger = 10, preset }) => {
   const KT_COLORS = resolveColors(preset);

@@ -4,14 +4,14 @@ import {
   TransitionSeries,
 } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
-import { KT_COLORS } from "./styles";
-import { Scene1Opening } from "./scenes/Scene1Opening";
-import { Scene2Numbers } from "./scenes/Scene2Numbers";
-import { Scene3Comparison } from "./scenes/Scene3Comparison";
-import { Scene4CoreMessage } from "./scenes/Scene4CoreMessage";
-import { Scene5Evidence } from "./scenes/Scene5Evidence";
-import { Scene6Promise } from "./scenes/Scene6Promise";
-import { Scene7CTA } from "./scenes/Scene7CTA";
+import { KT_COLORS } from "./styles.js";
+import { Scene1Opening } from "./scenes/Scene1Opening.jsx";
+import { Scene2Numbers } from "./scenes/Scene2Numbers.jsx";
+import { Scene3Comparison } from "./scenes/Scene3Comparison.jsx";
+import { Scene4CoreMessage } from "./scenes/Scene4CoreMessage.jsx";
+import { Scene5Evidence } from "./scenes/Scene5Evidence.jsx";
+import { Scene6Promise } from "./scenes/Scene6Promise.jsx";
+import { Scene7CTA } from "./scenes/Scene7CTA.jsx";
 
 // Scene durations (includes 15f transition overlap where applicable)
 // Target total = 1800f (60s @ 30fps)

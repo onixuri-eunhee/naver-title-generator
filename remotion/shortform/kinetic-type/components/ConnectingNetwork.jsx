@@ -1,5 +1,5 @@
 import { interpolate, useCurrentFrame } from "remotion";
-import { resolveColors } from "../styles";
+import { resolveColors } from "../styles.js";
 
 export const ConnectingNetwork = ({
   nodes,

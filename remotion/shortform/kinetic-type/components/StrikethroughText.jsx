@@ -10,7 +10,7 @@ import {
   KT_SIZES,
   KT_WEIGHTS,
   resolveColors,
-} from "../styles";
+} from "../styles.js";
 
 export const StrikethroughText = ({
   text,

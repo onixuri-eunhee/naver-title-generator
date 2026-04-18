@@ -1,5 +1,5 @@
 import { interpolate, useCurrentFrame } from "remotion";
-import { KT_FONT, KT_SIZES, KT_TEXT_SHADOW, KT_WEIGHTS, resolveColors } from "../styles";
+import { KT_FONT, KT_SIZES, KT_TEXT_SHADOW, KT_WEIGHTS, resolveColors } from "../styles.js";
 
 export const SubtitleBar = ({ text, startFrame = 0, preset }) => {
   const KT_COLORS = resolveColors(preset);

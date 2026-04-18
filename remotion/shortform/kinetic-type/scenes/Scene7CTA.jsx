@@ -3,7 +3,7 @@ import {
   EmphasisBox,
   SubtitleBar,
   VerticalBarText,
-} from "../components";
+} from "../components/index.js";
 
 export const Scene7CTA = () => {
   return (

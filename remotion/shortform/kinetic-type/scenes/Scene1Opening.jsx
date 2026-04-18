@@ -3,7 +3,7 @@ import {
   GiantNumberCounter,
   SmallLabel,
   SubtitleBar,
-} from "../components";
+} from "../components/index.js";
 
 export const Scene1Opening = () => {
   return (

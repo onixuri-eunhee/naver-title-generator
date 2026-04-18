@@ -4,7 +4,7 @@ import {
   KT_SPRING,
   KT_WEIGHTS,
   resolveColors,
-} from "../styles";
+} from "../styles.js";
 
 const ICONS = {
   check: "✓",

@@ -3,7 +3,7 @@ import {
   KT_FONT,
   KT_WEIGHTS,
   resolveColors,
-} from "../styles";
+} from "../styles.js";
 
 export const ProgressBarBlock = ({ label, percent, startFrame = 0, durationInFrames = 60, preset }) => {
   const KT_COLORS = resolveColors(preset);

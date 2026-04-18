@@ -4,7 +4,7 @@ import {
   KT_SPRING,
   KT_WEIGHTS,
   resolveColors,
-} from "../styles";
+} from "../styles.js";
 
 export const BigImpactText = ({ text, highlight, startFrame = 0, preset, designTokens }) => {
   const colors = resolveColors(preset);

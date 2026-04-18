@@ -10,7 +10,7 @@ import {
   KT_SIZES,
   KT_WEIGHTS,
   resolveColors,
-} from "../styles";
+} from "../styles.js";
 
 const SLAM_SPRING = { damping: 12, stiffness: 180, mass: 1 };
 

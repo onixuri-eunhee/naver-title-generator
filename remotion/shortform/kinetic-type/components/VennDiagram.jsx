@@ -1,5 +1,5 @@
 import { interpolate, useCurrentFrame } from "remotion";
-import { resolveColors, KT_FONT, KT_WEIGHTS } from "../styles";
+import { resolveColors, KT_FONT, KT_WEIGHTS } from "../styles.js";
 
 
 
