@@ -20,10 +20,10 @@ import {
 import { getCTAVariant } from '@/lib/shortform/cta-variants.js';
 import {
   deriveSceneDurationsFromCharTimestamps,
-  TAIL_PADDING_FRAMES,
   AUDIO_PREROLL_FRAMES,
   getAutoTransitionOverlapAt,
 } from '@/lib/shortform/scene-timing.js';
+import { computeTailPadding } from '@/lib/shortform/tail-padding';
 import { DEFAULT_DESIGN_TOKENS } from '@/lib/shortform/design-tokens-shared.js';
 
 // SceneRouter LAYOUT_REGISTRY 키와 동기화 — 잘못된 layoutType fallback용
@@ -251,7 +251,7 @@ function correctLayoutPropsTypos(obj) {
   return obj;
 }
 
-function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneImageOrder, mode = 'scene-sequence', wordTimestamps = null, settings = null, brandKit = null, charAlignment = null, designTokens = null) {
+function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneImageOrder, mode = 'scene-sequence', wordTimestamps = null, settings = null, brandKit = null, charAlignment = null, designTokens = null, audioRealDurationSec = null) {
   const fps = SHORTFORM_FPS;
   const totalFrames = Math.round(totalDurationSec * fps);
 
@@ -305,8 +305,16 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
       sceneDurations = sceneDurations.map((d, i) => {
         return d + getAutoTransitionOverlapAt(i, sceneDurations.length);
       });
+      const charEndSec = charAlignment?.ends?.length
+        ? charAlignment.ends[charAlignment.ends.length - 1]
+        : null;
+      const tailPadding = computeTailPadding({
+        audioRealDurationSec,
+        charEndSec,
+        fps,
+      });
       sceneDurations[sceneDurations.length - 1] +=
-        AUDIO_PREROLL_FRAMES + TAIL_PADDING_FRAMES;
+        AUDIO_PREROLL_FRAMES + tailPadding;
     }
 
     // 2) 이미지 매핑 — sceneImageOrder 우선, 그 다음 bodyImages 순환
@@ -802,6 +810,7 @@ function ShortformClientInner() {
   // Phase A: TTS word timestamps (ElevenLabs) — 씬 duration 정밀 동기용
   const [audioWordTimestamps, setAudioWordTimestamps] = useState(null);
   const [audioCharAlignment, setAudioCharAlignment] = useState(null);
+  const [audioRealDurationSec, setAudioRealDurationSec] = useState(null);
 
   // === Step 6 — 미리보기 + 커스터마이징 (Phase F) ===
   const [step6Value, setStep6Value] = useState(() =>
@@ -812,6 +821,33 @@ function ShortformClientInner() {
   const [restoredProjectId, setRestoredProjectId] = useState(null);
   const [restoring, setRestoring] = useState(false);
   const [restoreError, setRestoreError] = useState('');
+
+  // audio 파일이 로드되면 실 duration 측정 → 마지막 씬 padding을 그 값에 맞춤
+  useEffect(() => {
+    if (!audioUrl) {
+      setAudioRealDurationSec(null);
+      return undefined;
+    }
+    const a = new Audio();
+    a.preload = 'metadata';
+    a.src = audioUrl;
+    let cancelled = false;
+    const onLoaded = () => {
+      if (cancelled) return;
+      const d = a.duration;
+      if (Number.isFinite(d) && d > 0) {
+        setAudioRealDurationSec(d);
+      }
+    };
+    a.addEventListener('loadedmetadata', onLoaded);
+    a.addEventListener('durationchange', onLoaded);
+    return () => {
+      cancelled = true;
+      a.removeEventListener('loadedmetadata', onLoaded);
+      a.removeEventListener('durationchange', onLoaded);
+      try { a.src = ''; } catch {}
+    };
+  }, [audioUrl]);
 
   // === Phase H: 자동 저장 훅 활성화 (Phase C 훅 사용) ===
   const authTokenForSave = typeof window !== 'undefined'
@@ -1279,8 +1315,9 @@ function ShortformClientInner() {
       brandKit,
       audioCharAlignment,
       designTokens,
+      audioRealDurationSec,
     );
-  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder, videoMode, audioWordTimestamps, ctaTone, brandKit, audioCharAlignment, designTokens]);
+  }, [script, presetKey, totalDurationSec, images, mergedImages, step6Value?.sceneImageOrder, videoMode, audioWordTimestamps, ctaTone, brandKit, audioCharAlignment, designTokens, audioRealDurationSec]);
 
   const playerDurationInFrames = useMemo(() => {
     if (!playerProps) return totalDurationSec * SHORTFORM_FPS;
