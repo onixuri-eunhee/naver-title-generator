@@ -44,6 +44,9 @@ function getS3() {
 async function uploadToR2(key, filePath) {
   const stat = fs.statSync(filePath);
   const body = fs.createReadStream(filePath);
+  // Content-Disposition: attachment — 브라우저가 cross-origin a[download]를 무시하는
+  // 문제 회피. R2가 헤더로 "이건 다운로드"를 강제하면 모든 브라우저에서 정상 다운로드.
+  const downloadFilename = key.split('/').pop() || 'shortform.mp4';
   await getS3().send(
     new PutObjectCommand({
       Bucket: process.env.R2_BUCKET_NAME,
@@ -51,6 +54,7 @@ async function uploadToR2(key, filePath) {
       Body: body,
       ContentType: 'video/mp4',
       ContentLength: stat.size,
+      ContentDisposition: `attachment; filename="${downloadFilename}"`,
     }),
   );
   const publicUrl = process.env.R2_PUBLIC_URL || 'https://cdn.ddukddaktool.co.kr';
