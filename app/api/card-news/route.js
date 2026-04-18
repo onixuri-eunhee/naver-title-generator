@@ -982,7 +982,12 @@ export async function POST(request) {
       }
     }
 
-    console.log(`[CARD-NEWS] Start | slides: ${count} | theme: ${themeId} | blogText: ${blogText.length}자`);
+    // 슬림 변형 판정은 Start 로그 이전에 수행 — A/B 관찰 위해 정상 경로에서도 variant 기록
+    const useSlim = shouldUseSlim(sessionEmail);
+    const promptVariant = useSlim ? 'slim' : 'full';
+    const systemPrompt = useSlim ? SLIDE_SYSTEM_PROMPT_SLIM : SLIDE_SYSTEM_PROMPT;
+
+    console.log(`[CARD-NEWS] Start | slides: ${count} | theme: ${themeId} | blogText: ${blogText.length}자 | variant: ${promptVariant}`);
 
     const titleLine = blogTitle ? `블로그 제목: ${blogTitle}\n` : '';
     const snsHandle = body.snsHandle || '';
@@ -993,9 +998,6 @@ export async function POST(request) {
 ${titleLine}블로그 글:
 ${blogText.substring(0, 8000)}`;
 
-    const useSlim = shouldUseSlim(sessionEmail);
-    const promptVariant = useSlim ? 'slim' : 'full';
-    const systemPrompt = useSlim ? SLIDE_SYSTEM_PROMPT_SLIM : SLIDE_SYSTEM_PROMPT;
     const raw = await callSonnet(systemPrompt, userMessage, 4000);
     console.log(`[CARD-NEWS] Sonnet response: ${raw.length}자`);
 
