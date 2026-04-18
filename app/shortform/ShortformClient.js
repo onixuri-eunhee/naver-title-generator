@@ -1511,24 +1511,24 @@ function ShortformClientInner() {
         throw new Error(errMsg);
       }
       const contentType = res.headers.get('content-type') || '';
-      if (contentType.includes('audio/')) {
-        // Google 폴백: 바이너리 — word timestamps 없음
+      if (contentType.includes('application/json')) {
+        // non-preview: 서버가 R2 업로드 후 audioUrl(HTTPS) 반환
+        // Railway 렌더 서버가 다운로드할 수 있도록 blob:// 절대 금지.
+        const data = await res.json();
+        if (!data.audioUrl) {
+          throw new Error('TTS 응답에 audioUrl이 없습니다.');
+        }
+        audioBlobRef.current = null;
+        setAudioUrl(data.audioUrl);
+        setAudioWordTimestamps(Array.isArray(data.wordTimestamps) ? data.wordTimestamps : null);
+        setAudioCharAlignment(data.charAlignment || null);
+      } else {
+        // binary (preview만 해당 — 실제로 여기 오면 과거 백엔드와 호환 목적)
         const blob = await res.blob();
         audioBlobRef.current = blob;
         setAudioUrl(URL.createObjectURL(blob));
         setAudioWordTimestamps(null);
         setAudioCharAlignment(null);
-      } else {
-        // ElevenLabs: JSON { audioBase64, wordTimestamps, charAlignment }
-        const data = await res.json();
-        const binary = atob(data.audioBase64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        const blob = new Blob([bytes], { type: 'audio/mpeg' });
-        audioBlobRef.current = blob;
-        setAudioUrl(URL.createObjectURL(blob));
-        setAudioWordTimestamps(Array.isArray(data.wordTimestamps) ? data.wordTimestamps : null);
-        setAudioCharAlignment(data.charAlignment || null);
       }
       setTtsStatus('done');
       // TTS 완료 → 음성(4) + 비주얼(5) 단계 마킹

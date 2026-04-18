@@ -1,5 +1,7 @@
 import { getGoogleAccessToken } from '@/lib/vertex-auth';
 import { NextResponse } from 'next/server';
+import { createHash } from 'crypto';
+import { uploadToR2 } from '@/lib/r2';
 import {
   getRedis,
   resolveAdmin,
@@ -181,9 +183,11 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const isPreview = body.preview === true || body.preview === 'true';
 
+    // email 변수를 외부 스코프에 두어 R2 업로드 경로 구성 시 재사용
+    let email = null;
     if (!isPreview) {
       const token = extractToken(request);
-      const email = await resolveSessionEmail(token);
+      email = await resolveSessionEmail(token);
       const isAdmin = await resolveAdmin(request);
       if (!isAdmin && !email) return jsonResponse(request, { error: '로그인이 필요합니다.' }, { status: 401 });
     }
@@ -278,16 +282,34 @@ export async function POST(request) {
       }
     }
 
-    if (provider === 'elevenlabs' && !isPreview) {
+    // 렌더 파이프라인(Railway Remotion)은 blob:// URL을 다운로드할 수 없으므로
+    // non-preview TTS 결과는 항상 R2에 업로드하고 HTTPS URL을 반환한다.
+    if (!isPreview) {
+      const emailHash = email
+        ? createHash('md5').update(email).digest('hex').slice(0, 8)
+        : 'anon';
+      const r2Key = `shortform-audio/${emailHash}/${Date.now()}-${voiceId || 'default'}.mp3`;
+      let audioUrl;
+      try {
+        audioUrl = await uploadToR2(r2Key, audioBuffer, 'audio/mpeg');
+        console.log(`[TTS] ✅ R2 업로드: ${audioUrl} (${audioBuffer.length} bytes)`);
+      } catch (uploadErr) {
+        console.error('[TTS] ❌ R2 업로드 실패:', uploadErr.message);
+        return jsonResponse(
+          request,
+          { error: '음성 파일 업로드 실패: ' + uploadErr.message },
+          { status: 502 },
+        );
+      }
       return jsonResponse(request, {
         provider,
-        skipWhisper: true,
-        audioBase64: audioBuffer.toString('base64'),
+        audioUrl,
         wordTimestamps: wordTimestamps || [],
         charAlignment: charAlignment || null,
       });
     }
 
+    // preview만 binary 응답 유지 (Redis 캐시 목적)
     return audioResponse(request, audioBuffer, provider);
   } catch (error) {
     console.error('[TTS] Unexpected error:', error.message, error.stack);
