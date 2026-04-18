@@ -140,6 +140,14 @@ test('findOverflows — flow.steps 중첩 필드', () => {
   assert.match(result[0].field, /steps\[1\]\.title/);
 });
 
+test('findOverflows — 정확히 limit 길이 (경계값)는 overflow 아님 (strict >)', () => {
+  // cover.title limit = 20. 정확히 20자 문자열.
+  const slides = [{ type: 'cover', title: '12345678901234567890' }];
+  const fieldMap = { cover: [{ path: 'title', limitKey: 'cover.title' }] };
+  const result = findOverflows(slides, CARD_NEWS_LIMITS, fieldMap);
+  assert.deepEqual(result, [], '경계값은 overflow 아님 (회귀: >=로 바뀌면 실패)');
+});
+
 test('findOverflows — throw 안 함 (soft 검증)', () => {
   const slides = [{ type: 'cover', title: null }];
   const fieldMap = { cover: [{ path: 'title', limitKey: 'cover.title' }] };
