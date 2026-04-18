@@ -22,7 +22,7 @@ import {
   deriveSceneDurationsFromCharTimestamps,
   TAIL_PADDING_FRAMES,
   AUDIO_PREROLL_FRAMES,
-  getAutoTransitionTotalOverlap,
+  getAutoTransitionOverlapAt,
 } from '@/lib/shortform/scene-timing.js';
 import { DEFAULT_DESIGN_TOKENS } from '@/lib/shortform/design-tokens-shared.js';
 
@@ -287,16 +287,24 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
       );
     }
 
-    // Phase 2 (2026-04-18): composition 길이 보정.
-    // 1) AUDIO_PREROLL — 오디오가 프레임 15에서 시작하므로 composition도 +15f 필요.
-    // 2) transition overlap 보정 — TransitionSeries가 합계 sum - transitions로 단축,
-    //    따라서 그 손실만큼 마지막 씬에 추가해야 오디오 끝이 잘리지 않음.
-    // 3) TAIL_PADDING — CTA 발화 꼬리(잔향/숨 포즈)를 위한 여유 프레임.
+    // Phase 2 (2026-04-18): scene duration + composition 길이 보정.
+    //
+    // 싱크 원리 — 각 씬 visual이 해당 씬 audio 시작 시간에 정확히 나타나게 하려면
+    // 각 씬 duration = speech time + (이 씬 뒤 transition overlap) 이어야 한다.
+    //
+    // TransitionSeries가 씬 i와 i+1 사이에 overlap 프레임만큼 중첩시켜 composition을
+    // 단축하므로, 각 씬 i의 duration에 getAutoTransitionOverlapAt(i, n)을 더하면
+    // 씬 i visual 시작이 정확히 speech time[i]가 됨 (누적 lag 해소).
+    //
+    // 1) per-scene overlap 보정 — 싱크 정렬
+    // 2) 마지막 씬에 AUDIO_PREROLL — 오디오가 frame 25에서 시작, 영상도 그만큼 여유
+    // 3) 마지막 씬에 TAIL_PADDING — CTA 발화 꼬리(잔향/숨 포즈) 여유
     if (sceneDurations.length > 0) {
-      sceneDurations = [...sceneDurations];
-      const transitionLoss = getAutoTransitionTotalOverlap(sceneDurations.length);
+      sceneDurations = sceneDurations.map((d, i) => {
+        return d + getAutoTransitionOverlapAt(i, sceneDurations.length);
+      });
       sceneDurations[sceneDurations.length - 1] +=
-        AUDIO_PREROLL_FRAMES + transitionLoss + TAIL_PADDING_FRAMES;
+        AUDIO_PREROLL_FRAMES + TAIL_PADDING_FRAMES;
     }
 
     // 2) 이미지 매핑 — sceneImageOrder 우선, 그 다음 bodyImages 순환
