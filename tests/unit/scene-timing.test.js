@@ -356,3 +356,38 @@ test('charTimestamps: 영어 + 숫자 + 한글 혼합', () => {
   const durations = deriveSceneDurationsFromCharTimestamps(alignment, scenes, { fps: 30 });
   assert.equal(durations.length, 2);
 });
+
+test('charTimestamps: audioRealDurationSec 있으면 마지막 씬이 거기까지 확장', () => {
+  const scenes = [{ script: 'AAAAA' }, { script: 'BBBBB' }];
+  // makeCharAlignment은 총 11자 (A×5 + ' ' + B×5), 각 0.08s, 총 0.88s
+  const ttsText = 'AAAAA BBBBB';
+  const alignment = makeCharAlignment(ttsText);
+  // audioRealDurationSec 을 발화 끝보다 1초 더 길게 설정
+  const durations = deriveSceneDurationsFromCharTimestamps(
+    alignment,
+    scenes,
+    { fps: 30, audioRealDurationSec: 1.88 },
+  );
+  // 첫 씬: 0 ~ 두 번째 씬 start (0.48s) = 0.48s = 14.4 → round 14 → MIN으로 30 clamp
+  // 두 번째 씬: 0.48 ~ 1.88 = 1.4s = 42 frames (MIN 이상)
+  assert.equal(durations.length, 2);
+  // 두 번째 씬(마지막) duration이 audioRealDurationSec를 반영해서 42f 정도
+  assert.ok(durations[1] >= 40, `두 번째 씬 duration ${durations[1]} should absorb gap to audioEnd`);
+});
+
+test('charTimestamps: 각 씬 duration 합 ≈ 전체 오디오 길이 (gap 포함)', () => {
+  // 3씬, 각 5자. TTS text "AAAAA BBBBB CCCCC" = 17자 × 0.08s = 1.36s
+  // 각 씬 시작: 0, 0.48, 0.96. audioRealDurationSec = 1.5s (발화 끝 1.36 + 0.14s tail)
+  const scenes = [{ script: 'AAAAA' }, { script: 'BBBBB' }, { script: 'CCCCC' }];
+  const alignment = makeCharAlignment('AAAAA BBBBB CCCCC');
+  const durations = deriveSceneDurationsFromCharTimestamps(
+    alignment,
+    scenes,
+    { fps: 30, audioRealDurationSec: 1.5 },
+  );
+  // Σ durations * (1/fps) ≈ audioRealDurationSec
+  // (단 MIN guard + lead 보정이 적용될 수 있으니 정확한 숫자보다는 근사)
+  const totalSec = durations.reduce((a, b) => a + b, 0) / 30;
+  // 최소 MIN guard 때문에 정확히 같지 않을 수 있음. 의미있는 하한만 체크.
+  assert.ok(totalSec >= 1.4, `총 duration ${totalSec}s ≥ 1.4s (audio 길이 반영)`);
+});

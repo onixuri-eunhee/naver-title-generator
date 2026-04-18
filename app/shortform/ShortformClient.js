@@ -273,7 +273,7 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
     let sceneDurations = null;
     if (charAlignment?.characters?.length) {
       try {
-        sceneDurations = deriveSceneDurationsFromCharTimestamps(charAlignment, validScenes, { fps });
+        sceneDurations = deriveSceneDurationsFromCharTimestamps(charAlignment, validScenes, { fps, audioRealDurationSec });
       } catch (err) {
         console.warn('[scriptToProps] charTimestamps fallback:', err.message);
       }
