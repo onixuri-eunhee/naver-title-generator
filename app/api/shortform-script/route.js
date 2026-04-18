@@ -26,7 +26,9 @@ import {
 import {
   buildSystemPrompt as buildSystemPromptABis,
   buildUserPrompt as buildUserPromptABis,
+  buildSystemPromptSlim,
 } from '@/lib/shortform/prompt.js';
+import { validateScriptQuality } from '@/lib/shortform/prompt-validator.js';
 import { safeParseJson } from '@/lib/shortform/parse-claude-json.js';
 import { getReasoningExamples } from '@/lib/shortform/reasoning-copy.js';
 import { getDesignTokens } from '@/lib/shortform/design-tokens.js';
@@ -518,6 +520,30 @@ async function fetchBenchmark(keyword, authHeader, jobId, contentType = 'shortfo
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_RETRIES = 2;
 const BASE_DELAY_MS = 1000;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SLIM 프롬프트 롤아웃 — 이메일 해시 기반 deterministic bucket
+// spec: docs/superpowers/plans/2026-04-18-shortform-prompt-slim.md Task 3
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _simpleHash(str) {
+  let h = 0;
+  if (!str) return 0;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h) + str.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
+}
+
+function resolveSlimPromptFlag(email) {
+  const raw = process.env.SHORTFORM_SLIM_PROMPT_ROLLOUT ?? '0';
+  const rollout = Number.parseInt(raw, 10);
+  if (!Number.isFinite(rollout) || rollout <= 0) return false;
+  if (rollout >= 100) return true;
+  return (_simpleHash(email || 'anon') % 100) < rollout;
+}
+
 const JITTER_MAX_MS = 300;
 const VALID_CATEGORIES = ['wedding', 'food', 'realestate', 'ai_education', 'beauty', 'fitness', 'lifestyle', 'business', 'other'];
 const VALID_SCRIPT_TYPES = ['question', 'list', 'story'];
@@ -584,7 +610,7 @@ async function classifyScriptType(topic) {
 
 async function callClaudeABis({
   topic, blogText, tone, targetDurationSec,
-  concept, targetSceneCount, benchmark, personaMemo, settings, layoutMode,
+  concept, targetSceneCount, benchmark, personaMemo, settings, layoutMode, email,
 }) {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY is not configured.');
@@ -605,17 +631,21 @@ async function callClaudeABis({
   // 2. reasoning 주입
   const reasoningExamples = getReasoningExamples(category);
 
+  const useSlimPrompt = resolveSlimPromptFlag(email);
+
   // 3. withRetry + safeParseJson
   const runOnce = async (retryAttempt) => {
-    const systemPrompt = buildSystemPromptABis({
-      category,
-      scriptType,
-      firstThreeSeconds: settings.firstThreeSeconds || 'auto',
-      reasoningExamples,
-      contentType: 'short',
-      visualStyle: layoutMode === 'kinetic' ? 'kinetic' : (concept?.visualStyle || 'image'),
-      retryAttempt,
-    });
+    const systemPrompt = useSlimPrompt
+      ? buildSystemPromptSlim({ targetSceneCount })
+      : buildSystemPromptABis({
+          category,
+          scriptType,
+          firstThreeSeconds: settings.firstThreeSeconds || 'auto',
+          reasoningExamples,
+          contentType: 'short',
+          visualStyle: layoutMode === 'kinetic' ? 'kinetic' : (concept?.visualStyle || 'image'),
+          retryAttempt,
+        });
 
     const userPrompt = buildUserPromptABis({
       topic,
@@ -670,6 +700,31 @@ async function callClaudeABis({
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       const parsed = await runOnce(attempt);
+
+      // SLIM/FULL 모드 모두 post-generation 검증 + 메트릭 로깅
+      const validation = validateScriptQuality(parsed);
+      const emailPrefix = (email || 'anon').slice(0, 3) + '***';
+      console.log(
+        '[SHORTFORM-METRICS]',
+        JSON.stringify({
+          mode: useSlimPrompt ? 'slim' : 'full',
+          attempt,
+          ok: validation.ok,
+          errors: validation.errors,
+          warnings: validation.warnings,
+          stats: validation.stats,
+          emailPrefix,
+          timestamp: new Date().toISOString(),
+        }),
+      );
+
+      // SLIM 모드 전용: 심각한 errors(layoutType 누락/오타) → 재시도 유도
+      if (useSlimPrompt && !validation.ok && attempt < MAX_RETRIES) {
+        const e = new Error(`slim_validation_failed:${validation.errors.join(',')}`);
+        e.code = 'slim_validation_failed';
+        throw e;
+      }
+
       const payload = buildScriptPayload(parsed, concept, targetSceneCount);
       // A-bis 메타데이터 주입
       payload._resolvedCategory = category;
@@ -679,6 +734,7 @@ async function callClaudeABis({
       lastErr = err;
       const retriable =
         err?.code === 'claude_json_parse_failed' ||
+        err?.code === 'slim_validation_failed' ||
         (typeof err?.status === 'number' && (err.status >= 500 || err.status === 429)) ||
         /ECONNRESET|ETIMEDOUT|fetch failed/i.test(err?.message || '');
       if (!retriable || attempt === MAX_RETRIES) throw err;
@@ -848,6 +904,17 @@ export async function POST(request) {
         `cost=${creditCost}cr benchmark=${benchmarkAggregated ? 'yes' : 'no'} brandKit=${brandContext ? 'yes' : 'no'}`
       );
 
+      console.log(
+        '[SHORTFORM-METRICS]',
+        JSON.stringify({
+          mode: 'phaseD_bypass',
+          personaId,
+          contentType,
+          emailPrefix: (email || 'anon').slice(0, 3) + '***',
+          timestamp: new Date().toISOString(),
+        }),
+      );
+
       const flowResult = await generateScriptFlow({
         blogText,
         keywords: keywords || topic,
@@ -923,6 +990,7 @@ export async function POST(request) {
       script = await callClaudeABis({
         topic, blogText, tone, targetDurationSec,
         concept, targetSceneCount, benchmark, personaMemo, settings, layoutMode,
+        email,
       });
 
       // 벤치마크 후보 영상을 script payload에 첨부 (UI 카드 노출용).
