@@ -14,9 +14,10 @@ test('kinetic → 비어있지 않은 문자열 반환', () => {
   assert.ok(result.length > 0, '빈 문자열이면 안 됨');
 });
 
-test('image → 빈 문자열 반환', () => {
+test('image → 비어있지 않은 문자열 반환 (Phase 1 2026-04-18: visualStyle 무관 항상 활성)', () => {
   const result = _buildLayoutTypeBlock({ visualStyle: 'image' });
-  assert.strictEqual(result, '');
+  assert.ok(typeof result === 'string');
+  assert.ok(result.length > 0, 'image 모드에서도 layoutType 블록 필요 (SceneCard fallback 방지)');
 });
 
 test('kinetic 결과에 big-impact-text 포함', () => {

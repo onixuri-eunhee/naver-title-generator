@@ -199,8 +199,9 @@ test('transition overlap: cut = 1', () => {
 
 test('transition overlap: auto = 평균', () => {
   const avg = getTransitionOverlapFrames('auto', 30);
-  // (4+8+10+15+8+12+8+15)/8 = 80/8 = 10
-  assert.equal(avg, 10);
+  // rotation: [fade, slide-fast, fade-long, fade, slide-fast, fade, fade-long, slide-fast]
+  // (8+4+15+8+4+8+15+4)/8 = 66/8 = 8.25 → Math.round = 8
+  assert.equal(avg, 8);
 });
 
 test('transition overlap: unknown → slide fallback (8)', () => {

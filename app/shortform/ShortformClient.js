@@ -52,19 +52,21 @@ import {
 import useProjectAutoSave from './hooks/useProjectAutoSave';
 // Phase I — SSE 진행 표시 + 취소 + 백그라운드 모드
 import { useJobProgress } from './hooks/useJobProgress';
+import { buildRenderRequest } from '@/lib/shortform/render-request';
 // Phase K — 온보딩 위저드
 import OnboardingModal from './components/OnboardingModal';
 import { getSample, sampleToStep1Value } from '@/lib/shortform-samples';
 import styles from './page.module.css';
 
-// 실제로 publishProgress가 발행되는 단계만. video-analysis는 별도 /analyze
-// 엔드포인트라 현재 script flow에서는 호출 안 되고, tts-synthesis/video-render는
-// 아직 backend wire-up 전이라 늘 idle 상태로 보였음 → 사용자 혼란.
-// 해당 단계가 실제로 발행되면 다시 추가할 것.
+// 실제로 publishProgress가 발행되는 단계만.
+// video-analysis는 별도 /analyze 엔드포인트라 script flow에서 호출 안 됨.
+// tts-synthesis는 아직 backend wire-up 전이라 제외.
+// video-render는 Week 2 async render 파이프라인(2026-04-18)으로 wire-up 완료.
 const PROGRESS_ACTIVE_STEPS = [
   'keyword-extraction',
   'youtube-search',
   'script-generation',
+  'video-render',
 ];
 
 const SHORTFORM_JOB_STORAGE_KEY = 'shortform:activeJobId';
@@ -846,6 +848,7 @@ function ShortformClientInner() {
     steps: progressSteps,
     current: progressCurrent,
     status: progressStatus,
+    result: progressResult,
     error: progressError,
     cancel: cancelJob,
     reset: resetProgress,
@@ -1293,7 +1296,7 @@ function ShortformClientInner() {
     };
   }, [playerProps, audioUrl, playerDurationInFrames]);
 
-  // Step 7: 서버 렌더링 요청
+  // Step 7: 서버 렌더링 요청 (fire-and-forget + SSE 구독)
   async function handleRender() {
     const token = getToken();
     if (!token) {
@@ -1305,33 +1308,67 @@ function ShortformClientInner() {
 
     setRenderStatus('rendering');
     setRenderError(null);
+    setRenderVideoUrl(null);
+
+    // 새 render 전용 jobId 발급 + script jobId는 parentJobId로 전달
+    const renderRequest = buildRenderRequest({
+      scriptJobId: jobId,
+      inputProps: audioInputProps,
+    });
+
+    // useJobProgress 훅이 새 jobId로 자동 재구독
+    resetProgress();
+    setJobId(renderRequest.jobId);
 
     try {
       const res = await fetch('/api/shortform-render', {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({
-          jobId: jobId || generateClientJobId(),
-          inputProps: audioInputProps,
-        }),
+        body: JSON.stringify(renderRequest),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setRenderStatus('error');
-        setRenderError(data.error || '렌더링에 실패했습니다.');
+      if (res.status === 202) {
+        // 정상: SSE로 진행률 받을 것
         return;
       }
 
-      setRenderVideoUrl(data.url);
-      setRenderStatus('complete');
+      // 2xx가 아니면 즉시 에러 — SSE도 같이 닫아 리소스 누수 방지
+      const data = await res.json().catch(() => ({}));
+      setRenderStatus('error');
+      setRenderError(data.error || '렌더 서버가 작업을 받지 못했습니다.');
+      resetProgress();
     } catch (err) {
       console.error('[handleRender]', err);
       setRenderStatus('error');
       setRenderError('네트워크 오류가 발생했습니다.');
+      resetProgress();
     }
   }
+
+  // useJobProgress 훅의 render 이벤트를 renderStatus/renderVideoUrl 상태로 중계
+  useEffect(() => {
+    if (renderStatus !== 'rendering') return;
+
+    if (progressStatus === 'complete') {
+      if (progressResult?.url) {
+        setRenderVideoUrl(progressResult.url);
+        setRenderStatus('complete');
+      } else {
+        // complete 이벤트인데 url 누락 → 무한 spinner 방지 안전장치
+        setRenderError('렌더 결과 URL이 없습니다. 다시 시도해주세요.');
+        setRenderStatus('error');
+      }
+      return;
+    }
+    if (progressStatus === 'error') {
+      setRenderError(progressError || '렌더링에 실패했습니다.');
+      setRenderStatus('error');
+      return;
+    }
+    if (progressStatus === 'cancelled') {
+      setRenderStatus('idle');
+    }
+  }, [progressStatus, progressResult, progressError, renderStatus]);
 
   async function generateScript() {
     setError('');

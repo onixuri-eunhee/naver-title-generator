@@ -42,6 +42,7 @@ export async function renderShortformRemotion({
   inputProps,
   outputLocation,
   codec = 'h264',
+  onProgress,
 }) {
   const serveUrl = await getServeUrl();
   const browserExecutable = resolveBrowserExecutable() || undefined;
@@ -80,6 +81,9 @@ export async function renderShortformRemotion({
     chromiumOptions: {
       gl: 'angle',
     },
+    onProgress: onProgress
+      ? (frame) => onProgress({ ...frame, framesTotal: composition.durationInFrames })
+      : undefined,
   });
 
   return {

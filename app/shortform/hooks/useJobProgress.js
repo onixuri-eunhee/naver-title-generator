@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { isInactive } from '@/lib/shortform/inactivity-detector';
 
 /**
  * 숏폼 진행 상태 SSE 구독 훅.
@@ -41,7 +42,28 @@ export function useJobProgress(jobId, { authToken } = {}) {
     );
     esRef.current = es;
 
+    const lastEventTsRef = { current: Date.now() };
+    const closedRef = { current: false };
+    const touchEvent = () => { lastEventTsRef.current = Date.now(); };
+
+    const inactivityTimer = setInterval(() => {
+      if (closedRef.current) return;
+      if (
+        isInactive({
+          status: 'running',
+          lastEventTs: lastEventTsRef.current,
+          now: Date.now(),
+        })
+      ) {
+        setStatus('error');
+        setError('렌더 서버 응답이 없습니다. 새로고침 후 다시 시도해주세요.');
+        try { es.close(); } catch {}
+        closedRef.current = true;
+      }
+    }, 30_000);
+
     const handleStep = (ev) => {
+      touchEvent();
       try {
         const data = JSON.parse(ev.data);
         setSteps((prev) => ({
@@ -62,6 +84,8 @@ export function useJobProgress(jobId, { authToken } = {}) {
     };
 
     const handleComplete = (ev) => {
+      touchEvent();
+      closedRef.current = true; // inactivity timer가 terminal 상태 덮어쓰지 않게
       try {
         const data = JSON.parse(ev.data);
         setResult(data.result || data);
@@ -75,8 +99,10 @@ export function useJobProgress(jobId, { authToken } = {}) {
     };
 
     const handleErrorEvent = (ev) => {
-      // SSE 내부 onerror 와 'error' named event 가 공유됨 → data 존재 여부로 구분
+      // SSE 내부 onerror 와 'error' named event 가 공유됨 → data 존재 여부로 구분.
+      // data 없는 케이스는 서버 연결 실패 신호이므로 touchEvent 금지 — inactivity timer가 계속 돌아야 함.
       if (!ev?.data) return;
+      touchEvent();
       try {
         const data = JSON.parse(ev.data);
         if (data?.error) {
@@ -88,6 +114,8 @@ export function useJobProgress(jobId, { authToken } = {}) {
     };
 
     const handleCancelled = (ev) => {
+      touchEvent();
+      closedRef.current = true; // inactivity timer가 terminal 상태 덮어쓰지 않게
       try {
         const data = JSON.parse(ev.data);
         setStatus('cancelled');
@@ -110,6 +138,8 @@ export function useJobProgress(jobId, { authToken } = {}) {
     };
 
     return () => {
+      closedRef.current = true;
+      clearInterval(inactivityTimer);
       es.removeEventListener('step', handleStep);
       es.removeEventListener('complete', handleComplete);
       es.removeEventListener('error', handleErrorEvent);
