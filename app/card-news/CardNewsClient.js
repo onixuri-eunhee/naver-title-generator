@@ -231,41 +231,51 @@ export default function CardNewsClient() {
 
     setZipBusy(true);
     try {
-      // 동적 로드: JSZip CDN
-      if (typeof window.JSZip === 'undefined') {
-        await new Promise((resolve, reject) => {
-          const s = document.createElement('script');
-          s.src = 'https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js';
-          s.onload = resolve;
-          s.onerror = reject;
-          document.head.appendChild(s);
-        });
-      }
-      const zip = new window.JSZip();
-
       if (hasUrls) {
-        // Chromium: URL → fetch → blob → zip
-        for (let i = 0; i < imageUrls.length; i++) {
-          const response = await fetch(imageUrls[i]);
-          const blob = await response.blob();
-          zip.file(`card-news-${i + 1}.png`, blob);
+        // Chromium 경로: 서버 사이드 ZIP (브라우저 CORS 회피)
+        const res = await fetch('/api/card-news-zip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ urls: imageUrls }),
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `zip 생성 실패 (${res.status})`);
         }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `card-news-${Date.now()}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       } else {
-        // Satori: base64 직접
+        // Satori 경로: base64 직접 — 클라이언트에서 JSZip
+        if (typeof window.JSZip === 'undefined') {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+        const zip = new window.JSZip();
         images.forEach((b64, i) => {
           zip.file(`card-news-${i + 1}.png`, b64, { base64: true });
         });
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `card-news-${Date.now()}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
-
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `card-news-${Date.now()}.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
       console.error('[card-news] downloadAll failed:', err);
       alert('다운로드 중 오류가 발생했습니다.');
@@ -565,7 +575,7 @@ export default function CardNewsClient() {
                   borderRadius: 8,
                   lineHeight: 1.6,
                 }}>
-                  ⚠️ <strong>주의:</strong> 재생성 1회당 1크레딧이 차감돼요.<br />
+                  ⚠️ <strong>주의:</strong> 재생성 1회당 {mode === 'premium' ? '2크레딧' : '1크레딧'}이 차감돼요.<br />
                   여러 카드에 이미지 넣을 거면 <strong>모든 카드에 다 선택한 후 한 번만</strong> 재생성 눌러주세요.
                 </div>
                 <button
@@ -585,7 +595,7 @@ export default function CardNewsClient() {
                     alignSelf: 'stretch',
                   }}
                 >
-                  🖼 내 이미지 반영해서 재생성 (1크레딧)
+                  🖼 내 이미지 반영해서 재생성 ({mode === 'premium' ? '2크레딧' : '1크레딧'})
                 </button>
               </div>
             )}
@@ -624,7 +634,7 @@ export default function CardNewsClient() {
                     fontFamily: 'inherit',
                   }}
                 >
-                  🎲 다른 디자인으로 재생성 (1크레딧)
+                  🎲 다른 디자인으로 재생성 ({mode === 'premium' ? '2크레딧' : '1크레딧'})
                 </button>
               </div>
             )}
