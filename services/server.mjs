@@ -287,7 +287,7 @@ async function runCardnewsRenderJob({
     const { html, issues, attempts } = await Promise.race([
       buildCardnewsHtml({ brandKit, images, imageUrls, blogText, slideCount }),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('CLAUDE_TIMEOUT_3MIN')), 3 * 60 * 1000),
+        setTimeout(() => reject(new Error('CLAUDE_TIMEOUT_7MIN')), 7 * 60 * 1000),
       ),
     ]);
     console.info(
@@ -347,7 +347,7 @@ async function runCardnewsRenderJob({
 
     const msg = err?.message || '';
     let errorCode;
-    if (msg === 'CLAUDE_TIMEOUT_3MIN') errorCode = 'CLAUDE_TIMEOUT';
+    if (msg === 'CLAUDE_TIMEOUT_7MIN') errorCode = 'CLAUDE_TIMEOUT';
     else if (msg === 'RENDER_TIMEOUT_3MIN') errorCode = 'TIMEOUT';
     else if (msg.startsWith('CARD_COUNT_MISMATCH')) errorCode = 'CARD_COUNT_MISMATCH';
     else if (msg.startsWith('CLAUDE_API_')) errorCode = 'CLAUDE_API_ERROR';
