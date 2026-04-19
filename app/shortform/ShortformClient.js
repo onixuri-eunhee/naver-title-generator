@@ -1014,9 +1014,13 @@ function ShortformClientInner() {
       formData.append('audio', uploadFile);
       formData.append('script', JSON.stringify(script));
       setUploadStatus('transcribing');
+      // FormData 전송 시 Content-Type을 수동 설정하면 boundary가 빠져 서버 파싱 실패.
+      // 브라우저가 multipart/form-data; boundary=... 자동 세팅하도록 Authorization만 전달.
+      const tk = getToken();
+      const uploadHeaders = tk ? { Authorization: `Bearer ${tk}` } : {};
       const res = await fetch('/api/shortform-voice-upload', {
         method: 'POST',
-        headers: authHeaders(),
+        headers: uploadHeaders,
         body: formData,
       });
       if (!res.ok) {
