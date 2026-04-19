@@ -7,6 +7,7 @@ import {
   renderShortformRemotion,
   SHORTFORM_REMOTION_VERSION,
 } from './shortform-remotion-render.mjs';
+import { renderCardsFromHtml } from './card-news-renderer.mjs';
 import { postWithRetry } from './webhook-client.mjs';
 
 const app = express();
@@ -41,6 +42,19 @@ function getS3() {
   return _s3;
 }
 
+async function uploadBufferToR2(key, buffer) {
+  await getS3().send(
+    new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET_NAME,
+      Key: key,
+      Body: buffer,
+      ContentType: 'image/png',
+    }),
+  );
+  const publicUrl = process.env.R2_PUBLIC_URL || 'https://cdn.ddukddaktool.co.kr';
+  return `${publicUrl}/${key}`;
+}
+
 async function uploadToR2(key, filePath) {
   const stat = fs.statSync(filePath);
   const body = fs.createReadStream(filePath);
@@ -64,7 +78,7 @@ async function uploadToR2(key, filePath) {
 // ---------------------------------------------------------------------------
 // Webhook helper
 // ---------------------------------------------------------------------------
-async function reportToVercel(body) {
+async function reportToVercel(body, webhookPath) {
   if (!WEBHOOK_BASE_URL) {
     console.error('[webhook] WEBHOOK_BASE_URL 미설정 — skip');
     return;
@@ -73,13 +87,15 @@ async function reportToVercel(body) {
     console.error('[webhook] RENDER_SECRET 미설정 — webhook 인증 불가, skip');
     return;
   }
-  const url = `${WEBHOOK_BASE_URL}${WEBHOOK_PATH}`;
+  const path = webhookPath || WEBHOOK_PATH;  // default to existing shortform path
+  const url = `${WEBHOOK_BASE_URL}${path}`;
   const result = await postWithRetry(url, body, { secret: RENDER_SECRET });
   if (!result.ok) {
     console.error(
-      '[webhook] permanent failure jobId=%s type=%s attempts=%d finalStatus=%s network=%s',
+      '[webhook] permanent failure jobId=%s type=%s path=%s attempts=%d finalStatus=%s network=%s',
       body.jobId,
       body.type,
+      path,
       result.attempts,
       result.finalStatus,
       !!result.networkError,
@@ -208,6 +224,93 @@ app.post('/render', authMiddleware, async (req, res) => {
     console.error('[render] unhandled runRenderJob error:', err);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /render-cardnews
+// ─────────────────────────────────────────────────────────────────────────────
+app.post('/render-cardnews', authMiddleware, async (req, res) => {
+  const { jobId, html, cardCount, parentJobId } = req.body;
+
+  if (!jobId || typeof jobId !== 'string') {
+    return res.status(400).json({ error: 'jobId required' });
+  }
+  if (!html || typeof html !== 'string') {
+    return res.status(400).json({ error: 'html required' });
+  }
+  if (!Number.isInteger(cardCount) || cardCount < 3 || cardCount > 15) {
+    return res.status(400).json({ error: 'cardCount must be integer 3~15' });
+  }
+  if (html.length > 200_000) {
+    return res.status(400).json({ error: 'html too large (>200KB)' });
+  }
+
+  res.status(202).json({ jobId, accepted: true });
+
+  runCardnewsRenderJob({ jobId, html, cardCount, parentJobId }).catch((err) => {
+    console.error('[card-news] unhandled runCardnewsRenderJob error:', err);
+  });
+});
+
+async function runCardnewsRenderJob({ jobId, html, cardCount, parentJobId }) {
+  const startMs = Date.now();
+  let renderDone = false;
+
+  try {
+    // 1. 렌더 (3분 hard timeout)
+    const pngBuffers = await Promise.race([
+      renderCardsFromHtml(html, cardCount),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error('RENDER_TIMEOUT_3MIN')),
+          3 * 60 * 1000,
+        ),
+      ),
+    ]);
+    renderDone = true;
+    console.info('[card-news] rendered %d cards in %ds', pngBuffers.length, ((Date.now() - startMs) / 1000).toFixed(1));
+
+    // 2. R2 병렬 업로드
+    const uploadPromises = pngBuffers.map((buf, i) => {
+      const key = `cardnews/${jobId}/card-${String(i + 1).padStart(2, '0')}.png`;
+      return uploadBufferToR2(key, buf);
+    });
+    const urls = await Promise.all(uploadPromises);
+    console.info('[card-news] uploaded %d urls', urls.length);
+
+    // 3. complete webhook
+    await reportToVercel(
+      {
+        type: 'complete',
+        jobId,
+        urls,
+        cardCount: urls.length,
+        elapsedMs: Date.now() - startMs,
+      },
+      '/api/card-news-callback',
+    );
+  } catch (err) {
+    console.error('[card-news] jobId=%s error:', jobId, err);
+
+    const isTimeout = err?.message === 'RENDER_TIMEOUT_3MIN';
+    const errorCode = isTimeout
+      ? 'TIMEOUT'
+      : renderDone
+        ? 'R2_UPLOAD_FAILED'
+        : err?.message?.startsWith('CARD_COUNT_MISMATCH')
+          ? 'CARD_COUNT_MISMATCH'
+          : 'CHROMIUM_RENDER_FAILED';
+
+    await reportToVercel(
+      {
+        type: 'error',
+        jobId,
+        errorCode,
+        errorMessage: String(err?.message || err).slice(0, 500),
+      },
+      '/api/card-news-callback',
+    );
+  }
+}
 
 // ---------------------------------------------------------------------------
 // GET /health
