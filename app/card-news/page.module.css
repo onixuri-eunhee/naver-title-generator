@@ -253,6 +253,93 @@
   color: #DC2626;
 }
 
+/* 카드별 이미지 미리 선택 슬롯 그리드 */
+.imageSlotGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.imageSlot {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border: 1.5px dashed var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-bg);
+  cursor: pointer;
+  transition: all 0.2s var(--ds-ease);
+  font-family: inherit;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.imageSlot:hover:not(:disabled) {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  transform: translateY(-1px);
+}
+.imageSlot:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.imageSlotFilled {
+  border-style: solid;
+  border-color: var(--ds-accent);
+}
+.imageSlotThumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.imageSlotPlus {
+  font-size: 24px;
+  font-weight: 300;
+  color: var(--ds-muted, #9CA3AF);
+  line-height: 1;
+}
+.imageSlotNum {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+.imageSlotRemove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  background: rgba(239, 68, 68, 0.92);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  line-height: 1;
+}
+.imageSlotRemove:hover {
+  background: rgb(220, 38, 38);
+}
+
 /* 생성 모드 선택 (기본/프리미엄) */
 .modeSelector {
   display: grid;

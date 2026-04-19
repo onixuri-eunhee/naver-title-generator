@@ -334,6 +334,59 @@ export default function CardNewsClient() {
             ))}
           </div>
 
+          {/* 카드별 이미지 미리 선택 (선택) — 생성 후 재생성(추가 크레딧) 불필요하게 하는 핵심 UX */}
+          <div style={{ marginTop: 18 }}>
+            <span className={styles.optionLabel}>
+              카드 이미지 <span style={{ fontWeight: 500, color: 'var(--ds-muted, #9CA3AF)', fontSize: 12 }}>(선택 · 내 사진함/업로드 · 추가 비용 없음)</span>
+            </span>
+            <div className={styles.imageSlotGrid}>
+              {Array.from({ length: slideCount }).map((_, i) => {
+                const bound = userImages.find((u) => u.cardIndex === i);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    className={`${styles.imageSlot} ${bound ? styles.imageSlotFilled : ''}`}
+                    onClick={() => {
+                      setPickerCardIdx(i);
+                      setPickerOpen(true);
+                    }}
+                    disabled={loading}
+                    aria-label={`카드 ${i + 1} 이미지 선택`}
+                  >
+                    {bound ? (
+                      <>
+                        <img src={bound.url} alt={`카드 ${i + 1}`} className={styles.imageSlotThumb} />
+                        <span className={styles.imageSlotNum}>{i + 1}</span>
+                        <span
+                          className={styles.imageSlotRemove}
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUserImages((prev) => prev.filter((u) => u.cardIndex !== i));
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.stopPropagation();
+                              setUserImages((prev) => prev.filter((u) => u.cardIndex !== i));
+                            }
+                          }}
+                          aria-label="이미지 제거"
+                        >×</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className={styles.imageSlotPlus}>＋</span>
+                        <span className={styles.imageSlotNum}>{i + 1}</span>
+                      </>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <span className={styles.optionLabel}>테마</span>
           <div className={styles.themeScroll}>
             {Object.keys(themes).length === 0 ? (
