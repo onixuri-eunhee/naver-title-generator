@@ -467,6 +467,16 @@ function buildScriptPayload(parsed, concept, targetSceneCount) {
 
   const hookText = scenes[0]?.hookText || '';
 
+  // Phase F caption handoff: parsed 에 captionInstagram/captionYouTube/caption 이 있으면
+  // 그대로 payload 에 전달한다. Claude 가 생성한 값을 Legacy path 가 버리지 않도록 보존.
+  // route.js 의 fallback 로직은 이 값이 20자 이상이면 그대로 사용.
+  const parsedCaptionInstagram =
+    typeof parsed?.captionInstagram === 'string' ? parsed.captionInstagram : '';
+  const parsedCaptionYouTube =
+    typeof parsed?.captionYouTube === 'string' ? parsed.captionYouTube : '';
+  const parsedCaption =
+    typeof parsed?.caption === 'string' ? parsed.caption : '';
+
   return {
     hook,
     points,
@@ -478,6 +488,9 @@ function buildScriptPayload(parsed, concept, targetSceneCount) {
     textCardTemplate,
     conceptKey: concept.key,
     hookText,
+    captionInstagram: parsedCaptionInstagram,
+    captionYouTube: parsedCaptionYouTube,
+    caption: parsedCaption,
   };
 }
 
