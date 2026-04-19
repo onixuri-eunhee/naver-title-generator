@@ -251,7 +251,9 @@ app.post('/render-cardnews', authMiddleware, async (req, res) => {
   });
 });
 
-async function runCardnewsRenderJob({ jobId, html, cardCount, parentJobId }) {
+async function runCardnewsRenderJob({ jobId, html, cardCount, parentJobId: _parentJobId }) {
+  // parentJobId는 현재 Railway 측에서 사용 안 함 (Vercel callback에서 메타 조회 목적).
+  // 후속 확장용 파라미터 예약.
   const startMs = Date.now();
   let renderDone = false;
 
