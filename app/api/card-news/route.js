@@ -1008,7 +1008,7 @@ export async function POST(request) {
       };
 
       // 이미지 메타 + URL 배열 준비 (순서 일치)
-      const images = sanitizedUserImages.map((u) => ({
+      const images = sanitizedUserImages.map(() => ({
         ratio: '4x5',
         source: 'user_upload',
         tag: '',
