@@ -214,7 +214,12 @@ export default function PricingClient() {
                 </div>
                 <div className={styles.usageItem}>
                   <span className={styles.toolName}>카드뉴스 생성</span>
-                  <span className={styles.toolCost}>1 크레딧</span>
+                  <span className={styles.toolCost}>
+                    1~2 크레딧{' '}
+                    <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 400 }}>
+                      (기본 1 / 프리미엄 2)
+                    </span>
+                  </span>
                 </div>
                 <div className={styles.usageItem}>
                   <span className={styles.toolName}>황금키워드 분석</span>
