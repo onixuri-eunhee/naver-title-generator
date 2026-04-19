@@ -119,6 +119,9 @@ export async function POST(request) {
     try {
       const raw = await transcribeAudio(audioBuffer, `upload.${ext}`, mimeType);
       whisperResult = normalizeWhisperResponse(raw);
+      if (whisperResult.wordTimestamps.length === 0) {
+        console.warn('[voice-upload] Whisper wordTimestamps 비어있음 — 무음/불명확 오디오 가능성');
+      }
     } catch (whisperErr) {
       console.error('[voice-upload] Whisper 실패:', whisperErr.message);
       await r2Delete(r2Key);
