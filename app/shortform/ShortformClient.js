@@ -813,6 +813,16 @@ function ShortformClientInner() {
   const [availableVoices, setAvailableVoices] = useState([]);
   const [previewAudio, setPreviewAudio] = useState({ voiceId: null, url: null, loading: false });
 
+  // === Phase F — 내 음성 업로드 ===
+  // voiceMode: 'tts'(기본) | 'upload'
+  // uploadFile: 선택된 File 객체 (전사 시작 전)
+  // uploadStatus: 'idle'|'uploading'|'transcribing'|'done'|'error'
+  const [voiceMode, setVoiceMode] = useState('tts');
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadFileDuration, setUploadFileDuration] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState('idle');
+  const [uploadError, setUploadError] = useState(null);
+
   // === Step 5 — 비주얼 액센트 (Phase E) ===
   const [step5Value, setStep5Value] = useState({
     userPhotos: [],    // [{ image, crop }]
