@@ -15,7 +15,6 @@ import { verifyOwnershipByUrls } from '@/lib/user-images';
 import { SEDA_PROMPT_BLOCK } from '@/lib/shared-prompts/seda';
 import { CARD_NEWS_LIMITS, findOverflows } from '@/lib/shared-prompts/length-rules';
 import { resolveRolloutFlag } from '@/lib/shared-prompts/rollout';
-import { buildCardnewsHtml } from '@/lib/cardnews/html-builder';
 import { createJobId } from '@/lib/job-progress';
 
 export const maxDuration = 180;
@@ -992,7 +991,8 @@ export async function POST(request) {
 
     // Phase D — Chromium rollout 분기
     // credit 차감 직후·Satori 경로 진입 전에 체크.
-    // chromium path는 비동기 (202 + SSE). 실패 시 기존 error refund 로직이 크레딧 환불.
+    // chromium path는 비동기 (202 + SSE). Claude HTML 생성은 Railway에서 수행
+    // (Cloudflare 100s origin timeout 회피). 실패 시 Railway → callback → 자동 환불.
     const useChromium = shouldUseChromium(sessionEmail);
     if (useChromium) {
       console.log(`[CARD-NEWS] Start | slides: ${count} | variant: chromium | theme: ${themeId}`);
@@ -1016,20 +1016,11 @@ export async function POST(request) {
       const imageUrls = sanitizedUserImages.map((u) => u.url);
 
       try {
-        // 1) Claude HTML 생성 (sanitize + validate + placeholder 치환 포함)
-        const { html, issues, attempts } = await buildCardnewsHtml({
-          brandKit,
-          images,
-          imageUrls,
-          blogText,
-          slideCount: count,
-        });
-        if (issues.length >= 5) {
-          console.warn(
-            '[cardnews-chromium-issues]',
-            JSON.stringify({ email: sessionEmail, issuesCount: issues.length, sample: issues.slice(0, 5), attempts }),
-          );
-        }
+        // 1) 환경변수 확인
+        const railwayUrl = process.env.RAILWAY_RENDER_URL;
+        const renderSecret = process.env.RENDER_SECRET;
+        if (!railwayUrl) throw new Error('RAILWAY_RENDER_URL not configured');
+        if (!renderSecret) throw new Error('RENDER_SECRET not configured');
 
         // 2) jobId 발급 + job:meta 저장 (자동 환불용)
         const jobId = createJobId();
@@ -1039,16 +1030,7 @@ export async function POST(request) {
           { ex: 3600 },
         );
 
-        // 3) Railway /render-cardnews dispatch
-        const railwayUrl = process.env.RAILWAY_RENDER_URL;
-        const renderSecret = process.env.RENDER_SECRET;
-        if (!railwayUrl) {
-          throw new Error('RAILWAY_RENDER_URL not configured');
-        }
-        if (!renderSecret) {
-          throw new Error('RENDER_SECRET not configured');
-        }
-
+        // 3) Railway /render-cardnews dispatch (raw 파라미터 전달 — Claude 호출은 Railway에서)
         const dispatchRes = await fetch(`${railwayUrl}/render-cardnews`, {
           method: 'POST',
           headers: {
@@ -1057,8 +1039,11 @@ export async function POST(request) {
           },
           body: JSON.stringify({
             jobId,
-            html,
-            cardCount: count,
+            blogText,
+            brandKit,
+            images,
+            imageUrls,
+            slideCount: count,
             parentJobId: null,
           }),
         });

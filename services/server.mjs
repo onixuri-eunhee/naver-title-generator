@@ -8,6 +8,7 @@ import {
   SHORTFORM_REMOTION_VERSION,
 } from './shortform-remotion-render.mjs';
 import { renderCardsFromHtml } from './card-news-renderer.mjs';
+import { buildCardnewsHtml } from '../lib/cardnews/html-builder.js';
 import { postWithRetry } from './webhook-client.mjs';
 
 const app = express();
@@ -227,51 +228,102 @@ app.post('/render', authMiddleware, async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /render-cardnews
+//
+// Cloudflare 100s origin timeout 회피를 위해 Claude HTML 생성도 Railway에서 수행.
+// Body: { jobId, blogText, brandKit, images, imageUrls, slideCount, parentJobId }
 // ─────────────────────────────────────────────────────────────────────────────
 app.post('/render-cardnews', authMiddleware, async (req, res) => {
-  const { jobId, html, cardCount, parentJobId } = req.body;
+  const { jobId, blogText, brandKit, images, imageUrls, slideCount, parentJobId } = req.body;
 
   if (!jobId || typeof jobId !== 'string') {
     return res.status(400).json({ error: 'jobId required' });
   }
-  if (!html || typeof html !== 'string') {
-    return res.status(400).json({ error: 'html required' });
+  if (!blogText || typeof blogText !== 'string') {
+    return res.status(400).json({ error: 'blogText required' });
   }
-  if (!Number.isInteger(cardCount) || cardCount < 3 || cardCount > 15) {
-    return res.status(400).json({ error: 'cardCount must be integer 3~15' });
+  if (blogText.length > 50_000) {
+    return res.status(400).json({ error: 'blogText too large (>50KB)' });
   }
-  if (html.length > 200_000) {
-    return res.status(400).json({ error: 'html too large (>200KB)' });
+  if (!Number.isInteger(slideCount) || slideCount < 3 || slideCount > 15) {
+    return res.status(400).json({ error: 'slideCount must be integer 3~15' });
   }
 
   res.status(202).json({ jobId, accepted: true });
 
-  runCardnewsRenderJob({ jobId, html, cardCount, parentJobId }).catch((err) => {
+  runCardnewsRenderJob({
+    jobId,
+    blogText,
+    brandKit: brandKit || null,
+    images: Array.isArray(images) ? images : [],
+    imageUrls: Array.isArray(imageUrls) ? imageUrls : [],
+    slideCount,
+    parentJobId,
+  }).catch((err) => {
     console.error('[card-news] unhandled runCardnewsRenderJob error:', err);
   });
 });
 
-async function runCardnewsRenderJob({ jobId, html, cardCount, parentJobId: _parentJobId }) {
+async function runCardnewsRenderJob({
+  jobId,
+  blogText,
+  brandKit,
+  images,
+  imageUrls,
+  slideCount,
+  parentJobId: _parentJobId,
+}) {
   // parentJobId는 현재 Railway 측에서 사용 안 함 (Vercel callback에서 메타 조회 목적).
   // 후속 확장용 파라미터 예약.
   const startMs = Date.now();
-  let renderDone = false;
+  let phase = 'html'; // 'html' | 'render' | 'upload'
 
   try {
-    // 1. 렌더 (3분 hard timeout)
-    const pngBuffers = await Promise.race([
-      renderCardsFromHtml(html, cardCount),
+    // Phase 1: Claude HTML 생성 (3분 hard timeout — buildCardnewsHtml 내부 90s×2 retry 포함)
+    reportToVercel(
+      { type: 'progress', jobId, progress: 0.05 },
+      '/api/card-news-callback',
+    ).catch(() => {});
+
+    const { html, issues, attempts } = await Promise.race([
+      buildCardnewsHtml({ brandKit, images, imageUrls, blogText, slideCount }),
       new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error('RENDER_TIMEOUT_3MIN')),
-          3 * 60 * 1000,
-        ),
+        setTimeout(() => reject(new Error('CLAUDE_TIMEOUT_3MIN')), 3 * 60 * 1000),
       ),
     ]);
-    renderDone = true;
-    console.info('[card-news] rendered %d cards in %ds', pngBuffers.length, ((Date.now() - startMs) / 1000).toFixed(1));
+    console.info(
+      '[card-news] html built in %ds (attempts=%d, issues=%d)',
+      ((Date.now() - startMs) / 1000).toFixed(1),
+      attempts,
+      issues?.length || 0,
+    );
 
-    // 2. R2 병렬 업로드
+    // Phase 2: Chromium 렌더 (3분 hard timeout)
+    phase = 'render';
+    reportToVercel(
+      { type: 'progress', jobId, progress: 0.4 },
+      '/api/card-news-callback',
+    ).catch(() => {});
+
+    const renderStartMs = Date.now();
+    const pngBuffers = await Promise.race([
+      renderCardsFromHtml(html, slideCount),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('RENDER_TIMEOUT_3MIN')), 3 * 60 * 1000),
+      ),
+    ]);
+    console.info(
+      '[card-news] rendered %d cards in %ds',
+      pngBuffers.length,
+      ((Date.now() - renderStartMs) / 1000).toFixed(1),
+    );
+
+    // Phase 3: R2 병렬 업로드
+    phase = 'upload';
+    reportToVercel(
+      { type: 'progress', jobId, progress: 0.85 },
+      '/api/card-news-callback',
+    ).catch(() => {});
+
     const uploadPromises = pngBuffers.map((buf, i) => {
       const key = `cardnews/${jobId}/card-${String(i + 1).padStart(2, '0')}.png`;
       return uploadBufferToR2(key, buf);
@@ -279,7 +331,7 @@ async function runCardnewsRenderJob({ jobId, html, cardCount, parentJobId: _pare
     const urls = await Promise.all(uploadPromises);
     console.info('[card-news] uploaded %d urls', urls.length);
 
-    // 3. complete webhook
+    // Phase 4: complete webhook
     await reportToVercel(
       {
         type: 'complete',
@@ -291,23 +343,26 @@ async function runCardnewsRenderJob({ jobId, html, cardCount, parentJobId: _pare
       '/api/card-news-callback',
     );
   } catch (err) {
-    console.error('[card-news] jobId=%s error:', jobId, err);
+    console.error('[card-news] jobId=%s phase=%s error:', jobId, phase, err);
 
-    const isTimeout = err?.message === 'RENDER_TIMEOUT_3MIN';
-    const errorCode = isTimeout
-      ? 'TIMEOUT'
-      : renderDone
-        ? 'R2_UPLOAD_FAILED'
-        : err?.message?.startsWith('CARD_COUNT_MISMATCH')
-          ? 'CARD_COUNT_MISMATCH'
-          : 'CHROMIUM_RENDER_FAILED';
+    const msg = err?.message || '';
+    let errorCode;
+    if (msg === 'CLAUDE_TIMEOUT_3MIN') errorCode = 'CLAUDE_TIMEOUT';
+    else if (msg === 'RENDER_TIMEOUT_3MIN') errorCode = 'TIMEOUT';
+    else if (msg.startsWith('CARD_COUNT_MISMATCH')) errorCode = 'CARD_COUNT_MISMATCH';
+    else if (msg.startsWith('CLAUDE_API_')) errorCode = 'CLAUDE_API_ERROR';
+    else if (msg.startsWith('CLAUDE_EMPTY_HTML')) errorCode = 'CLAUDE_EMPTY_HTML';
+    else if (msg.startsWith('CLAUDE_HTML_FAILED')) errorCode = 'CLAUDE_HTML_FAILED';
+    else if (phase === 'html') errorCode = 'CLAUDE_HTML_FAILED';
+    else if (phase === 'upload') errorCode = 'R2_UPLOAD_FAILED';
+    else errorCode = 'CHROMIUM_RENDER_FAILED';
 
     await reportToVercel(
       {
         type: 'error',
         jobId,
         errorCode,
-        errorMessage: String(err?.message || err).slice(0, 500),
+        errorMessage: String(msg || err).slice(0, 500),
       },
       '/api/card-news-callback',
     );
