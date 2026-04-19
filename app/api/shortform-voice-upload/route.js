@@ -9,7 +9,7 @@ import {
   handleOptions,
 } from '@/lib/api-helpers';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const R2_AUDIO_PREFIX = 'shortform-audio';
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB (Whisper API 상한)
@@ -81,9 +81,12 @@ export async function POST(request) {
     }
 
     // 5. script JSON 파싱
+    if (!scriptRaw) {
+      return jsonResponse(request, { error: 'script 필드가 필요합니다.' }, { status: 400 });
+    }
     let script;
     try {
-      script = JSON.parse(String(scriptRaw || ''));
+      script = JSON.parse(String(scriptRaw));
     } catch (e) {
       return jsonResponse(request, { error: 'script 데이터가 유효하지 않습니다.' }, { status: 400 });
     }
