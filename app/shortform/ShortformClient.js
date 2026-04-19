@@ -470,6 +470,25 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
 }
 
 /**
+ * script에 captionInstagram/captionYouTube 필드가 누락된 경우 scenes 기반으로
+ * 최소한의 캡션을 생성하는 클라이언트 fallback. 구버전 script 또는 legacy
+ * 경로로 생성된 script에서도 캡션 박스가 비어있지 않도록 보장.
+ */
+function buildFallbackCaption(script, platform) {
+  if (!script || !Array.isArray(script.scenes) || script.scenes.length === 0) {
+    return '';
+  }
+  const first = script.scenes[0]?.script || script.scenes[0]?.hookText || '';
+  const last = script.scenes[script.scenes.length - 1]?.script || '';
+  const body = [first, last].filter(Boolean).join('\n\n');
+  const hashtags = platform === 'youtube'
+    ? '#Shorts #쇼츠 #숏폼'
+    : '#릴스 #숏폼 #인스타';
+  if (!body) return '';
+  return `${body}\n\n${hashtags}`.slice(0, 500);
+}
+
+/**
  * 영상 텍스트 인라인 편집기.
  * - hook (scene 0) / point (scene 1~n-2) / cta (scene n-1) 의 script 필드를 수정
  * - setScript로 즉시 script state 갱신 → playerProps useMemo → Player 재렌더
@@ -2037,8 +2056,15 @@ function ShortformClientInner() {
       {currentStep === 7 && (
         <Step7Download
           videoUrl={renderVideoUrl}
-          captionInstagram={script?.captionInstagram || script?.caption || ''}
-          captionYouTube={script?.captionYouTube || ''}
+          captionInstagram={
+            script?.captionInstagram ||
+            script?.caption ||
+            buildFallbackCaption(script, 'instagram')
+          }
+          captionYouTube={
+            script?.captionYouTube ||
+            buildFallbackCaption(script, 'youtube')
+          }
           onRender={handleRender}
           renderStatus={renderStatus}
           renderError={renderError}
