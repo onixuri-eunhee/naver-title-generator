@@ -5,7 +5,6 @@ import { remapScenesToAudio } from '@/lib/shortform/voice-upload-remap';
 import {
   extractToken,
   resolveSessionEmail,
-  corsHeaders,
   jsonResponse,
   handleOptions,
 } from '@/lib/api-helpers';
