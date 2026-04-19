@@ -68,14 +68,23 @@ export async function renderCardsFromHtml(html, expectedCardCount) {
     await new Promise((r) => setTimeout(r, ANIMATION_SETTLE_MS));
 
     const cardHandles = await page.$$('.card');
-    if (cardHandles.length !== expectedCardCount) {
+    if (cardHandles.length < expectedCardCount) {
       throw new Error(
         `CARD_COUNT_MISMATCH: expected ${expectedCardCount}, got ${cardHandles.length}`,
       );
     }
+    // Claude가 초과 생성한 경우: 앞 N개만 캡처 (validation은 html-builder에서 이미 통과)
+    const handlesToCapture = cardHandles.slice(0, expectedCardCount);
+    if (cardHandles.length > expectedCardCount) {
+      console.warn(
+        '[card-news-renderer] Claude 초과 생성 — %d개 중 앞 %d개만 사용',
+        cardHandles.length,
+        expectedCardCount,
+      );
+    }
 
     const pngBuffers = [];
-    for (const handle of cardHandles) {
+    for (const handle of handlesToCapture) {
       const buf = await handle.screenshot({
         type: 'png',
         omitBackground: false,

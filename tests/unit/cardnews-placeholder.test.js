@@ -65,11 +65,12 @@ test('validateCardCount — 개수 불일치 (적음)', () => {
   assert.equal(result.actual, 2);
 });
 
-test('validateCardCount — 개수 불일치 (많음)', () => {
+test('validateCardCount — 초과 생성은 허용 (렌더러가 앞 N개만 캡처)', () => {
   const html = '<div class="card c1"></div><div class="card c2"></div><div class="card c3"></div><div class="card c4"></div>';
   const result = validateCardCount(html, 2);
-  assert.equal(result.ok, false);
+  assert.equal(result.ok, true);
   assert.equal(result.actual, 4);
+  assert.equal(result.expected, 2);
 });
 
 test('validateCardCount — 빈 HTML / card 없음', () => {
