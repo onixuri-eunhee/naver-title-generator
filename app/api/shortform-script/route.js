@@ -997,6 +997,29 @@ export async function POST(request) {
         email,
       });
 
+      // 플랫폼별 캡션 2종 (Instagram Reels + YouTube Shorts) — Legacy path 폴백.
+      // Phase D(generateScriptFlow) 는 script-flow.js 내부에서 처리되지만 Legacy path는
+      // callClaudeABis → buildScriptPayload 가 캡션 필드를 포함하지 않으므로 여기서 보강.
+      {
+        const hook = script?.scenes?.[0]?.script || '';
+        const cta = script?.scenes?.[script.scenes.length - 1]?.script || '';
+        const legacyCaption = script?.caption || '';
+        const hasInsta = typeof script?.captionInstagram === 'string' && script.captionInstagram.length >= 20;
+        const hasYT = typeof script?.captionYouTube === 'string' && script.captionYouTube.length >= 20;
+        if (!hasInsta) {
+          script.captionInstagram =
+            legacyCaption ||
+            [hook, cta, '#릴스 #숏폼 #인스타'].filter(Boolean).join('\n\n').slice(0, 300);
+        }
+        if (!hasYT) {
+          let yt = [hook, cta, '#Shorts #쇼츠'].filter(Boolean).join('\n\n').slice(0, 400);
+          if (!/#\s*Shorts/i.test(yt)) yt = `${yt}\n\n#Shorts`;
+          script.captionYouTube = yt;
+        }
+        // 레거시 caption 필드도 채움 (captionInstagram과 동일)
+        if (!script.caption) script.caption = script.captionInstagram || '';
+      }
+
       // 벤치마크 후보 영상을 script payload에 첨부 (UI 카드 노출용).
       // 최대 6개, 가벼운 필드만 — 썸네일/제목/채널/조회수/링크.
       const candidatesRaw = benchmark.candidates || benchmark.videos || [];
