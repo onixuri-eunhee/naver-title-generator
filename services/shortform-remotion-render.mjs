@@ -13,7 +13,7 @@ const RENDER_TIMEOUT_MS = 300000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-function resolveBrowserExecutable() {
+export function resolveBrowserExecutable() {
   const candidates = [
     process.env.REMOTION_BROWSER_EXECUTABLE,
     process.env.PUPPETEER_EXECUTABLE_PATH,
