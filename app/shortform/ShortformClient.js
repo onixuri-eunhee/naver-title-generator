@@ -474,6 +474,36 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
  * 최소한의 캡션을 생성하는 클라이언트 fallback. 구버전 script 또는 legacy
  * 경로로 생성된 script에서도 캡션 박스가 비어있지 않도록 보장.
  */
+/**
+ * Phase F — 업로드 전 오디오 파일 길이 사전 검증.
+ * 브라우저 <audio> 엘리먼트로 metadata만 로드해서 duration 추출.
+ * 100초 초과 또는 5초 미만이면 reject.
+ */
+function validateAudioFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const audio = new Audio(url);
+    const cleanup = () => URL.revokeObjectURL(url);
+    audio.onloadedmetadata = () => {
+      cleanup();
+      const d = audio.duration;
+      if (!Number.isFinite(d) || d <= 0) {
+        reject(new Error('오디오 길이를 읽을 수 없어요.'));
+      } else if (d > 100) {
+        reject(new Error(`오디오가 너무 깁니다 (${d.toFixed(1)}초, 최대 100초).`));
+      } else if (d < 5) {
+        reject(new Error(`오디오가 너무 짧습니다 (${d.toFixed(1)}초, 최소 5초).`));
+      } else {
+        resolve(d);
+      }
+    };
+    audio.onerror = () => {
+      cleanup();
+      reject(new Error('오디오 파일을 읽을 수 없어요. 다른 파일을 선택해주세요.'));
+    };
+  });
+}
+
 function buildFallbackCaption(script, platform) {
   if (!script || !Array.isArray(script.scenes) || script.scenes.length === 0) {
     return '';
@@ -950,6 +980,78 @@ function ShortformClientInner() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Phase F — 파일 선택 핸들러 (input change) */
+  async function handleFileSelect(file) {
+    setUploadError(null);
+    setUploadStatus('idle');
+    if (!file) {
+      setUploadFile(null);
+      setUploadFileDuration(null);
+      return;
+    }
+    try {
+      const duration = await validateAudioFile(file);
+      setUploadFile(file);
+      setUploadFileDuration(duration);
+    } catch (err) {
+      setUploadFile(null);
+      setUploadFileDuration(null);
+      setUploadError(err.message);
+    }
+  }
+
+  /** Phase F — 업로드 + Whisper 전사 트리거 */
+  async function handleVoiceUpload() {
+    if (!uploadFile || !script) {
+      setUploadError('파일과 대본이 모두 필요합니다.');
+      return;
+    }
+    setUploadStatus('uploading');
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append('audio', uploadFile);
+      formData.append('script', JSON.stringify(script));
+      setUploadStatus('transcribing');
+      const res = await fetch('/api/shortform-voice-upload', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: formData,
+      });
+      if (!res.ok) {
+        let errMsg = `업로드 실패 (HTTP ${res.status})`;
+        try {
+          const errData = await res.json();
+          if (errData.error) errMsg = errData.error;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
+      const data = await res.json();
+      if (!data.audioUrl || !Array.isArray(data.remappedScenes)) {
+        throw new Error('업로드 응답이 유효하지 않습니다.');
+      }
+      // 기존 TTS와 동일한 state 갱신
+      if (audioUrl?.startsWith('blob:')) URL.revokeObjectURL(audioUrl);
+      audioBlobRef.current = null;
+      setAudioUrl(data.audioUrl);
+      setAudioWordTimestamps(data.wordTimestamps || null);
+      setAudioCharAlignment(null);
+      // scene 재분배 적용
+      setScript({
+        ...script,
+        scenes: data.remappedScenes,
+        totalDuration: data.totalDuration,
+      });
+      setTtsStatus('done');
+      setCompletedSteps((prev) => Array.from(new Set([...prev, 4, 5])));
+      setUploadStatus('done');
+    } catch (err) {
+      console.error('[voice-upload] 실패:', err);
+      setUploadError(err.message || '업로드 중 오류');
+      setUploadStatus('error');
+    }
+  }
 
   // 음성 미리듣기 — preview=true로 서버 호출 (짧은 샘플 텍스트)
   async function previewVoice(voiceId) {
