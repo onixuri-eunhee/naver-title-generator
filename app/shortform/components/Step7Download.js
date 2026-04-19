@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import styles from './Step7Download.module.css';
 
 /**
@@ -7,6 +8,8 @@ import styles from './Step7Download.module.css';
  *
  * Props:
  * - videoUrl: string | null — 렌더링 완료 후 R2 CDN URL
+ * - captionInstagram: string — 인스타 릴스 업로드용 캡션
+ * - captionYouTube: string — 유튜브 숏츠 업로드용 설명 (#Shorts 포함)
  * - onRender: () => void — 렌더링 시작 트리거
  * - renderStatus: 'idle' | 'rendering' | 'complete' | 'error'
  * - renderError: string | null
@@ -15,12 +18,26 @@ import styles from './Step7Download.module.css';
  */
 export default function Step7Download({
   videoUrl,
+  captionInstagram = '',
+  captionYouTube = '',
   onRender,
   renderStatus = 'idle',
   renderError,
   onBack,
   onReset,
 }) {
+  const [copiedKey, setCopiedKey] = useState(null);
+
+  async function copyCaption(key, text) {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 1600);
+    } catch (_) {
+      // 클립보드 권한 거절 등 — 조용히 무시
+    }
+  }
   return (
     <div className={styles.root}>
       <div className={styles.intro}>
@@ -104,6 +121,47 @@ export default function Step7Download({
                 새 영상 만들기
               </button>
             </div>
+
+            {(captionInstagram || captionYouTube) && (
+              <div className={styles.captionSection}>
+                <h3 className={styles.captionSectionTitle}>업로드용 캡션</h3>
+                <p className={styles.captionSectionHint}>
+                  플랫폼별로 최적화된 캡션이에요. 복사해서 그대로 붙여넣으세요.
+                </p>
+
+                {captionInstagram && (
+                  <div className={styles.captionBox}>
+                    <div className={styles.captionHeader}>
+                      <span className={styles.captionLabel}>인스타그램 릴스</span>
+                      <button
+                        type="button"
+                        className={styles.captionCopyBtn}
+                        onClick={() => copyCaption('instagram', captionInstagram)}
+                      >
+                        {copiedKey === 'instagram' ? '복사됨 ✓' : '복사'}
+                      </button>
+                    </div>
+                    <pre className={styles.captionText}>{captionInstagram}</pre>
+                  </div>
+                )}
+
+                {captionYouTube && (
+                  <div className={styles.captionBox}>
+                    <div className={styles.captionHeader}>
+                      <span className={styles.captionLabel}>유튜브 숏츠</span>
+                      <button
+                        type="button"
+                        className={styles.captionCopyBtn}
+                        onClick={() => copyCaption('youtube', captionYouTube)}
+                      >
+                        {copiedKey === 'youtube' ? '복사됨 ✓' : '복사'}
+                      </button>
+                    </div>
+                    <pre className={styles.captionText}>{captionYouTube}</pre>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

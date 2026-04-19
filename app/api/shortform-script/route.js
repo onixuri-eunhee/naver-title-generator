@@ -961,7 +961,11 @@ export async function POST(request) {
           targetSceneCount,
         );
       }
-      script.caption = flowResult.caption;
+      // 플랫폼별 캡션 2종 (Instagram Reels + YouTube Shorts).
+      // 레거시 caption 필드도 유지 (captionInstagram과 동일값) — 기존 소비처 호환.
+      script.captionInstagram = flowResult.captionInstagram || flowResult.caption || '';
+      script.captionYouTube = flowResult.captionYouTube || '';
+      script.caption = flowResult.caption || flowResult.captionInstagram || '';
       script.warnings = flowResult.warnings;
       script.personaId = personaId;
       script.contentType = contentType;

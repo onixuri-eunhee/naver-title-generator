@@ -9,6 +9,7 @@ import {
 } from './shortform-remotion-render.mjs';
 import { renderCardsFromHtml } from './card-news-renderer.mjs';
 import { buildCardnewsHtml } from '../lib/cardnews/html-builder.js';
+import { buildInstagramCaption } from '../lib/cardnews/caption-builder.js';
 import { postWithRetry } from './webhook-client.mjs';
 
 const app = express();
@@ -297,6 +298,14 @@ async function runCardnewsRenderJob({
       issues?.length || 0,
     );
 
+    // Phase 2a: 인스타 캡션 Haiku 호출 (render/upload와 병렬 — wall time 0 추가)
+    const captionPromise = buildInstagramCaption({ blogText, slideCount }).catch(
+      (err) => {
+        console.warn('[card-news] caption generation failed:', err?.message);
+        return '';
+      },
+    );
+
     // Phase 2: Chromium 렌더 (3분 hard timeout)
     phase = 'render';
     reportToVercel(
@@ -328,8 +337,15 @@ async function runCardnewsRenderJob({
       const key = `cardnews/${jobId}/card-${String(i + 1).padStart(2, '0')}.png`;
       return uploadBufferToR2(key, buf);
     });
-    const urls = await Promise.all(uploadPromises);
-    console.info('[card-news] uploaded %d urls', urls.length);
+    const [urls, captionInstagram] = await Promise.all([
+      Promise.all(uploadPromises),
+      captionPromise,
+    ]);
+    console.info(
+      '[card-news] uploaded %d urls, caption=%d chars',
+      urls.length,
+      captionInstagram?.length || 0,
+    );
 
     // Phase 4: complete webhook
     await reportToVercel(
@@ -338,6 +354,7 @@ async function runCardnewsRenderJob({
         jobId,
         urls,
         cardCount: urls.length,
+        captionInstagram: captionInstagram || '',
         elapsedMs: Date.now() - startMs,
       },
       '/api/card-news-callback',

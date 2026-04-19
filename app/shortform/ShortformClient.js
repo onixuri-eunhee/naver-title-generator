@@ -2037,6 +2037,8 @@ function ShortformClientInner() {
       {currentStep === 7 && (
         <Step7Download
           videoUrl={renderVideoUrl}
+          captionInstagram={script?.captionInstagram || script?.caption || ''}
+          captionYouTube={script?.captionYouTube || ''}
           onRender={handleRender}
           renderStatus={renderStatus}
           renderError={renderError}

@@ -627,3 +627,54 @@
   color: #fff;
   font-size: 13px;
 }
+
+/* 인스타 업로드용 캡션 박스 (결과 grid 아래) */
+.captionBox {
+  margin-top: 18px;
+  border: 1px solid var(--ds-border, #e5e7eb);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--ds-card, #fff);
+}
+.captionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--ds-bg-soft, #F4F2EC);
+  border-bottom: 1px solid var(--ds-border, #e5e7eb);
+}
+.captionLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ds-text, #1F2937);
+  letter-spacing: -0.01em;
+}
+.captionCopyBtn {
+  padding: 5px 14px;
+  background: var(--ds-accent, #ff5f1f);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: filter 0.15s ease;
+}
+.captionCopyBtn:hover {
+  filter: brightness(1.08);
+}
+.captionText {
+  margin: 0;
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ds-text, #1F2937);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  background: transparent;
+  max-height: 320px;
+  overflow-y: auto;
+}

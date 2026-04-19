@@ -34,6 +34,8 @@ export default function CardNewsClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [images, setImages] = useState([]);
+  const [captionInstagram, setCaptionInstagram] = useState('');
+  const [captionCopied, setCaptionCopied] = useState(false);
   // Chromium path: R2 CDN URL 배열 (Satori path의 images는 base64라 분리)
   const [imageUrls, setImageUrls] = useState([]);
   const [chromiumJobId, setChromiumJobId] = useState(null);
@@ -62,6 +64,7 @@ export default function CardNewsClient() {
     if (!chromiumJobId) return;
     if (chromiumStatus === 'complete' && chromiumResult?.urls) {
       setImageUrls(chromiumResult.urls);
+      setCaptionInstagram(chromiumResult.captionInstagram || '');
       setLoading(false);
     } else if (chromiumStatus === 'error') {
       setError(chromiumError || '카드뉴스 생성에 실패했습니다. 크레딧은 환불되었습니다.');
@@ -133,6 +136,8 @@ export default function CardNewsClient() {
     setLoading(true);
     setImages([]);
     setImageUrls([]);      // Chromium path 결과 리셋
+    setCaptionInstagram('');
+    setCaptionCopied(false);
     resetChromium();
     setChromiumJobId(null);
 
@@ -192,6 +197,7 @@ export default function CardNewsClient() {
       // 200 = Satori path (동기, base64)
       const result = await res.json();
       setImages(result.images || []);
+      setCaptionInstagram(result.captionInstagram || '');
       if (result.variant) setVariantInfo(result.variant);
     } catch (e) {
       setError(e.message);
@@ -281,6 +287,17 @@ export default function CardNewsClient() {
       alert('다운로드 중 오류가 발생했습니다.');
     } finally {
       setZipBusy(false);
+    }
+  }
+
+  async function copyCaption() {
+    if (!captionInstagram) return;
+    try {
+      await navigator.clipboard.writeText(captionInstagram);
+      setCaptionCopied(true);
+      setTimeout(() => setCaptionCopied(false), 1600);
+    } catch (_) {
+      // 클립보드 권한 거절 — 조용히 무시
     }
   }
 
@@ -733,6 +750,22 @@ export default function CardNewsClient() {
             >
               {zipBusy ? 'ZIP 생성 중...' : '전체 다운로드 (ZIP)'}
             </button>
+
+            {captionInstagram && (
+              <div className={styles.captionBox}>
+                <div className={styles.captionHeader}>
+                  <span className={styles.captionLabel}>인스타그램 업로드용 캡션</span>
+                  <button
+                    type="button"
+                    className={styles.captionCopyBtn}
+                    onClick={copyCaption}
+                  >
+                    {captionCopied ? '복사됨 ✓' : '복사'}
+                  </button>
+                </div>
+                <pre className={styles.captionText}>{captionInstagram}</pre>
+              </div>
+            )}
           </div>
         )}
       </div>
