@@ -32,6 +32,11 @@ import { validateScriptQuality } from '@/lib/shortform/prompt-validator.js';
 import { safeParseJson } from '@/lib/shortform/parse-claude-json.js';
 import { getReasoningExamples } from '@/lib/shortform/reasoning-copy.js';
 import { getDesignTokens } from '@/lib/shortform/design-tokens.js';
+import {
+  buildCaptionFallbacks,
+  captionsAreDuplicate,
+  isValidCaption,
+} from '@/lib/shortform/caption-fallback.js';
 
 export const maxDuration = 300;
 
@@ -469,13 +474,22 @@ function buildScriptPayload(parsed, concept, targetSceneCount) {
 
   // Phase F caption handoff: parsed 에 captionInstagram/captionYouTube/caption 이 있으면
   // 그대로 payload 에 전달한다. Claude 가 생성한 값을 Legacy path 가 버리지 않도록 보존.
-  // route.js 의 fallback 로직은 이 값이 20자 이상이면 그대로 사용.
+  // 동일 본문 검출 시 observability 용 warn 로그 (retry/fallback 은 상위 단계에서 처리).
   const parsedCaptionInstagram =
     typeof parsed?.captionInstagram === 'string' ? parsed.captionInstagram : '';
   const parsedCaptionYouTube =
     typeof parsed?.captionYouTube === 'string' ? parsed.captionYouTube : '';
   const parsedCaption =
     typeof parsed?.caption === 'string' ? parsed.caption : '';
+  if (
+    parsedCaptionInstagram &&
+    parsedCaptionYouTube &&
+    captionsAreDuplicate(parsedCaptionInstagram, parsedCaptionYouTube)
+  ) {
+    console.warn(
+      '[SHORTFORM-SCRIPT] parsed caption duplicate detected — validator will trigger retry or fallback.',
+    );
+  }
 
   return {
     hook,
@@ -731,9 +745,17 @@ async function callClaudeABis({
         }),
       );
 
-      // SLIM 모드 전용: 심각한 errors(layoutType 누락/오타) → 재시도 유도
-      if (useSlimPrompt && !validation.ok && attempt < MAX_RETRIES) {
-        const e = new Error(`slim_validation_failed:${validation.errors.join(',')}`);
+      // 재시도 유도:
+      //  - SLIM 모드: validation.ok=false 이면 모두 재시도 (layout + caption 포함)
+      //  - FULL 모드: caption_* 오류만 재시도 (layout은 tolerance 유지)
+      const captionErrors = (validation.errors || []).filter((e) =>
+        e.startsWith('caption_'),
+      );
+      const shouldRetry =
+        attempt < MAX_RETRIES &&
+        ((useSlimPrompt && !validation.ok) || captionErrors.length > 0);
+      if (shouldRetry) {
+        const e = new Error(`validation_failed:${validation.errors.join(',')}`);
         e.code = 'slim_validation_failed';
         throw e;
       }
@@ -1010,24 +1032,28 @@ export async function POST(request) {
         email,
       });
 
-      // 플랫폼별 캡션 2종 (Instagram Reels + YouTube Shorts) — Legacy path 폴백.
-      // Phase D(generateScriptFlow) 는 script-flow.js 내부에서 처리되지만 Legacy path는
-      // callClaudeABis → buildScriptPayload 가 캡션 필드를 포함하지 않으므로 여기서 보강.
+      // 플랫폼별 캡션 2종 (Instagram Reels + YouTube Shorts) — Legacy path 안전망.
+      // Claude가 captionInstagram/captionYouTube 를 충분히 생성하지 못했거나 두 본문이
+      // 중복일 때 단일 헬퍼(buildCaptionFallbacks)로 구조적으로 다른 캡션 생성.
+      // 이 헬퍼는 script-flow.js(Phase D) 와 동일한 출력 규약을 따르므로 두 경로의
+      // UX가 일치한다.
       {
-        const hook = script?.scenes?.[0]?.script || '';
-        const cta = script?.scenes?.[script.scenes.length - 1]?.script || '';
-        const legacyCaption = script?.caption || '';
-        const hasInsta = typeof script?.captionInstagram === 'string' && script.captionInstagram.length >= 20;
-        const hasYT = typeof script?.captionYouTube === 'string' && script.captionYouTube.length >= 20;
-        if (!hasInsta) {
-          script.captionInstagram =
-            legacyCaption ||
-            [hook, cta, '#릴스 #숏폼 #인스타'].filter(Boolean).join('\n\n').slice(0, 300);
-        }
-        if (!hasYT) {
-          let yt = [hook, cta, '#Shorts #쇼츠'].filter(Boolean).join('\n\n').slice(0, 400);
-          if (!/#\s*Shorts/i.test(yt)) yt = `${yt}\n\n#Shorts`;
-          script.captionYouTube = yt;
+        const needInsta = !isValidCaption(script?.captionInstagram);
+        const needYT = !isValidCaption(script?.captionYouTube);
+        const isDup =
+          isValidCaption(script?.captionInstagram) &&
+          isValidCaption(script?.captionYouTube) &&
+          captionsAreDuplicate(script.captionInstagram, script.captionYouTube);
+
+        if (needInsta || needYT || isDup) {
+          const { captionInstagram, captionYouTube } = buildCaptionFallbacks(
+            script?.scenes || [],
+          );
+          if (needInsta || isDup) script.captionInstagram = captionInstagram;
+          if (needYT || isDup) script.captionYouTube = captionYouTube;
+          console.warn(
+            `[SHORTFORM-SCRIPT] caption fallback applied: needInsta=${needInsta} needYT=${needYT} isDup=${isDup}`,
+          );
         }
         // 레거시 caption 필드도 채움 (captionInstagram과 동일)
         if (!script.caption) script.caption = script.captionInstagram || '';
