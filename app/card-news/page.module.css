@@ -253,6 +253,73 @@
   color: #DC2626;
 }
 
+/* 생성 모드 선택 (기본/프리미엄) */
+.modeSelector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+.modeCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-card);
+  cursor: pointer;
+  transition: all 0.2s var(--ds-ease);
+  text-align: left;
+  font-family: inherit;
+}
+.modeCard:hover:not(:disabled) {
+  border-color: var(--ds-border-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--ds-shadow-sm);
+}
+.modeCard:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.modeCardActive,
+.modeCardActive:hover {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  transform: none;
+  box-shadow: var(--ds-shadow-sm);
+}
+.modeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.modeTitle {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ds-text, #1F2937);
+  letter-spacing: -0.01em;
+}
+.modeBadge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--ds-bg);
+  color: var(--ds-text-soft, #6B7280);
+  white-space: nowrap;
+}
+.modeBadgePremium {
+  background: linear-gradient(135deg, #FF6B2B, #E04D15);
+  color: #fff;
+}
+.modeDesc {
+  font-size: 12px;
+  color: var(--ds-text-soft, #6B7280);
+  line-height: 1.4;
+}
+
 .generateBtn {
   width: 100%;
   padding: 18px 24px;

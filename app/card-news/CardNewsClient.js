@@ -28,13 +28,15 @@ export default function CardNewsClient() {
   const [accentPlacement, setAccentPlacement] = useState('auto');
   const [numberStyle, setNumberStyle] = useState('auto');
 
+  // 생성 모드: 'basic'(Satori, 1크레딧, ~30초) | 'premium'(Chromium, 2크레딧, ~3분)
+  const [mode, setMode] = useState('basic');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [images, setImages] = useState([]);
   // Chromium path: R2 CDN URL 배열 (Satori path의 images는 base64라 분리)
   const [imageUrls, setImageUrls] = useState([]);
   const [chromiumJobId, setChromiumJobId] = useState(null);
-  const [renderVariant, setRenderVariant] = useState(null); // 'chromium' | 'satori' | null
   const [modalIdx, setModalIdx] = useState(null);
   const [zipBusy, setZipBusy] = useState(false);
   const [variantInfo, setVariantInfo] = useState(null);
@@ -131,7 +133,6 @@ export default function CardNewsClient() {
     setLoading(true);
     setImages([]);
     setImageUrls([]);      // Chromium path 결과 리셋
-    setRenderVariant(null);
     resetChromium();
     setChromiumJobId(null);
 
@@ -153,6 +154,7 @@ export default function CardNewsClient() {
           text: textInput,
           slideCount,
           theme: selectedTheme,
+          mode,
           brandPrimary: bp,
           brandSecondary: bs,
           snsHandle: snsHandle.trim() || undefined,
@@ -167,8 +169,7 @@ export default function CardNewsClient() {
       // 202 = Chromium path (async, SSE로 결과 수신)
       if (res.status === 202) {
         isChromiumPath = true;
-        const { jobId, variant } = await res.json();
-        setRenderVariant(variant || 'chromium');
+        const { jobId } = await res.json();
         // 기존 Chromium job 있으면 reset 후 새 구독
         resetChromium();
         setImageUrls([]);
@@ -190,7 +191,6 @@ export default function CardNewsClient() {
 
       // 200 = Satori path (동기, base64)
       const result = await res.json();
-      setRenderVariant('satori');
       setImages(result.images || []);
       if (result.variant) setVariantInfo(result.variant);
     } catch (e) {
@@ -482,6 +482,34 @@ export default function CardNewsClient() {
             </span>
           </div>
 
+          {/* 생성 모드 선택 */}
+          <div className={styles.modeSelector}>
+            <button
+              type="button"
+              className={`${styles.modeCard} ${mode === 'basic' ? styles.modeCardActive : ''}`}
+              onClick={() => setMode('basic')}
+              disabled={loading}
+            >
+              <div className={styles.modeHeader}>
+                <span className={styles.modeTitle}>기본</span>
+                <span className={styles.modeBadge}>1크레딧 · 30초</span>
+              </div>
+              <div className={styles.modeDesc}>14가지 테마 기반</div>
+            </button>
+            <button
+              type="button"
+              className={`${styles.modeCard} ${mode === 'premium' ? styles.modeCardActive : ''}`}
+              onClick={() => setMode('premium')}
+              disabled={loading}
+            >
+              <div className={styles.modeHeader}>
+                <span className={styles.modeTitle}>프리미엄</span>
+                <span className={`${styles.modeBadge} ${styles.modeBadgePremium}`}>2크레딧 · 3분</span>
+              </div>
+              <div className={styles.modeDesc}>AI가 매번 새로 디자인</div>
+            </button>
+          </div>
+
           {error && <div className={styles.errorBox}>{error}</div>}
 
           <button
@@ -497,13 +525,16 @@ export default function CardNewsClient() {
         {loading && (
           <div className={styles.loading}>
             <div className={styles.loadingSpinner} />
-            {renderVariant === 'chromium' ? (
+            {mode === 'premium' ? (
               <>
-                <div className={styles.loadingText}>고화질 카드뉴스를 생성하고 있어요</div>
-                <small style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4 }}>최대 1분 정도 걸릴 수 있어요</small>
+                <div className={styles.loadingText}>AI가 카드를 한 장씩 디자인하는 중...</div>
+                <small style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4 }}>프리미엄은 최대 3분 정도 걸려요</small>
               </>
             ) : (
-              <div className={styles.loadingText}>AI가 카드뉴스를 만들고 있습니다...</div>
+              <>
+                <div className={styles.loadingText}>카드뉴스를 만들고 있어요</div>
+                <small style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4 }}>약 30초 소요</small>
+              </>
             )}
           </div>
         )}

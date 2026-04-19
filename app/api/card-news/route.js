@@ -21,7 +21,10 @@ export const maxDuration = 180;
 
 const FREE_DAILY_LIMIT = 3;
 const FREE_CUTOFF = '2026-04-24T23:59:59+09:00';
-const CARD_NEWS_CREDIT_COST = 1;
+// mode별 크레딧 비용 — basic(Satori): 1크레딧(원가 ~21원), premium(Chromium): 2크레딧(원가 ~173원)
+const CARD_NEWS_CREDIT_COST = 1; // basic 기본 (기존 호환)
+const CARD_NEWS_CREDIT_COST_BASIC = 1;
+const CARD_NEWS_CREDIT_COST_PREMIUM = 2;
 const CANVAS_W = 1080;
 const CANVAS_H = 1350;
 
@@ -471,12 +474,6 @@ function shouldUseSlim(email) {
   return resolveRolloutFlag({ email, rollout });
 }
 
-function shouldUseChromium(email) {
-  const raw = process.env.CARDNEWS_CHROMIUM_ROLLOUT ?? '0';
-  const rollout = Number.parseInt(raw, 10);
-  return resolveRolloutFlag({ email, rollout });
-}
-
 // findOverflows용 필드 매핑 — 슬라이드 타입별 검증 경로와 limit key.
 const CARD_NEWS_FIELD_MAP = {
   cover: [
@@ -837,6 +834,7 @@ export async function GET(request) {
 export async function POST(request) {
   let rateLimitKey = null;
   let creditCharged = false;
+  let chargedAmount = 0; // 에러 시 실제 차감한 크레딧 환불용
   let sessionEmail = null;
 
   try {
@@ -870,6 +868,9 @@ export async function POST(request) {
     const slideCount = body.slideCount;
     const themeId = body.theme || body.themeId || 'clean';
     const blogTitle = body.title || '';
+    // 모드: 'basic'(Satori, 1크레딧, ~30s) | 'premium'(Chromium, 2크레딧, ~3분)
+    const mode = body.mode === 'premium' ? 'premium' : 'basic';
+    const creditCost = mode === 'premium' ? CARD_NEWS_CREDIT_COST_PREMIUM : CARD_NEWS_CREDIT_COST_BASIC;
     // 시드: 사용자가 "다시" 눌렀을 때 새 숫자 보내면 다른 variant.
     // 없으면 매번 랜덤.
     const seed = typeof body.seed === 'number' && Number.isFinite(body.seed)
@@ -962,17 +963,19 @@ export async function POST(request) {
 
     if (!isAdmin) {
       if (isCreditsActive()) {
-        const result = await chargeCredits(sessionEmail, CARD_NEWS_CREDIT_COST, 'card-news');
+        const result = await chargeCredits(sessionEmail, creditCost, `card-news-${mode}`);
         if (!result) {
           return jsonResponse(request, {
             error: '크레딧이 부족합니다. 충전 후 이용해주세요.',
-            required: CARD_NEWS_CREDIT_COST,
+            required: creditCost,
             code: 'INSUFFICIENT_CREDITS',
           }, { status: 402 });
         }
         creditCharged = true;
+        chargedAmount = creditCost;
         remaining = result.remaining;
       } else {
+        // 무료 기간: premium은 항상 1회로 카운트하되, 무료 한도 동일 적용
         const ip = getClientIp(request);
         rateLimitKey = getTodayKey(ip);
         const newCount = await getRedis().incr(rateLimitKey);
@@ -989,13 +992,11 @@ export async function POST(request) {
       }
     }
 
-    // Phase D — Chromium rollout 분기
-    // credit 차감 직후·Satori 경로 진입 전에 체크.
-    // chromium path는 비동기 (202 + SSE). Claude HTML 생성은 Railway에서 수행
+    // 모드 분기 — 사용자가 명시적으로 선택 (basic=Satori 기본, premium=Chromium)
+    // premium(chromium) 경로는 비동기 (202 + SSE). Claude HTML 생성은 Railway에서 수행
     // (Cloudflare 100s origin timeout 회피). 실패 시 Railway → callback → 자동 환불.
-    const useChromium = shouldUseChromium(sessionEmail);
-    if (useChromium) {
-      console.log(`[CARD-NEWS] Start | slides: ${count} | variant: chromium | theme: ${themeId}`);
+    if (mode === 'premium') {
+      console.log(`[CARD-NEWS] Start | slides: ${count} | mode: premium (chromium) | theme: ${themeId}`);
 
       // Brand Kit 조립 (기존 body 필드 재활용)
       const brandKit = {
@@ -1026,7 +1027,7 @@ export async function POST(request) {
         const jobId = createJobId();
         await getRedis().set(
           `job:meta:${jobId}`,
-          { userEmail: sessionEmail, tool: 'cardnews', cost: CARD_NEWS_CREDIT_COST, createdAt: new Date().toISOString() },
+          { userEmail: sessionEmail, tool: 'cardnews', cost: chargedAmount || creditCost, createdAt: new Date().toISOString() },
           { ex: 3600 },
         );
 
@@ -1055,9 +1056,9 @@ export async function POST(request) {
           throw new Error(`Railway dispatch 실패: ${dispatchRes.status} ${errText.slice(0, 100)}`);
         }
 
-        // 4) 202 + jobId 반환 (chromium path는 동기 결과 반환 안 함 — SSE로 수신)
-        await logUsage(sessionEmail, 'card-news-chromium', null, getClientIp(request));
-        return jsonResponse(request, { jobId, accepted: true, variant: 'chromium' }, { status: 202 });
+        // 4) 202 + jobId 반환 (premium path는 동기 결과 반환 안 함 — SSE로 수신)
+        await logUsage(sessionEmail, 'card-news-premium', null, getClientIp(request));
+        return jsonResponse(request, { jobId, accepted: true, variant: 'chromium', mode: 'premium' }, { status: 202 });
       } catch (err) {
         console.error('[CARD-NEWS] chromium path error:', err?.message);
         // 기존 catch 블록의 refund 로직으로 흘러가도록 re-throw
@@ -1065,7 +1066,7 @@ export async function POST(request) {
       }
     }
 
-    // ─── 기존 Satori 경로 (rollout=0 또는 버킷 밖) ───
+    // ─── Satori 경로 (mode === 'basic') ───
 
     // 슬림 변형 판정은 Start 로그 이전에 수행 — A/B 관찰 위해 정상 경로에서도 variant 기록
     const useSlim = shouldUseSlim(sessionEmail);
@@ -1164,7 +1165,7 @@ ${blogText.substring(0, 8000)}`;
       });
     }
 
-    await logUsage(sessionEmail, 'card-news', null, getClientIp(request));
+    await logUsage(sessionEmail, 'card-news-basic', null, getClientIp(request));
     return jsonResponse(request, {
       slides: validated.slides,
       images: pngs,
@@ -1184,8 +1185,8 @@ ${blogText.substring(0, 8000)}`;
     if (rateLimitKey) {
       try { await getRedis().decr(rateLimitKey); } catch (_) {}
     }
-    if (creditCharged && sessionEmail) {
-      await refundCredits(sessionEmail, CARD_NEWS_CREDIT_COST, 'card-news-error-refund');
+    if (creditCharged && sessionEmail && chargedAmount > 0) {
+      await refundCredits(sessionEmail, chargedAmount, 'card-news-error-refund');
     }
     return jsonResponse(request, { error: '카드뉴스 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 });
   }
