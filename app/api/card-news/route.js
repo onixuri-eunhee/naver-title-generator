@@ -15,6 +15,8 @@ import { verifyOwnershipByUrls } from '@/lib/user-images';
 import { SEDA_PROMPT_BLOCK } from '@/lib/shared-prompts/seda';
 import { CARD_NEWS_LIMITS, findOverflows } from '@/lib/shared-prompts/length-rules';
 import { resolveRolloutFlag } from '@/lib/shared-prompts/rollout';
+import { buildCardnewsHtml } from '@/lib/cardnews/html-builder';
+import { createJobId } from '@/lib/job-progress';
 
 export const maxDuration = 180;
 
@@ -466,6 +468,12 @@ ${SEDA_PROMPT_BLOCK}
 
 function shouldUseSlim(email) {
   const raw = process.env.CARDNEWS_SLIM_PROMPT_ROLLOUT ?? '0';
+  const rollout = Number.parseInt(raw, 10);
+  return resolveRolloutFlag({ email, rollout });
+}
+
+function shouldUseChromium(email) {
+  const raw = process.env.CARDNEWS_CHROMIUM_ROLLOUT ?? '0';
   const rollout = Number.parseInt(raw, 10);
   return resolveRolloutFlag({ email, rollout });
 }
@@ -981,6 +989,98 @@ export async function POST(request) {
         remaining = FREE_DAILY_LIMIT - newCount;
       }
     }
+
+    // Phase D — Chromium rollout 분기
+    // credit 차감 직후·Satori 경로 진입 전에 체크.
+    // chromium path는 비동기 (202 + SSE). 실패 시 기존 error refund 로직이 크레딧 환불.
+    const useChromium = shouldUseChromium(sessionEmail);
+    if (useChromium) {
+      console.log(`[CARD-NEWS] Start | slides: ${count} | variant: chromium | theme: ${themeId}`);
+
+      // Brand Kit 조립 (기존 body 필드 재활용)
+      const brandKit = {
+        primary_color: brandPrimary || baseTheme.primary || null,
+        secondary_color: brandSecondary || baseTheme.secondary || null,
+        store_name: typeof body.storeName === 'string' ? body.storeName.slice(0, 50) : null,
+        industry: typeof body.industry === 'string' ? body.industry.slice(0, 50) : null,
+        instagram: typeof body.snsHandle === 'string' ? body.snsHandle.slice(0, 40) : null,
+        logo_url: typeof body.logoUrl === 'string' && body.logoUrl.startsWith('https://') ? body.logoUrl : null,
+      };
+
+      // 이미지 메타 + URL 배열 준비 (순서 일치)
+      const images = sanitizedUserImages.map((u) => ({
+        ratio: '4x5',
+        source: 'user_upload',
+        tag: '',
+      }));
+      const imageUrls = sanitizedUserImages.map((u) => u.url);
+
+      try {
+        // 1) Claude HTML 생성 (sanitize + validate + placeholder 치환 포함)
+        const { html, issues, attempts } = await buildCardnewsHtml({
+          brandKit,
+          images,
+          imageUrls,
+          blogText,
+          slideCount: count,
+        });
+        if (issues.length >= 5) {
+          console.warn(
+            '[cardnews-chromium-issues]',
+            JSON.stringify({ email: sessionEmail, issuesCount: issues.length, sample: issues.slice(0, 5), attempts }),
+          );
+        }
+
+        // 2) jobId 발급 + job:meta 저장 (자동 환불용)
+        const jobId = createJobId();
+        await getRedis().set(
+          `job:meta:${jobId}`,
+          { userEmail: sessionEmail, tool: 'cardnews', cost: CARD_NEWS_CREDIT_COST, createdAt: new Date().toISOString() },
+          { ex: 3600 },
+        );
+
+        // 3) Railway /render-cardnews dispatch
+        const railwayUrl = process.env.RAILWAY_RENDER_URL;
+        const renderSecret = process.env.RENDER_SECRET;
+        if (!railwayUrl) {
+          throw new Error('RAILWAY_RENDER_URL not configured');
+        }
+        if (!renderSecret) {
+          throw new Error('RENDER_SECRET not configured');
+        }
+
+        const dispatchRes = await fetch(`${railwayUrl}/render-cardnews`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-render-secret': renderSecret,
+          },
+          body: JSON.stringify({
+            jobId,
+            html,
+            cardCount: count,
+            parentJobId: null,
+          }),
+        });
+
+        if (dispatchRes.status !== 202) {
+          const errText = await dispatchRes.text().catch(() => 'unknown');
+          // dispatch 실패 — job:meta 즉시 정리 (중복 환불 방지는 callback에서)
+          await getRedis().del(`job:meta:${jobId}`).catch(() => {});
+          throw new Error(`Railway dispatch 실패: ${dispatchRes.status} ${errText.slice(0, 100)}`);
+        }
+
+        // 4) 202 + jobId 반환 (chromium path는 동기 결과 반환 안 함 — SSE로 수신)
+        await logUsage(sessionEmail, 'card-news-chromium', null, getClientIp(request));
+        return jsonResponse(request, { jobId, accepted: true, variant: 'chromium' }, { status: 202 });
+      } catch (err) {
+        console.error('[CARD-NEWS] chromium path error:', err?.message);
+        // 기존 catch 블록의 refund 로직으로 흘러가도록 re-throw
+        throw err;
+      }
+    }
+
+    // ─── 기존 Satori 경로 (rollout=0 또는 버킷 밖) ───
 
     // 슬림 변형 판정은 Start 로그 이전에 수행 — A/B 관찰 위해 정상 경로에서도 variant 기록
     const useSlim = shouldUseSlim(sessionEmail);
