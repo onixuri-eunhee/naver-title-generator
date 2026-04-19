@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth';
 import { useAuth } from '@/components/AuthProvider';
+import { useJobProgress } from '@/app/shortform/hooks/useJobProgress';
 import ImagePickerModal from '@/components/ImagePickerModal';
 import styles from './page.module.css';
 
@@ -30,6 +31,10 @@ export default function CardNewsClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [images, setImages] = useState([]);
+  // Chromium path: R2 CDN URL 배열 (Satori path의 images는 base64라 분리)
+  const [imageUrls, setImageUrls] = useState([]);
+  const [chromiumJobId, setChromiumJobId] = useState(null);
+  const [renderVariant, setRenderVariant] = useState(null); // 'chromium' | 'satori' | null
   const [modalIdx, setModalIdx] = useState(null);
   const [zipBusy, setZipBusy] = useState(false);
   const [variantInfo, setVariantInfo] = useState(null);
@@ -41,6 +46,26 @@ export default function CardNewsClient() {
   const [userImages, setUserImages] = useState([]);
 
   const gridRef = useRef(null);
+
+  // Chromium path SSE 구독
+  const {
+    status: chromiumStatus,
+    result: chromiumResult,
+    error: chromiumError,
+    reset: resetChromium,
+  } = useJobProgress(chromiumJobId, { authToken: typeof window !== 'undefined' ? getToken() : null });
+
+  // Chromium 결과 브리지: SSE 이벤트 → imageUrls/error 상태로 연결
+  useEffect(() => {
+    if (!chromiumJobId) return;
+    if (chromiumStatus === 'complete' && chromiumResult?.urls) {
+      setImageUrls(chromiumResult.urls);
+      setLoading(false);
+    } else if (chromiumStatus === 'error') {
+      setError(chromiumError || '카드뉴스 생성에 실패했습니다. 크레딧은 환불되었습니다.');
+      setLoading(false);
+    }
+  }, [chromiumJobId, chromiumStatus, chromiumResult, chromiumError]);
 
   useEffect(() => {
     (async () => {
@@ -68,17 +93,18 @@ export default function CardNewsClient() {
   }, []);
 
   useEffect(() => {
-    if (images.length > 0 && gridRef.current) {
+    if ((images.length > 0 || imageUrls.length > 0) && gridRef.current) {
       setTimeout(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     }
-  }, [images]);
+  }, [images, imageUrls]);
 
   useEffect(() => {
     if (modalIdx === null) return;
+    const totalSlides = imageUrls.length > 0 ? imageUrls.length : images.length;
     function onKey(e) {
       if (e.key === 'Escape') setModalIdx(null);
-      if (e.key === 'ArrowLeft') setModalIdx((i) => (i === null ? null : (i - 1 + images.length) % images.length));
-      if (e.key === 'ArrowRight') setModalIdx((i) => (i === null ? null : (i + 1) % images.length));
+      if (e.key === 'ArrowLeft') setModalIdx((i) => (i === null ? null : (i - 1 + totalSlides) % totalSlides));
+      if (e.key === 'ArrowRight') setModalIdx((i) => (i === null ? null : (i + 1) % totalSlides));
     }
     document.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
@@ -86,7 +112,7 @@ export default function CardNewsClient() {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = '';
     };
-  }, [modalIdx, images.length]);
+  }, [modalIdx, images.length, imageUrls.length]);
 
   async function generate() {
     if (!textInput.trim()) {
@@ -104,10 +130,17 @@ export default function CardNewsClient() {
 
     setLoading(true);
     setImages([]);
+    setImageUrls([]);      // Chromium path 결과 리셋
+    setRenderVariant(null);
+    resetChromium();
+    setChromiumJobId(null);
 
     const isValidHex = (c) => /^#[0-9a-fA-F]{6}$/.test(c);
     const bp = useBrand && isValidHex(brandPrimary) ? brandPrimary : undefined;
     const bs = useBrand && isValidHex(brandSecondary) ? brandSecondary : undefined;
+
+    // Chromium path: loading 해제를 SSE 이벤트에 위임 → finally에서 setLoading(false) 스킵
+    let isChromiumPath = false;
 
     try {
       const res = await fetch('/api/card-news', {
@@ -131,6 +164,19 @@ export default function CardNewsClient() {
         }),
       });
 
+      // 202 = Chromium path (async, SSE로 결과 수신)
+      if (res.status === 202) {
+        isChromiumPath = true;
+        const { jobId, variant } = await res.json();
+        setRenderVariant(variant || 'chromium');
+        // 기존 Chromium job 있으면 reset 후 새 구독
+        resetChromium();
+        setImageUrls([]);
+        setChromiumJobId(jobId);
+        // setLoading(true) 유지 — complete/error 이벤트 수신 시 false로 전환
+        return;
+      }
+
       if (!res.ok) {
         let errData = {};
         try { errData = await res.json(); } catch (_) {}
@@ -142,26 +188,47 @@ export default function CardNewsClient() {
         throw new Error(errData.error || `카드뉴스 생성에 실패했습니다. (${res.status})`);
       }
 
+      // 200 = Satori path (동기, base64)
       const result = await res.json();
+      setRenderVariant('satori');
       setImages(result.images || []);
       if (result.variant) setVariantInfo(result.variant);
     } catch (e) {
       setError(e.message);
     } finally {
-      setLoading(false);
+      // Chromium path: loading은 SSE complete/error 이벤트에서 해제
+      if (!isChromiumPath) {
+        setLoading(false);
+      }
     }
   }
 
   function downloadSingleSlide(index) {
-    if (!images[index]) return;
-    const link = document.createElement('a');
-    link.href = `data:image/png;base64,${images[index]}`;
-    link.download = `card-news-${index + 1}.png`;
-    link.click();
+    // Chromium path 우선 (URL)
+    if (imageUrls[index]) {
+      const link = document.createElement('a');
+      link.href = imageUrls[index];
+      link.download = `card-news-${index + 1}.png`;
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+    // Satori path fallback (base64)
+    if (images[index]) {
+      const link = document.createElement('a');
+      link.href = `data:image/png;base64,${images[index]}`;
+      link.download = `card-news-${index + 1}.png`;
+      link.click();
+    }
   }
 
   async function downloadAll() {
-    if (images.length === 0) return;
+    const hasUrls = imageUrls.length > 0;
+    const hasBase64 = images.length > 0;
+    if (!hasUrls && !hasBase64) return;
+
     setZipBusy(true);
     try {
       // 동적 로드: JSZip CDN
@@ -175,25 +242,41 @@ export default function CardNewsClient() {
         });
       }
       const zip = new window.JSZip();
-      images.forEach((b64, i) => {
-        zip.file(`card-news-${i + 1}.png`, b64, { base64: true });
-      });
+
+      if (hasUrls) {
+        // Chromium: URL → fetch → blob → zip
+        for (let i = 0; i < imageUrls.length; i++) {
+          const response = await fetch(imageUrls[i]);
+          const blob = await response.blob();
+          zip.file(`card-news-${i + 1}.png`, blob);
+        }
+      } else {
+        // Satori: base64 직접
+        images.forEach((b64, i) => {
+          zip.file(`card-news-${i + 1}.png`, b64, { base64: true });
+        });
+      }
+
       const blob = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'card-news.zip';
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      alert('ZIP 생성 실패: ' + e.message);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `card-news-${Date.now()}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error('[card-news] downloadAll failed:', err);
+      alert('다운로드 중 오류가 발생했습니다.');
     } finally {
       setZipBusy(false);
     }
   }
 
   function navModal(dir) {
-    setModalIdx((i) => (i === null ? null : (i + dir + images.length) % images.length));
+    const totalSlides = imageUrls.length > 0 ? imageUrls.length : images.length;
+    setModalIdx((i) => (i === null ? null : (i + dir + totalSlides) % totalSlides));
   }
 
   return (
@@ -414,11 +497,18 @@ export default function CardNewsClient() {
         {loading && (
           <div className={styles.loading}>
             <div className={styles.loadingSpinner} />
-            <div className={styles.loadingText}>AI가 카드뉴스를 만들고 있습니다...</div>
+            {renderVariant === 'chromium' ? (
+              <>
+                <div className={styles.loadingText}>고화질 카드뉴스를 생성하고 있어요</div>
+                <small style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4 }}>최대 1분 정도 걸릴 수 있어요</small>
+              </>
+            ) : (
+              <div className={styles.loadingText}>AI가 카드뉴스를 만들고 있습니다...</div>
+            )}
           </div>
         )}
 
-        {images.length > 0 && (
+        {(images.length > 0 || imageUrls.length > 0) && (
           <div ref={gridRef}>
             {userImages.length > 0 && (
               <div style={{
@@ -508,7 +598,8 @@ export default function CardNewsClient() {
               </div>
             )}
             <div className={styles.previewGrid}>
-              {images.map((base64, i) => {
+              {(imageUrls.length > 0 ? imageUrls : images).map((item, i) => {
+                const src = imageUrls.length > 0 ? item : `data:image/png;base64,${item}`;
                 const hasUserImg = userImages.some((u) => u.cardIndex === i);
                 return (
                   <div
@@ -516,7 +607,7 @@ export default function CardNewsClient() {
                     className={styles.previewItem}
                     onClick={() => setModalIdx(i)}
                   >
-                    <img src={`data:image/png;base64,${base64}`} alt={`슬라이드 ${i + 1}`} />
+                    <img src={src} alt={`슬라이드 ${i + 1}`} />
                     <span className={styles.previewNum}>{i + 1}</span>
                     {hasUserImg && <span className={styles.previewUserImg}>내 사진</span>}
                     <button
@@ -561,8 +652,15 @@ export default function CardNewsClient() {
             <button type="button" className={styles.modalClose} onClick={() => setModalIdx(null)}>×</button>
             <button type="button" className={`${styles.modalNav} ${styles.modalPrev}`} onClick={() => navModal(-1)}>‹</button>
             <button type="button" className={`${styles.modalNav} ${styles.modalNext}`} onClick={() => navModal(1)}>›</button>
-            <img src={`data:image/png;base64,${images[modalIdx]}`} alt="미리보기" />
-            <div className={styles.modalCounter}>{modalIdx + 1} / {images.length}</div>
+            <img
+              src={imageUrls.length > 0
+                ? imageUrls[modalIdx]
+                : `data:image/png;base64,${images[modalIdx]}`}
+              alt="미리보기"
+            />
+            <div className={styles.modalCounter}>
+              {modalIdx + 1} / {imageUrls.length > 0 ? imageUrls.length : images.length}
+            </div>
           </div>
         </div>
       )}
