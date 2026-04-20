@@ -16,7 +16,7 @@ export const BulletList = ({ items, highlight = true, startFrame = 0, stagger = 
         flexDirection: "column",
         gap: 18,
         alignItems: "flex-start",
-        maxWidth: 800,
+        maxWidth: 920,
       }}
     >
       {safeItems.map((item, i) => {

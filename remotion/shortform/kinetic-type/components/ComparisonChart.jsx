@@ -73,11 +73,11 @@ export const ComparisonChart = ({
 
   return (
     <div
-      style={{ width: "100%", maxWidth: 800 }}
+      style={{ width: "100%", maxWidth: 940 }}
     >
       {text && (
         <div style={{
-          fontFamily: KT_FONT, fontWeight: KT_WEIGHTS.bold, fontSize: 40,
+          fontFamily: KT_FONT, fontWeight: KT_WEIGHTS.bold, fontSize: 52,
           color: colors.white, marginBottom: 24, lineHeight: 1.4,
           wordBreak: "keep-all", textAlign: "center",
         }}>{text}</div>
@@ -115,7 +115,7 @@ export const ComparisonChart = ({
           style={{
             fontFamily: KT_FONT,
             fontWeight: KT_WEIGHTS.bold,
-            fontSize: 32,
+            fontSize: 36,
             color: colors.gray,
             textAlign: "center",
           }}
@@ -126,7 +126,7 @@ export const ComparisonChart = ({
           style={{
             fontFamily: KT_FONT,
             fontWeight: KT_WEIGHTS.black,
-            fontSize: 32,
+            fontSize: 40,
             color: highlightRight ? colors.coral : colors.gray,
             textAlign: "center",
           }}
@@ -160,7 +160,7 @@ export const ComparisonChart = ({
               style={{
                 fontFamily: KT_FONT,
                 fontWeight: KT_WEIGHTS.bold,
-                fontSize: 34,
+                fontSize: 38,
                 color: colors.white,
                 lineHeight: 1.3,
               }}

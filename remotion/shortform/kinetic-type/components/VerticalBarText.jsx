@@ -34,7 +34,7 @@ export const VerticalBarText = ({ text, startFrame = 0, preset }) => {
         display: "flex",
         alignItems: "center",
         gap: 24,
-        maxWidth: 800,
+        maxWidth: 920,
       }}
     >
       <div

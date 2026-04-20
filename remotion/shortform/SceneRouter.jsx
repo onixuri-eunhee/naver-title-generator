@@ -102,7 +102,7 @@ export function SceneRouter({
             display: 'flex',
             alignItems: 'center',
             justifyContent,
-            padding: `${paddingTop}px 72px ${paddingBottom}px`,
+            padding: `${paddingTop}px 48px ${paddingBottom}px`,
           }}
         >
           <LayoutComponent

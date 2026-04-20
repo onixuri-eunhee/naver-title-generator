@@ -59,7 +59,7 @@ export const GiantNumberCounter = ({
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        maxWidth: 800,
+        maxWidth: 920,
       }}
     >
       {label && (

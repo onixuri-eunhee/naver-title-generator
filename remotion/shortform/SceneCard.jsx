@@ -147,7 +147,19 @@ export const SceneCard = ({
       )
     : 0;
   const effectiveCameraMotion = isFirst ? 'zoom-in' : cameraMotion;
-  const textWrapperTransform = isFirst ? `scale(${FIRST_SCENE_BOOST.textScale})` : 'none';
+  const motionIntensity =
+    kinetic === 'heavy'
+      ? 1
+      : kinetic === 'word-by-word' || kinetic === 'light'
+        ? 0.6
+        : 0;
+  const idleFloatY = motionIntensity > 0 ? Math.sin(frame / 12) * 6 * motionIntensity : 0;
+  const idleScale = motionIntensity > 0 ? 1 + (Math.sin(frame / 18) * 0.018 * motionIntensity) : 1;
+  const textWrapperTransform = [
+    isFirst ? `scale(${FIRST_SCENE_BOOST.textScale})` : null,
+    motionIntensity > 0 ? `translateY(${idleFloatY}px)` : null,
+    motionIntensity > 0 ? `scale(${idleScale})` : null,
+  ].filter(Boolean).join(' ') || 'none';
 
   return (
     <AbsoluteFill>
