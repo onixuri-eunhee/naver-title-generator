@@ -355,7 +355,7 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
         section: sectionKey,
         durationInFrames: sceneDurations[i],
         imageUrl: pickImage(i, s),
-        badge: isHook ? (s.hookText || script?.hookText || 'STOP').slice(0, 12) : undefined,
+        badge: isHook ? (s.hookText || script?.hookText || 'STOP') : undefined,
         ctaButtonText: isCta ? '지금 시작 →' : undefined,
         layoutType: s.layoutType && VALID_LAYOUT_TYPES.includes(s.layoutType)
           ? s.layoutType
@@ -397,7 +397,7 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
     const slides = orderedScenes.map((s, i) => ({
       imageUrl: i < imgs.length ? imgs[i] : undefined,
       text: s.script,
-      badge: s._kind === 'hook' ? (s.hookText || 'STOP').slice(0, 12) : undefined,
+      badge: s._kind === 'hook' ? (s.hookText || 'STOP') : undefined,
       ctaButton: s._kind === 'cta' ? '지금 시작 →' : undefined,
     }));
 
@@ -447,7 +447,7 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
     preset: presetKey,
     mode: 'kinetic',
     hook: {
-      badge: hookBadge.slice(0, 12),
+      badge: hookBadge,
       title: hookTitle,
       underlineText: underlineText || undefined,
       imageUrl: hookImage,

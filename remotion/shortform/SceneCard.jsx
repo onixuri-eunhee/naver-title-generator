@@ -20,6 +20,37 @@ const FIRST_SCENE_BOOST = {
   flashOpacity: [0, 0.25, 0],
 };
 
+function formatBadgeText(text, maxCharsPerLine = 10, maxLines = 2) {
+  const normalized = typeof text === 'string' ? text.replace(/\s+/g, ' ').trim() : '';
+  if (!normalized) return '';
+
+  const words = normalized.split(' ');
+  const lines = [];
+  let current = '';
+
+  while (words.length > 0 && lines.length < maxLines) {
+    const word = words.shift();
+    const candidate = current ? `${current} ${word}` : word;
+    if (!current || candidate.length <= maxCharsPerLine) {
+      current = candidate;
+      continue;
+    }
+    lines.push(current);
+    current = word;
+  }
+
+  const remaining = [current, ...words].filter(Boolean).join(' ');
+
+  if (remaining) {
+    const trimmed = remaining.length > maxCharsPerLine
+      ? `${remaining.slice(0, Math.max(0, maxCharsPerLine - 1)).trimEnd()}…`
+      : remaining;
+    lines.push(trimmed);
+  }
+
+  return lines.slice(0, maxLines).join('\n');
+}
+
 /**
  * SceneCard — Phase A Scene Sequence Renderer 의 단일 씬 렌더러.
  *
@@ -63,6 +94,7 @@ export const SceneCard = ({
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { colors } = preset;
+  const displayBadge = formatBadgeText(badge);
 
   // ── 씬 인덱스 기반 kinetic variant 로테이션 ──
   // 프리셋이 kineticHook/kineticBody를 지정하면 그걸 우선 사용,
@@ -191,7 +223,7 @@ export const SceneCard = ({
         }}
       >
         {/* Hook 씬 뱃지 */}
-        {section === 'hook' && badge && (
+        {section === 'hook' && displayBadge && (
           <div
             style={{
               opacity: badgeIn,
@@ -204,11 +236,15 @@ export const SceneCard = ({
               padding: '14px 32px',
               borderRadius: 100,
               marginBottom: 40,
-              letterSpacing: 2,
+              letterSpacing: 0,
+              lineHeight: 1.2,
+              textAlign: 'center',
+              whiteSpace: 'pre-wrap',
+              maxWidth: 520,
               boxShadow: `0 8px 24px ${colors.accent}40`,
             }}
           >
-            {badge}
+            {displayBadge}
           </div>
         )}
 
