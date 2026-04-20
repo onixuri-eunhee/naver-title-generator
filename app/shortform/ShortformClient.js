@@ -687,15 +687,23 @@ function Step3ChipRow({ settings, onChange, disabled, errorMessage, reasoning })
 
   return (
     <div style={{ marginTop: 16 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', marginBottom: 6 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', marginBottom: 2 }}>
         AI 판정 + 세부 조정
+      </div>
+      <div style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 6, lineHeight: 1.4 }}>
+        자동 그대로면 <b>추가 차감 없음</b>. 선택한 값은 이 대본을 <b>그 부분만 재생성</b>할 때 표시된 비용이 차감돼요.
       </div>
       <div style={rowStyle}>
         {chips.map((chip) => {
           const value = settings[chip.id];
           const cost = getChipCost(chip.id, value);
-          const costLabel = cost === 0 ? '무료 ✨' : formatCredit(cost);
-          const tip = reasoning?.[chip.id] || null;
+          const costLabel =
+            cost === 0 ? '무료 ✨' : `재생성 ${formatCredit(cost)}`;
+          const tip =
+            reasoning?.[chip.id] ||
+            (cost > 0
+              ? `이 항목만 다시 돌릴 때 ${formatCredit(cost)} 차감. 자동이면 차감 없음.`
+              : null);
 
           return (
             <label key={chip.id} style={chipStyle} title={tip || undefined}>
