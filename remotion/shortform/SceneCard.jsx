@@ -84,16 +84,18 @@ export const SceneCard = ({
   }
 
   // SHORTFORM_PRESETS.kinetic 이 명시적으로 전달되면 variant 오버라이드.
-  // UI 에 표시된 "정적/라이트/헤비/한 단어씩" 과 실제 애니메이션 강도 일치시키는 역할.
-  //   static        → 애니메이션 비활성 (fade-in 만)
-  //   light         → wordReveal (단어 단위 페이드, 기본 애니메이션 유지)
-  //   heavy         → scaleBounce (scale bounce + spring)
-  //   word-by-word  → wordReveal (단어별 순차 — light 와 동일 variant 이지만 의미 분리)
+  // UI 라벨(정적/라이트/헤비/한 단어씩)과 실제 애니메이션이 **4종 모두 구분**되도록 매핑.
+  //   static        → fadeOnly   (KineticText fallback, 애니메이션 없음)
+  //   light         → slideUpMask (아래→위 마스크 슬라이드, 부드러움)
+  //   heavy         → scaleBounce (스프링 바운스, 임팩트)
+  //   word-by-word  → wordReveal (단어별 순차 페이드 — 라이트와 구조적으로 다름)
   if (kinetic === 'static') {
-    kineticVariant = 'fadeOnly';       // kineticText 에서 fallback → 기본 render (스타일만)
+    kineticVariant = 'fadeOnly';
+  } else if (kinetic === 'light') {
+    kineticVariant = 'slideUpMask';
   } else if (kinetic === 'heavy') {
     kineticVariant = 'scaleBounce';
-  } else if (kinetic === 'light' || kinetic === 'word-by-word') {
+  } else if (kinetic === 'word-by-word') {
     kineticVariant = 'wordReveal';
   }
 
