@@ -63,6 +63,7 @@ export function SceneRouter({
   cameraMotion,
   subtitle,
   textPosition,
+  kinetic = 'static',
   designTokens,
 }) {
   const tokens = designTokens || DEFAULT_DESIGN_TOKENS;
@@ -123,6 +124,7 @@ export function SceneRouter({
       cameraMotion={cameraMotion}
       subtitle={subtitle}
       textPosition={textPosition}
+      kinetic={kinetic}
       badge={scene.badge}
       ctaButtonText={scene.ctaButtonText}
       isFirst={scene.isFirst}

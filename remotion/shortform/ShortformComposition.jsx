@@ -66,6 +66,7 @@ export const ShortformComposition = ({
   textPosition = 'center',
   cameraMotion = 'ken-burns',
   sceneTransition = 'slide',
+  kinetic = 'static',              // 자막 애니메이션 강도: static|light|heavy|word-by-word
 }) => {
   const preset = getPreset(presetKey);
 
@@ -81,6 +82,7 @@ export const ShortformComposition = ({
         textPosition={textPosition}
         cameraMotion={cameraMotion}
         sceneTransition={sceneTransition === 'slide' ? 'auto' : sceneTransition}
+        kinetic={kinetic}
       />
     );
   }
@@ -113,6 +115,7 @@ export const ShortformComposition = ({
             subtitle={subtitle}
             textPosition={textPosition}
             cameraMotion={cameraMotion}
+            kinetic={kinetic}
             isFirst={i === 0}
             isLast={i === slideCount - 1}
             badge={slide.badge}
@@ -159,6 +162,7 @@ export const ShortformComposition = ({
             subtitle={subtitle}
             textPosition={textPosition}
             cameraMotion={cameraMotion}
+            kinetic={kinetic}
           />
         </TransitionSeries.Sequence>
 
@@ -177,6 +181,7 @@ export const ShortformComposition = ({
             subtitle={subtitle}
             textPosition={textPosition}
             cameraMotion={cameraMotion}
+            kinetic={kinetic}
             type={body?.type}
             typeProps={body?.typeProps}
           />
@@ -195,6 +200,7 @@ export const ShortformComposition = ({
             preset={preset}
             subtitle={subtitle}
             textPosition={textPosition}
+            kinetic={kinetic}
           />
         </TransitionSeries.Sequence>
       </TransitionSeries>

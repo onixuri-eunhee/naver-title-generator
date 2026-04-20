@@ -54,6 +54,7 @@ export const SceneCard = ({
   cameraMotion = 'ken-burns',
   subtitle,
   textPosition = 'center',
+  kinetic = null,                     // SHORTFORM_PRESETS.kinetic: static|light|heavy|word-by-word
   badge,
   ctaButtonText,
   isFirst = false,
@@ -80,6 +81,20 @@ export const SceneCard = ({
     } else {
       kineticVariant = 'wordReveal';
     }
+  }
+
+  // SHORTFORM_PRESETS.kinetic 이 명시적으로 전달되면 variant 오버라이드.
+  // UI 에 표시된 "정적/라이트/헤비/한 단어씩" 과 실제 애니메이션 강도 일치시키는 역할.
+  //   static        → 애니메이션 비활성 (fade-in 만)
+  //   light         → wordReveal (단어 단위 페이드, 기본 애니메이션 유지)
+  //   heavy         → scaleBounce (scale bounce + spring)
+  //   word-by-word  → wordReveal (단어별 순차 — light 와 동일 variant 이지만 의미 분리)
+  if (kinetic === 'static') {
+    kineticVariant = 'fadeOnly';       // kineticText 에서 fallback → 기본 render (스타일만)
+  } else if (kinetic === 'heavy') {
+    kineticVariant = 'scaleBounce';
+  } else if (kinetic === 'light' || kinetic === 'word-by-word') {
+    kineticVariant = 'wordReveal';
   }
 
   // ── 텍스트 크기: hook 적응 / point 고정 / cta 고정 ──
