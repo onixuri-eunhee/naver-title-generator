@@ -10,11 +10,13 @@
 
 import { AbsoluteFill } from 'remotion';
 import { SceneCard } from './SceneCard.jsx';
+import { NarrationSubtitle } from './NarrationSubtitle.jsx';
 import { LottieOverlay } from './kinetic-type/components/effects/LottieOverlay.jsx';
 import { ConfettiOverlay } from './kinetic-type/components/effects/ConfettiOverlay.jsx';
 import { SparkleOverlay } from './kinetic-type/components/effects/SparkleOverlay.jsx';
 import { CheckmarkDraw } from './kinetic-type/components/effects/CheckmarkDraw.jsx';
 import { DEFAULT_DESIGN_TOKENS } from '../../lib/shortform/design-tokens-shared.js';
+import { textPositionToAlign } from './styles.js';
 import { BigImpactText } from './kinetic-type/components/BigImpactText.jsx';
 import { BulletList } from './kinetic-type/components/BulletList.jsx';
 import { ComparisonColumns } from './kinetic-type/components/ComparisonColumns.jsx';
@@ -78,9 +80,14 @@ export function SceneRouter({
   if (LayoutComponent) {
     const layoutProps = scene.layoutProps || {};
     const section = scene.section || 'point';
-
-    // designTokens 기반 동적 패딩 — titlePositionPercent를 1920px 세로 기준으로 변환
-    const topPadding = Math.round(1920 * (tokens.titlePositionPercent / 100));
+    const narrationPositionOverride =
+      layoutType === 'subtitle-bar' && subtitle?.position === 'bottom'
+        ? 'top'
+        : null;
+    const anchorPadding = Math.round(1920 * (tokens.titlePositionPercent / 100));
+    const justifyContent = textPositionToAlign(textPosition);
+    const paddingTop = justifyContent === 'flex-start' ? anchorPadding : 120;
+    const paddingBottom = justifyContent === 'flex-end' ? anchorPadding : 120;
 
     // 이펙트 오버레이 자동 매칭
     let EffectOverlay = null;
@@ -94,8 +101,8 @@ export function SceneRouter({
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'flex-start',
-            padding: `${topPadding}px 72px 120px`,
+            justifyContent,
+            padding: `${paddingTop}px 72px ${paddingBottom}px`,
           }}
         >
           <LayoutComponent
@@ -106,6 +113,14 @@ export function SceneRouter({
             {...layoutProps}
           />
         </AbsoluteFill>
+        {scene?.narration && scene.narration !== scene.text && (
+          <NarrationSubtitle
+            text={scene.narration}
+            subtitle={subtitle}
+            defaultColor={preset?.colors?.white || '#ffffff'}
+            positionOverride={narrationPositionOverride}
+          />
+        )}
         {EffectOverlay && <EffectOverlay preset={preset} startFrame={5} />}
         <LottieOverlay layoutType={layoutType} section={section} />
       </AbsoluteFill>

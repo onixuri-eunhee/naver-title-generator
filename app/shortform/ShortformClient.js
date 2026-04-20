@@ -25,6 +25,7 @@ import {
 } from '@/lib/shortform/scene-timing.js';
 import { computeTailPadding } from '@/lib/shortform/tail-padding';
 import { DEFAULT_DESIGN_TOKENS } from '@/lib/shortform/design-tokens-shared.js';
+import { buildCaptionFallbacks } from '@/lib/shortform/caption-fallback.js';
 
 // SceneRouter LAYOUT_REGISTRY 키와 동기화 — 잘못된 layoutType fallback용
 const VALID_LAYOUT_TYPES = [
@@ -118,6 +119,7 @@ const CREDIT_COSTS = {
   shortform: { 30: 7, 45: 10, 60: 14, 90: 18 },
   longform: { 180: 7, 300: 12, 600: 22 },
 };
+const MAX_ONSCREEN_TEXT_LENGTH = 8;
 
 function authHeaders() {
   const h = { 'Content-Type': 'application/json' };
@@ -342,13 +344,13 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
       const isCta = s.section === 'cta' || i === validScenes.length - 1;
       const sectionKey = isHook ? 'hook' : isCta ? 'cta' : 'point';
       // onScreenText — Claude가 준 값 우선, 없거나 너무 길면 추출기 fallback.
-      // 15자를 hard ceiling으로 고정 (컴포넌트 safe area 초과 방지).
+      // 프롬프트/validator와 동일하게 8자를 hard ceiling으로 고정.
       const rawOnScreen = typeof s.onScreenText === 'string' ? s.onScreenText.trim() : '';
-      const onScreenTextRaw = rawOnScreen && rawOnScreen.length <= 15
+      const onScreenTextRaw = rawOnScreen && rawOnScreen.length <= MAX_ONSCREEN_TEXT_LENGTH
         ? rawOnScreen
-        : extractKeyPhrase(s.script, 15);
+        : extractKeyPhrase(s.script, MAX_ONSCREEN_TEXT_LENGTH);
       const base = {
-        text: correctTypos(onScreenTextRaw),     // 화면 표시용 짧은 구문 (≤15자) + 오타 교정
+        text: correctTypos(onScreenTextRaw),     // 화면 표시용 짧은 구문 (≤8자) + 오타 교정
         narration: correctTypos(s.script),       // 음성/자막용 원본 + 오타 교정
         section: sectionKey,
         durationInFrames: sceneDurations[i],
@@ -508,14 +510,10 @@ function buildFallbackCaption(script, platform) {
   if (!script || !Array.isArray(script.scenes) || script.scenes.length === 0) {
     return '';
   }
-  const first = script.scenes[0]?.script || script.scenes[0]?.hookText || '';
-  const last = script.scenes[script.scenes.length - 1]?.script || '';
-  const body = [first, last].filter(Boolean).join('\n\n');
-  const hashtags = platform === 'youtube'
-    ? '#Shorts #쇼츠 #숏폼'
-    : '#릴스 #숏폼 #인스타';
-  if (!body) return '';
-  return `${body}\n\n${hashtags}`.slice(0, 500);
+  const fallbacks = buildCaptionFallbacks(script.scenes);
+  return platform === 'youtube'
+    ? (fallbacks.captionYouTube || '')
+    : (fallbacks.captionInstagram || '');
 }
 
 /**

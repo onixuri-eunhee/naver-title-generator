@@ -5,8 +5,9 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
-import { FONTS, SIZES, SPRING_CONFIG, buildSubtitleStyle } from './styles.js';
+import { FONTS, SIZES, SPRING_CONFIG } from './styles.js';
 import { KenBurnsImage } from './KenBurnsImage.jsx';
+import { NarrationSubtitle } from './NarrationSubtitle.jsx';
 import { KineticText, KINETIC_VARIANTS } from './kineticText.js';
 
 // Phase A-bis §4.10 — First 3 Seconds 시각 boost.
@@ -119,9 +120,6 @@ export const SceneCard = ({
   const badgeIn = spring({ frame: frame - 5, fps, config: SPRING_CONFIG });
   const badgeY = interpolate(badgeIn, [0, 1], [40, 0]);
 
-  // subtitle override 스타일 (Phase F 호환)
-  const subtitleStyle = buildSubtitleStyle(subtitle, textPosition);
-
   // 텍스트 정렬 — 기본 중앙
   const alignItems = 'center';
   const justifyContent =
@@ -228,7 +226,6 @@ export const SceneCard = ({
               letterSpacing: -0.5,
               textShadow: imageUrl ? '0 8px 32px rgba(0,0,0,0.65)' : 'none',
               maxWidth: 900,
-              ...(subtitleStyle || {}),
             }}
           />
         </div>
@@ -258,27 +255,12 @@ export const SceneCard = ({
 
       {/* 내레이션 하단 자막 — onScreenText와 narration이 다를 때만 */}
       {narration && narration !== text && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '12%',
-            left: 0,
-            right: 0,
-            padding: '0 72px',
-            textAlign: 'center',
-            fontFamily: FONTS.primary,
-            fontWeight: FONTS.weight.bold,
-            fontSize: 44,
-            color: imageUrl ? colors.white : colors.textPrimary,
-            letterSpacing: -0.5,
-            lineHeight: 1.35,
-            textShadow: imageUrl ? '0 4px 16px rgba(0,0,0,0.6)' : 'none',
-            wordBreak: 'keep-all',
-            opacity: 0.92,
-          }}
-        >
-          {narration}
-        </div>
+        <NarrationSubtitle
+          text={narration}
+          subtitle={subtitle}
+          imageUrl={Boolean(imageUrl)}
+          defaultColor={imageUrl ? colors.white : colors.textPrimary}
+        />
       )}
     </AbsoluteFill>
   );

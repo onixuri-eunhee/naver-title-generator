@@ -120,11 +120,11 @@ export function buildCardBorder(accent = '#ff6f61') {
  * Phase F — Step 6에서 커스터마이즈된 subtitle 값을 CSS로 변환
  *
  * subtitle: { color, font, size, position, bgColor, bgOpacity }
- * textPosition: 'top'|'center'|'center-large'|'bottom'|'free'
+ * textPosition: legacy param. 하위 호출부 호환용으로 유지하지만
+ * 실제 자막 크기/위치는 subtitle.* 기준으로만 계산한다.
  */
-export function buildSubtitleStyle(subtitle, textPosition) {
+export function buildSubtitleStyle(subtitle, _textPosition) {
   if (!subtitle) return null;
-  const sizeBoost = textPosition === 'center-large' ? 1.25 : 1;
   const isSolidBlock = (subtitle.bgOpacity ?? 0.5) >= 0.98;
   const wantsShadow = subtitle.noShadow ? false : !subtitle.bgColor;
   return {
@@ -132,7 +132,7 @@ export function buildSubtitleStyle(subtitle, textPosition) {
     fontFamily: subtitle.font
       ? `"${subtitle.font}", ${PRETENDARD}`
       : PRETENDARD,
-    fontSize: Math.round((subtitle.size || 56) * sizeBoost),
+    fontSize: Math.round(subtitle.size || 56),
     backgroundColor: subtitle.bgColor
       ? hexToRgba(subtitle.bgColor, subtitle.bgOpacity ?? 0.5)
       : 'transparent',
@@ -146,6 +146,18 @@ export function buildSubtitleStyle(subtitle, textPosition) {
     // bg 가 투명/없을 때만 기본 드롭섀도우 (가독성 보조). noShadow=true 또는 단색 블록에서는 제거.
     textShadow: wantsShadow ? '0 2px 6px rgba(0,0,0,0.45)' : 'none',
   };
+}
+
+export function getSubtitlePositionStyle(position = 'bottom') {
+  switch (position) {
+    case 'top':
+      return { top: '12%' };
+    case 'center':
+      return { top: '50%', transform: 'translateY(-50%)' };
+    case 'bottom':
+    default:
+      return { bottom: '12%' };
+  }
 }
 
 function hexToRgba(hex, alpha) {
