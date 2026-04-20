@@ -695,12 +695,12 @@ function Step3ChipRow({ settings, onChange, disabled, errorMessage, reasoning })
         {chips.map((chip) => {
           const value = settings[chip.id];
           const cost = getChipCost(chip.id, value);
-          const costLabel =
-            cost === 0 ? '무료 ✨' : `재생성 ${formatCredit(cost)}`;
+          const creditText = formatCredit(cost);
+          const costLabel = cost === 0 ? '무료 ✨' : `재생성 ${creditText}`;
           const tip =
             reasoning?.[chip.id] ||
             (cost > 0
-              ? `이 항목만 다시 돌릴 때 ${formatCredit(cost)} 차감. 자동이면 차감 없음.`
+              ? `이 항목만 다시 돌릴 때 ${creditText} 차감. 자동이면 차감 없음.`
               : null);
 
           return (

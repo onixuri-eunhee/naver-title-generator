@@ -10,6 +10,15 @@ import { KenBurnsImage } from './KenBurnsImage.jsx';
 import { NarrationSubtitle } from './NarrationSubtitle.jsx';
 import { KineticText, KINETIC_VARIANTS } from './kineticText.js';
 
+// SHORTFORM_PRESETS.kinetic (UI 라벨) → KineticText variant 매핑.
+// 4종 모두 시각적으로 구분되도록 의도적으로 서로 다른 variant 사용.
+const KINETIC_TO_VARIANT = {
+  'static': 'fadeOnly',         // KineticText fallback — 애니메이션 없음
+  'light': 'slideUpMask',       // 아래→위 마스크 슬라이드
+  'heavy': 'scaleBounce',       // 스프링 바운스
+  'word-by-word': 'wordReveal', // 단어별 순차 페이드
+};
+
 // Phase A-bis §4.10 — First 3 Seconds 시각 boost.
 // 프레임 단위 상수는 파일 내 localConst (lib/*로 추출 금지 — 애니메이션 내부 구현).
 const FIRST_SCENE_BOOST = {
@@ -116,20 +125,9 @@ export const SceneCard = ({
     }
   }
 
-  // SHORTFORM_PRESETS.kinetic 이 명시적으로 전달되면 variant 오버라이드.
-  // UI 라벨(정적/라이트/헤비/한 단어씩)과 실제 애니메이션이 **4종 모두 구분**되도록 매핑.
-  //   static        → fadeOnly   (KineticText fallback, 애니메이션 없음)
-  //   light         → slideUpMask (아래→위 마스크 슬라이드, 부드러움)
-  //   heavy         → scaleBounce (스프링 바운스, 임팩트)
-  //   word-by-word  → wordReveal (단어별 순차 페이드 — 라이트와 구조적으로 다름)
-  if (kinetic === 'static') {
-    kineticVariant = 'fadeOnly';
-  } else if (kinetic === 'light') {
-    kineticVariant = 'slideUpMask';
-  } else if (kinetic === 'heavy') {
-    kineticVariant = 'scaleBounce';
-  } else if (kinetic === 'word-by-word') {
-    kineticVariant = 'wordReveal';
+  // SHORTFORM_PRESETS.kinetic 오버라이드 — UI 라벨과 실제 애니메이션을 1:1 매핑.
+  if (kinetic && KINETIC_TO_VARIANT[kinetic]) {
+    kineticVariant = KINETIC_TO_VARIANT[kinetic];
   }
 
   // ── 텍스트 크기: hook 적응 / point 고정 / cta 고정 ──

@@ -89,10 +89,7 @@ export default function Step6Preview({
       textPosition: value.textPosition,
       cameraMotion: value.cameraMotion,
       sceneTransition: value.sceneTransition,
-      // kinetic: 프리셋별 자막 애니메이션 강도. Step6Preview → ShortformComposition →
-      // SceneSequenceComposition → SceneRouter → 각 씬 → KineticSubtitle 로 전달.
       kinetic: value.kinetic || preset.kinetic || 'static',
-      // Phase 2 (2026-04-18): Step 6 미리보기에서도 음성 싱크 확인 가능.
       audio: audioUrl
         ? { url: audioUrl, durationInFrames: playerDurationInFrames }
         : undefined,
