@@ -61,9 +61,7 @@ export default function PricingClient() {
     setPayReady(false);
 
     try {
-      const keyRes = await fetch('/api/payment-client-key');
-      const keyData = await keyRes.json();
-      const clientKey = keyData.clientKey;
+      const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
       if (!clientKey) throw new Error('클라이언트 키가 설정되지 않았습니다.');
 
       const PaymentWidget = window.PaymentWidget;

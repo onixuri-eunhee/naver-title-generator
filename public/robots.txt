@@ -1,5 +1,9 @@
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /admin-8524
+Disallow: /mypage
 Disallow: /404.html
 Disallow: /img-pro-8524.html
 
@@ -8,24 +12,56 @@ Sitemap: https://ddukddaktool.co.kr/sitemap.xml
 # AI Crawlers
 User-agent: GPTBot
 Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /admin-8524
+Disallow: /mypage
 
 User-agent: ChatGPT-User
 Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /admin-8524
+Disallow: /mypage
 
 User-agent: Google-Extended
 Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /admin-8524
+Disallow: /mypage
 
 User-agent: Anthropic-AI
 Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /admin-8524
+Disallow: /mypage
 
 User-agent: PerplexityBot
 Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /admin-8524
+Disallow: /mypage
 
 User-agent: ClaudeBot
 Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /admin-8524
+Disallow: /mypage
 
 User-agent: Bytespider
 Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /admin-8524
+Disallow: /mypage
 
 User-agent: CCBot
 Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /admin-8524
+Disallow: /mypage
