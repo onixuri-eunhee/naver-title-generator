@@ -845,53 +845,12 @@ export async function chargeShortformCredits(_params) {
   return { charged: 0, reason: 'pre-render: charging deferred to Step 7' };
 }
 
-/**
- * Cloudflare 100초 프록시 타임아웃 대응 — 90초 race.
- *
- * 90초 내 완료: 기존처럼 동기 JSON 응답.
- * 90초 경과: 202 + { jobId, accepted: true } 반환, 작업은 백그라운드에서 계속 실행.
- *   클라이언트는 /api/shortform-progress SSE로 'complete' 이벤트 수신하여 결과 획득.
- *   complete 이벤트의 result 필드에 responsePayload 전체가 담김.
- */
-const ASYNC_HANDOFF_MS = 90_000;
-
 export async function POST(request) {
   const body = await request.json().catch(() => ({}));
 
   // Phase I: jobId + SSE
   const jobId = body.jobId || createJobId();
 
-  // 백그라운드 unhandledRejection 방지용 .catch() 체인.
-  // 90초 race에서 이 Promise가 이기면 실제 응답이 됨.
-  // timeout이 이기면 이 Promise는 백그라운드에서 계속 실행되며 publishProgress로 결과 전달.
-  const workPromise = runScriptGeneration(request, body, jobId).catch((err) => {
-    console.error('[shortform-script] background worker error:', err?.message || err);
-    // Race에서 이 Promise가 이겼을 때 500 반환
-    return jsonResponse(
-      request,
-      { error: '대본 생성 중 오류가 발생했습니다.', jobId },
-      { status: 500 },
-    );
-  });
-
-  const ASYNC_SENTINEL = Symbol('async');
-  const timeoutPromise = new Promise((resolve) => {
-    setTimeout(() => resolve(ASYNC_SENTINEL), ASYNC_HANDOFF_MS);
-  });
-
-  const winner = await Promise.race([workPromise, timeoutPromise]);
-  if (winner === ASYNC_SENTINEL) {
-    // 작업은 Vercel Node.js runtime에서 maxDuration까지 계속 실행됨 (pending promise)
-    return jsonResponse(
-      request,
-      { jobId, accepted: true, async: true },
-      { status: 202 },
-    );
-  }
-  return winner;
-}
-
-async function runScriptGeneration(request, body, jobId) {
   try {
     // 기존 필드 (역호환)
     const topic = toSentence(body.topic);
@@ -1153,7 +1112,7 @@ async function runScriptGeneration(request, body, jobId) {
 
     await publishProgress(jobId, {
       type: 'complete',
-      result: responsePayload,
+      result: { jobId, script, settings },
     });
 
     return jsonResponse(request, responsePayload);
