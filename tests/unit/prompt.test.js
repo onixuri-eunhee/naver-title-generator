@@ -207,6 +207,17 @@ test('buildUserPrompt: tone professional', () => {
   assert.ok(prompt.includes('세무사'), '주제 포함');
 });
 
+test('buildUserPrompt: 벤치마킹 대신 프롬프트 자산 규칙 포함', () => {
+  const prompt = buildUserPrompt({
+    topic: '아이 편식 줄이는 방법',
+    tone: 'casual',
+    targetSceneCount: 7,
+  });
+  assert.ok(prompt.includes('숏츠 작성 원칙'), '프롬프트 자산 섹션 포함');
+  assert.ok(prompt.includes('~일 수 있어요'), '금지 표현 규칙 포함');
+  assert.ok(!prompt.includes('실제 바이럴 영상'), '자동 벤치마킹 섹션 제거');
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // contentType 분기 (short vs long)
 // ─────────────────────────────────────────────────────────────────────────────

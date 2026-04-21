@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getToken } from '@/lib/auth';
@@ -26,6 +26,10 @@ import {
 import { computeTailPadding } from '@/lib/shortform/tail-padding';
 import { DEFAULT_DESIGN_TOKENS } from '@/lib/shortform/design-tokens-shared.js';
 import { buildCaptionFallbacks } from '@/lib/shortform/caption-fallback.js';
+import {
+  isRenderCompleteEvent,
+  isScriptCompleteEvent,
+} from '@/lib/shortform/progress-events.js';
 
 // SceneRouter LAYOUT_REGISTRY 키와 동기화 — 잘못된 layoutType fallback용
 const VALID_LAYOUT_TYPES = [
@@ -81,7 +85,7 @@ function generateClientJobId() {
 
 const STEP_LIST = [
   { id: 1, label: '입력' },
-  { id: 2, label: '벤치마킹' },
+  { id: 2, label: '전략' },
   { id: 3, label: '대본' },
   { id: 4, label: '음성' },
   { id: 5, label: '비주얼' },
@@ -1106,6 +1110,24 @@ function ShortformClientInner() {
     } catch {}
   }, [jobId]);
 
+  const applyScriptResult = useCallback((data) => {
+    if (!data?.script) return;
+    setError('');
+    setScript(data.script);
+    setOriginalScript(JSON.parse(JSON.stringify(data.script)));
+    if (data.designTokens && typeof data.designTokens === 'object') {
+      setDesignTokens(data.designTokens);
+    }
+    if (data.settings && typeof data.settings === 'object') {
+      setSettings(migrateSettings(data.settings));
+    }
+    setScriptStatus('done');
+    setCompletedSteps((prev) => Array.from(new Set([...prev, 1, 2, 3])));
+    if (data.freeFirstApplied) {
+      setIsFreeFirst(false);
+    }
+  }, []);
+
   // 완료/에러/취소 시 localStorage 정리 + 브라우저 알림
   useEffect(() => {
     if (
@@ -1129,6 +1151,23 @@ function ShortformClientInner() {
       }
     }
   }, [progressStatus]);
+
+  useEffect(() => {
+    if (progressStatus === 'complete' && isScriptCompleteEvent(progressResult)) {
+      applyScriptResult(progressResult);
+      return;
+    }
+    if (scriptStatus !== 'busy') return;
+    if (progressStatus === 'error') {
+      setError(progressError || '대본 생성 중 오류');
+      setScriptStatus('error');
+      return;
+    }
+    if (progressStatus === 'cancelled') {
+      setError(progressError || '대본 생성을 취소했습니다.');
+      setScriptStatus('idle');
+    }
+  }, [applyScriptResult, progressStatus, progressResult, progressError, scriptStatus]);
 
   // === Phase K: 온보딩 위저드 + 첫 영상 무료 ===
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -1528,7 +1567,7 @@ function ShortformClientInner() {
     if (renderStatus !== 'rendering') return;
 
     if (progressStatus === 'complete') {
-      if (progressResult?.url) {
+      if (isRenderCompleteEvent(progressResult)) {
         setRenderVideoUrl(progressResult.url);
         setRenderStatus('complete');
       } else {
@@ -1594,26 +1633,8 @@ function ShortformClientInner() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '대본 생성 실패');
-      setScript(data.script);
-      // 원본 대본 저장 (ScriptTextEditor 되돌리기 버튼 용도)
-      setOriginalScript(JSON.parse(JSON.stringify(data.script)));
-      // designTokens — 서버가 카테고리별 토큰 내려주면 state 갱신, 없으면 null (DEFAULT fallback)
-      if (data.designTokens && typeof data.designTokens === 'object') {
-        setDesignTokens(data.designTokens);
-      }
-      // Phase A-bis — 서버가 settings 내려주면 migrateSettings로 병합 후 state 갱신.
-      // 없으면 DEFAULT_SETTINGS 유지 (역호환).
-      if (data.settings && typeof data.settings === 'object') {
-        setSettings(migrateSettings(data.settings));
-      }
-      setScriptStatus('done');
-      // 대본 완료 → 입력(1) + 벤치마킹(2) + 대본(3) 단계 마킹
-      setCompletedSteps((prev) => Array.from(new Set([...prev, 1, 2, 3])));
-      // Phase K: 첫 영상 무료 적용됐으면 배너 숨김 (Agent D 가 응답에
-      // freeFirstApplied 포함하도록 wire-up 한 뒤에만 동작)
-      if (data.freeFirstApplied) {
-        setIsFreeFirst(false);
-      }
+      if (data.async || data.accepted) return;
+      applyScriptResult(data);
     } catch (err) {
       setError(err.message || '대본 생성 중 오류');
       setScriptStatus('error');
@@ -2546,61 +2567,6 @@ function ShortformClientInner() {
             )}
           </div>
 
-          {script && Array.isArray(script.benchmarkCandidates) && script.benchmarkCandidates.length > 0 && (
-            <div className={styles.card}>
-              <div className={styles.cardLabel}>벤치마킹한 영상 ({script.benchmarkCandidates.length}개)</div>
-              <p style={{ fontSize: 11, color: 'var(--ds-muted, #77736B)', marginBottom: 10, lineHeight: 1.5 }}>
-                AI가 이 영상들의 후킹·구조·길이를 분석해 대본에 반영했어요.
-              </p>
-              <div style={{ display: 'grid', gap: 8 }}>
-                {script.benchmarkCandidates.map((v, i) => (
-                  <a
-                    key={v.videoId || i}
-                    href={v.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'flex',
-                      gap: 10,
-                      padding: 8,
-                      borderRadius: 8,
-                      border: '1px solid var(--ds-border, #E5E7EB)',
-                      background: '#fff',
-                      textDecoration: 'none',
-                      color: 'inherit',
-                    }}
-                  >
-                    {v.thumbnail && (
-                      <img
-                        src={v.thumbnail}
-                        alt=""
-                        style={{ width: 96, height: 54, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }}
-                        loading="lazy"
-                      />
-                    )}
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.4, color: 'var(--ds-text, #1F2937)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                        {v.title}
-                      </div>
-                      <div style={{ fontSize: 10, color: 'var(--ds-muted, #77736B)', marginTop: 4 }}>
-                        {v.channelName}
-                        {v.viewCount > 0 && ` · 조회수 ${Number(v.viewCount).toLocaleString('ko-KR')}`}
-                      </div>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-          {script && script.benchmarkFallback && (
-            <div className={styles.card}>
-              <div className={styles.cardLabel}>벤치마킹</div>
-              <p style={{ fontSize: 12, color: 'var(--ds-muted, #77736B)', lineHeight: 1.5, margin: 0 }}>
-                해당 키워드에 대한 후보 영상을 찾지 못해 벤치마킹 없이 대본을 생성했어요.
-              </p>
-            </div>
-          )}
-
           {script && (
             <div className={styles.card}>
               <div className={styles.cardLabel}>생성된 대본</div>
@@ -2698,7 +2664,7 @@ function ShortformClientInner() {
           >
             {scriptStatus === 'busy' || ttsStatus === 'busy'
               ? '생성 중...'
-              : '한 번에 자동 생성 (벤치마킹·세부조정 없이 빠른 모드)'}
+              : '한 번에 자동 생성 (프롬프트 자산 기반 빠른 모드)'}
           </button>
           <p className={styles.skipHint}>
             바쁘시면 단계별 진행 없이 한 번에 영상을 만들 수 있어요. 다만 결과 품질은 단계 진행보다 낮습니다.

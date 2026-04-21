@@ -213,7 +213,7 @@ export default function Step1Input({ value, onChange, onNext, contentType = 'sho
         className={styles.nextBtn}
         onClick={validateAndNext}
       >
-        다음: 벤치마킹 영상 찾기 →
+        다음: 대본 전략 고르기 →
       </button>
     </div>
   );
