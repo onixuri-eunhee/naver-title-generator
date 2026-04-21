@@ -955,6 +955,36 @@ function ShortformClientInner() {
     reset: resetProgress,
   } = useJobProgress(jobId, { authToken: authTokenForProgress });
 
+  // 대본 생성 결과 반영 — 동기/비동기(SSE) 두 경로 공통 사용.
+  function applyScriptResult(data) {
+    if (!data?.script) return;
+    setScript(data.script);
+    setOriginalScript(JSON.parse(JSON.stringify(data.script)));
+    if (data.designTokens && typeof data.designTokens === 'object') {
+      setDesignTokens(data.designTokens);
+    }
+    if (data.settings && typeof data.settings === 'object') {
+      setSettings(migrateSettings(data.settings));
+    }
+    setScriptStatus('done');
+    setCompletedSteps((prev) => Array.from(new Set([...prev, 1, 2, 3])));
+    if (data.freeFirstApplied) {
+      setIsFreeFirst(false);
+    }
+  }
+
+  // 비동기 handoff (Cloudflare 100초 초과) 시 SSE complete 이벤트로 결과 수신.
+  // progressResult.script 가드로 렌더 단계의 complete 이벤트와 구분 (렌더 result는 { url, durationSec }).
+  useEffect(() => {
+    if (progressStatus === 'complete' && progressResult?.script) {
+      applyScriptResult(progressResult);
+    } else if (progressStatus === 'error' && scriptStatus === 'busy') {
+      setError(progressError || '대본 생성 중 오류가 발생했습니다.');
+      setScriptStatus('error');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progressStatus, progressResult, progressError]);
+
   // 페이지 진입 시 localStorage의 활성 jobId 복원
   useEffect(() => {
     try {
@@ -1594,26 +1624,16 @@ function ShortformClientInner() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '대본 생성 실패');
-      setScript(data.script);
-      // 원본 대본 저장 (ScriptTextEditor 되돌리기 버튼 용도)
-      setOriginalScript(JSON.parse(JSON.stringify(data.script)));
-      // designTokens — 서버가 카테고리별 토큰 내려주면 state 갱신, 없으면 null (DEFAULT fallback)
-      if (data.designTokens && typeof data.designTokens === 'object') {
-        setDesignTokens(data.designTokens);
+
+      // 비동기 handoff (Cloudflare 100초 초과 케이스): 202 응답.
+      // SSE complete 이벤트에서 결과 수신 → 아래 useEffect(progressResult) 가 state 반영.
+      if (data.async || data.accepted) {
+        // scriptStatus는 busy 유지, 진행률은 useJobProgress가 SSE로 계속 표시.
+        return;
       }
-      // Phase A-bis — 서버가 settings 내려주면 migrateSettings로 병합 후 state 갱신.
-      // 없으면 DEFAULT_SETTINGS 유지 (역호환).
-      if (data.settings && typeof data.settings === 'object') {
-        setSettings(migrateSettings(data.settings));
-      }
-      setScriptStatus('done');
-      // 대본 완료 → 입력(1) + 벤치마킹(2) + 대본(3) 단계 마킹
-      setCompletedSteps((prev) => Array.from(new Set([...prev, 1, 2, 3])));
-      // Phase K: 첫 영상 무료 적용됐으면 배너 숨김 (Agent D 가 응답에
-      // freeFirstApplied 포함하도록 wire-up 한 뒤에만 동작)
-      if (data.freeFirstApplied) {
-        setIsFreeFirst(false);
-      }
+
+      // 동기 완료 (90초 내): 기존 경로.
+      applyScriptResult(data);
     } catch (err) {
       setError(err.message || '대본 생성 중 오류');
       setScriptStatus('error');
