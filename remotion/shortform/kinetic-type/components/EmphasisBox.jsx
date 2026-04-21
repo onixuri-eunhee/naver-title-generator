@@ -44,7 +44,7 @@ export const EmphasisBox = ({ text, variant = "check", startFrame = 0, preset })
         backgroundColor: vs.bg,
         border: vs.border,
         borderRadius: 20,
-        maxWidth: 800,
+        maxWidth: 920,
       }}
     >
       <div

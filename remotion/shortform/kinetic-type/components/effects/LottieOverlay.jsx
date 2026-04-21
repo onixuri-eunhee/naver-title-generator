@@ -3,7 +3,7 @@
  * public/lottie/ 폴더의 JSON 파일을 런타임에 fetch.
  */
 import { useEffect, useState } from 'react';
-import { AbsoluteFill } from 'remotion';
+import { AbsoluteFill, staticFile } from 'remotion';
 import { Lottie } from '@remotion/lottie';
 
 // Phase 2 (2026-04-18): counter/number-slam의 sparkle.json 제거.
@@ -11,7 +11,7 @@ import { Lottie } from '@remotion/lottie';
 // 덮어 숫자를 가리는 문제 발생. SparkleOverlay가 같은 역할을 더 깔끔하게 수행.
 const LOTTIE_MAP = {};
 
-const CTA_LOTTIE = '/lottie/confetti.json';
+const CTA_LOTTIE = staticFile('lottie/confetti.json');
 
 export const LottieOverlay = ({ layoutType, section, style }) => {
   const [animationData, setAnimationData] = useState(null);

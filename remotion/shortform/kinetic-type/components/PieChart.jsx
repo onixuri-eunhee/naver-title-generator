@@ -17,8 +17,8 @@ function sliceColors(colors) {
 
 export const PieChart = ({
   slices: rawSlices,
-  size = 480,
-  strokeWidth = 64,
+  size = 620,
+  strokeWidth = 76,
   startFrame = 0,
   sliceDuration = 18,
   centerLabel,

@@ -5,9 +5,19 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
-import { FONTS, SIZES, SPRING_CONFIG, buildSubtitleStyle } from './styles.js';
+import { FONTS, SIZES, SPRING_CONFIG } from './styles.js';
 import { KenBurnsImage } from './KenBurnsImage.jsx';
+import { NarrationSubtitle } from './NarrationSubtitle.jsx';
 import { KineticText, KINETIC_VARIANTS } from './kineticText.js';
+
+// SHORTFORM_PRESETS.kinetic (UI 라벨) → KineticText variant 매핑.
+// 4종 모두 시각적으로 구분되도록 의도적으로 서로 다른 variant 사용.
+const KINETIC_TO_VARIANT = {
+  'static': 'fadeOnly',         // KineticText fallback — 애니메이션 없음
+  'light': 'slideUpMask',       // 아래→위 마스크 슬라이드
+  'heavy': 'scaleBounce',       // 스프링 바운스
+  'word-by-word': 'wordReveal', // 단어별 순차 페이드
+};
 
 // Phase A-bis §4.10 — First 3 Seconds 시각 boost.
 // 프레임 단위 상수는 파일 내 localConst (lib/*로 추출 금지 — 애니메이션 내부 구현).
@@ -18,6 +28,37 @@ const FIRST_SCENE_BOOST = {
   flashFrames: [0, 2, 5],
   flashOpacity: [0, 0.25, 0],
 };
+
+function formatBadgeText(text, maxCharsPerLine = 10, maxLines = 2) {
+  const normalized = typeof text === 'string' ? text.replace(/\s+/g, ' ').trim() : '';
+  if (!normalized) return '';
+
+  const words = normalized.split(' ');
+  const lines = [];
+  let current = '';
+
+  while (words.length > 0 && lines.length < maxLines) {
+    const word = words.shift();
+    const candidate = current ? `${current} ${word}` : word;
+    if (!current || candidate.length <= maxCharsPerLine) {
+      current = candidate;
+      continue;
+    }
+    lines.push(current);
+    current = word;
+  }
+
+  const remaining = [current, ...words].filter(Boolean).join(' ');
+
+  if (remaining) {
+    const trimmed = remaining.length > maxCharsPerLine
+      ? `${remaining.slice(0, Math.max(0, maxCharsPerLine - 1)).trimEnd()}…`
+      : remaining;
+    lines.push(trimmed);
+  }
+
+  return lines.slice(0, maxLines).join('\n');
+}
 
 /**
  * SceneCard — Phase A Scene Sequence Renderer 의 단일 씬 렌더러.
@@ -54,6 +95,7 @@ export const SceneCard = ({
   cameraMotion = 'ken-burns',
   subtitle,
   textPosition = 'center',
+  kinetic = null,                     // SHORTFORM_PRESETS.kinetic: static|light|heavy|word-by-word
   badge,
   ctaButtonText,
   isFirst = false,
@@ -61,6 +103,7 @@ export const SceneCard = ({
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { colors } = preset;
+  const displayBadge = formatBadgeText(badge);
 
   // ── 씬 인덱스 기반 kinetic variant 로테이션 ──
   // 프리셋이 kineticHook/kineticBody를 지정하면 그걸 우선 사용,
@@ -82,6 +125,11 @@ export const SceneCard = ({
     }
   }
 
+  // SHORTFORM_PRESETS.kinetic 오버라이드 — UI 라벨과 실제 애니메이션을 1:1 매핑.
+  if (kinetic && KINETIC_TO_VARIANT[kinetic]) {
+    kineticVariant = KINETIC_TO_VARIANT[kinetic];
+  }
+
   // ── 텍스트 크기: hook 적응 / point 고정 / cta 고정 ──
   const textLen = (text || '').length;
   let fontSize;
@@ -101,9 +149,6 @@ export const SceneCard = ({
   // ── 진입 애니메이션 ──
   const badgeIn = spring({ frame: frame - 5, fps, config: SPRING_CONFIG });
   const badgeY = interpolate(badgeIn, [0, 1], [40, 0]);
-
-  // subtitle override 스타일 (Phase F 호환)
-  const subtitleStyle = buildSubtitleStyle(subtitle, textPosition);
 
   // 텍스트 정렬 — 기본 중앙
   const alignItems = 'center';
@@ -132,7 +177,19 @@ export const SceneCard = ({
       )
     : 0;
   const effectiveCameraMotion = isFirst ? 'zoom-in' : cameraMotion;
-  const textWrapperTransform = isFirst ? `scale(${FIRST_SCENE_BOOST.textScale})` : 'none';
+  const motionIntensity =
+    kinetic === 'heavy'
+      ? 1
+      : kinetic === 'word-by-word' || kinetic === 'light'
+        ? 0.6
+        : 0;
+  const idleFloatY = motionIntensity > 0 ? Math.sin(frame / 12) * 6 * motionIntensity : 0;
+  const idleScale = motionIntensity > 0 ? 1 + (Math.sin(frame / 18) * 0.018 * motionIntensity) : 1;
+  const textWrapperTransform = [
+    isFirst ? `scale(${FIRST_SCENE_BOOST.textScale})` : null,
+    motionIntensity > 0 ? `translateY(${idleFloatY}px)` : null,
+    motionIntensity > 0 ? `scale(${idleScale})` : null,
+  ].filter(Boolean).join(' ') || 'none';
 
   return (
     <AbsoluteFill>
@@ -164,7 +221,7 @@ export const SceneCard = ({
         }}
       >
         {/* Hook 씬 뱃지 */}
-        {section === 'hook' && badge && (
+        {section === 'hook' && displayBadge && (
           <div
             style={{
               opacity: badgeIn,
@@ -177,11 +234,15 @@ export const SceneCard = ({
               padding: '14px 32px',
               borderRadius: 100,
               marginBottom: 40,
-              letterSpacing: 2,
+              letterSpacing: 0,
+              lineHeight: 1.2,
+              textAlign: 'center',
+              whiteSpace: 'pre-wrap',
+              maxWidth: 520,
               boxShadow: `0 8px 24px ${colors.accent}40`,
             }}
           >
-            {badge}
+            {displayBadge}
           </div>
         )}
 
@@ -211,7 +272,6 @@ export const SceneCard = ({
               letterSpacing: -0.5,
               textShadow: imageUrl ? '0 8px 32px rgba(0,0,0,0.65)' : 'none',
               maxWidth: 900,
-              ...(subtitleStyle || {}),
             }}
           />
         </div>
@@ -241,27 +301,12 @@ export const SceneCard = ({
 
       {/* 내레이션 하단 자막 — onScreenText와 narration이 다를 때만 */}
       {narration && narration !== text && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '12%',
-            left: 0,
-            right: 0,
-            padding: '0 72px',
-            textAlign: 'center',
-            fontFamily: FONTS.primary,
-            fontWeight: FONTS.weight.bold,
-            fontSize: 44,
-            color: imageUrl ? colors.white : colors.textPrimary,
-            letterSpacing: -0.5,
-            lineHeight: 1.35,
-            textShadow: imageUrl ? '0 4px 16px rgba(0,0,0,0.6)' : 'none',
-            wordBreak: 'keep-all',
-            opacity: 0.92,
-          }}
-        >
-          {narration}
-        </div>
+        <NarrationSubtitle
+          text={narration}
+          subtitle={subtitle}
+          imageUrl={Boolean(imageUrl)}
+          defaultColor={imageUrl ? colors.white : colors.textPrimary}
+        />
       )}
     </AbsoluteFill>
   );

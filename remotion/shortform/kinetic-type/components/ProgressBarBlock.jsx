@@ -31,7 +31,7 @@ export const ProgressBarBlock = ({ label, percent, startFrame = 0, durationInFra
         flexDirection: "column",
         gap: 18,
         width: "100%",
-        maxWidth: 800,
+        maxWidth: 940,
         opacity: labelOp,
       }}
     >
@@ -46,7 +46,7 @@ export const ProgressBarBlock = ({ label, percent, startFrame = 0, durationInFra
           style={{
             fontFamily: KT_FONT,
             fontWeight: KT_WEIGHTS.bold,
-            fontSize: 52,
+            fontSize: 60,
             color: KT_COLORS.white,
             letterSpacing: -0.5,
             wordBreak: "keep-all",
@@ -58,7 +58,7 @@ export const ProgressBarBlock = ({ label, percent, startFrame = 0, durationInFra
           style={{
             fontFamily: KT_FONT,
             fontWeight: KT_WEIGHTS.black,
-            fontSize: 72,
+            fontSize: 88,
             color: KT_COLORS.coral,
             letterSpacing: -1,
             fontVariantNumeric: "tabular-nums",
@@ -70,7 +70,7 @@ export const ProgressBarBlock = ({ label, percent, startFrame = 0, durationInFra
       <div
         style={{
           width: "100%",
-          height: 24,
+          height: 30,
           backgroundColor: "rgba(255, 255, 255, 0.1)",
           borderRadius: 12,
           overflow: "hidden",

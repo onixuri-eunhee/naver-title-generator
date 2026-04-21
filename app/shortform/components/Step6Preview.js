@@ -89,7 +89,7 @@ export default function Step6Preview({
       textPosition: value.textPosition,
       cameraMotion: value.cameraMotion,
       sceneTransition: value.sceneTransition,
-      // Phase 2 (2026-04-18): Step 6 미리보기에서도 음성 싱크 확인 가능.
+      kinetic: value.kinetic || preset.kinetic || 'static',
       audio: audioUrl
         ? { url: audioUrl, durationInFrames: playerDurationInFrames }
         : undefined,

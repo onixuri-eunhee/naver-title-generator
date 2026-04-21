@@ -25,6 +25,7 @@ import {
 } from '@/lib/shortform/scene-timing.js';
 import { computeTailPadding } from '@/lib/shortform/tail-padding';
 import { DEFAULT_DESIGN_TOKENS } from '@/lib/shortform/design-tokens-shared.js';
+import { buildCaptionFallbacks } from '@/lib/shortform/caption-fallback.js';
 
 // SceneRouter LAYOUT_REGISTRY 키와 동기화 — 잘못된 layoutType fallback용
 const VALID_LAYOUT_TYPES = [
@@ -118,6 +119,7 @@ const CREDIT_COSTS = {
   shortform: { 30: 7, 45: 10, 60: 14, 90: 18 },
   longform: { 180: 7, 300: 12, 600: 22 },
 };
+const MAX_ONSCREEN_TEXT_LENGTH = 8;
 
 function authHeaders() {
   const h = { 'Content-Type': 'application/json' };
@@ -342,18 +344,18 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
       const isCta = s.section === 'cta' || i === validScenes.length - 1;
       const sectionKey = isHook ? 'hook' : isCta ? 'cta' : 'point';
       // onScreenText — Claude가 준 값 우선, 없거나 너무 길면 추출기 fallback.
-      // 15자를 hard ceiling으로 고정 (컴포넌트 safe area 초과 방지).
+      // 프롬프트/validator와 동일하게 8자를 hard ceiling으로 고정.
       const rawOnScreen = typeof s.onScreenText === 'string' ? s.onScreenText.trim() : '';
-      const onScreenTextRaw = rawOnScreen && rawOnScreen.length <= 15
+      const onScreenTextRaw = rawOnScreen && rawOnScreen.length <= MAX_ONSCREEN_TEXT_LENGTH
         ? rawOnScreen
-        : extractKeyPhrase(s.script, 15);
+        : extractKeyPhrase(s.script, MAX_ONSCREEN_TEXT_LENGTH);
       const base = {
-        text: correctTypos(onScreenTextRaw),     // 화면 표시용 짧은 구문 (≤15자) + 오타 교정
+        text: correctTypos(onScreenTextRaw),     // 화면 표시용 짧은 구문 (≤8자) + 오타 교정
         narration: correctTypos(s.script),       // 음성/자막용 원본 + 오타 교정
         section: sectionKey,
         durationInFrames: sceneDurations[i],
         imageUrl: pickImage(i, s),
-        badge: isHook ? (s.hookText || script?.hookText || 'STOP').slice(0, 12) : undefined,
+        badge: isHook ? (s.hookText || script?.hookText || 'STOP') : undefined,
         ctaButtonText: isCta ? '지금 시작 →' : undefined,
         layoutType: s.layoutType && VALID_LAYOUT_TYPES.includes(s.layoutType)
           ? s.layoutType
@@ -395,7 +397,7 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
     const slides = orderedScenes.map((s, i) => ({
       imageUrl: i < imgs.length ? imgs[i] : undefined,
       text: s.script,
-      badge: s._kind === 'hook' ? (s.hookText || 'STOP').slice(0, 12) : undefined,
+      badge: s._kind === 'hook' ? (s.hookText || 'STOP') : undefined,
       ctaButton: s._kind === 'cta' ? '지금 시작 →' : undefined,
     }));
 
@@ -445,7 +447,7 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
     preset: presetKey,
     mode: 'kinetic',
     hook: {
-      badge: hookBadge.slice(0, 12),
+      badge: hookBadge,
       title: hookTitle,
       underlineText: underlineText || undefined,
       imageUrl: hookImage,
@@ -474,18 +476,44 @@ function scriptToProps(script, presetKey, totalDurationSec, bodyImages, sceneIma
  * 최소한의 캡션을 생성하는 클라이언트 fallback. 구버전 script 또는 legacy
  * 경로로 생성된 script에서도 캡션 박스가 비어있지 않도록 보장.
  */
+/**
+ * Phase F — 업로드 전 오디오 파일 길이 사전 검증.
+ * 브라우저 <audio> 엘리먼트로 metadata만 로드해서 duration 추출.
+ * 100초 초과 또는 5초 미만이면 reject.
+ */
+function validateAudioFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const audio = new Audio(url);
+    const cleanup = () => URL.revokeObjectURL(url);
+    audio.onloadedmetadata = () => {
+      cleanup();
+      const d = audio.duration;
+      if (!Number.isFinite(d) || d <= 0) {
+        reject(new Error('오디오 길이를 읽을 수 없어요.'));
+      } else if (d > 100) {
+        reject(new Error(`오디오가 너무 깁니다 (${d.toFixed(1)}초, 최대 100초).`));
+      } else if (d < 5) {
+        reject(new Error(`오디오가 너무 짧습니다 (${d.toFixed(1)}초, 최소 5초).`));
+      } else {
+        resolve(d);
+      }
+    };
+    audio.onerror = () => {
+      cleanup();
+      reject(new Error('오디오 파일을 읽을 수 없어요. 다른 파일을 선택해주세요.'));
+    };
+  });
+}
+
 function buildFallbackCaption(script, platform) {
   if (!script || !Array.isArray(script.scenes) || script.scenes.length === 0) {
     return '';
   }
-  const first = script.scenes[0]?.script || script.scenes[0]?.hookText || '';
-  const last = script.scenes[script.scenes.length - 1]?.script || '';
-  const body = [first, last].filter(Boolean).join('\n\n');
-  const hashtags = platform === 'youtube'
-    ? '#Shorts #쇼츠 #숏폼'
-    : '#릴스 #숏폼 #인스타';
-  if (!body) return '';
-  return `${body}\n\n${hashtags}`.slice(0, 500);
+  const fallbacks = buildCaptionFallbacks(script.scenes);
+  return platform === 'youtube'
+    ? (fallbacks.captionYouTube || '')
+    : (fallbacks.captionInstagram || '');
 }
 
 /**
@@ -657,15 +685,23 @@ function Step3ChipRow({ settings, onChange, disabled, errorMessage, reasoning })
 
   return (
     <div style={{ marginTop: 16 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', marginBottom: 6 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', marginBottom: 2 }}>
         AI 판정 + 세부 조정
+      </div>
+      <div style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 6, lineHeight: 1.4 }}>
+        자동 그대로면 <b>추가 차감 없음</b>. 선택한 값은 이 대본을 <b>그 부분만 재생성</b>할 때 표시된 비용이 차감돼요.
       </div>
       <div style={rowStyle}>
         {chips.map((chip) => {
           const value = settings[chip.id];
           const cost = getChipCost(chip.id, value);
-          const costLabel = cost === 0 ? '무료 ✨' : formatCredit(cost);
-          const tip = reasoning?.[chip.id] || null;
+          const creditText = formatCredit(cost);
+          const costLabel = cost === 0 ? '무료 ✨' : `재생성 ${creditText}`;
+          const tip =
+            reasoning?.[chip.id] ||
+            (cost > 0
+              ? `이 항목만 다시 돌릴 때 ${creditText} 차감. 자동이면 차감 없음.`
+              : null);
 
           return (
             <label key={chip.id} style={chipStyle} title={tip || undefined}>
@@ -813,6 +849,16 @@ function ShortformClientInner() {
   const [availableVoices, setAvailableVoices] = useState([]);
   const [previewAudio, setPreviewAudio] = useState({ voiceId: null, url: null, loading: false });
 
+  // === Phase F — 내 음성 업로드 ===
+  // voiceMode: 'tts'(기본) | 'upload'
+  // uploadFile: 선택된 File 객체 (전사 시작 전)
+  // uploadStatus: 'idle'|'uploading'|'transcribing'|'done'|'error'
+  const [voiceMode, setVoiceMode] = useState('tts');
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadFileDuration, setUploadFileDuration] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState('idle');
+  const [uploadError, setUploadError] = useState(null);
+
   // === Step 5 — 비주얼 액센트 (Phase E) ===
   const [step5Value, setStep5Value] = useState({
     userPhotos: [],    // [{ image, crop }]
@@ -940,6 +986,82 @@ function ShortformClientInner() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Phase F — 파일 선택 핸들러 (input change) */
+  async function handleFileSelect(file) {
+    setUploadError(null);
+    setUploadStatus('idle');
+    if (!file) {
+      setUploadFile(null);
+      setUploadFileDuration(null);
+      return;
+    }
+    try {
+      const duration = await validateAudioFile(file);
+      setUploadFile(file);
+      setUploadFileDuration(duration);
+    } catch (err) {
+      setUploadFile(null);
+      setUploadFileDuration(null);
+      setUploadError(err.message);
+    }
+  }
+
+  /** Phase F — 업로드 + Whisper 전사 트리거 */
+  async function handleVoiceUpload() {
+    if (!uploadFile || !script) {
+      setUploadError('파일과 대본이 모두 필요합니다.');
+      return;
+    }
+    setUploadStatus('uploading');
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append('audio', uploadFile);
+      formData.append('script', JSON.stringify(script));
+      setUploadStatus('transcribing');
+      // FormData 전송 시 Content-Type을 수동 설정하면 boundary가 빠져 서버 파싱 실패.
+      // 브라우저가 multipart/form-data; boundary=... 자동 세팅하도록 Authorization만 전달.
+      const tk = getToken();
+      const uploadHeaders = tk ? { Authorization: `Bearer ${tk}` } : {};
+      const res = await fetch('/api/shortform-voice-upload', {
+        method: 'POST',
+        headers: uploadHeaders,
+        body: formData,
+      });
+      if (!res.ok) {
+        let errMsg = `업로드 실패 (HTTP ${res.status})`;
+        try {
+          const errData = await res.json();
+          if (errData.error) errMsg = errData.error;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
+      const data = await res.json();
+      if (!data.audioUrl || !Array.isArray(data.remappedScenes)) {
+        throw new Error('업로드 응답이 유효하지 않습니다.');
+      }
+      // 기존 TTS와 동일한 state 갱신
+      if (audioUrl?.startsWith('blob:')) URL.revokeObjectURL(audioUrl);
+      audioBlobRef.current = null;
+      setAudioUrl(data.audioUrl);
+      setAudioWordTimestamps(data.wordTimestamps || null);
+      setAudioCharAlignment(null);
+      // scene 재분배 적용
+      setScript({
+        ...script,
+        scenes: data.remappedScenes,
+        totalDuration: data.totalDuration,
+      });
+      setTtsStatus('done');
+      setCompletedSteps((prev) => Array.from(new Set([...prev, 4, 5])));
+      setUploadStatus('done');
+    } catch (err) {
+      console.error('[voice-upload] 실패:', err);
+      setUploadError(err.message || '업로드 중 오류');
+      setUploadStatus('error');
+    }
+  }
 
   // 음성 미리듣기 — preview=true로 서버 호출 (짧은 샘플 텍스트)
   async function previewVoice(voiceId) {
@@ -2192,72 +2314,201 @@ function ShortformClientInner() {
               2단계만 (TTS)
             </button>
 
-            {/* 음성 선택 */}
-            {availableVoices.length > 0 && (
-              <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--ds-border, #E5E7EB)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ds-muted, #77736B)', marginBottom: 8 }}>
-                  🎙 음성 선택 ({availableVoices.length}개)
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
-                  {availableVoices.map((v) => {
-                    const selected = ttsVoice === v.id;
-                    const isLoading = previewAudio.loading && previewAudio.voiceId === v.id;
-                    return (
-                      <div
-                        key={v.id}
-                        style={{
-                          padding: '8px 10px',
-                          border: selected ? '1.5px solid var(--ds-accent, #F95A1F)' : '1px solid var(--ds-border, #E5E7EB)',
-                          borderRadius: 8,
-                          background: selected ? 'rgba(255, 95, 31, 0.06)' : '#fff',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 4,
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setTtsVoice(v.id)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: 0,
-                            fontSize: 11,
-                            fontWeight: selected ? 700 : 500,
-                            color: selected ? 'var(--ds-accent, #F95A1F)' : 'var(--ds-text, #1F2937)',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            fontFamily: 'inherit',
-                          }}
-                        >
-                          {v.gender === 'female' ? '♀️' : '♂️'} {v.name} <span style={{ opacity: 0.5, fontSize: 9 }}>({v.provider})</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => previewVoice(v.id)}
-                          disabled={isLoading}
-                          style={{
-                            background: 'transparent',
-                            border: '1px dashed #D1D5DB',
-                            padding: '3px 6px',
-                            borderRadius: 4,
-                            fontSize: 9,
-                            color: '#6B7280',
-                            cursor: 'pointer',
-                            fontFamily: 'inherit',
-                          }}
-                        >
-                          {isLoading ? '...' : '🔊 샘플'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                {previewAudio.url && (
-                  <audio src={previewAudio.url} autoPlay style={{ width: '100%', marginTop: 8, height: 32 }} controls />
-                )}
+            {/* 🎙 음성 영역 — Phase F 탭 UI */}
+            <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--ds-border, #E5E7EB)' }}>
+              {/* 탭 헤더 */}
+              <div style={{ display: 'flex', gap: 4, marginBottom: 12, borderBottom: '1px solid var(--ds-border, #E5E7EB)' }}>
+                <button
+                  type="button"
+                  onClick={() => setVoiceMode('tts')}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: voiceMode === 'tts' ? '2px solid var(--ds-accent, #F95A1F)' : '2px solid transparent',
+                    color: voiceMode === 'tts' ? 'var(--ds-accent, #F95A1F)' : 'var(--ds-muted, #77736B)',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  🎙 TTS 음성
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVoiceMode('upload')}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: voiceMode === 'upload' ? '2px solid var(--ds-accent, #F95A1F)' : '2px solid transparent',
+                    color: voiceMode === 'upload' ? 'var(--ds-accent, #F95A1F)' : 'var(--ds-muted, #77736B)',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  📤 내 음성 업로드
+                </button>
               </div>
-            )}
+
+              {/* TTS 탭 */}
+              {voiceMode === 'tts' && availableVoices.length > 0 && (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ds-muted, #77736B)', marginBottom: 8 }}>
+                    음성 선택 ({availableVoices.length}개)
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+                    {availableVoices.map((v) => {
+                      const selected = ttsVoice === v.id;
+                      const isLoading = previewAudio.loading && previewAudio.voiceId === v.id;
+                      return (
+                        <div
+                          key={v.id}
+                          style={{
+                            padding: '8px 10px',
+                            border: selected ? '1.5px solid var(--ds-accent, #F95A1F)' : '1px solid var(--ds-border, #E5E7EB)',
+                            borderRadius: 8,
+                            background: selected ? 'rgba(255, 95, 31, 0.06)' : '#fff',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 4,
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setTtsVoice(v.id)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              fontSize: 11,
+                              fontWeight: selected ? 700 : 500,
+                              color: selected ? 'var(--ds-accent, #F95A1F)' : 'var(--ds-text, #1F2937)',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              fontFamily: 'inherit',
+                            }}
+                          >
+                            {v.gender === 'female' ? '♀️' : '♂️'} {v.name} <span style={{ opacity: 0.5, fontSize: 9 }}>({v.provider})</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => previewVoice(v.id)}
+                            disabled={isLoading}
+                            style={{
+                              background: 'transparent',
+                              border: '1px dashed #D1D5DB',
+                              padding: '3px 6px',
+                              borderRadius: 4,
+                              fontSize: 9,
+                              color: '#6B7280',
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                            }}
+                          >
+                            {isLoading ? '...' : '🔊 샘플'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {previewAudio.url && (
+                    <audio src={previewAudio.url} autoPlay style={{ width: '100%', marginTop: 8, height: 32 }} controls />
+                  )}
+                </>
+              )}
+
+              {/* 업로드 탭 */}
+              {voiceMode === 'upload' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 11, color: 'var(--ds-muted, #77736B)', lineHeight: 1.5 }}>
+                    내 목소리로 녹음한 파일을 업로드하세요. <strong>mp3/m4a/wav/webm, 5~100초, 최대 25MB</strong>.
+                    대본대로 읽지 않아도 괜찮아요 — 실제 발화 기준으로 자막이 맞춰져요.
+                  </div>
+                  <label
+                    style={{
+                      display: 'block',
+                      padding: '16px',
+                      border: '1.5px dashed var(--ds-border, #E5E7EB)',
+                      borderRadius: 8,
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      background: '#FAFAF8',
+                      fontSize: 12,
+                    }}
+                  >
+                    <input
+                      type="file"
+                      accept="audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/wav,audio/wave,audio/x-wav,audio/webm,.mp3,.m4a,.wav,.webm"
+                      style={{ display: 'none' }}
+                      onChange={(e) => handleFileSelect(e.target.files?.[0] || null)}
+                    />
+                    {uploadFile ? (
+                      <>
+                        <div style={{ fontWeight: 700, color: 'var(--ds-text, #1F2937)' }}>{uploadFile.name}</div>
+                        <div style={{ fontSize: 10, color: 'var(--ds-muted, #77736B)', marginTop: 4 }}>
+                          {(uploadFile.size / 1024 / 1024).toFixed(2)}MB · {uploadFileDuration?.toFixed(1)}초
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--ds-accent, #F95A1F)', marginTop: 6 }}>
+                          다른 파일 선택
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>📁 파일 선택</div>
+                        <div style={{ fontSize: 10, color: 'var(--ds-muted, #77736B)', marginTop: 4 }}>
+                          클릭해서 파일 고르기
+                        </div>
+                      </>
+                    )}
+                  </label>
+
+                  {uploadError && (
+                    <div style={{
+                      padding: '8px 10px',
+                      background: '#FEF2F2',
+                      border: '1px solid #FCA5A5',
+                      borderRadius: 6,
+                      color: '#B91C1C',
+                      fontSize: 11,
+                    }}>
+                      {uploadError}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleVoiceUpload}
+                    disabled={!uploadFile || !script || uploadStatus === 'uploading' || uploadStatus === 'transcribing'}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: 'none',
+                      background: (!uploadFile || !script) ? '#E5E7EB' : 'var(--ds-accent, #F95A1F)',
+                      color: (!uploadFile || !script) ? '#9CA3AF' : '#fff',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: (!uploadFile || !script) ? 'not-allowed' : 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {uploadStatus === 'uploading' && '업로드 중...'}
+                    {uploadStatus === 'transcribing' && '전사 중 (~30초)...'}
+                    {uploadStatus === 'done' && '✓ 업로드 완료'}
+                    {(uploadStatus === 'idle' || uploadStatus === 'error') && (!script ? '먼저 대본을 생성해주세요' : '전사 시작')}
+                  </button>
+
+                  {uploadStatus === 'done' && (
+                    <div style={{ fontSize: 11, color: 'var(--ds-muted, #77736B)', textAlign: 'center' }}>
+                      오디오 길이 기준으로 씬 시간이 자동 조정됐어요. 다음 단계로 진행하세요.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* 다음 단계 CTA — Step 2~4 공용 (legacy UI 동선 보강) */}
             {currentStep !== 7 && (

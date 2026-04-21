@@ -4,7 +4,7 @@ import { resolveColors, KT_FONT, KT_WEIGHTS, KT_SPRING } from "../styles.js";
 export const BarGraph = ({
   bars: rawBars,
   text,
-  height = 520,
+  height = 640,
   startFrame = 0,
   barStagger = 8,
   maxValue,
@@ -20,13 +20,13 @@ export const BarGraph = ({
   const chartHeight = height - 100;
 
   return (
-    <div style={{ width: "100%", maxWidth: 800 }}>
+    <div style={{ width: "100%", maxWidth: 940 }}>
       {text && (
         <div
           style={{
             fontFamily: KT_FONT,
             fontWeight: KT_WEIGHTS.bold,
-            fontSize: 40,
+            fontSize: 52,
             color: colors.white,
             marginBottom: 28,
             lineHeight: 1.4,
@@ -86,7 +86,7 @@ export const BarGraph = ({
                 key={i}
                 style={{
                   flex: 1,
-                  maxWidth: 120,
+                  maxWidth: 140,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
@@ -100,7 +100,7 @@ export const BarGraph = ({
                     transform: `translateY(${valueY}px)`,
                     fontFamily: KT_FONT,
                     fontWeight: KT_WEIGHTS.black,
-                    fontSize: 28,
+                    fontSize: 32,
                     color: colors.white,
                     marginBottom: 10,
                   }}
@@ -147,11 +147,11 @@ export const BarGraph = ({
               key={i}
               style={{
                 flex: 1,
-                maxWidth: 120,
+                maxWidth: 140,
                 textAlign: "center",
                 fontFamily: KT_FONT,
                 fontWeight: KT_WEIGHTS.bold,
-                fontSize: 32,
+                fontSize: 36,
                 color: colors.gray,
                 opacity: labelOp,
                 lineHeight: 1.3,

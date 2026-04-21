@@ -120,28 +120,44 @@ export function buildCardBorder(accent = '#ff6f61') {
  * Phase F — Step 6에서 커스터마이즈된 subtitle 값을 CSS로 변환
  *
  * subtitle: { color, font, size, position, bgColor, bgOpacity }
- * textPosition: 'top'|'center'|'center-large'|'bottom'|'free'
+ * textPosition: legacy param. 하위 호출부 호환용으로 유지하지만
+ * 실제 자막 크기/위치는 subtitle.* 기준으로만 계산한다.
  */
-export function buildSubtitleStyle(subtitle, textPosition) {
+export function buildSubtitleStyle(subtitle, _textPosition) {
   if (!subtitle) return null;
-  const sizeBoost = textPosition === 'center-large' ? 1.25 : 1;
+  const isSolidBlock = (subtitle.bgOpacity ?? 0.5) >= 0.98;
+  const wantsShadow = subtitle.noShadow ? false : !subtitle.bgColor;
   return {
     color: subtitle.color || '#ffffff',
     fontFamily: subtitle.font
       ? `"${subtitle.font}", ${PRETENDARD}`
       : PRETENDARD,
-    fontSize: Math.round((subtitle.size || 56) * sizeBoost),
+    fontSize: Math.round(subtitle.size || 56),
     backgroundColor: subtitle.bgColor
       ? hexToRgba(subtitle.bgColor, subtitle.bgOpacity ?? 0.5)
       : 'transparent',
-    padding: subtitle.bgColor ? '16px 28px' : 0,
-    borderRadius: 12,
-    fontWeight: 900,
-    lineHeight: 1.2,
-    letterSpacing: -0.5,
+    padding: subtitle.bgColor ? '14px 26px' : 0,
+    borderRadius: isSolidBlock ? 6 : 12,      // 단색 블록은 sharp 느낌
+    fontWeight: isSolidBlock ? 800 : 900,      // 단색 블록은 살짝 가볍게 (가독성)
+    lineHeight: 1.25,
+    letterSpacing: isSolidBlock ? 0 : -0.5,    // 단색 블록은 정상 자간 (비즈니스 프린트 느낌)
     textAlign: 'center',
     display: 'inline-block',
+    // bg 가 투명/없을 때만 기본 드롭섀도우 (가독성 보조). noShadow=true 또는 단색 블록에서는 제거.
+    textShadow: wantsShadow ? '0 2px 6px rgba(0,0,0,0.45)' : 'none',
   };
+}
+
+export function getSubtitlePositionStyle(position = 'bottom') {
+  switch (position) {
+    case 'top':
+      return { top: '12%' };
+    case 'center':
+      return { top: '50%', transform: 'translateY(-50%)' };
+    case 'bottom':
+    default:
+      return { bottom: '12%' };
+  }
 }
 
 function hexToRgba(hex, alpha) {

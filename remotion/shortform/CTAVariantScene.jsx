@@ -30,6 +30,36 @@ const DEFAULT_BRAND_KIT = Object.freeze({
   handle: null,
 });
 
+function formatHeadlineLines(text, maxCharsPerLine = 14, maxLines = 3) {
+  const normalized = typeof text === 'string' ? text.replace(/\s+/g, ' ').trim() : '';
+  if (!normalized) return '';
+
+  const words = normalized.split(' ');
+  const lines = [];
+  let current = '';
+
+  while (words.length > 0 && lines.length < maxLines) {
+    const word = words.shift();
+    const candidate = current ? `${current} ${word}` : word;
+    if (!current || candidate.length <= maxCharsPerLine) {
+      current = candidate;
+      continue;
+    }
+    lines.push(current);
+    current = word;
+  }
+
+  const remaining = [current, ...words].filter(Boolean).join(' ');
+  if (remaining) {
+    const trimmed = remaining.length > maxCharsPerLine
+      ? `${remaining.slice(0, Math.max(0, maxCharsPerLine - 1)).trimEnd()}…`
+      : remaining;
+    lines.push(trimmed);
+  }
+
+  return lines.slice(0, maxLines).join('\n');
+}
+
 function resolveVariantProps(variantProps) {
   if (!variantProps || typeof variantProps !== 'object') {
     if (typeof console !== 'undefined') {
@@ -74,6 +104,7 @@ export const CTAVariantScene = ({ variantProps, copy, brandKit }) => {
   const resolvedVariantProps = resolveVariantProps(variantProps);
   const resolvedCopy = resolveCopy(copy);
   const resolvedBrandKit = resolveBrandKit(brandKit);
+  const formattedCopy = formatHeadlineLines(resolvedCopy);
 
   const isProfessional = resolvedVariantProps.variant === 'professional';
   const accent = resolvedBrandKit.primaryColor;
@@ -106,9 +137,10 @@ export const CTAVariantScene = ({ variantProps, copy, brandKit }) => {
           lineHeight: 1.3,
           letterSpacing: -0.5,
           maxWidth: 900,
+          whiteSpace: 'pre-wrap',
         }}
       >
-        {resolvedCopy}
+        {formattedCopy}
       </div>
 
       <div
