@@ -44,7 +44,7 @@ import { chargeCredit, refundCredit } from '@/lib/credit-service.js';
 
 export const maxDuration = 60;
 
-const MODEL = 'claude-opus-4-6';
+const MODEL = 'claude-sonnet-4-6';
 const MAX_RETRIES = 2;
 const BASE_DELAY_MS = 1000;
 const JITTER_MAX_MS = 300;
