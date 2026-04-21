@@ -960,13 +960,41 @@ function ShortformClientInner() {
   } = useJobProgress(jobId, { authToken: authTokenForProgress });
 
   // 페이지 진입 시 localStorage의 활성 jobId 복원
+  // stale jobId(서버에 이력 없거나 종료됨) 는 즉시 정리하여 무한 로딩 방지
   useEffect(() => {
-    try {
-      const stored = typeof window !== 'undefined'
-        ? localStorage.getItem(SHORTFORM_JOB_STORAGE_KEY)
-        : null;
-      if (stored) setJobId(stored);
-    } catch {}
+    (async () => {
+      try {
+        const stored = typeof window !== 'undefined'
+          ? localStorage.getItem(SHORTFORM_JOB_STORAGE_KEY)
+          : null;
+        if (!stored) return;
+        // 서버 히스토리 존재 확인 — 없거나 이미 complete/error/cancelled 면 복원하지 않음
+        const res = await fetch(
+          `/api/shortform-progress/snapshot?jobId=${encodeURIComponent(stored)}`,
+          { cache: 'no-store' },
+        );
+        if (!res.ok) {
+          localStorage.removeItem(SHORTFORM_JOB_STORAGE_KEY);
+          return;
+        }
+        const data = await res.json();
+        const events = Array.isArray(data?.events) ? data.events : [];
+        if (events.length === 0) {
+          localStorage.removeItem(SHORTFORM_JOB_STORAGE_KEY);
+          return;
+        }
+        const hasTerminal = events.some((e) =>
+          e?.type === 'complete' || e?.type === 'error' || e?.type === 'cancelled',
+        );
+        if (hasTerminal) {
+          localStorage.removeItem(SHORTFORM_JOB_STORAGE_KEY);
+          return;
+        }
+        setJobId(stored);
+      } catch {
+        try { localStorage.removeItem(SHORTFORM_JOB_STORAGE_KEY); } catch {}
+      }
+    })();
   }, []);
 
   // 음성 목록 fetch (ElevenLabs + Google 폴백)
