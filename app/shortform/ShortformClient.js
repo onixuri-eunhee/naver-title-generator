@@ -126,10 +126,47 @@ const CREDIT_COSTS = {
 const MAX_ONSCREEN_TEXT_LENGTH = 8;
 
 function authHeaders() {
-  const h = { 'Content-Type': 'application/json' };
+  const h = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+  };
   const tk = getToken();
   if (tk) h.Authorization = `Bearer ${tk}`;
   return h;
+}
+
+function apiUrl(path) {
+  if (typeof window === 'undefined') return path;
+  return new URL(path, window.location.origin).toString();
+}
+
+async function readApiJson(res, fallbackMessage) {
+  const raw = await res.text();
+  const contentType = res.headers.get('content-type') || '';
+
+  if (!contentType.includes('application/json')) {
+    const preview = raw.slice(0, 160).replace(/\s+/g, ' ').trim();
+    throw new Error(
+      `API 응답이 JSON이 아닙니다. (${res.status}) ${preview || fallbackMessage}`,
+    );
+  }
+
+  let data;
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch (error) {
+    const preview = raw.slice(0, 160).replace(/\s+/g, ' ').trim();
+    throw new Error(
+      `API JSON 파싱에 실패했습니다. (${res.status}) ${preview || fallbackMessage}`,
+    );
+  }
+
+  if (!res.ok) {
+    throw new Error(data?.error || fallbackMessage);
+  }
+
+  return data;
 }
 
 function formatSavedAt(date) {
@@ -1637,8 +1674,10 @@ function ShortformClientInner() {
     setJobId(newJobId);
 
     try {
-      const res = await fetch('/api/shortform-script', {
+      const res = await fetch(apiUrl('/api/shortform-script'), {
         method: 'POST',
+        cache: 'no-store',
+        credentials: 'same-origin',
         headers: {
           ...authHeaders(),
           // Phase A-bis §6.1 idempotency — jobId = X-Request-Id (retry는 같은 ID)
@@ -1659,8 +1698,7 @@ function ShortformClientInner() {
           visualStyle: layoutMode,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '대본 생성 실패');
+      const data = await readApiJson(res, '대본 생성 실패');
       if (data.async || data.accepted) return;
       applyScriptResult(data);
     } catch (err) {

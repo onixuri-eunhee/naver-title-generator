@@ -37,9 +37,14 @@ export function useJobProgress(jobId, { authToken } = {}) {
     setResult(null);
     setError(null);
 
-    const es = new EventSource(
-      `/api/shortform-progress?jobId=${encodeURIComponent(jobId)}`,
-    );
+    const progressUrl = typeof window === 'undefined'
+      ? `/api/shortform-progress?jobId=${encodeURIComponent(jobId)}`
+      : new URL(
+          `/api/shortform-progress?jobId=${encodeURIComponent(jobId)}`,
+          window.location.origin,
+        ).toString();
+
+    const es = new EventSource(progressUrl);
     esRef.current = es;
 
     const lastEventTsRef = { current: Date.now() };
@@ -152,8 +157,14 @@ export function useJobProgress(jobId, { authToken } = {}) {
   const cancel = useCallback(async () => {
     if (!jobId) return;
     try {
+      const cancelUrl = typeof window === 'undefined'
+        ? `/api/shortform-cancel?jobId=${encodeURIComponent(jobId)}`
+        : new URL(
+            `/api/shortform-cancel?jobId=${encodeURIComponent(jobId)}`,
+            window.location.origin,
+          ).toString();
       const res = await fetch(
-        `/api/shortform-cancel?jobId=${encodeURIComponent(jobId)}`,
+        cancelUrl,
         {
           method: 'POST',
           headers: {
