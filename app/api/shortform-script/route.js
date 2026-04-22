@@ -26,6 +26,15 @@ function toSentence(value) {
   return String(value || '').trim().replace(/\s+/g, ' ');
 }
 
+function resolveWorkerBaseUrl(request) {
+  const requestOrigin = request?.nextUrl?.origin;
+  if (requestOrigin) return requestOrigin;
+
+  return process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : (process.env.NEXT_PUBLIC_SITE_URL || 'https://ddukddaktool.co.kr');
+}
+
 export async function OPTIONS(request) {
   return handleOptions(request);
 }
@@ -105,9 +114,7 @@ export async function POST(request) {
     const ip = getClientIp(request);
 
     if (USE_ASYNC_WORKER) {
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
-        || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-        || 'https://ddukddaktool.co.kr';
+      const baseUrl = resolveWorkerBaseUrl(request);
 
       try {
         const qstash = new QStashClient({ token: process.env.QSTASH_TOKEN });
