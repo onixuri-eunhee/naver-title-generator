@@ -207,7 +207,7 @@ test('buildUserPrompt: tone professional', () => {
   assert.ok(prompt.includes('세무사'), '주제 포함');
 });
 
-test('buildUserPrompt: 벤치마킹 대신 프롬프트 자산 규칙 포함', () => {
+test('buildUserPrompt: benchmark 없으면 프롬프트 자산 규칙만 포함', () => {
   const prompt = buildUserPrompt({
     topic: '아이 편식 줄이는 방법',
     tone: 'casual',
@@ -215,7 +215,43 @@ test('buildUserPrompt: 벤치마킹 대신 프롬프트 자산 규칙 포함', (
   });
   assert.ok(prompt.includes('숏츠 작성 원칙'), '프롬프트 자산 섹션 포함');
   assert.ok(prompt.includes('~일 수 있어요'), '금지 표현 규칙 포함');
-  assert.ok(!prompt.includes('실제 바이럴 영상'), '자동 벤치마킹 섹션 제거');
+  assert.ok(!prompt.includes('★★★ 벤치마킹'), 'benchmark 없으면 주입 안 됨');
+});
+
+test('buildUserPrompt: benchmark.patterns 있으면 벤치마킹 블록 주입', () => {
+  const prompt = buildUserPrompt({
+    topic: '아이 편식 줄이는 방법',
+    tone: 'casual',
+    targetSceneCount: 7,
+    benchmark: {
+      fallback: false,
+      patterns: {
+        hookType: '질문형',
+        hookPattern: '부모 고민 + 반전 답',
+        structure: 'hook→problem→solution→cta',
+        viralFormula: '공감 질문으로 시작 → 간단한 팁 3개',
+        suggestedHook: '편식이 고집일까?',
+      },
+      videos: [
+        { title: '편식쟁이 아이 한 방에 고치는 법', viewCount: 1200000, subscriberCount: 30000, viewToSubRatio: 40 },
+      ],
+    },
+  });
+  assert.ok(prompt.includes('★★★ 벤치마킹'), '벤치마킹 헤더 포함');
+  assert.ok(prompt.includes('질문형'), 'hookType 주입');
+  assert.ok(prompt.includes('편식이 고집일까?'), 'suggestedHook 주입');
+  assert.ok(prompt.includes('절대 규칙'), '위반 금지 규칙 포함');
+});
+
+test('buildUserPrompt: benchmark.fallback=true 면 주입 skip', () => {
+  const prompt = buildUserPrompt({
+    topic: '무명 주제',
+    tone: 'casual',
+    targetSceneCount: 7,
+    benchmark: { fallback: true, patterns: null, videos: [] },
+  });
+  assert.ok(!prompt.includes('★★★ 벤치마킹'), 'fallback 이면 블록 없음');
+  assert.ok(prompt.includes('숏츠 작성 원칙'), '자산 섹션은 그대로');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
