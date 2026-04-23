@@ -8,7 +8,9 @@ import styles from './page.module.css';
 
 const UNIT_PRICE = 9900;
 const UNIT_CREDIT = 30;
-const MAX_QTY = 5;
+// 1회 결제 한도 10만원 이하 (토스페이먼츠 충전업종 가맹점 규정).
+// 9,900원 × 10세트 = 99,000원 ≤ 100,000원.
+const MAX_QTY = 10;
 
 function generateOrderId() {
   const now = new Date();
@@ -240,8 +242,11 @@ export default function PricingClient() {
               <div className={styles.bonusText}>
                 <strong>오픈톡방 회원 첫 구매 20% 추가!</strong><br />
                 1세트 구매 시 30 → 36크레딧,<br />
-                5세트 구매 시 150 → 180크레딧으로 지급됩니다.
+                10세트 구매 시 300 → 360크레딧으로 지급됩니다.
               </div>
+            </div>
+            <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--ds-muted)', marginTop: 8 }}>
+              ※ 1회 결제 한도는 10만원 이하 (30크레딧 × 최대 10세트 = 99,000원)
             </div>
 
             <div className={styles.faqSection}>

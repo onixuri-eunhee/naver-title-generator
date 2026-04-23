@@ -17,7 +17,13 @@ export default function RefundPolicyPage() {
         <div className={styles.card}>
           <h2>제1조 기본 원칙</h2>
           <p>뚝딱툴(ddukddaktool.co.kr, 이하 &quot;서비스&quot;)은 전자상거래 등에서의 소비자보호에 관한 법률 및 관련 법령에 따라 이용자의 권익을 보호합니다.</p>
-          <p>서비스는 AI 기반 콘텐츠 생성 도구를 월정액 구독 방식으로 제공하며, 디지털 콘텐츠의 특성상 아래 환불 기준을 적용합니다.</p>
+          <p>서비스는 AI 기반 콘텐츠 생성 도구를 크레딧(포인트) 충전 방식으로 제공하며, 디지털 콘텐츠의 특성상 아래 환불 기준을 적용합니다.</p>
+          <ul style={{ marginTop: 12 }}>
+            <li>크레딧 구매 이후 환불은 <strong>결제가 되었던 수단으로만</strong> 진행됩니다.</li>
+            <li>구매한 크레딧의 <strong>이용기간과 환불가능기간은 결제시점으로부터 1년 이내</strong>로 제한됩니다.</li>
+            <li>구매한 크레딧은 <strong>회원 간 양도가 불가</strong>합니다.</li>
+            <li>1회 결제 시 충전 한도는 <strong>10만원 이하</strong>로 제한됩니다.</li>
+          </ul>
         </div>
 
         <div className={styles.card}>
@@ -113,7 +119,7 @@ export default function RefundPolicyPage() {
             <li>환불 신청: 고객센터 이메일로 신청 (아래 연락처 참고)</li>
             <li>신청 시 필요 정보: 결제 시 사용한 이메일, 결제일, 환불 사유</li>
             <li>처리 기간: 환불 확인 후 영업일 기준 3~5일 이내 처리</li>
-            <li>환불 방법: 결제 수단으로 원상 환불 (카드 취소 또는 계좌 이체)</li>
+            <li>환불 방법: <strong>결제가 되었던 수단으로만 원상 환불</strong> (카드 결제 시 카드 취소, 계좌이체 시 계좌 환급). 다른 수단으로의 환불은 제공하지 않습니다.</li>
           </ul>
           <p style={{ marginTop: 16 }}>※ 환불 처리 과정에서 추가 확인이 필요한 경우 이메일로 안내드립니다.</p>
         </div>
