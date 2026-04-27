@@ -157,6 +157,14 @@ P12:
 제목1
 제목2`;
 
+// 2026-04-27 hotfix: Claude가 가끔 출력 첫 줄에 카테고리 라벨을 박는 케이스 차단
+const TITLE_CATEGORY_LABELS = new Set([
+  '이득+숫자형', '경험사례형', '가이드형', '확인+체크리스트형',
+  '모르면 후회형', '모르면후회형', '실패 공통점형', '실패공통점형',
+  '실망/실패 공통점형', '의심하라형', '내부사정 폭로형', '내부사정폭로형',
+  '가치입증형', '상식파괴형', '질문&비교형', '질문 & 비교형', '타깃호출형',
+]);
+
 function parseResponse(raw) {
   const results = {};
   const patternRegex = /P(\d{1,2}):\s*\n?/gi;
@@ -169,7 +177,9 @@ function parseResponse(raw) {
     const lines = (sections[i + 1] || '')
       .split('\n')
       .map((l) => l.trim())
-      .filter((l) => l.length > 0);
+      .filter((l) => l.length > 0)
+      .filter((l) => !TITLE_CATEGORY_LABELS.has(l))
+      .filter((l) => l.length >= 8); // 8자 미만은 라벨/노이즈로 간주
 
     const trimmed = lines.slice(0, 2).map((title) => {
       if (title.length <= 32) return title;

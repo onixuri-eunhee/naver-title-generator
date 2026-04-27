@@ -136,12 +136,40 @@ const SYSTEM_PROMPT = `당신은 SNS 후킹문구 전문 카피라이터다. 릴
 ...
 후킹문구15`;
 
+// 2026-04-27 hotfix: 모델이 분석 메모/타겟 분석/구분선을 후킹문구 앞에 출력하는 경우 차단
+// "---" 같은 구분선이 있으면 그 뒤부터 진짜 후킹. 없으면 분석성 라인을 휴리스틱으로 제거.
+function isAnalysisLine(s) {
+  if (!s) return true;
+  if (/^[-=*•~_]{2,}$/.test(s)) return true; // 구분선
+  if (s.length < 8) return true; // 너무 짧은 줄
+  // 메타/분석 시그널
+  const sigs = [
+    '분석 완료', '키워드 분석', '타겟 분석', '비중 높임', '중심으로 생성',
+    '공식 비중', '비중 적용', '톤 적용', '톤·문체', '버전:', '컨셉:',
+    'Tier 1', 'Tier 2', '패턴 인터럽트', '손실회피', '호기심폭발',
+    '/* ', '// ', '<!--', '```',
+  ];
+  if (sigs.some((sig) => s.includes(sig))) return true;
+  // 끝이 "완료.", "높임.", "생성." 같은 분석 어조
+  if (/(완료|높임|생성|적용|판단)\.$/.test(s)) return true;
+  return false;
+}
+
 function parseResponse(raw) {
-  const lines = raw
+  let lines = raw
     .split('\n')
     .map((l) => l.trim())
     .map((l) => l.replace(/^\d{1,2}[\.)][\s]+/, '').trim())
     .filter((l) => l.length > 0);
+
+  // 구분선이 있으면 그 뒤만 사용
+  const sepIdx = lines.findIndex((l) => /^[-=*•~_]{2,}$/.test(l));
+  if (sepIdx >= 0) {
+    lines = lines.slice(sepIdx + 1);
+  }
+
+  // 그래도 분석성 라인이 섞이면 휴리스틱 필터
+  lines = lines.filter((l) => !isAnalysisLine(l));
 
   return lines.map((hook) => {
     if (hook.length > 50) {
