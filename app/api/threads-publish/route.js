@@ -24,8 +24,10 @@ function splitMainAndReply(text) {
 }
 
 function resolveBaseUrl() {
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return 'https://ddukddaktool.co.kr';
+  // 2026-04-28: VERCEL_URL은 deployment-specific URL을 가리키는데, 이 URL은
+  // Vercel deployment protection 때문에 auth wall에 막혀 QStash 콜백이 401을 받음.
+  // 항상 production 도메인을 사용해야 QStash → 콜백 흐름이 정상 동작함.
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://ddukddaktool.co.kr';
 }
 
 async function scheduleReply({ parentThreadId, replyText, email, isAdmin }) {

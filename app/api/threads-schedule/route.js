@@ -55,9 +55,9 @@ export async function POST(request) {
   try {
     const qstash = new Client({ token: process.env.QSTASH_TOKEN });
 
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'https://ddukddaktool.co.kr';
+    // 2026-04-28: VERCEL_URL은 deployment-specific URL이라 Vercel deployment protection
+    // auth wall에 걸려 QStash 콜백이 401 받음. production 도메인 고정.
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ddukddaktool.co.kr';
 
     const result = await qstash.publishJSON({
       url: `${baseUrl}/api/threads-callback`,
