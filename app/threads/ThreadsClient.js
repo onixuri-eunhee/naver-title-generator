@@ -184,7 +184,14 @@ export default function ThreadsClient() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || '발행 실패');
-      showToast('발행 완료!', 'success');
+      if (data.replyPending) {
+        const sec = data.replyDelaySec || 60;
+        showToast(`본문 발행 완료! 답글은 약 ${sec}초 후 자동 등록됩니다.`, 'success');
+      } else if (data.replyFailed) {
+        showToast('본문 발행 완료. 답글은 자동 등록에 실패했어요. Threads 앱에서 직접 답글을 달아주세요.', 'error');
+      } else {
+        showToast('발행 완료!', 'success');
+      }
     } catch (err) {
       showToast('발행 실패: ' + err.message, 'error');
     } finally {
