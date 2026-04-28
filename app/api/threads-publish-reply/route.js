@@ -1,20 +1,21 @@
 import { Receiver } from '@upstash/qstash';
 import { NextResponse } from 'next/server';
 import { getRedis } from '@/lib/api-helpers';
-import { publishSingleThread } from '@/lib/threads';
+import { publishSingleThread, resolveThreadsCredentials } from '@/lib/threads';
 
 /**
- * QStash 콜백 — /api/threads-publish 와 /api/threads-callback 이 본문 발행 직후
- * 60초 지연으로 enqueue 한 답글을 실제로 발행한다.
+ * QStash 콜백 — 본문 발행 60초 후 답글을 실제로 발행한다.
  *
- * 메타 Threads API 가 부모 게시물 인덱싱 전에 reply_to_id 거는 걸 거부하기 때문에
- * 본문 발행 후 60초 대기 → 이 라우트에서 답글 발행하는 흐름.
+ * 메타 Threads API가 부모 게시물 인덱싱 전에는 reply_to_id 거는 걸 거부해서
+ * 본문/답글 발행을 분리했다.
  *
- * Idempotency: parentThreadId 단위로 Redis 플래그(threads:reply-sent:<id>)를 사용해
- * QStash 재시도 시에도 답글이 중복 게시되지 않도록 보호.
+ * Idempotency: SET NX 로 슬롯을 먼저 예약한 후 발행한다. 동시 retry 가 와도
+ * 두 번째는 NX 실패로 스킵 → 답글 중복 게시 차단. 발행 실패 시엔 슬롯을 풀어서
+ * QStash 다음 retry가 정상 동작하게 한다.
  */
 
-const REPLY_SENT_TTL_SEC = 60 * 60 * 24; // 24h
+const RESERVED_TTL_SEC = 10 * 60; // 발행 시도 중 슬롯 보호 (10분)
+const SENT_TTL_SEC = 60 * 60 * 24; // 발행 완료 마킹 (24시간)
 
 export async function POST(request) {
   const rawBody = await request.text();
@@ -24,8 +25,10 @@ export async function POST(request) {
       currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY,
       nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY,
     });
-    const signature = request.headers.get('upstash-signature');
-    await receiver.verify({ signature, body: rawBody });
+    await receiver.verify({
+      signature: request.headers.get('upstash-signature'),
+      body: rawBody,
+    });
   } catch (err) {
     console.error('[threads-publish-reply] QStash signature verification failed:', err?.message);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
@@ -47,57 +50,49 @@ export async function POST(request) {
     return NextResponse.json({ error: 'replyText required' }, { status: 400 });
   }
 
-  // Idempotency 체크 — 같은 parentThreadId 답글이 이미 게시됐다면 스킵
   const sentKey = `threads:reply-sent:${parentThreadId}`;
+
+  // 슬롯 원자 예약. 다른 retry/요청이 이미 진행 중이거나 완료했다면 NX 실패로 스킵.
+  let reserved;
   try {
-    const already = await getRedis().get(sentKey);
-    if (already) {
-      return NextResponse.json({ ok: true, skipped: 'already-sent' });
-    }
+    reserved = await getRedis().set(sentKey, 'pending', { nx: true, ex: RESERVED_TTL_SEC });
   } catch (err) {
-    console.warn('[threads-publish-reply] idempotency check failed (continuing):', err?.message);
+    console.warn('[threads-publish-reply] reservation set failed (continuing without idempotency):', err?.message);
+  }
+  if (reserved === null) {
+    return NextResponse.json({ ok: true, skipped: 'already-claimed' });
   }
 
-  // 자격 증명 해석 (admin: 환경변수, user: Redis 토큰)
-  let userId, accessToken;
-  if (email) {
-    try {
-      const threadsData = await getRedis().get(`threads:user:${email}`);
-      if (!threadsData) {
-        console.error(`[threads-publish-reply] threads token not found for ${email}`);
-        return NextResponse.json({ error: 'Threads connection missing' }, { status: 400 });
-      }
-      const data = typeof threadsData === 'string' ? JSON.parse(threadsData) : threadsData;
-      userId = data.userId;
-      accessToken = data.accessToken;
-    } catch (err) {
-      console.error('[threads-publish-reply] redis read failed:', err?.message);
-      return NextResponse.json({ error: 'redis read failed' }, { status: 500 });
+  const credentials = await resolveThreadsCredentials({ email });
+  if (!credentials) {
+    // 자격증명 해석 실패 — 슬롯 풀어 다음 retry 가 시도할 수 있게
+    try { await getRedis().del(sentKey); } catch {}
+    if (email) {
+      console.error(`[threads-publish-reply] threads token not found for ${email}`);
+      return NextResponse.json({ error: 'Threads connection missing' }, { status: 400 });
     }
-  } else {
-    userId = process.env.THREADS_USER_ID;
-    accessToken = process.env.THREADS_ACCESS_TOKEN;
-  }
-
-  if (!userId || !accessToken) {
-    console.error('[threads-publish-reply] missing credentials');
+    console.error('[threads-publish-reply] missing admin credentials');
     return NextResponse.json({ error: 'credentials missing' }, { status: 500 });
   }
 
   try {
-    const replyId = await publishSingleThread(replyText.trim(), userId, accessToken, parentThreadId);
-
-    // Idempotency 마킹
+    const replyId = await publishSingleThread(
+      replyText.trim(),
+      credentials.userId,
+      credentials.accessToken,
+      parentThreadId,
+    );
+    // pending → 실제 replyId 로 마킹 + TTL 24h 로 연장
     try {
-      await getRedis().set(sentKey, replyId, { ex: REPLY_SENT_TTL_SEC });
+      await getRedis().set(sentKey, replyId, { ex: SENT_TTL_SEC });
     } catch (err) {
-      console.warn('[threads-publish-reply] idempotency set failed (non-fatal):', err?.message);
+      console.warn('[threads-publish-reply] sent-marker set failed (non-fatal):', err?.message);
     }
-
     return NextResponse.json({ success: true, parentThreadId, replyId });
   } catch (err) {
     console.error('[threads-publish-reply] publish failed:', err?.message);
-    // QStash 가 retries=3 정책으로 재시도. 메타 인덱싱이 60초로 부족했다면 다음 retry 에서 풀릴 가능성.
+    // 발행 실패 — 슬롯 풀어 다음 QStash retry가 재시도할 수 있게
+    try { await getRedis().del(sentKey); } catch {}
     return NextResponse.json({ error: 'reply publish failed', details: err.message }, { status: 500 });
   }
 }
