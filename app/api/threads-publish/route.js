@@ -1,36 +1,22 @@
-import { Client as QStashClient } from '@upstash/qstash';
 import {
   getRedis,
   resolveAdmin,
   extractToken,
   resolveSessionEmail,
-  resolveCallbackBaseUrl,
   jsonResponse,
   handleOptions,
 } from '@/lib/api-helpers';
 import {
   publishSingleThread,
   splitMainAndReply,
+  validateThreadCounts,
   resolveThreadsCredentials,
+  enqueueReplyJob,
   REPLY_DELAY_SEC,
 } from '@/lib/threads';
 
 export async function OPTIONS(request) {
   return handleOptions(request);
-}
-
-async function scheduleReply({ parentThreadId, replyText, email, isAdmin }) {
-  const qstash = new QStashClient({ token: process.env.QSTASH_TOKEN });
-  return qstash.publishJSON({
-    url: `${resolveCallbackBaseUrl()}/api/threads-publish-reply`,
-    body: {
-      parentThreadId,
-      replyText,
-      email: isAdmin ? null : email,
-    },
-    delay: REPLY_DELAY_SEC,
-    retries: 3,
-  });
 }
 
 export async function POST(request) {
@@ -45,16 +31,13 @@ export async function POST(request) {
   if (!mainText) {
     return jsonResponse(request, { error: '본문이 비어있습니다.' }, { status: 400 });
   }
-  if (mainText.length > 500) {
-    return jsonResponse(request, { error: '500자를 초과하는 본문은 발행할 수 없습니다.' }, { status: 400 });
-  }
-  if (replyText && replyText.length > 500) {
-    return jsonResponse(request, { error: '500자를 초과하는 답글은 발행할 수 없습니다.' }, { status: 400 });
+  const lengthCheck = validateThreadCounts(mainText, replyText);
+  if (!lengthCheck.ok) {
+    return jsonResponse(request, { error: lengthCheck.error }, { status: 400 });
   }
 
   const isAdmin = await resolveAdmin(request);
   let email = null;
-
   if (!isAdmin) {
     const token = extractToken(request);
     email = await resolveSessionEmail(token);
@@ -73,7 +56,7 @@ export async function POST(request) {
 
   let mainThreadId;
   try {
-    mainThreadId = await publishSingleThread(mainText, credentials.userId, credentials.accessToken);
+    mainThreadId = await publishSingleThread(mainText, credentials);
   } catch (err) {
     console.error('Threads main publish error:', err);
     if (err.message && err.message.includes('Invalid OAuth') && email) {
@@ -88,7 +71,7 @@ export async function POST(request) {
   }
 
   try {
-    await scheduleReply({ parentThreadId: mainThreadId, replyText, email, isAdmin });
+    await enqueueReplyJob({ parentThreadId: mainThreadId, replyText, email });
     return jsonResponse(request, {
       success: true,
       threadId: mainThreadId,

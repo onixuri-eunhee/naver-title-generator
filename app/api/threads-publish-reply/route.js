@@ -1,7 +1,12 @@
 import { Receiver } from '@upstash/qstash';
 import { NextResponse } from 'next/server';
 import { getRedis } from '@/lib/api-helpers';
-import { publishSingleThread, resolveThreadsCredentials } from '@/lib/threads';
+import {
+  publishSingleThread,
+  resolveThreadsCredentials,
+  REPLY_RESERVED_TTL_SEC,
+  REPLY_SENT_TTL_SEC,
+} from '@/lib/threads';
 
 /**
  * QStash 콜백 — 본문 발행 60초 후 답글을 실제로 발행한다.
@@ -13,9 +18,6 @@ import { publishSingleThread, resolveThreadsCredentials } from '@/lib/threads';
  * 두 번째는 NX 실패로 스킵 → 답글 중복 게시 차단. 발행 실패 시엔 슬롯을 풀어서
  * QStash 다음 retry가 정상 동작하게 한다.
  */
-
-const RESERVED_TTL_SEC = 10 * 60; // 발행 시도 중 슬롯 보호 (10분)
-const SENT_TTL_SEC = 60 * 60 * 24; // 발행 완료 마킹 (24시간)
 
 export async function POST(request) {
   const rawBody = await request.text();
@@ -55,7 +57,7 @@ export async function POST(request) {
   // 슬롯 원자 예약. 다른 retry/요청이 이미 진행 중이거나 완료했다면 NX 실패로 스킵.
   let reserved;
   try {
-    reserved = await getRedis().set(sentKey, 'pending', { nx: true, ex: RESERVED_TTL_SEC });
+    reserved = await getRedis().set(sentKey, 'pending', { nx: true, ex: REPLY_RESERVED_TTL_SEC });
   } catch (err) {
     console.warn('[threads-publish-reply] reservation set failed (continuing without idempotency):', err?.message);
   }
@@ -65,7 +67,6 @@ export async function POST(request) {
 
   const credentials = await resolveThreadsCredentials({ email });
   if (!credentials) {
-    // 자격증명 해석 실패 — 슬롯 풀어 다음 retry 가 시도할 수 있게
     try { await getRedis().del(sentKey); } catch {}
     if (email) {
       console.error(`[threads-publish-reply] threads token not found for ${email}`);
@@ -76,22 +77,15 @@ export async function POST(request) {
   }
 
   try {
-    const replyId = await publishSingleThread(
-      replyText.trim(),
-      credentials.userId,
-      credentials.accessToken,
-      parentThreadId,
-    );
-    // pending → 실제 replyId 로 마킹 + TTL 24h 로 연장
+    const replyId = await publishSingleThread(replyText.trim(), credentials, { replyToId: parentThreadId });
     try {
-      await getRedis().set(sentKey, replyId, { ex: SENT_TTL_SEC });
+      await getRedis().set(sentKey, replyId, { ex: REPLY_SENT_TTL_SEC });
     } catch (err) {
       console.warn('[threads-publish-reply] sent-marker set failed (non-fatal):', err?.message);
     }
     return NextResponse.json({ success: true, parentThreadId, replyId });
   } catch (err) {
     console.error('[threads-publish-reply] publish failed:', err?.message);
-    // 발행 실패 — 슬롯 풀어 다음 QStash retry가 재시도할 수 있게
     try { await getRedis().del(sentKey); } catch {}
     return NextResponse.json({ error: 'reply publish failed', details: err.message }, { status: 500 });
   }

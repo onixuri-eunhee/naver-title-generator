@@ -1,11 +1,11 @@
-import { Client as QStashClient, Receiver } from '@upstash/qstash';
+import { Receiver } from '@upstash/qstash';
 import { NextResponse } from 'next/server';
-import { getRedis, resolveCallbackBaseUrl } from '@/lib/api-helpers';
+import { getRedis } from '@/lib/api-helpers';
 import {
   publishSingleThread,
   splitMainAndReply,
   resolveThreadsCredentials,
-  REPLY_DELAY_SEC,
+  enqueueReplyJob,
 } from '@/lib/threads';
 
 export async function POST(request) {
@@ -54,7 +54,7 @@ export async function POST(request) {
 
   let mainThreadId;
   try {
-    mainThreadId = await publishSingleThread(mainText, credentials.userId, credentials.accessToken);
+    mainThreadId = await publishSingleThread(mainText, credentials);
   } catch (err) {
     console.error('Threads Callback Publish Error:', err);
     return NextResponse.json({ error: 'Threads 발행 중 오류가 발생했습니다.' }, { status: 500 });
@@ -79,17 +79,7 @@ export async function POST(request) {
   }
 
   try {
-    const qstash = new QStashClient({ token: process.env.QSTASH_TOKEN });
-    await qstash.publishJSON({
-      url: `${resolveCallbackBaseUrl()}/api/threads-publish-reply`,
-      body: {
-        parentThreadId: mainThreadId,
-        replyText,
-        email: email || null,
-      },
-      delay: REPLY_DELAY_SEC,
-      retries: 3,
-    });
+    await enqueueReplyJob({ parentThreadId: mainThreadId, replyText, email });
     return NextResponse.json({ success: true, threadId: mainThreadId, replyPending: true });
   } catch (err) {
     console.error('[threads-callback] reply schedule failed (main already published):', err?.message);

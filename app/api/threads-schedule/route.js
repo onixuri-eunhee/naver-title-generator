@@ -8,6 +8,11 @@ import {
   jsonResponse,
   handleOptions,
 } from '@/lib/api-helpers';
+import {
+  splitMainAndReply,
+  validateThreadCounts,
+  resolveThreadsCredentials,
+} from '@/lib/threads';
 
 export async function OPTIONS(request) {
   return handleOptions(request);
@@ -23,8 +28,8 @@ export async function POST(request) {
     if (!email) {
       return jsonResponse(request, { error: '로그인이 필요합니다.' }, { status: 401 });
     }
-    const threadsData = await getRedis().get(`threads:user:${email}`);
-    if (!threadsData) {
+    const credentials = await resolveThreadsCredentials({ email });
+    if (!credentials) {
       return jsonResponse(request, { error: 'Threads 계정을 먼저 연결해주세요.' }, { status: 403 });
     }
   }
@@ -36,9 +41,13 @@ export async function POST(request) {
     return jsonResponse(request, { error: '발행할 텍스트가 없습니다.' }, { status: 400 });
   }
 
-  const mainText = text.includes('[답글]') ? text.split('[답글]')[0].trim() : text.trim();
-  if (mainText.length > 500) {
-    return jsonResponse(request, { error: '500자를 초과하는 글은 발행할 수 없습니다.' }, { status: 400 });
+  const { mainText, replyText } = splitMainAndReply(text);
+  if (!mainText) {
+    return jsonResponse(request, { error: '본문이 비어있습니다.' }, { status: 400 });
+  }
+  const lengthCheck = validateThreadCounts(mainText, replyText);
+  if (!lengthCheck.ok) {
+    return jsonResponse(request, { error: lengthCheck.error }, { status: 400 });
   }
 
   if (!publishAt) {
@@ -55,10 +64,11 @@ export async function POST(request) {
 
   try {
     const qstash = new Client({ token: process.env.QSTASH_TOKEN });
+    const callbackEmail = isAdmin ? null : email;
 
     const result = await qstash.publishJSON({
       url: `${resolveCallbackBaseUrl()}/api/threads-callback`,
-      body: { text: text.trim(), email: isAdmin ? null : email },
+      body: { text: text.trim(), email: callbackEmail },
       delay: delaySec,
     });
 
@@ -67,12 +77,12 @@ export async function POST(request) {
       `schedule:threads:${scheduleId}`,
       JSON.stringify({
         text: text.trim(),
-        email: isAdmin ? null : email,
+        email: callbackEmail,
         publishAt,
         createdAt: now.toISOString(),
         status: 'scheduled',
       }),
-      { ex: delaySec + 3600 }
+      { ex: delaySec + 3600 },
     );
 
     return jsonResponse(request, {
