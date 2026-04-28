@@ -61,6 +61,41 @@ const toneGuide = {
   '격식체': '어미: ~합니다, ~입니다. 전문가 톤. 논리적이고 신뢰감. 감정보다 근거.',
 };
 
+// 글자수 초과 시 의미 단위로 자르되 어절 중간은 절대 자르지 않는다.
+// 1) 줄(\n) 단위로 자르기 → 2) 마침표/문장부호 단위 → 3) 어절(공백) 단위.
+// 한 단계에서 빈 결과가 나오면 다음 단계로 fallback.
+function trimToBoundary(text, hardLimit) {
+  const compact = (s) => s.replace(/\s/g, '').length;
+  if (compact(text) <= hardLimit) return text;
+
+  const lines = text.split('\n').filter((l) => l.trim());
+  let trimmed = '';
+  for (const line of lines) {
+    const next = trimmed ? `${trimmed}\n${line}` : line;
+    if (compact(next) > hardLimit) break;
+    trimmed = next;
+  }
+  if (trimmed) return trimmed;
+
+  const sentenceParts = text.split(/([.!?。…]+\s*)/).filter(Boolean);
+  for (let i = 0; i < sentenceParts.length; i += 2) {
+    const chunk = sentenceParts[i] + (sentenceParts[i + 1] || '');
+    const next = trimmed + chunk;
+    if (compact(next) > hardLimit) break;
+    trimmed = next;
+  }
+  if (trimmed.trim()) return trimmed.trim();
+
+  const tokens = text.split(/(\s+)/);
+  for (const tok of tokens) {
+    const next = trimmed + tok;
+    // 첫 어절이 한도를 넘더라도 빈 문자열 대신 그 어절은 keep — 어절 중간 절단 회피.
+    if (compact(next) > hardLimit && trimmed.trim()) break;
+    trimmed = next;
+  }
+  return trimmed.trim();
+}
+
 export async function OPTIONS(request) {
   return handleOptions(request);
 }
@@ -171,7 +206,7 @@ export async function POST(request) {
     if (tone === '단문체' && type === '궁금증형') {
       charLimit = '본문 100자 이내 + 답글 50자 이내. 극도로 짧게. 2단 구조("[답글]" 구분자) 반드시 유지.';
     } else if (tone === '단문체') {
-      charLimit = '짧게 써라. 임팩트만 남겨라.';
+      charLimit = '본문 150~200자 (공백 포함). 짧은 문장으로 끊어쓰되 의미 단위 끝에서만 끊기. 어절 중간 절단 금지.';
     } else if (type === '궁금증형') {
       charLimit = '본문 200~250자 + 답글 80~120자. 합산 280~370자.';
     } else {
@@ -229,17 +264,11 @@ ${typeGuide[type] || typeGuide['정보형']}
     let hardLimit = 300;
     if (type === '궁금증형' && tone === '단문체') hardLimit = 200;
     else if (type === '궁금증형') hardLimit = 400;
-    else if (tone === '단문체') hardLimit = 100;
+    else if (tone === '단문체') hardLimit = 200;
+
     for (let i = 0; i < results.length; i++) {
       if (results[i].replace(/\s/g, '').length > hardLimit) {
-        const lines = results[i].split('\n').filter((l) => l.trim());
-        let trimmed = '';
-        for (const line of lines) {
-          const next = trimmed ? trimmed + '\n' + line : line;
-          if (next.replace(/\s/g, '').length > hardLimit) break;
-          trimmed = next;
-        }
-        results[i] = trimmed;
+        results[i] = trimToBoundary(results[i], hardLimit);
       }
     }
 
