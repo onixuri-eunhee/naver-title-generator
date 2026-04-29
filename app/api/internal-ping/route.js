@@ -15,10 +15,18 @@ export async function OPTIONS(request) {
 
 export async function GET(request) {
   const auth = await resolveAuthIdentity(request);
+  // 진단용 메타 (검증 후 제거 예정)
+  const envRaw = process.env.INTERNAL_API_KEYS || '';
+  const debug = {
+    envLen: envRaw.length,
+    envPrefix: envRaw.slice(0, 4),
+    hdrInternalKey: !!(request.headers.get('x-internal-key') || request.headers.get('X-Internal-Key')),
+    hdrAuth: !!request.headers.get('authorization'),
+  };
   if (!auth) {
     return jsonResponse(
       request,
-      { ok: false, error: 'unauthorized', hint: 'Bearer token 또는 X-Internal-Key 헤더 필요' },
+      { ok: false, error: 'unauthorized', hint: 'Bearer token 또는 X-Internal-Key 헤더 필요', debug },
       { status: 401 }
     );
   }
@@ -28,5 +36,6 @@ export async function GET(request) {
     isInternal: auth.isInternal,
     isAdmin: auth.isAdmin,
     timestamp: new Date().toISOString(),
+    debug,
   });
 }
