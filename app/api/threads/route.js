@@ -61,37 +61,64 @@ const toneGuide = {
   '격식체': '어미: ~합니다, ~입니다. 전문가 톤. 논리적이고 신뢰감. 감정보다 근거.',
 };
 
-// 글자수(공백 제외) 초과 시 줄/문장/어절 순으로 fallback. 어절 중간 절대 절단 금지.
-function trimToBoundary(text, hardLimit) {
-  const compact = (s) => s.replace(/\s/g, '').length;
-  if (compact(text) <= hardLimit) return text;
+// 공백 포함 글자수 초과 시 마지막 단락(CTA/질문) 보존 + 앞부분만 trim.
+// trim은 단락 → 줄 → 문장 → 어절 순으로 fallback. 어절 중간 절대 절단 금지.
+function fillUnderLimit(text, limit) {
+  // 단락 → 줄 → 문장 → 어절 순으로 누적해 limit 안에 들어가는 가장 긴 prefix 반환
+  const paragraphs = text.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+  let acc = '';
+  for (const p of paragraphs) {
+    const next = acc ? `${acc}\n\n${p}` : p;
+    if (next.length > limit) break;
+    acc = next;
+  }
+  if (acc) return acc;
 
   const lines = text.split('\n').filter((l) => l.trim());
-  let trimmed = '';
   for (const line of lines) {
-    const next = trimmed ? `${trimmed}\n${line}` : line;
-    if (compact(next) > hardLimit) break;
-    trimmed = next;
+    const next = acc ? `${acc}\n${line}` : line;
+    if (next.length > limit) break;
+    acc = next;
   }
-  if (trimmed) return trimmed;
+  if (acc) return acc;
 
   const sentenceParts = text.split(/([.!?。…]+\s*)/).filter(Boolean);
   for (let i = 0; i < sentenceParts.length; i += 2) {
     const chunk = sentenceParts[i] + (sentenceParts[i + 1] || '');
-    const next = trimmed + chunk;
-    if (compact(next) > hardLimit) break;
-    trimmed = next;
+    const next = acc + chunk;
+    if (next.length > limit) break;
+    acc = next;
   }
-  if (trimmed.trim()) return trimmed.trim();
+  if (acc.trim()) return acc.trim();
 
   const tokens = text.split(/(\s+)/);
   for (const tok of tokens) {
-    const next = trimmed + tok;
-    // 첫 어절이 한도를 넘더라도 빈 문자열 대신 그 어절은 keep — 어절 중간 절단 회피.
-    if (compact(next) > hardLimit && trimmed.trim()) break;
-    trimmed = next;
+    const next = acc + tok;
+    // 첫 어절이 한도를 넘어도 빈 문자열 대신 keep — 어절 중간 절단 회피
+    if (next.length > limit && acc.trim()) break;
+    acc = next;
   }
-  return trimmed.trim();
+  return acc.trim();
+}
+
+function trimToBoundary(text, hardLimit) {
+  if (text.length <= hardLimit) return text;
+
+  // 마지막 단락(보통 CTA/질문)을 보존 시도 — 한도의 50% 이내일 때만
+  const paragraphs = text.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+  if (paragraphs.length >= 2) {
+    const last = paragraphs[paragraphs.length - 1];
+    if (last.length <= Math.floor(hardLimit * 0.5)) {
+      const headSource = paragraphs.slice(0, -1).join('\n\n');
+      const headBudget = hardLimit - last.length - 2; // \n\n 길이
+      if (headBudget >= 30) {
+        const head = fillUnderLimit(headSource, headBudget);
+        if (head) return `${head}\n\n${last}`;
+      }
+    }
+  }
+
+  return fillUnderLimit(text, hardLimit);
 }
 
 export async function OPTIONS(request) {
@@ -204,7 +231,7 @@ export async function POST(request) {
     if (tone === '단문체' && type === '궁금증형') {
       charLimit = '본문 100자 이내 + 답글 50자 이내. 극도로 짧게. 2단 구조("[답글]" 구분자) 반드시 유지.';
     } else if (tone === '단문체') {
-      charLimit = '본문 150~200자 (공백 포함). 짧은 문장으로 끊어쓰되 의미 단위 끝에서만 끊기. 어절 중간 절단 금지.';
+      charLimit = '본문 150~200자 (공백 포함). 200자 절대 초과 금지. 짧은 문장으로 끊어쓰되 의미 단위 끝에서만 끊기. 어절 중간 절단 금지.';
     } else if (type === '궁금증형') {
       charLimit = '본문 200~250자 + 답글 80~120자. 합산 280~370자.';
     } else {
@@ -259,9 +286,10 @@ ${typeGuide[type] || typeGuide['정보형']}
     const results = splitParts.map((s) => s.trim().replace(META_LABEL_RE, '').trim()).filter(Boolean);
     while (results.length < 3) results.push('');
 
-    let hardLimit = 300;
-    if (type === '궁금증형' && tone === '단문체') hardLimit = 200;
-    else if (type === '궁금증형') hardLimit = 400;
+    // hardLimit: 공백 포함 글자수 기준 (가이드 단위와 통일)
+    let hardLimit = 280;
+    if (type === '궁금증형' && tone === '단문체') hardLimit = 150;
+    else if (type === '궁금증형') hardLimit = 370;
     else if (tone === '단문체') hardLimit = 200;
 
     for (let i = 0; i < results.length; i++) {
