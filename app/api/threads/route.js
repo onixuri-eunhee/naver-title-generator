@@ -61,9 +61,7 @@ const toneGuide = {
   '격식체': '어미: ~합니다, ~입니다. 전문가 톤. 논리적이고 신뢰감. 감정보다 근거.',
 };
 
-// 글자수 초과 시 의미 단위로 자르되 어절 중간은 절대 자르지 않는다.
-// 1) 줄(\n) 단위로 자르기 → 2) 마침표/문장부호 단위 → 3) 어절(공백) 단위.
-// 한 단계에서 빈 결과가 나오면 다음 단계로 fallback.
+// 글자수(공백 제외) 초과 시 줄/문장/어절 순으로 fallback. 어절 중간 절대 절단 금지.
 function trimToBoundary(text, hardLimit) {
   const compact = (s) => s.replace(/\s/g, '').length;
   if (compact(text) <= hardLimit) return text;
@@ -267,9 +265,7 @@ ${typeGuide[type] || typeGuide['정보형']}
     else if (tone === '단문체') hardLimit = 200;
 
     for (let i = 0; i < results.length; i++) {
-      if (results[i].replace(/\s/g, '').length > hardLimit) {
-        results[i] = trimToBoundary(results[i], hardLimit);
-      }
+      results[i] = trimToBoundary(results[i], hardLimit);
     }
 
     if (reviewPart) {
