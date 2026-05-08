@@ -61,14 +61,20 @@ const toneGuide = {
   '격식체': '어미: ~합니다, ~입니다. 전문가 톤. 논리적이고 신뢰감. 감정보다 근거.',
 };
 
+// 마지막 단락(CTA)을 보존하려면 그 단락이 hardLimit 안에서 차지하는 비율 한도.
+// 너무 길면 보존 시 head budget이 의미 있는 분량을 못 가짐.
+const LAST_PARA_MAX_RATIO = 0.5;
+const MIN_HEAD_BUDGET = 30;
+const PARA_SEP = '\n\n';
+const splitParagraphs = (text) => text.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+
 // 공백 포함 글자수 초과 시 마지막 단락(CTA/질문) 보존 + 앞부분만 trim.
 // trim은 단락 → 줄 → 문장 → 어절 순으로 fallback. 어절 중간 절대 절단 금지.
-function fillUnderLimit(text, limit) {
-  // 단락 → 줄 → 문장 → 어절 순으로 누적해 limit 안에 들어가는 가장 긴 prefix 반환
-  const paragraphs = text.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+function fillUnderLimit(text, limit, preParagraphs) {
+  const paragraphs = preParagraphs ?? splitParagraphs(text);
   let acc = '';
   for (const p of paragraphs) {
-    const next = acc ? `${acc}\n\n${p}` : p;
+    const next = acc ? `${acc}${PARA_SEP}${p}` : p;
     if (next.length > limit) break;
     acc = next;
   }
@@ -104,21 +110,21 @@ function fillUnderLimit(text, limit) {
 function trimToBoundary(text, hardLimit) {
   if (text.length <= hardLimit) return text;
 
-  // 마지막 단락(보통 CTA/질문)을 보존 시도 — 한도의 50% 이내일 때만
-  const paragraphs = text.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+  const paragraphs = splitParagraphs(text);
   if (paragraphs.length >= 2) {
     const last = paragraphs[paragraphs.length - 1];
-    if (last.length <= Math.floor(hardLimit * 0.5)) {
-      const headSource = paragraphs.slice(0, -1).join('\n\n');
-      const headBudget = hardLimit - last.length - 2; // \n\n 길이
-      if (headBudget >= 30) {
-        const head = fillUnderLimit(headSource, headBudget);
-        if (head) return `${head}\n\n${last}`;
+    if (last.length <= Math.floor(hardLimit * LAST_PARA_MAX_RATIO)) {
+      const headParagraphs = paragraphs.slice(0, -1);
+      const headSource = headParagraphs.join(PARA_SEP);
+      const headBudget = hardLimit - last.length - PARA_SEP.length;
+      if (headBudget >= MIN_HEAD_BUDGET) {
+        const head = fillUnderLimit(headSource, headBudget, headParagraphs);
+        if (head) return `${head}${PARA_SEP}${last}`;
       }
     }
   }
 
-  return fillUnderLimit(text, hardLimit);
+  return fillUnderLimit(text, hardLimit, paragraphs);
 }
 
 export async function OPTIONS(request) {
