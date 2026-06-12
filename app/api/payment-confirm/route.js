@@ -1,9 +1,31 @@
 import { extractToken, resolveSessionEmail, jsonResponse, handleOptions } from '@/lib/api-helpers';
 import { getDb } from '@/lib/db';
+import { writeLedger } from '@/lib/credit-service.js';
 
 const UNIT_PRICE = 9900;
 const UNIT_CREDIT = 30;
 const MAX_QTY = 5;
+
+// payments 테이블 lazy CREATE — 세션(서버 인스턴스)당 1회만 실행 (credit-service 패턴과 동일)
+let _paymentsTableReady = null;
+function ensurePaymentsTable(sql) {
+  if (_paymentsTableReady) return _paymentsTableReady;
+  _paymentsTableReady = sql`
+    CREATE TABLE IF NOT EXISTS payments (
+      order_id TEXT PRIMARY KEY,
+      payment_key TEXT UNIQUE NOT NULL,
+      user_email TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      credits INTEGER NOT NULL,
+      credited BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )
+  `.then(() => {}).catch((err) => {
+    _paymentsTableReady = null; // 다음 요청에서 재시도
+    throw err;
+  });
+  return _paymentsTableReady;
+}
 
 export async function OPTIONS(request) {
   return handleOptions(request);
@@ -80,17 +102,7 @@ export async function POST(request) {
     // "결제 기록만 남고 크레딧 지급 직전에 실패"한 경우는 재시도로 복구되어야 한다.
     // 이를 위해 credited 플래그를 두고, 지급을 단일 원자적 SQL(CTE)로 처리한다.
     // (neon serverless는 HTTP라 분기형 트랜잭션 불가 → 단일 statement로 원자성 확보)
-    await sql`
-      CREATE TABLE IF NOT EXISTS payments (
-        order_id TEXT PRIMARY KEY,
-        payment_key TEXT UNIQUE NOT NULL,
-        user_email TEXT NOT NULL,
-        amount INTEGER NOT NULL,
-        credits INTEGER NOT NULL,
-        credited BOOLEAN NOT NULL DEFAULT false,
-        created_at TIMESTAMPTZ DEFAULT now()
-      )
-    `;
+    await ensurePaymentsTable(sql);
 
     // 결제 기록 등록 (이미 있으면 무시). payment_key UNIQUE 위반은 위조 시도로 보고 차단.
     try {
@@ -132,13 +144,13 @@ export async function POST(request) {
       });
     }
 
-    // 회계 장부 기록 — 적립은 이미 확정. 장부 실패는 비치명(로그만).
-    try {
-      await sql`INSERT INTO credit_ledger (user_email, amount, type, reason)
-        VALUES (${email}, ${credits}, ${'purchase'}, ${`토스페이먼츠 ${qty}세트 (${orderId})`})`;
-    } catch (ledgerErr) {
-      console.error('[PAYMENT] credit_ledger write failed (credit already granted):', ledgerErr.message, { email, orderId });
-    }
+    // 회계 장부 기록 — 적립은 이미 확정. writeLedger는 비치명(내부에서 로그만).
+    await writeLedger(sql, {
+      userId: email,
+      amount: credits,
+      type: 'purchase',
+      reason: `토스페이먼츠 ${qty}세트 (${orderId})`,
+    });
 
     return jsonResponse(request, {
       success: true,
