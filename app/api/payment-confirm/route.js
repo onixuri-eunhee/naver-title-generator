@@ -1,12 +1,12 @@
 import { extractToken, resolveSessionEmail, jsonResponse, handleOptions } from '@/lib/api-helpers';
 import { getDb } from '@/lib/db';
-import { writeLedger } from '@/lib/credit-service.js';
 
 const UNIT_PRICE = 9900;
 const UNIT_CREDIT = 30;
 const MAX_QTY = 5;
 
-// payments 테이블 lazy CREATE — 세션(서버 인스턴스)당 1회만 실행 (credit-service 패턴과 동일)
+// payments 테이블 lazy CREATE — 서버 인스턴스당 1회 (credit-service.ensureIdempotencyTables 패턴).
+// 매 결제마다 CREATE TABLE 라운드트립을 날리지 않도록 promise를 메모이즈.
 let _paymentsTableReady = null;
 function ensurePaymentsTable(sql) {
   if (_paymentsTableReady) return _paymentsTableReady;
@@ -144,13 +144,15 @@ export async function POST(request) {
       });
     }
 
-    // 회계 장부 기록 — 적립은 이미 확정. writeLedger는 비치명(내부에서 로그만).
-    await writeLedger(sql, {
-      userId: email,
-      amount: credits,
-      type: 'purchase',
-      reason: `토스페이먼츠 ${qty}세트 (${orderId})`,
-    });
+    // 회계 장부 기록 — 적립은 이미 확정. 장부 실패는 비치명(로그만).
+    // chargeCredit 경로를 타지 않고 직접 INSERT한다(credit_ledger 이중기록 방지 +
+    // 결제는 charge_log/credited 멱등을 이미 자체 처리하므로 credit-service 불필요).
+    try {
+      await sql`INSERT INTO credit_ledger (user_email, amount, type, reason)
+        VALUES (${email}, ${credits}, ${'purchase'}, ${`토스페이먼츠 ${qty}세트 (${orderId})`})`;
+    } catch (ledgerErr) {
+      console.error('[PAYMENT] credit_ledger write failed (credit already granted):', ledgerErr.message, { email, orderId });
+    }
 
     return jsonResponse(request, {
       success: true,
