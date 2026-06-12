@@ -4,7 +4,7 @@ import {
   jsonResponse,
   handleOptions,
 } from '@/lib/api-helpers';
-import { uploadUserImage, listUserImages, registerFromUrl } from '@/lib/user-images';
+import { uploadUserImage, listUserImages, registerFromUrl, assertAllowedImageUrl } from '@/lib/user-images';
 import { checkQuota } from '@/lib/user-quota';
 
 export const maxDuration = 60;
@@ -40,12 +40,21 @@ export async function POST(request) {
       return jsonResponse(request, { error: 'sourceUrl이 필요합니다.' }, { status: 400 });
     }
 
-    // 쿼터 사전 체크 — 실제 바이트는 HEAD로 확인
-    let incomingBytes = 0;
+    // SSRF 방어 — registerFromUrl과 동일한 출처 화이트리스트로 HEAD 사전요청도 가드.
     try {
-      const head = await fetch(sourceUrl, { method: 'HEAD' });
-      incomingBytes = Number(head.headers.get('content-length') || 0);
-    } catch {}
+      assertAllowedImageUrl(sourceUrl);
+    } catch (e) {
+      return jsonResponse(request, { error: e.message || '허용되지 않은 이미지 출처입니다.' }, { status: 400 });
+    }
+
+    // 쿼터 사전 체크 — 실제 바이트는 HEAD로 확인 (data: URL은 HEAD 불가, skip)
+    let incomingBytes = 0;
+    if (!sourceUrl.startsWith('data:')) {
+      try {
+        const head = await fetch(sourceUrl, { method: 'HEAD' });
+        incomingBytes = Number(head.headers.get('content-length') || 0);
+      } catch {}
+    }
     // HEAD 못 읽으면 평균값 400KB로 가정 — sharp 처리 후 실제 크기 기준 DB row에 반영됨
     const assumedBytes = incomingBytes || 400 * 1024;
     const quota = await checkQuota(email, assumedBytes);

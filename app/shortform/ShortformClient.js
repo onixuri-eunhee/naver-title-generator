@@ -118,11 +118,6 @@ const LONGFORM_DURATIONS = [
   { sec: 600, label: '10분' },
 ];
 
-// 크레딧 비용 테이블 — 미리보기/렌더 시 동일 사용
-const CREDIT_COSTS = {
-  shortform: { 30: 7, 45: 10, 60: 14, 90: 18 },
-  longform: { 180: 7, 300: 12, 600: 22 },
-};
 const MAX_ONSCREEN_TEXT_LENGTH = 8;
 
 function authHeaders() {

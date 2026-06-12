@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { clipCopy } from '@/lib/utils';
 import styles from './Step7Download.module.css';
 
 /**
@@ -31,7 +32,7 @@ export default function Step7Download({
   async function copyCaption(key, text) {
     if (!text) return;
     try {
-      await navigator.clipboard.writeText(text);
+      await clipCopy(text);
       setCopiedKey(key);
       setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 1600);
     } catch (_) {

@@ -1,7 +1,7 @@
 // tests/unit/inactivity-detector.test.js
 //
 // 클라 useJobProgress inactivity timeout 순수 로직 검증.
-// 8분 threshold, status 'running'일 때만 적용.
+// 3분 threshold, status 'running'일 때만 적용.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,13 +11,13 @@ import {
   INACTIVITY_THRESHOLD_MS,
 } from '../../lib/shortform/inactivity-detector.js';
 
-test('threshold 값이 8분(480_000ms)', () => {
-  assert.equal(INACTIVITY_THRESHOLD_MS, 480_000);
+test('threshold 값이 3분(180_000ms)', () => {
+  assert.equal(INACTIVITY_THRESHOLD_MS, 180_000);
 });
 
 test('running + 경과 < threshold → inactive 아님', () => {
   const now = 1_000_000;
-  const last = now - 7 * 60 * 1000; // 7분 전
+  const last = now - 2 * 60 * 1000; // 2분 전
   assert.equal(isInactive({ status: 'running', lastEventTs: last, now }), false);
 });
 

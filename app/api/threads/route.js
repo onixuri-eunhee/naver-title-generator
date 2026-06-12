@@ -8,7 +8,7 @@ import {
   jsonResponse,
   handleOptions,
 } from '@/lib/api-helpers';
-import { logUsage, chargeCredits, getUserCredits } from '@/lib/db';
+import { logUsage, chargeCredits, refundCredits, getUserCredits } from '@/lib/db';
 
 const FREE_DAILY_LIMIT = 5;
 const THREAD_CREDIT_COST = 0.5;
@@ -156,6 +156,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  let chargedEmail = null;
   try {
     const body = await request.json().catch(() => ({}));
     let { type, tone, industry, target, topic, memo } = body;
@@ -192,6 +193,7 @@ export async function POST(request) {
           }, { status: 402 });
         }
         remaining = result.remaining;
+        chargedEmail = email;
       } else {
         rateLimitKey = getTodayKey(email);
         const newCount = await getRedis().incr(rateLimitKey);
@@ -281,6 +283,9 @@ ${typeGuide[type] || typeGuide['정보형']}
     if (!response.ok) {
       console.error('Claude API Error:', data?.error?.type || response.status);
       if (rateLimitKey) { try { await getRedis().decr(rateLimitKey); } catch (_) {} }
+      if (chargedEmail) {
+        await refundCredits(chargedEmail, THREAD_CREDIT_COST, 'threads-api-error-refund');
+      }
       return jsonResponse(request, { error: '글 생성 중 오류가 발생했습니다.' }, { status: 500 });
     }
 
@@ -320,6 +325,9 @@ ${typeGuide[type] || typeGuide['정보형']}
     return jsonResponse(request, { results, remaining, limit: FREE_DAILY_LIMIT });
   } catch (error) {
     console.error('Threads API Error:', error?.message || 'unknown');
+    if (chargedEmail) {
+      await refundCredits(chargedEmail, THREAD_CREDIT_COST, 'threads-error-refund');
+    }
     return jsonResponse(request, { error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }

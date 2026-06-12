@@ -71,4 +71,4 @@ WORKDIR /app
 
 EXPOSE 8080
 
-CMD ["node", "services/shortform-stt-service/server.js"]
+CMD ["node", "services/server.mjs"]

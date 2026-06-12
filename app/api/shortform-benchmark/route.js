@@ -21,6 +21,13 @@ export const maxDuration = 30;
 
 const CACHE_TTL_SEC = 7 * 86400; // 7일 (스펙 §9)
 
+// 길이 노출 없는 timing-safe 비교 (양쪽을 sha256으로 고정 길이화 후 비교)
+function timingSafeEqualStr(a, b) {
+  const ha = crypto.createHash('sha256').update(String(a)).digest();
+  const hb = crypto.createHash('sha256').update(String(b)).digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+
 /**
  * 요청 캐시 키 — blogText + keywords 해시.
  */
@@ -42,7 +49,7 @@ export async function POST(request) {
   // Vercel Deployment Protection 401 방지 (커밋 4e93066 참조)
   const internalSecret = request.headers.get('x-internal-secret');
   const expectedSecret = process.env.CRON_SECRET || process.env.INTERNAL_API_SECRET || '';
-  const isInternalCall = !!(internalSecret && expectedSecret && internalSecret === expectedSecret);
+  const isInternalCall = !!(internalSecret && expectedSecret && timingSafeEqualStr(internalSecret, expectedSecret));
 
   const isAdmin = isInternalCall || await resolveAdmin(request);
   const token = extractToken(request);

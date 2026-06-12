@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getToken } from '@/lib/auth';
+import { SHORTFORM_PAGE_ENABLED } from '@/lib/feature-flags';
 import styles from './ShortformProjectsSection.module.css';
 
 const STEP_LABELS = {
@@ -125,7 +126,9 @@ export default function ShortformProjectsSection() {
     <div className={styles.root}>
       <div className={styles.header}>
         <div className={styles.title}>내 영상</div>
-        <a href="/shortform" className={styles.newBtn}>+ 새 영상 만들기</a>
+        {SHORTFORM_PAGE_ENABLED && (
+          <a href="/shortform" className={styles.newBtn}>+ 새 영상 만들기</a>
+        )}
       </div>
 
       <div className={styles.tabs} role="tablist">

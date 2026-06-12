@@ -6,6 +6,7 @@ import { clipCopy } from '@/lib/utils';
 import { getToken } from '@/lib/auth';
 import { useAuth } from '@/components/AuthProvider';
 import { SYSTEM_PROMPTS, TONE_GUIDES } from '@/lib/blog-writer-prompts';
+import { SHORTFORM_PAGE_ENABLED } from '@/lib/feature-flags';
 import styles from './page.module.css';
 
 const TYPES = [
@@ -1100,9 +1101,11 @@ export default function BlogWriter() {
               <button type="button" className={`${styles.handoffBtn} ${styles.handoffPremium}`} onClick={goToPremiumImage}>
                 🎨 프리미엄 이미지 생성하기
               </button>
-              <button type="button" className={`${styles.handoffBtn} ${styles.handoffShortform}`} onClick={goToShortform}>
-                🎬 이 글로 숏폼 만들기
-              </button>
+              {SHORTFORM_PAGE_ENABLED && (
+                <button type="button" className={`${styles.handoffBtn} ${styles.handoffShortform}`} onClick={goToShortform}>
+                  🎬 이 글로 숏폼 만들기
+                </button>
+              )}
               <button type="button" className={`${styles.handoffBtn} ${styles.handoffCardnews}`} onClick={goToCardNews}>
                 🃏 카드뉴스로 만들기
               </button>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getToken } from '@/lib/auth';
+import { clipCopy } from '@/lib/utils';
 import { useAuth } from '@/components/AuthProvider';
 import { useJobProgress } from '@/app/shortform/hooks/useJobProgress';
 import ImagePickerModal from '@/components/ImagePickerModal';
@@ -293,7 +294,7 @@ export default function CardNewsClient() {
   async function copyCaption() {
     if (!captionInstagram) return;
     try {
-      await navigator.clipboard.writeText(captionInstagram);
+      await clipCopy(captionInstagram);
       setCaptionCopied(true);
       setTimeout(() => setCaptionCopied(false), 1600);
     } catch (_) {

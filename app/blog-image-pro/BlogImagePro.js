@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getToken } from '@/lib/auth';
 import { useAuth } from '@/components/AuthProvider';
+import { SHORTFORM_PAGE_ENABLED } from '@/lib/feature-flags';
 import styles from './page.module.css';
 
 const TYPE_ICONS = {
@@ -834,7 +835,7 @@ export default function BlogImagePro() {
           </div>
         )}
 
-        {images.length > 0 && !loading && (
+        {SHORTFORM_PAGE_ENABLED && images.length > 0 && !loading && (
           <div
             className={styles.card}
             style={{

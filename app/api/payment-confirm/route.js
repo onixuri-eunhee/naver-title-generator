@@ -63,9 +63,59 @@ export async function POST(request) {
     }, { status: 400 });
   }
 
+  // 토스 응답 자체를 재검증 — 클라이언트가 보낸 amount를 신뢰하지 않는다.
+  // 승인 상태가 DONE이 아니거나 실제 결제액이 우리가 계산한 금액과 다르면 거부.
+  const tossAmount = Number(tossData.totalAmount);
+  if (tossData.status !== 'DONE' || tossAmount !== numAmount) {
+    console.error('[PAYMENT] amount/status mismatch', {
+      email, orderId, status: tossData.status, tossAmount, numAmount,
+    });
+    return jsonResponse(request, { error: '결제 금액 검증에 실패했습니다.' }, { status: 400 });
+  }
+
   const sql = getDb();
 
   try {
+    // 멱등 처리 — 같은 orderId(또는 paymentKey)가 이미 적립됐으면 재적립 금지.
+    // payments 테이블의 order_id UNIQUE 제약으로 동시 요청·재시도·재생(replay)을 모두 차단.
+    await sql`
+      CREATE TABLE IF NOT EXISTS payments (
+        order_id TEXT PRIMARY KEY,
+        payment_key TEXT UNIQUE NOT NULL,
+        user_email TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        credits INTEGER NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT now()
+      )
+    `;
+
+    let inserted;
+    try {
+      inserted = await sql`
+        INSERT INTO payments (order_id, payment_key, user_email, amount, credits)
+        VALUES (${orderId}, ${paymentKey}, ${email}, ${numAmount}, ${credits})
+        ON CONFLICT (order_id) DO NOTHING
+        RETURNING order_id
+      `;
+    } catch (dupErr) {
+      // payment_key UNIQUE 위반(같은 결제, 다른 orderId 위조 시도) 등
+      console.warn('[PAYMENT] duplicate payment blocked:', dupErr.message, { email, orderId });
+      return jsonResponse(request, { error: '이미 처리된 결제입니다.' }, { status: 409 });
+    }
+
+    if (inserted.length === 0) {
+      // 이미 적립된 orderId — 중복 요청. 현재 잔액만 반환하고 재적립하지 않음.
+      console.warn('[PAYMENT] already credited orderId, skipping', { email, orderId });
+      const [u] = await sql`SELECT credits FROM users WHERE email = ${email}`;
+      return jsonResponse(request, {
+        success: true,
+        credits: 0,
+        totalCredits: u?.credits || 0,
+        orderId,
+        alreadyProcessed: true,
+      });
+    }
+
     await sql`INSERT INTO credit_ledger (user_email, amount, type, reason)
       VALUES (${email}, ${credits}, ${'purchase'}, ${`토스페이먼츠 ${qty}세트 (${orderId})`})`;
 
