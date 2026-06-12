@@ -76,8 +76,10 @@ export async function POST(request) {
   const sql = getDb();
 
   try {
-    // 멱등 처리 — 같은 orderId(또는 paymentKey)가 이미 적립됐으면 재적립 금지.
-    // payments 테이블의 order_id UNIQUE 제약으로 동시 요청·재시도·재생(replay)을 모두 차단.
+    // 멱등 처리 — 같은 orderId/paymentKey의 중복·재시도·재생(replay)을 모두 차단하되,
+    // "결제 기록만 남고 크레딧 지급 직전에 실패"한 경우는 재시도로 복구되어야 한다.
+    // 이를 위해 credited 플래그를 두고, 지급을 단일 원자적 SQL(CTE)로 처리한다.
+    // (neon serverless는 HTTP라 분기형 트랜잭션 불가 → 단일 statement로 원자성 확보)
     await sql`
       CREATE TABLE IF NOT EXISTS payments (
         order_id TEXT PRIMARY KEY,
@@ -85,27 +87,41 @@ export async function POST(request) {
         user_email TEXT NOT NULL,
         amount INTEGER NOT NULL,
         credits INTEGER NOT NULL,
+        credited BOOLEAN NOT NULL DEFAULT false,
         created_at TIMESTAMPTZ DEFAULT now()
       )
     `;
 
-    let inserted;
+    // 결제 기록 등록 (이미 있으면 무시). payment_key UNIQUE 위반은 위조 시도로 보고 차단.
     try {
-      inserted = await sql`
+      await sql`
         INSERT INTO payments (order_id, payment_key, user_email, amount, credits)
         VALUES (${orderId}, ${paymentKey}, ${email}, ${numAmount}, ${credits})
         ON CONFLICT (order_id) DO NOTHING
-        RETURNING order_id
       `;
     } catch (dupErr) {
-      // payment_key UNIQUE 위반(같은 결제, 다른 orderId 위조 시도) 등
       console.warn('[PAYMENT] duplicate payment blocked:', dupErr.message, { email, orderId });
       return jsonResponse(request, { error: '이미 처리된 결제입니다.' }, { status: 409 });
     }
 
-    if (inserted.length === 0) {
-      // 이미 적립된 orderId — 중복 요청. 현재 잔액만 반환하고 재적립하지 않음.
-      console.warn('[PAYMENT] already credited orderId, skipping', { email, orderId });
+    // 원자적 지급 — credited=false인 행을 true로 바꾸며 그 행만 크레딧 적립.
+    // 동시 요청 2개가 와도 UPDATE payments WHERE credited=false는 하나만 성공 → 이중적립 0.
+    // 직전 시도가 지급 전 죽었으면 credited=false로 남아있어 재시도가 복구.
+    const claimed = await sql`
+      WITH claim AS (
+        UPDATE payments SET credited = true
+        WHERE order_id = ${orderId} AND credited = false
+        RETURNING credits, user_email
+      )
+      UPDATE users
+      SET credits = credits + (SELECT credits FROM claim), updated_at = NOW()
+      WHERE email = (SELECT user_email FROM claim)
+      RETURNING credits
+    `;
+
+    if (claimed.length === 0) {
+      // 이미 지급 완료된 결제 — 재적립 없이 현재 잔액만 반환.
+      console.warn('[PAYMENT] already credited, skipping', { email, orderId });
       const [u] = await sql`SELECT credits FROM users WHERE email = ${email}`;
       return jsonResponse(request, {
         success: true,
@@ -116,18 +132,18 @@ export async function POST(request) {
       });
     }
 
-    await sql`INSERT INTO credit_ledger (user_email, amount, type, reason)
-      VALUES (${email}, ${credits}, ${'purchase'}, ${`토스페이먼츠 ${qty}세트 (${orderId})`})`;
-
-    await sql`UPDATE users SET credits = credits + ${credits}, updated_at = NOW()
-      WHERE email = ${email}`;
-
-    const [user] = await sql`SELECT credits FROM users WHERE email = ${email}`;
+    // 회계 장부 기록 — 적립은 이미 확정. 장부 실패는 비치명(로그만).
+    try {
+      await sql`INSERT INTO credit_ledger (user_email, amount, type, reason)
+        VALUES (${email}, ${credits}, ${'purchase'}, ${`토스페이먼츠 ${qty}세트 (${orderId})`})`;
+    } catch (ledgerErr) {
+      console.error('[PAYMENT] credit_ledger write failed (credit already granted):', ledgerErr.message, { email, orderId });
+    }
 
     return jsonResponse(request, {
       success: true,
       credits: credits,
-      totalCredits: user?.credits || credits,
+      totalCredits: Number(claimed[0].credits),
       orderId: tossData.orderId,
       method: tossData.method,
     });
