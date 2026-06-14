@@ -11,18 +11,33 @@
 콜백·진행률·DB·화면 코드는 **하나도 안 바꾸고** 영상 품질만 갈아끼울 수 있다.
 충돌 위험의 99%는 "계약을 안 지킬 때" 생긴다 → 이 문서는 그 계약을 고정한다.
 
+**대상(2026-06-15 확정):** 사장님 본인 숏폼이 아니라 **고객용 제품 숏폼**이다.
+고객이 영상·목소리를 올리면 실사+클론(고급), 안 올리면 스톡+기본TTS(중간). 공개는 점진적으로.
+
 ---
 
 ## 1. 목적과 범위
 
-### 1단계 (이 문서의 실행 대상 — 사장님 계정 전용)
-- 사장님 계정으로 숏폼 렌더 시 트랙 B(실사 클립 + 일레븐랩스 클론 음성)로 렌더.
-- 다른 사용자는 기존 트랙 A(Remotion 이미지+클라우드 음성) 그대로 → **영향 0**.
-- local_clips·클론음성이 이미 사장님 자산으로 존재 → 신규 사용자 기능 없이 즉시 품질 향상.
+> **전제(2026-06-15 사장님 확정):** 사장님 **본인** 숏폼은 제품을 거치지 않고
+> 스킬(`shortform-production`) + 조조팀으로 직접 제작한다. 이 문서의 통합 대상은
+> **오직 고객용 제품 숏폼**이다. 사장님 개인 클립·클론음성은 제품에 넣지 않는다.
 
-### 2단계 (별도 기획 — 제품화, 이 문서 범위 밖)
-- 사용자별 영상 클립 업로드함, 스톡 폴백, (선택) 사용자 음성 클론, 결제 연동.
-- 1단계 계약을 그대로 확장하므로 1단계 설계가 2단계의 토대가 된다.
+### 목표 — 고객용 숏폼 품질 업그레이드 (전체 고객 대상)
+- 제품 숏폼 렌더를 트랙 B(실사/스톡 클립 + 음성) 엔진으로 전환. **대상은 전체 고객.**
+- 품질은 고객의 입력에 따라 갈린다(하이브리드):
+  - 고객이 **자기 영상·목소리를 올리면** → 실사 클립 + 클론 음성(고급).
+  - **안 올리면** → 스톡 영상(공용 영상 라이브러리) + 기본 TTS(중간). 정지 이미지보다는 낫다.
+- **공개는 점진적으로**(소수 베타 고객 → 전체). 대상이 전체라고 한 번에 켜지 않는다(§8-bis).
+
+### 핵심 차이 (초기 설계 대비)
+- "사장님 계정 전용 1단계"는 **폐기**. 사장님은 제품을 안 거치므로 불필요.
+- "사장님 클립을 렌더 서비스에 동봉" **폐기**. 개인 영상이라 고객에 부적합. **고객은 각자 자기 자산.**
+- 따라서 처음부터 **고객용 기능**을 만든다: ①고객 영상·목소리 업로드함 ②미업로드 시 스톡 폴백
+  ③트랙 B 렌더 엔진. (초기 설계의 "2단계"가 사실상 전체 목표가 됨.)
+
+### 현실 메모 (품질 기대치)
+- 진짜 큰 품질 점프는 **고객이 자기 영상을 올릴 때** 발생. 미업로드 고객은 스톡이라 향상 폭이 작다.
+- 따라서 "영상 올리면 훨씬 좋아진다"는 **업로드 유도 UX**가 품질만큼 중요한 제품 과제다.
 
 ---
 
@@ -103,9 +118,9 @@ POST /render (x-render-secret 검증)
   백그라운드:
     1. inputProps → scenes JSON 변환 수신 (4.3 참조)
     2. make_short.py 파이프라인 호출 (이미 존재):
-       - 일레븐랩스 클론음성 합성(with-timestamps)
+       - 음성 합성(with-timestamps) — 고객 클론음성 있으면 그것, 없으면 기본 TTS
        - 자막 세그먼트·씬 경계 정렬
-       - 클립 확보 local→stock→폴백
+       - 클립 확보 고객업로드→stock→폴백
        - ffmpeg 컷+concat+자막번인+1.12배속
        - 출력 /tmp/{outputFilename}.mp4
     3. R2 업로드 shortform/{outputFilename}.mp4  (트랙 A와 동일 키·동일 R2 자격증명)
@@ -116,7 +131,8 @@ POST /render (x-render-secret 검증)
 GET /health → {status:'ok'}
 ```
 - **핵심**: make_short.py의 렌더 로직은 그대로 재사용. 서비스는 "HTTP↔make_short" 어댑터일 뿐.
-- 음성은 트랙 B가 **자체 생성**(클론 보이스). 트랙 A처럼 inputProps에 음성을 미리 넣지 않는다.
+- 음성은 트랙 B가 **자체 생성**. 고객이 음성 클론을 등록했으면 그 voiceId, 아니면 기본 TTS.
+  트랙 A처럼 inputProps에 음성을 미리 넣지 않는다.
 
 ### 4.3 데이터 변환: script-payload → MPT scenes JSON
 기존 대본 산출물(`lib/shortform/script-payload.js`)의 `scenes[]`는 이미 `script`·`section`을
@@ -126,20 +142,22 @@ GET /health → {status:'ok'}
 |---|---|---|
 | `script` | scenes[].script | 그대로 |
 | `section` | scenes[].section (hook/point/cta) | 그대로 |
-| `clip.source` / `clip.local` / `clip.query` | **신규 매칭 단계** | 1단계는 트랙 B 서비스 안에서 결정 |
+| `clip.source` / `clip.local` / `clip.query` | **신규 매칭 단계** | 고객 업로드 클립 우선, 없으면 스톡 |
 
-- 변환 위치(택1):
-  - **(권장) 트랙 B 서비스 내부**에서 변환 — Vercel은 기존 inputProps만 보내고, 서비스가
-    scenes로 풀어 clip 매칭. Vercel 코드 변경 최소.
-  - 또는 Vercel `/api/shortform-render`에서 변환 후 scenes로 전송 — 분기 코드가 커짐. 비권장.
-- clip 매칭 1단계 규칙: 스킬 `shortform-production`의 우선순위 그대로
-  `local(실사) > stock(pixabay) > 폴백`. 사장님 local_clips를 섹션·키워드로 매칭.
+- 변환 위치(확정): **트랙 B 서비스 내부**에서 변환 — Vercel은 기존 inputProps + 고객 자산
+  참조(클립 R2 경로·voiceId)만 보내고, 서비스가 scenes로 풀어 clip 매칭. Vercel 코드 변경 최소.
+- clip 매칭 규칙: **고객 업로드 클립 > 스톡(pixabay/pexels) > 폴백**.
+  자동 매칭(섹션·키워드) 후, 화면에서 **고객이 틀린 클립만 교체**(자동+수동 보정 — §9 결정).
 
-### 4.4 자산(local_clips) 전략
-- **1단계**: 사장님 10종 클립을 트랙 B 서비스에 **동봉**(Railway 볼륨 또는 이미지에 포함).
-  사장님 1인 사용이라 이 방식으로 충분.
-- **2단계**: 사용자별 클립을 R2(`user-clips/{emailHash}/`)에 업로드 → 렌더 시 다운로드.
-  기존 `lib/user-images.js`(이미지 보관함) 패턴을 영상으로 확장.
+### 4.4 고객 자산 전략 (영상·음성)
+**핵심 전환**: 사장님 개인 클립을 동봉하지 않는다. **각 고객이 자기 자산을 쓴다.**
+
+- **영상 클립**: 고객이 업로드 → R2 `user-clips/{emailHash}/`에 저장 → 렌더 시 다운로드.
+  기존 `lib/user-images.js`(이미지 보관함)·SSRF 가드(`assertAllowedImageUrl`)·쿼터(`user-quota.js`)
+  패턴을 **영상으로 확장**. 미업로드 고객은 이 단계 건너뛰고 스톡으로.
+- **음성**: (선택) 고객 음성 클론 등록 — 일레븐랩스 voice 생성 + 동의·샘플 업로드 온보딩.
+  미등록 고객은 기본 TTS. 클론은 친절도 높은 기능이라 후순위 가능(스톡+기본TTS로 먼저 출시 OK).
+- **신규 제품 과제(이 범위에 포함)**: 업로드함 UI, 용량·결제 연동, 업로드 유도 UX, (선택)음성클론 온보딩.
 
 ---
 
@@ -160,17 +178,29 @@ const RENDER_URL = backend === 'B'
 
 ```js
 // lib/shortform/render-backend.js (신규, 단일 진실원천)
+// 점진 공개: allowlist(베타 코호트) → 비율 롤아웃 → 전체.
 export function resolveRenderBackend(email) {
   if (process.env.TRACKB_ENABLED !== 'true') return 'A';
   if (!process.env.TRACKB_RENDER_URL) return 'A';        // 미설정 시 안전 폴백
+
+  // 1) 베타 코호트 명시 허용
   const allow = (process.env.TRACKB_ALLOWED_EMAILS || '')
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-  return allow.includes((email || '').toLowerCase()) ? 'B' : 'A';
+  if (allow.includes((email || '').toLowerCase())) return 'B';
+
+  // 2) 비율 롤아웃(0~100). 이메일 해시 기반 안정적 분배(같은 고객은 항상 같은 트랙)
+  const pct = Number(process.env.TRACKB_ROLLOUT_PCT || 0);
+  if (pct > 0 && email) {
+    const bucket = hashToBucket(email);   // 0~99 결정적
+    if (bucket < pct) return 'B';
+  }
+  return 'A';
 }
 ```
 
-- 플래그 off / URL 미설정 / allowlist 밖 → **무조건 트랙 A**. 안전 기본값.
-- 1단계 allowlist = 사장님 이메일 1개.
+- 플래그 off / URL 미설정 / 코호트·비율 밖 → **무조건 트랙 A**. 안전 기본값.
+- 공개 순서: allowlist(소수 베타 고객) → `TRACKB_ROLLOUT_PCT` 10→30→100 단계 상향 → 전체.
+- 비율은 **이메일 해시**로 안정 분배 — 같은 고객이 새로고침마다 트랙이 바뀌지 않음.
 
 > ⚠️ **주의(검증됨)**: `RAILWAY_RENDER_URL`은 숏폼뿐 아니라 **카드뉴스도 공유**한다
 > (`app/api/card-news/route.js:1038`, 엔드포인트 `/render-cardnews`). 따라서 분기는 반드시
@@ -204,31 +234,43 @@ export function resolveRenderBackend(email) {
 # Vercel
 TRACKB_ENABLED=false                 # 기본 off. true여야 트랙 B 활성
 TRACKB_RENDER_URL=                   # 트랙 B Railway 서비스 URL (미설정=트랙 A 폴백)
-TRACKB_ALLOWED_EMAILS=               # 트랙 B 허용 이메일(콤마구분). 1단계=사장님 1개
+TRACKB_ALLOWED_EMAILS=               # 베타 코호트(콤마구분). 초기 소수 고객
+TRACKB_ROLLOUT_PCT=0                 # 비율 롤아웃 0~100. 이메일 해시 안정 분배
 
 # 트랙 B Railway 서비스 (기존 R2·RENDER_SECRET 재사용 + 일레븐랩스)
 RENDER_SECRET=                       # 트랙 A와 동일 값
 WEBHOOK_BASE_URL=                    # https://ddukddaktool.co.kr (콜백 라우팅)
 R2_*                                 # 트랙 A와 동일 자격증명·버킷
-ELEVENLABS_API_KEY=                  # 클론 음성
-ELEVENLABS_VOICE_ID=                 # 사장님 클론 보이스 ID
+ELEVENLABS_API_KEY=                  # 고객 음성 클론(선택 기능)
 ELEVENLABS_MODEL_ID=eleven_multilingual_v2
+# 고객 voiceId는 고정 env가 아니라 고객별 DB/요청값으로 전달 (미등록 시 기본 TTS)
 ```
 
 ---
 
-## 8. 단계별 실행 계획 (1단계)
+## 8. 단계별 실행 계획 (고객용)
 
+> 대상은 전체 고객이지만 **공개는 점진**(§8-bis). 아래는 만들기 순서.
+
+**그룹 1 — 렌더 엔진(스톡 모드 먼저, 가장 빠른 가치)**
 | # | 작업 | 산출물 | 의존 |
 |---|---|---|---|
-| 1 | 트랙 B HTTP 래퍼 작성 | `MoneyPrinterTurbo/server_trackb.py` (FastAPI, /render·/health) | make_short.py |
-| 2 | inputProps→scenes 변환 + clip 매칭 | 래퍼 안 변환 함수 | §4.3 |
-| 3 | 콜백 클라이언트(progress/complete/error) | 래퍼 안 (트랙 A `webhook-client.mjs` 동등 로직) | §3(B) |
+| 1 | 트랙 B HTTP 래퍼 | `MoneyPrinterTurbo/server_trackb.py` (FastAPI, /render·/health) | make_short.py |
+| 2 | inputProps→scenes 변환 + clip 매칭(스톡 우선) | 래퍼 안 변환 함수 | §4.3 |
+| 3 | 콜백 클라이언트(progress/complete/error) | 래퍼 안 (`webhook-client.mjs` 동등) | §3(B) |
 | 4 | R2 업로드(동일 키) | 래퍼 안 (boto3 등) | §3(C) |
-| 5 | 트랙 B Railway 배포 (Python Docker) | 새 Railway 서비스 + local_clips 동봉 | 1~4 |
-| 6 | Vercel 분기 추가 | `lib/shortform/render-backend.js` + `/api/shortform-render` 수정 | §5 |
-| 7 | 환경변수 설정 (off→사장님만 on) | Vercel·Railway env | §7 |
-| 8 | 사장님 계정 E2E 1건 + 풀시청 검수 | 완성 mp4 | 영상 자가검증 금지룰 — 사장님 시청 게이트 |
+| 5 | 트랙 B Railway 배포 (Python Docker) | 새 Railway 서비스 | 1~4 |
+| 6 | Vercel 분기 추가 | `lib/shortform/render-backend.js` + `/api/shortform-render` | §5 |
+| 7 | 환경변수 (off→베타 코호트 on) | Vercel·Railway env | §7 |
+| 8 | 베타 고객 E2E + 검수 | 완성 mp4 | 사장님 시청 게이트 |
+
+**그룹 2 — 고객 자산(품질 점프, 그룹 1 검증 후)**
+| # | 작업 | 산출물 | 의존 |
+|---|---|---|---|
+| 9 | 고객 영상 업로드함 | R2 `user-clips/{emailHash}/` + UI + 쿼터·SSRF 가드 확장 | `lib/user-images.js` 패턴 |
+| 10 | scenes 변환에 고객 클립 우선 매칭 | 래퍼 변환 함수 확장 | 9 |
+| 11 | (선택) 고객 음성 클론 온보딩 | 일레븐랩스 voice 생성 + 동의·voiceId 저장 | 9 |
+| 12 | 업로드 유도 UX("올리면 훨씬 좋아져요") | 화면 안내 | 9 |
 
 롤백: `TRACKB_ENABLED=false` 한 줄. 즉시 전부 트랙 A로 복귀.
 
@@ -253,11 +295,13 @@ ELEVENLABS_MODEL_ID=eleven_multilingual_v2
 - 검증 게이트: `npm test`(현재 329개) 전부 통과 + `next build` 성공 + off 상태 회귀 동일.
 
 **3단계 · 좁게 흘려보고 검증 (카나리).**
-`TRACKB_ALLOWED_EMAILS`에 사장님 1명만. 같은 대본을 트랙 A·B 양쪽으로 렌더해 비교 +
-**사장님 1배속 풀시청 게이트**(영상 자가검증 금지룰). 문제 시 `TRACKB_ENABLED=false` 한 줄로 즉시 복귀.
+`TRACKB_ALLOWED_EMAILS`에 **소수 베타 고객(또는 사장님 테스트 계정)만**. 같은 대본을 트랙 A·B
+양쪽으로 렌더해 비교 + **사장님 1배속 풀시청 게이트**(영상 자가검증 금지룰).
+문제 시 `TRACKB_ENABLED=false` 한 줄로 즉시 복귀.
 
 **4단계 · 점진 전환.**
-검증되면 allowlist를 천천히 넓힌다(사장님 → 베타 → 전체). 한 번에 전체 전환 금지. 각 확대마다 게이트 반복.
+검증되면 `TRACKB_ROLLOUT_PCT`를 천천히 올린다(베타 → 10% → 30% → 100%). 한 번에 전체 전환 금지.
+각 확대마다 게이트 반복. 비율은 이메일 해시 안정 분배라 켰다 줄여도 같은 고객은 같은 트랙.
 
 **5단계 · 옛것을 별도 정리 커밋으로 수축(삭제).**
 트랙 B가 트래픽을 충분히 받은 뒤에야 트랙 A(불필요해진 Remotion 경로·코드)를 **독립된 커밋**으로 삭제.
@@ -280,14 +324,22 @@ ELEVENLABS_MODEL_ID=eleven_multilingual_v2
 
 ---
 
-## 9. 결정 필요 사항 (착수 전 확인)
+## 9. 결정 사항 (2026-06-15 사장님 확정)
 
-1. **트랙 B 서비스 호스팅**: 기존 Railway 프로젝트에 서비스 추가 vs 새 프로젝트? (비용·관리)
-2. **변환 위치**: §4.3 권장(서비스 내부)으로 확정? Vercel은 inputProps만 그대로 보냄.
-3. **clip 매칭 자동화 수준**: 1단계에서 섹션→클립 자동매칭만? 아니면 scenes JSON에
-   사장님이 클립을 수동 지정?
-4. **숏폼 페이지 재오픈 시점**: 트랙 B 검증 완료 후 `SHORTFORM_PAGE_ENABLED=true`와
-   `TRACKB_ENABLED=true`를 동시에 켤지, 트랙 B는 더 뒤로 뺄지.
+| # | 항목 | 결정 |
+|---|---|---|
+| D1 | 적용 대상 | **전체 고객**. 사장님 본인 숏폼은 제품 밖(스킬+조조팀 직접 제작). |
+| D2 | 고객 영상 소스 | **하이브리드** — 올리면 실사 고급, 안 올리면 스톡+기본TTS. |
+| D3 | 공개 방식 | 대상은 전체, **공개는 점진**(베타 코호트 → 비율 롤아웃 → 100%). |
+| D4 | 서비스 호스팅 | 기존 Railway 프로젝트에 **서비스 추가**(같은 건물·다른 방). 관리·비용 한곳. |
+| D5 | 변환 위치 | **트랙 B 서비스 내부**. Vercel은 inputProps + 고객자산 참조만 전달. |
+| D6 | clip 매칭 | **자동 매칭 + 고객 수동 보정**(틀린 클립만 교체). |
+| D7 | 페이지 재오픈 | 트랙 B(스톡 모드) 검증 완료 후 `SHORTFORM_PAGE_ENABLED`·`TRACKB` **함께** 켬. |
+
+### 남은 미결(그룹 2 착수 전 결정)
+- 음성 클론을 **언제** 붙일지 — 스톡+기본TTS로 먼저 출시하고 후속? (권장: 후속)
+- 고객 영상 업로드 **용량·결제** 정책 — 기존 이미지 쿼터(`user-quota.js`) 기준 재사용 vs 영상 별도.
+- 스톡 영상 **소스·라이선스** — pixabay/pexels 무료 라이선스 범위·상업적 사용 확인.
 
 ---
 
