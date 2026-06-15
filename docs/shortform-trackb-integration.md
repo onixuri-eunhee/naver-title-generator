@@ -343,6 +343,26 @@ ELEVENLABS_MODEL_ID=eleven_multilingual_v2
 
 ---
 
+## 9-bis. 재오픈 전 필수 수정 (Codex 리뷰 2026-06-16 · 사장님 확정 보류)
+
+> 2026-06-16 Codex 리뷰가 머니·결제 경로에서 찾은 4건. **지금은 노출 경로(멱등 차감·결제)가
+> 미사용/소수라 보류**하기로 사장님 확정. **숏폼/본격 결제를 다시 켜는 작업과 묶어** 반드시 처리한다.
+> (M2 SSRF 리다이렉트 건은 2026-06-16 선조치 완료 — 커밋 `24bd709`.)
+>
+> ⚠️ 이 4건은 모두 **크레딧/결제 핵심 코드**라 영향 범위가 크다. 반드시 테스트를 충분히 붙여
+> 한 건씩 독립 커밋으로(§8-bis 원칙) 진행한다.
+
+| # | 위치 | 심각도 | 문제 | 수정 방향 |
+|---|---|---|---|---|
+| H1 | `lib/credit-service.js` `chargeCredit` (UPDATE 실패 시 charge_log 보상 DELETE) | high | INSERT charge_log + UPDATE users가 별개 문장 → 모호한 에러(커밋됐는데 응답 유실) 후 DELETE하면 재시도 시 이중 차감 | 차감을 단일 원자적 CTE(INSERT charge_log … RETURNING + UPDATE users)로. 또는 모호 에러 시 보상 DELETE 금지 |
+| H2 | `lib/credit-service.js` `refundCredit` | high | refund_log INSERT와 잔액 증가가 별개 → 사이에서 프로세스 죽으면 재시도가 dedup으로 환불 영구 차단 | 환불도 단일 원자적 CTE로 |
+| H3 | `app/api/payment-confirm/route.js` 지급 CTE | high | 사용자 행이 없으면 `credited=true`만 커밋되고 크레딧은 0행 → 모든 재시도가 "이미 적립"으로 처리(영구 미지급) | 사용자 UPDATE가 실제 적립했을 때만 credited 전환(claim 결과로 0행 적립이면 미지급 surface) |
+| M1 | `app/api/payment-confirm/route.js` ON CONFLICT 경로 | medium | 기존 order_id를 저장된 payment_key·email·amount와 대조 없이 수용 → 묵은 미적립 주문 재생 시 귀속 뒤틀림 | conflict 시 저장 행을 SELECT해 payment_key+email+amount 일치 검증 후 지급 |
+
+참조: 원본 리뷰는 `gpt-5.5` Codex, 세션 diff `b7a6beb..HEAD` 기준.
+
+---
+
 ## 10. 참조 (정확한 좌표)
 
 - 분기 추가 지점: `app/api/shortform-render/route.js:79-92`
