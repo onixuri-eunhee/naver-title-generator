@@ -51,7 +51,8 @@ export async function POST(request) {
     let incomingBytes = 0;
     if (!sourceUrl.startsWith('data:')) {
       try {
-        const head = await fetch(sourceUrl, { method: 'HEAD' });
+        // redirect:'error' — 허용 CDN이 내부주소로 우회하는 SSRF 차단(사용자 입력 경계)
+        const head = await fetch(sourceUrl, { method: 'HEAD', redirect: 'error' });
         incomingBytes = Number(head.headers.get('content-length') || 0);
       } catch {}
     }
@@ -73,6 +74,7 @@ export async function POST(request) {
         sourceUrl,
         filename: filename || null,
         tag: tag ? String(tag) : null,
+        followRedirects: false, // 사용자 입력 경계 — 리다이렉트 우회 SSRF 차단
       });
       return jsonResponse(request, {
         image: row,
