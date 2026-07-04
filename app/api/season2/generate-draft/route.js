@@ -14,11 +14,14 @@
 import {
   extractToken,
   resolveSessionEmail,
+  resolveAdmin,
   getClientIp,
+  getRedis,
+  isCreditsActive,
   jsonResponse,
   handleOptions,
 } from '@/lib/api-helpers';
-import { logUsage } from '@/lib/db';
+import { logUsage, chargeCredits, refundCredits } from '@/lib/db';
 import { buildPrompt, STRATEGIES } from '@/lib/season2/prompts';
 import { INDUSTRIES } from '@/lib/season2/regulation-rules';
 import {
@@ -30,15 +33,37 @@ import {
 import { callClaude, DRAFT_MODEL, CHECK_MODEL } from '@/lib/season2/anthropic';
 import { safeParseJson } from '@/lib/shortform/parse-claude-json.js';
 
+// 여러 Claude 호출(생성+검수+재작성)이 순차 실행 → 넉넉한 실행시간. (peer: blog-image-pro=300)
+export const maxDuration = 300;
+
+const CREDIT_COST = 1;          // 글 1편 = 크레딧 1 (기존 blog-generate와 동일)
+const DAILY_LIMIT = 3;          // 크레딧 비활성 시 무료 일일 한도 (PRD 하루 3편)
+
+// 입력 크기 상한(멀티메가 프롬프트로 인한 비용 폭주·타임아웃 방지). 초과 시 400.
+const CAPS = { keyword: 120, region: 40, subfield: 80, persona: 4000, references: 20000, benchmark: 8000 };
+
+function getKSTDate() {
+  return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+}
+function getTTLUntilMidnightKST() {
+  const kstNow = new Date(Date.now() + 9 * 3600 * 1000);
+  const next = new Date(kstNow);
+  next.setUTCHours(24, 0, 0, 0);
+  return Math.max(Math.floor((next - kstNow) / 1000), 60);
+}
+function rateKey(email) {
+  return `ratelimit:s2-draft:${email}:${getKSTDate()}`;
+}
+
 export async function OPTIONS(request) {
   return handleOptions(request);
 }
 
-/** tags를 항상 배열로 정규화(모델이 문자열/객체로 줄 수 있음 → join 폭발 방지). */
+/** tags를 항상 배열로 정규화(문자열/객체·공백구분 → join 폭발·단일 거대태그 방지). */
 function normalizeTags(tags) {
-  if (Array.isArray(tags)) return tags.map((t) => String(t)).filter(Boolean);
+  if (Array.isArray(tags)) return tags.map((t) => String(t).trim()).filter(Boolean);
   if (typeof tags === 'string') {
-    return tags.split(/[,#\n]/).map((t) => t.trim()).filter(Boolean);
+    return tags.split(/[\s,#\n]+/).map((t) => t.trim()).filter(Boolean);
   }
   return [];
 }
@@ -63,10 +88,15 @@ function parseDraft(rawText) {
 }
 
 export async function POST(request) {
+  let email = null;
+  let creditCharged = false;
+  let rateLimitKey = null;
+
   try {
+    const whitelisted = await resolveAdmin(request);
     const token = extractToken(request);
-    const email = await resolveSessionEmail(token);
-    if (!email) {
+    email = await resolveSessionEmail(token);
+    if (!whitelisted && !email) {
       return jsonResponse(request, { error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
@@ -94,6 +124,32 @@ export async function POST(request) {
     if (strategy !== 'search100') {
       return jsonResponse(request, { error: '현재 슬라이스는 search100만 지원합니다.' }, { status: 400 });
     }
+    // 입력 크기 상한 — 멀티메가 프롬프트로 인한 비용 폭주·타임아웃 방지.
+    for (const [field, max] of Object.entries(CAPS)) {
+      const v = body[field];
+      if (typeof v === 'string' && v.length > max) {
+        return jsonResponse(request, { error: `${field}이(가) 너무 깁니다(최대 ${max}자).` }, { status: 400 });
+      }
+    }
+
+    // 과금·한도 게이트 (기존 /api/generate와 동일 정책). 관리자는 면제.
+    if (!whitelisted) {
+      if (isCreditsActive()) {
+        const result = await chargeCredits(email, CREDIT_COST, 's2-generate-draft');
+        if (!result) {
+          return jsonResponse(request, { error: '크레딧이 부족합니다. 충전 후 이용해주세요.', code: 'INSUFFICIENT_CREDITS' }, { status: 402 });
+        }
+        creditCharged = true;
+      } else {
+        rateLimitKey = rateKey(email);
+        const newCount = await getRedis().incr(rateLimitKey);
+        await getRedis().expire(rateLimitKey, getTTLUntilMidnightKST());
+        if (newCount > DAILY_LIMIT) {
+          await getRedis().decr(rateLimitKey);
+          return jsonResponse(request, { error: `일일 사용 한도(${DAILY_LIMIT}회)를 초과했습니다.`, remaining: 0 }, { status: 429 });
+        }
+      }
+    }
 
     const slots = { industry, keyword, region, subfield, persona, references, benchmark };
 
@@ -104,7 +160,8 @@ export async function POST(request) {
     let draftText = await callClaude({ system, messages: [{ role: 'user', content: userMsg }], model: DRAFT_MODEL, maxTokens: 8192 });
     let draft = parseDraft(draftText);
     if (!draft) {
-      // 생성 결과 파싱 불가(잘림·형식오류) → 쓰레기 body 대신 명확한 에러.
+      // 생성 결과 파싱 불가(잘림·형식오류) → 과금 되돌리고 명확한 에러.
+      await releaseCharge(email, creditCharged, rateLimitKey);
       return jsonResponse(request, { error: '원고 생성 결과를 해석하지 못했습니다. 다시 시도해 주세요.' }, { status: 502 });
     }
 
@@ -135,6 +192,10 @@ export async function POST(request) {
     }
 
     const blocked = verdict.verdict !== 'pass';
+    // 검수기가 fail이라면서 위반 문구를 하나도 안 준 경우 = 자동으로 고칠 수 없음(루프도 안 돎).
+    if (blocked && !verdict.parseError && verdict.violations.length === 0) {
+      unfixable = true;
+    }
     // 검수 자체가 실패(parseError)한 것과 진짜 위반을 구분해 사용자에게 정직하게.
     let notice = null;
     if (verdict.parseError) {
@@ -162,7 +223,19 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error('[s2-generate-draft] error:', error?.message || 'unknown');
+    // 생성 실패 시 과금 되돌림(차감/한도 카운트).
+    await releaseCharge(email, creditCharged, rateLimitKey);
     return jsonResponse(request, { error: '원고 생성 중 오류가 발생했습니다.' }, { status: 500 });
+  }
+}
+
+/** 실패 경로에서 차감 크레딧 환불 또는 일일 카운트 되돌림(non-fatal). */
+async function releaseCharge(email, creditCharged, rateLimitKey) {
+  try {
+    if (creditCharged && email) await refundCredits(email, CREDIT_COST, 's2-generate-draft-refund');
+    else if (rateLimitKey) await getRedis().decr(rateLimitKey);
+  } catch (e) {
+    console.error('[s2-generate-draft] releaseCharge failed:', e?.message || 'unknown');
   }
 }
 
