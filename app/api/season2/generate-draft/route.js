@@ -20,7 +20,7 @@ import {
   handleOptions,
 } from '@/lib/api-helpers';
 import { logUsage, chargeCredits, refundCredits } from '@/lib/db';
-import { buildPrompt, parseDraft, STRATEGIES } from '@/lib/season2/prompts';
+import { buildPrompt, parseDraft, SUPPORTED_STRATEGIES, STRATEGY_LABELS } from '@/lib/season2/prompts';
 import { INDUSTRIES } from '@/lib/season2/regulation-rules';
 import { runCheck, buildFixInstruction, MAX_FIX_ROUNDS } from '@/lib/season2/regulation-check';
 import { callClaude, DRAFT_MODEL, CHECK_MODEL } from '@/lib/season2/anthropic';
@@ -83,11 +83,9 @@ export async function POST(request) {
     if (!keyword || typeof keyword !== 'string') {
       return jsonResponse(request, { error: 'keyword가 필요합니다.' }, { status: 400 });
     }
-    if (!STRATEGIES.includes(strategy)) {
-      return jsonResponse(request, { error: `strategy는 ${STRATEGIES.join('/')} 중 하나.` }, { status: 400 });
-    }
-    if (strategy !== 'search100') {
-      return jsonResponse(request, { error: '현재 슬라이스는 search100만 지원합니다.' }, { status: 400 });
+    // 지원 전략만 단일 allow-list로 검증(클라이언트에 일관된 하나의 목록 노출).
+    if (!SUPPORTED_STRATEGIES.includes(strategy)) {
+      return jsonResponse(request, { error: `strategy는 ${SUPPORTED_STRATEGIES.join('/')} 중 하나여야 합니다.` }, { status: 400 });
     }
     // 입력 크기 상한 — 멀티메가 프롬프트로 인한 비용 폭주·타임아웃 방지.
     for (const [field, max] of Object.entries(CAPS)) {
@@ -118,7 +116,7 @@ export async function POST(request) {
 
     const slots = { industry, keyword, region, subfield, persona, references, benchmark };
 
-    const userMsg = `키워드 "${keyword}"로 검색100 원고를 작성해줘.`;
+    const userMsg = `키워드 "${keyword}"로 ${STRATEGY_LABELS[strategy] || strategy} 원고를 작성해줘.`;
 
     // 1) 원고 생성 (한국어 2000자 + JSON 래퍼 → 넉넉히 8192)
     const system = buildPrompt(strategy, slots);
