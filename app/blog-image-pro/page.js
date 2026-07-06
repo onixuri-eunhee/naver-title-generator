@@ -1,4 +1,6 @@
 import BlogImagePro from './BlogImagePro';
+import MaintenancePage from '@/components/MaintenancePage';
+import { BLOG_IMAGE_PRO_PAGE_ENABLED } from '@/lib/feature-flags';
 
 export const metadata = {
   title: '프리미엄 이미지 생성기 | 뚝딱툴',
@@ -17,5 +19,6 @@ export const metadata = {
 };
 
 export default function BlogImageProPage() {
+  if (!BLOG_IMAGE_PRO_PAGE_ENABLED) return <MaintenancePage title="프리미엄 이미지 생성기" />;
   return <BlogImagePro />;
 }

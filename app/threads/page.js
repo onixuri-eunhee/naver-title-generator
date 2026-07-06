@@ -1,4 +1,6 @@
 import ThreadsClient from './ThreadsClient';
+import MaintenancePage from '@/components/MaintenancePage';
+import { THREADS_PAGE_ENABLED } from '@/lib/feature-flags';
 
 export const metadata = {
   title: '스레드 글 생성기 | 터지는 스레드 글, 뚝딱',
@@ -17,5 +19,6 @@ export const metadata = {
 };
 
 export default function ThreadsPage() {
+  if (!THREADS_PAGE_ENABLED) return <MaintenancePage title="스레드 글 생성기" />;
   return <ThreadsClient />;
 }

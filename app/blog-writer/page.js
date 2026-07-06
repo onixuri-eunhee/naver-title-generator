@@ -1,4 +1,6 @@
 import BlogWriter from './BlogWriter';
+import MaintenancePage from '@/components/MaintenancePage';
+import { BLOG_WRITER_PAGE_ENABLED } from '@/lib/feature-flags';
 
 export const metadata = {
   title: '블로그 글 생성기 | 상위노출 블로그 글, 뚝딱',
@@ -17,5 +19,6 @@ export const metadata = {
 };
 
 export default function BlogWriterPage() {
+  if (!BLOG_WRITER_PAGE_ENABLED) return <MaintenancePage title="블로그 글 생성기" />;
   return <BlogWriter />;
 }

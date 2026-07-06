@@ -1,4 +1,6 @@
 import CardNewsClient from './CardNewsClient';
+import MaintenancePage from '@/components/MaintenancePage';
+import { CARD_NEWS_PAGE_ENABLED } from '@/lib/feature-flags';
 
 export const metadata = {
   title: '카드뉴스 생성기 | 인스타 카드뉴스, 뚝딱',
@@ -17,5 +19,6 @@ export const metadata = {
 };
 
 export default function CardNewsPage() {
+  if (!CARD_NEWS_PAGE_ENABLED) return <MaintenancePage title="카드뉴스 생성기" />;
   return <CardNewsClient />;
 }

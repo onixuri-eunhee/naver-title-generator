@@ -1,4 +1,6 @@
 import KeywordFinder from './KeywordFinder';
+import MaintenancePage from '@/components/MaintenancePage';
+import { KEYWORD_FINDER_PAGE_ENABLED } from '@/lib/feature-flags';
 
 export const metadata = {
   title: '황금키워드 찾기 | 뚝딱툴',
@@ -17,5 +19,6 @@ export const metadata = {
 };
 
 export default function KeywordFinderPage() {
+  if (!KEYWORD_FINDER_PAGE_ENABLED) return <MaintenancePage title="황금키워드 찾기" />;
   return <KeywordFinder />;
 }
