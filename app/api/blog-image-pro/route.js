@@ -1,4 +1,3 @@
-import { getGoogleAccessToken } from '@/lib/vertex-auth';
 import {
   getRedis,
   resolveAdmin,
@@ -82,39 +81,20 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 200) {
   return (data.content?.[0]?.text || '').trim();
 }
 
-async function callFluxRealism(prompt) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-  try {
-    const response = await fetch('https://fal.run/fal-ai/flux-realism', {
-      method: 'POST',
-      headers: {
-        Authorization: `Key ${process.env.FAL_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt,
-        image_size: { width: 1024, height: 1024 },
-        num_images: 1,
-        num_inference_steps: 28,
-        guidance_scale: 3.5,
-      }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
-    return data.images?.[0]?.url || null;
-  } catch (err) {
-    clearTimeout(timeout);
-    if (err.name === 'AbortError') throw new Error('FLUX Realism 30s timeout');
-    throw err;
-  }
-}
+// ─── gpt-image-2 통합 (2026-07-07 대표 결정: 유료 전환 → AI 이미지 전 모델 gpt-image-2 high) ───
+// 이유: 한글 렌더 가장 안정 + 품질 최고(스킬 blog-publisher-v2 실측). FLUX·Imagen3·gpt-image-1.5 대체.
+// satori(표·차트 코드 렌더)는 AI 모델이 아니므로 유지 — 한글·수치 100% 정확, 비용 0.
 
-async function callGptImageHigh(prompt) {
+const GPT_IMAGE_SIZES = {
+  square: '1024x1024',    // 썸네일(1번 마커 고정)
+  landscape: '1536x1024', // 넓은 장면·공간·비교
+  portrait: '1024x1536',  // 인물·세로 소재
+};
+
+async function callGptImage(prompt, orientation = 'landscape') {
+  const size = GPT_IMAGE_SIZES[orientation] || GPT_IMAGE_SIZES.landscape;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
+  const timeout = setTimeout(() => controller.abort(), 120000); // high는 느리다 — 넉넉히
   try {
     const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
@@ -123,10 +103,10 @@ async function callGptImageHigh(prompt) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-image-1.5',
+        model: 'gpt-image-2',
         prompt,
         n: 1,
-        size: '1024x1536',
+        size,
         quality: 'high',
         output_format: 'webp',
       }),
@@ -140,45 +120,13 @@ async function callGptImageHigh(prompt) {
     return `data:image/webp;base64,${b64}`;
   } catch (err) {
     clearTimeout(timeout);
-    if (err.name === 'AbortError') throw new Error('GPT Image 60s timeout');
+    if (err.name === 'AbortError') throw new Error('GPT Image 120s timeout');
     throw err;
   }
 }
 
 // ─── Vertex AI Imagen 3 ───
 // 인증은 @/lib/vertex-auth.js의 getGoogleAccessToken() 사용
-
-async function callVertexImagen3(prompt) {
-  const token = await getGoogleAccessToken();
-  const projectId = process.env.GOOGLE_VERTEX_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || 'ddukddaktool';
-  const location = process.env.GOOGLE_VERTEX_LOCATION || 'us-central1';
-  const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/imagen-3.0-generate-002:predict`;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        instances: [{ prompt }],
-        parameters: { sampleCount: 1, aspectRatio: '1:1', outputOptions: { mimeType: 'image/png' } },
-      }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    const data = await res.json();
-    if (!res.ok) throw new Error(`Imagen 3 error: ${res.status} ${JSON.stringify(data).slice(0, 200)}`);
-
-    const b64 = data.predictions?.[0]?.bytesBase64Encoded;
-    if (!b64) throw new Error('Imagen 3: no image in response');
-    return `data:image/png;base64,${b64}`;
-  } catch (err) {
-    clearTimeout(timeout);
-    if (err.name === 'AbortError') throw new Error('Vertex AI Imagen 30s timeout');
-    throw err;
-  }
-}
 
 function extractJsonArray(raw) {
   const start = raw.indexOf('[');
@@ -259,22 +207,15 @@ ${blogText.substring(0, 6000)}`;
   return validated;
 }
 
-async function generateByModel(model, prompt, type) {
-  switch (model) {
-    case 'fluxr':
-      return await callFluxRealism(prompt);
-    case 'gpth':
-      return await callGptImageHigh(prompt);
-    case 'nb2':
-      return await callVertexImagen3(prompt);
-    case 'satori': {
-      const data = typeof prompt === 'string' ? JSON.parse(prompt) : prompt;
-      const { vnode, w, h } = renderTemplate(type, data);
-      return await renderToBase64(vnode, w, h);
-    }
-    default:
-      return await callFluxRealism(prompt);
+async function generateByModel(model, prompt, type, orientation) {
+  // satori(코드 렌더)만 별도. 나머지는 전부 gpt-image-2 —
+  // 구 모델 문자열(fluxr/gpth/nb2)도 흡수해 옛 재생성 요청과 호환.
+  if (model === 'satori') {
+    const data = typeof prompt === 'string' ? JSON.parse(prompt) : prompt;
+    const { vnode, w, h } = renderTemplate(type, data);
+    return await renderToBase64(vnode, w, h);
   }
+  return await callGptImage(prompt, orientation);
 }
 
 async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
@@ -284,9 +225,10 @@ async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
   const blogStructure = headings.map((h) => h.trim()).join(' | ');
 
   const markerContext = markers.map((mk, i) => {
-    const before = mk.before.substring(0, 200);
-    const after = mk.after.substring(0, 200);
-    return `마커 ${i + 1}: "${mk.text}"${mk.altText ? ` (alt: "${mk.altText}")` : ''}${mk.section ? `\n  소속 섹션: "${mk.section}"` : ''}\n  글 위치: ${mk.position}\n  앞 문맥 (200자): "${before}"\n  뒤 문맥 (200자): "${after}"`;
+    // 문맥 400자 — 200자로는 연관성이 얕아 엉뚱한 이미지가 나온다(2026-07-07 대표 지적).
+    const before = mk.before.substring(0, 400);
+    const after = mk.after.substring(0, 400);
+    return `마커 ${i + 1}: "${mk.text}"${mk.altText ? ` (alt: "${mk.altText}")` : ''}${mk.section ? `\n  소속 섹션: "${mk.section}"` : ''}\n  글 위치: ${mk.position}\n  앞 문맥 (400자): "${before}"\n  뒤 문맥 (400자): "${after}"`;
   }).join('\n\n');
 
   const systemPrompt = `You are a blog image prompt engineer. Classify each marker into one of 6 types and generate the appropriate prompt or structured data.
@@ -302,9 +244,11 @@ ${markers.length}장의 이미지를 **정확히** 다음 비율로 배분하세
 
 ## 6 IMAGE TYPES
 
-### 1. photo → model: "fluxr" (사실적 사진)
+### 1. photo → model: "gpt2" (사실적 사진 — gpt-image-2)
 For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 감성/분위기
 - Describe subjects, lighting, angle, mood as cinematic/editorial photography
+- 🔑 마커의 한국어 설명이 구체적 장면이면 그 장면을 그대로 영어로 옮겨라 — 일반적인 분위기 사진으로 뭉개지 마라 (연관성이 생명)
+- 🔑 photo끼리 다양성: 각 photo는 서로 다른 피사체·카메라 각도·시간대·색温으로. 같은 구도나 소재를 두 번 쓰지 마라 (유사 이미지 반복 방지)
 - Signs/menus → describe as blurred
 - End with: ", photorealistic, clean composition, no text, no letters, photography style"
 - prompt: 영어 80-150 words
@@ -329,10 +273,10 @@ For: 개념 비교, 공통점/차이점, A vs B, 겹치는 영역 등 **관계/�
 - prompt: JSON 객체를 문자열로: {"title":"한국어 제목","subtitle":"부제","sets":[{"label":"집합A","description":"설명"}],"overlap":"공통점"}
 - sets 2~3개
 
-### 6. poster → model: "nb2" (포스터/배너)
+### 6. poster → model: "gpt2" (포스터/배너 — gpt-image-2는 한글 렌더 가능)
 For: 한글 타이포그래피, 공지, 배너
-- Large Korean headline in quotes, bold typography, 2-3 colors
-- prompt: 영어 80-150 words
+- Large Korean headline in quotes (한글 문구를 정확히 그대로 — gpt-image-2 high는 한글이 깨지지 않는다), bold typography, 2-3 colors
+- prompt: 영어 80-150 words (한글 headline 텍스트만 한국어 유지)
 
 ## SATORI 유형 선택 가이드 (적극 발굴)
 다음 신호가 문맥에 있으면 해당 유형 우선:
@@ -348,9 +292,14 @@ For: 한글 타이포그래피, 공지, 배너
 
 ${isRegenerate ? '\nREGENERATION: 다른 구성/시각으로 새로 생성하세요.' : ''}
 
+## ORIENTATION (각 이미지의 방향 — 반드시 지정)
+- 마커 1번(썸네일): 항상 "square"
+- 본문 photo: 내용에 맞게 — 넓은 장면·공간·풍경·여러 사물 = "landscape" / 인물·세로로 긴 소재(문서·건물·전신) = "portrait"
+- satori 유형: "landscape" 고정
+
 ## OUTPUT FORMAT
 Return ONLY a valid JSON array. Each element:
-{"type":"[photo|infographic_data|infographic_flow|checklist|venn|poster]","model":"[fluxr|satori|nb2]","reason":"[한국어 1문장]","prompt":"[영어 프롬프트 또는 JSON 문자열]"}`;
+{"type":"[photo|infographic_data|infographic_flow|checklist|venn|poster]","model":"[gpt2|satori]","orientation":"[square|landscape|portrait]","reason":"[한국어 1문장]","prompt":"[영어 프롬프트 또는 JSON 문자열]"}`;
 
   const userPrompt = `블로그 제목: "${blogTitle}"
 블로그 전체 주제 (첫 300자): ${blogText.substring(0, 300).trim()}${blogStructure ? `\n글 구조: ${blogStructure}` : ''}
@@ -375,14 +324,17 @@ ${markerContext}
 
   function getModel(type) {
     if (satoriTypes.includes(type)) return 'satori';
-    if (type === 'poster') return 'nb2';
-    return 'fluxr';
+    return 'gpt2'; // photo·poster 전부 gpt-image-2 (2026-07-07 통일)
   }
+  const VALID_ORIENTATIONS = ['square', 'landscape', 'portrait'];
 
   for (let idx = 0; idx < result.length; idx++) {
     const item = result[idx];
     if (!validTypes.includes(item.type)) item.type = 'photo';
     item.model = getModel(item.type);
+    // 방향 보정: 썸네일(1번)=정사각 고정, 나머지는 Haiku 지정값(없거나 이상하면 가로)
+    item.orientation = idx === 0 ? 'square'
+      : (VALID_ORIENTATIONS.includes(item.orientation) ? item.orientation : 'landscape');
 
     if (item.model === 'satori') {
       try {
@@ -391,7 +343,7 @@ ${markerContext}
       } catch {
         console.warn(`[IMAGE-PRO] Satori JSON parse failed for marker ${idx + 1}, fallback to photo`);
         item.type = 'photo';
-        item.model = 'fluxr';
+        item.model = 'gpt2';
         if (!item.prompt || typeof item.prompt !== 'string') {
           item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, photorealistic, clean composition, no text, no letters, photography style';
         }
@@ -401,13 +353,13 @@ ${markerContext}
     if (!item.prompt) {
       item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, photorealistic, clean composition, shallow depth of field, no text, photography style';
       item.type = 'photo';
-      item.model = 'fluxr';
+      item.model = 'gpt2';
     }
   }
 
   if (result[0].type !== 'photo') {
     result[0].type = 'photo';
-    result[0].model = 'fluxr';
+    result[0].model = 'gpt2';
     if (typeof result[0].prompt !== 'string' || !result[0].prompt.includes('no text')) {
       result[0].prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, photorealistic, clean composition, shallow depth of field, no text, photography style';
     }
@@ -421,7 +373,7 @@ ${markerContext}
     for (let i = result.length - 1; i > 0 && excess > 0; i--) {
       if (satoriTypes.includes(result[i].type)) {
         result[i].type = 'photo';
-        result[i].model = 'fluxr';
+        result[i].model = 'gpt2';
         result[i].prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, photorealistic, clean composition, no text, no letters, photography style';
         result[i].reason = '배분 보정 → photo';
         excess--;
@@ -670,8 +622,10 @@ export async function POST(request) {
         return jsonResponse(request, { error: '마커 정보 또는 프롬프트가 누락되었습니다.' }, { status: 400 });
       }
 
-      const targetModel = originalModel || 'fluxr';
+      // 구 모델명(fluxr/nb2/gpth)이 와도 generateByModel이 gpt2로 흡수. satori만 satori 유지.
+      const targetModel = originalModel === 'satori' ? 'satori' : 'gpt2';
       const targetType = originalType || 'photo';
+      const targetOrientation = ['square', 'landscape', 'portrait'].includes(body.orientation) ? body.orientation : 'landscape';
       let finalPrompt;
 
       if (markerText && blogText) {
@@ -702,7 +656,7 @@ export async function POST(request) {
       }
 
       try {
-        const url = await generateByModel(targetModel, finalPrompt, targetType);
+        const url = await generateByModel(targetModel, finalPrompt, targetType, targetOrientation);
         if (!url) throw new Error('No image URL');
         const userId = (sessionEmail || getClientIp(request) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
         const r2Url = await uploadImageUrlToR2(url, `images-pro/${userId}/${getKSTDate()}/${Math.random().toString(36).substring(2, 10)}.png`);
@@ -714,24 +668,17 @@ export async function POST(request) {
         });
       } catch (err) {
         console.error(`[IMAGE-PRO] Single regen ${targetModel} error:`, err.message);
-        if (targetModel !== 'fluxr') {
+        // satori 실패 → 같은 자리 사진(gpt2)으로 1회 폴백. gpt2 실패는 그대로 에러(중복 과금 방지).
+        if (targetModel === 'satori') {
           try {
-            let fbPrompt, fbModel;
-            if (targetModel === 'satori') {
-              fbModel = 'nb2';
-              fbPrompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, photorealistic, clean composition, no text, no letters, photography style';
-            } else {
-              fbModel = 'fluxr';
-              fbPrompt = (typeof finalPrompt === 'string' ? finalPrompt : '').replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
-                ', no text, no letters, photography style';
-            }
-            const url = await generateByModel(fbModel, fbPrompt, 'photo');
+            const fbPrompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, photorealistic, clean composition, no text, no letters, photography style';
+            const url = await generateByModel('gpt2', fbPrompt, 'photo', targetOrientation);
             if (url) {
               const userId = (sessionEmail || getClientIp(request) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
               const r2Url = await uploadImageUrlToR2(url, `images-pro/${userId}/${getKSTDate()}/${Math.random().toString(36).substring(2, 10)}.png`);
               return jsonResponse(request, {
                 mode: 'regenerate_single',
-                image: { url, marker: markerText || '', prompt: fbPrompt, type: 'photo', model: fbModel, r2Url },
+                image: { url, marker: markerText || '', prompt: fbPrompt, type: 'photo', model: 'gpt2', r2Url },
                 remaining,
                 limit: FREE_DAILY_LIMIT,
               });
@@ -773,10 +720,10 @@ export async function POST(request) {
       for (let i = 0; i < shortformCount; i++) {
         const variedPrompt = `${basePrompt}, ${variationHints[i % variationHints.length]}`;
         try {
-          const url = await callFluxRealism(variedPrompt);
+          const url = await callGptImage(variedPrompt, 'portrait'); // 숏폼=세로
           if (url) urls.push(url);
         } catch (err) {
-          console.error(`[IMAGE-PRO] shortform_quick FLUX error slot ${i}:`, err?.message || err);
+          console.error(`[IMAGE-PRO] shortform_quick GPT Image 2 error slot ${i}:`, err?.message || err);
         }
       }
 
@@ -934,15 +881,15 @@ export async function POST(request) {
           if (TRIGGER_FLOW.test(text)) return { type: 'infographic_flow', model: 'satori' };
           if (TRIGGER_CHECK.test(text)) return { type: 'checklist', model: 'satori' };
           if (TRIGGER_VENN.test(text)) return { type: 'venn', model: 'satori' };
-          if (TRIGGER_POSTER.test(text)) return { type: 'poster', model: 'nb2' };
-          return { type: 'photo', model: 'fluxr' };
+          if (TRIGGER_POSTER.test(text)) return { type: 'poster', model: 'gpt2' };
+          return { type: 'photo', model: 'gpt2' };
         }
 
         const routingInfo = markers.map((mk) => ({ ...detectModelFromMarker(mk.text), marker: mk.text }));
         const satoriCount = routingInfo.filter((r) => r.model === 'satori').length;
-        const photoCount = routingInfo.filter((r) => r.model === 'fluxr').length;
+        const photoCount = routingInfo.filter((r) => r.model === 'gpt2' && r.type === 'photo').length;
 
-        console.log(`[IMAGE-PRO] AI 추천 마커 라우팅: photo=${photoCount}, satori=${satoriCount}, nb2=${routingInfo.filter((r) => r.model === 'nb2').length}`);
+        console.log(`[IMAGE-PRO] AI 추천 마커 라우팅: photo=${photoCount}, satori=${satoriCount}, poster=${routingInfo.filter((r) => r.type === 'poster').length}`);
 
         const firstLine = blogText.split('\n').find((l) => l.trim()) || '';
         const blogTitle = firstLine.trim().substring(0, 80);
@@ -950,7 +897,7 @@ export async function POST(request) {
 
         const promptInstruction = markerTexts.map((t, i) => {
           const r = routingInfo[i];
-          if (r.model === 'fluxr') return `${i + 1}. ${t} [PHOTO: describe as realistic photography. End with ", photorealistic, clean composition, no text, no letters, photography style"]`;
+          if (r.model === 'gpt2' && r.type === 'photo') return `${i + 1}. ${t} [PHOTO: describe as realistic photography. End with ", photorealistic, clean composition, no text, no letters, photography style"]`;
           if (r.type === 'infographic_data') return `${i + 1}. ${t} [DATA: output JSON {"title":"한국어","subtitle":"범위","source":"출처","items":[{"label":"항목","value":"숫자","unit":"단위"}]} 3-6 items]`;
           if (r.type === 'infographic_flow') return `${i + 1}. ${t} [FLOW: output JSON {"title":"한국어","subtitle":"","steps":[{"label":"단계명","description":"설명"}]} 3-6 steps]`;
           if (r.type === 'checklist') return `${i + 1}. ${t} [CHECKLIST: output JSON {"title":"한국어","subtitle":"","items":[{"text":"항목","checked":true}]} 4-8 items]`;
@@ -1033,7 +980,8 @@ export async function POST(request) {
               analysisResult = fallbackPrompts.map((prompt, i) => ({
                 marker: markers[i].text,
                 type: 'photo',
-                model: 'fluxr',
+                model: 'gpt2',
+                orientation: i === 0 ? 'square' : 'landscape',
                 reason: 'Haiku 분석 실패 → 기본 사진 모드',
                 prompt,
               }));
@@ -1051,7 +999,7 @@ export async function POST(request) {
         const found = analysisResult[i] || analysisResult.find((a) => a.marker === mk.text);
         if (!found) {
           return {
-            type: 'photo', model: 'fluxr',
+            type: 'photo', model: 'gpt2', orientation: i === 0 ? 'square' : 'landscape',
             prompt: 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, no text, no letters, photography style',
             marker: mk.text, reason: '매핑 실패 → 기본값', originalIndex: i,
           };
@@ -1059,13 +1007,13 @@ export async function POST(request) {
         return { ...found, marker: mk.text, originalIndex: i };
       });
 
-      for (let i = 1; i < orderedItems.length; i++) {
-        if (orderedItems[i].type === 'photo' && orderedItems[i].model === 'fluxr') {
-          orderedItems[i].model = 'nb2';
-        }
+      // 어떤 분석 경로(Haiku/AI추천/번역폴백)로 왔든 방향 보정: 1번=정사각(썸네일), 나머지 기본 가로.
+      for (let i = 0; i < orderedItems.length; i++) {
+        orderedItems[i].orientation = i === 0 ? 'square'
+          : (['landscape', 'portrait'].includes(orderedItems[i].orientation) ? orderedItems[i].orientation : 'landscape');
       }
 
-      console.log(`[IMAGE-PRO] Generating ${orderedItems.length} images with auto-routing (batch=4)...`);
+      console.log(`[IMAGE-PRO] Generating ${orderedItems.length} images with gpt-image-2 (batch=4)...`);
 
       const imageResults = [];
       for (let batchStart = 0; batchStart < orderedItems.length; batchStart += 4) {
@@ -1073,10 +1021,10 @@ export async function POST(request) {
         const batch = orderedItems.slice(batchStart, batchStart + 4);
         const batchResults = await Promise.all(
           batch.map(async (item) => {
-            const modelName = item.model || 'fluxr';
-            const modelLabel = { fluxr: 'FLUX Realism', gpth: 'GPT Image high', nb2: 'Imagen 3', satori: 'Satori 템플릿' }[modelName] || modelName;
+            const modelName = item.model || 'gpt2';
+            const modelLabel = { gpt2: 'GPT Image 2', satori: 'Satori 템플릿' }[modelName] || 'GPT Image 2';
             try {
-              const url = await generateByModel(modelName, item.prompt, item.type);
+              const url = await generateByModel(modelName, item.prompt, item.type, item.orientation);
               console.log(`[IMAGE-PRO] ✓ "${item.marker}" → ${modelLabel} (${item.type})`);
               return {
                 url, marker: item.marker, prompt: typeof item.prompt === 'object' ? JSON.stringify(item.prompt) : item.prompt,
@@ -1087,29 +1035,16 @@ export async function POST(request) {
               console.error(`[IMAGE-PRO] ✗ "${item.marker}" → ${modelLabel} FAILED:`, err.message);
               await new Promise((r) => setTimeout(r, 1000));
               try {
-                let retryPrompt;
-                let retryModel;
-                let retryLabel;
-                if (modelName === 'satori') {
-                  retryModel = 'nb2';
-                  retryLabel = 'Imagen 3';
-                  retryPrompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, photorealistic, clean composition, no text, no letters, photography style';
-                } else if (modelName === 'fluxr') {
-                  retryModel = 'nb2';
-                  retryLabel = 'Imagen 3';
-                  retryPrompt = typeof item.prompt === 'string' ? item.prompt : JSON.stringify(item.prompt);
-                } else {
-                  retryModel = 'fluxr';
-                  retryLabel = 'FLUX Realism';
-                  retryPrompt = (typeof item.prompt === 'string' ? item.prompt : '').replace(/\s*,?\s*no text,?\s*no letters,?\s*photography style\s*$/i, '') +
-                    ', no text, no letters, photography style';
-                }
-                const url = await generateByModel(retryModel, retryPrompt, 'photo');
-                console.log(`[IMAGE-PRO] ↩ "${item.marker}" retry → ${retryLabel} OK`);
+                // 재시도: satori 실패 → 같은 자리 photo(gpt2)로, gpt2 실패 → 1회 재호출
+                const retryPrompt = modelName === 'satori'
+                  ? 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, photorealistic, clean composition, no text, no letters, photography style'
+                  : (typeof item.prompt === 'string' ? item.prompt : JSON.stringify(item.prompt));
+                const url = await generateByModel('gpt2', retryPrompt, 'photo', item.orientation);
+                console.log(`[IMAGE-PRO] ↩ "${item.marker}" retry → GPT Image 2 OK`);
                 return {
                   url, marker: item.marker, prompt: retryPrompt,
-                  type: 'photo', model: retryModel,
-                  reason: `${modelLabel} 실패 → ${retryLabel} 대체`,
+                  type: 'photo', model: 'gpt2',
+                  reason: `${modelLabel} 실패 → GPT Image 2 재시도`,
                   originalIndex: item.originalIndex,
                 };
               } catch (retryErr) {
@@ -1175,20 +1110,16 @@ export async function POST(request) {
 
     async function generateOne(slotIdx) {
       const variedPrompt = `${fullPrompt}, ${variationHints[slotIdx]}`;
-      try {
-        const url = await callFluxRealism(variedPrompt);
-        if (url) return { url, prompt: variedPrompt, type: 'photo', model: 'fluxr' };
-      } catch (err) {
-        console.error(`[IMAGE-PRO] FLUX Realism error (direct ${slotIdx} attempt 1):`, err?.message || err);
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          if (attempt > 1) await new Promise((r) => setTimeout(r, 500));
+          const url = await callGptImage(variedPrompt, 'square');
+          if (url) return { url, prompt: variedPrompt, type: 'photo', model: 'gpt2' };
+        } catch (err) {
+          console.error(`[IMAGE-PRO] GPT Image 2 error (direct ${slotIdx} attempt ${attempt}):`, err?.message || err);
+        }
       }
-      try {
-        await new Promise((r) => setTimeout(r, 500));
-        const url = await callFluxRealism(variedPrompt);
-        if (url) return { url, prompt: variedPrompt, type: 'photo', model: 'fluxr' };
-      } catch (err) {
-        console.error(`[IMAGE-PRO] FLUX Realism error (direct ${slotIdx} attempt 2):`, err?.message || err);
-      }
-      return { url: null, prompt: variedPrompt, type: 'photo', model: 'fluxr' };
+      return { url: null, prompt: variedPrompt, type: 'photo', model: 'gpt2' };
     }
 
     const images = [];
