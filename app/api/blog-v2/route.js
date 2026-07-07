@@ -29,8 +29,15 @@ import {
   getRecentHooks,
   pushRecentHooks,
 } from '@/lib/hook-engine';
+import {
+  runMachineChecks,
+  buildQualityFixInstruction,
+  runHumanCheck,
+  HUMAN_PASS_SCORE,
+} from '@/lib/blog-v2/quality-check';
 
-export const maxDuration = 120; // 단일 생성 호출(검수 패스는 별도 라우트)
+// 생성 + 기계검수 재작성(최대 1회) + 사람글 검수(Haiku) 순차 호출 → 넉넉히
+export const maxDuration = 300;
 
 const CREDIT_COST = 1;
 const DAILY_LIMIT = 3;
@@ -122,13 +129,42 @@ export async function POST(request) {
       temperature: null,
     });
 
-    const draft = parseBlogV2Draft(raw);
+    let draft = parseBlogV2Draft(raw);
     if (!draft) {
       await releaseCharge(email, creditCharged, rateLimitKey);
       return jsonResponse(request, { error: '원고 생성 결과를 해석하지 못했습니다. 다시 시도해 주세요.' }, { status: 502 });
     }
 
-    // 3) 최근기록 적재 — 다음 글의 회피 목록(non-fatal)
+    // 3) 검수 패스 — 기계 검사(확정 항목) → 위반 시 1회 재작성 → 사람글 검사(Haiku)
+    let machineIssues = runMachineChecks(draft);
+    let fixRounds = 0;
+    const fixInstruction = buildQualityFixInstruction(machineIssues);
+    if (fixInstruction) {
+      fixRounds = 1;
+      const fixedRaw = await callClaude({
+        system,
+        messages: [
+          { role: 'user', content: `키워드 "${keyword}"로 블로그 원고를 작성해줘.` },
+          { role: 'assistant', content: JSON.stringify(draft) },
+          { role: 'user', content: fixInstruction },
+        ],
+        model: BLOG_V2_MODEL,
+        maxTokens: 8192,
+        temperature: null,
+      });
+      const fixed = parseBlogV2Draft(fixedRaw);
+      if (fixed) {
+        const fixedIssues = runMachineChecks(fixed);
+        // 재작성이 실제로 나아졌을 때만 교체(더 나빠지면 원본 유지 — 정직한 결과 우선)
+        if (fixedIssues.length < machineIssues.length) {
+          draft = fixed;
+          machineIssues = fixedIssues;
+        }
+      }
+    }
+    const human = await runHumanCheck(draft); // 실패해도 원고 전달은 막지 않는다(checked:false)
+
+    // 4) 최근기록 적재 — 다음 글의 회피 목록(non-fatal)
     await pushRecentHooks(email, CHANNEL, {
       combo: draft.usedPattern || combos[0]?.signature || '',
       bank: bank.id,
@@ -140,6 +176,14 @@ export async function POST(request) {
 
     return jsonResponse(request, {
       draft,
+      quality: {
+        machine: machineIssues,           // 남은 확정 위반(빈 배열 = 전부 통과)
+        fixRounds,                        // 자동 수정 시도 횟수(0 또는 1)
+        humanChecked: human.checked,      // false = 검수기 자체 실패(원고는 정상 전달)
+        humanScore: human.score,          // 0~100, 70 이상 권장
+        humanPass: human.checked ? human.score >= HUMAN_PASS_SCORE : null,
+        humanIssues: human.issues,
+      },
       meta: { model: BLOG_V2_MODEL, assignedCombos: combos.map((c) => c.signature), bank: bank.label },
     });
   } catch (error) {
