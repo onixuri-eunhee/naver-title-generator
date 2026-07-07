@@ -543,12 +543,14 @@ export async function POST(request) {
   const shortformCount = reqMode === 'shortform_quick'
     ? Math.max(1, Math.min(2, Number(body?.count) || 1))
     : 0;
-  // 재생성 과금은 "실제 생성할 품질"에 연동 → high면 2크레딧, medium이면 1크레딧.
-  // 이렇게 가격을 품질에 묶으면 클라가 quality를 보내도 원가 공격이 성립하지 않는다(비싸면 비싸게 낸다).
-  // 품질 결정: 클라가 원본 quality를 주면 그대로, 없으면 정사각(썸네일 추정)=high.
-  const regenQuality = ['high', 'medium'].includes(body?.quality)
+  // 재생성 품질·과금 — 원본에 실존하는 조합만 허용: 썸네일(정사각 high), direct(정사각 medium),
+  // 본문(가로/세로 medium). "가로/세로 + high"는 원본에 없고 원가만 높다 → medium으로 강등해 원가 공격 차단.
+  const regenOrientation = ['square', 'landscape', 'portrait'].includes(body?.orientation) ? body.orientation : 'landscape';
+  let regenQuality = ['high', 'medium'].includes(body?.quality)
     ? body.quality
-    : (body?.orientation === 'square' ? 'high' : 'medium');
+    : (regenOrientation === 'square' ? 'high' : 'medium');
+  if (regenOrientation !== 'square' && regenQuality === 'high') regenQuality = 'medium'; // size축 원가 공격 봉쇄
+  // 가격 = 실제 생성 원가 등급: high(=정사각만 도달) 2크레딧, medium 1크레딧.
   const regenCost = regenQuality === 'high' ? SINGLE_REGEN_COST * 2 : SINGLE_REGEN_COST;
   const creditCost = reqMode === 'regenerate_single'
     ? regenCost
@@ -602,7 +604,9 @@ export async function POST(request) {
       refundedSoFar += capped;
       return capped;
     } catch (e) {
-      console.error('[IMAGE-PRO] refundOnFailure failed:', e?.message || 'unknown');
+      // 인프라 오류(redis/db)로 환불 자체가 실패 = 청구는 유지, 유저는 미환불. 서버 로그로 남겨
+      // 운영이 수동 재처리(환불 재시도 큐는 후속 과제). 0 반환이라 remaining 과보고는 없다.
+      console.error('[IMAGE-PRO] refundOnFailure FAILED (수동 재처리 필요):', tag, capped, e?.message || 'unknown');
       return 0;
     }
   }
@@ -634,8 +638,8 @@ export async function POST(request) {
       // 구 모델명(fluxr/nb2/gpth/satori)이 와도 generateByModel이 gpt2로 흡수.
       const targetModel = 'gpt2';
       const targetType = originalType || 'photo';
-      const targetOrientation = ['square', 'landscape', 'portrait'].includes(body.orientation) ? body.orientation : 'landscape';
-      // 과금과 동일한 품질 사용(regenQuality) — 낸 만큼 생성. 클라 quality 신뢰해도 과금 연동이라 안전.
+      // 과금 산정과 동일한 크기·품질로 생성(regenOrientation/regenQuality) — 낸 만큼 나온다.
+      const targetOrientation = regenOrientation;
       const targetQuality = regenQuality;
       let finalPrompt;
 
@@ -1078,7 +1082,9 @@ export async function POST(request) {
       let parseRefunded = 0;
       if (missedMarkers.length > 0) {
         parseRefunded = await refundOnFailure('image-pro-parse-partial', partialRefundAmount(validImages.length, orderedItems.length));
-        remaining += parseRefunded; // 실제 환불된 만큼만(실패 시 0 반환 → 과보고 방지)
+        // remaining 보정은 크레딧 사용자만 — 무료 유저 remaining은 "편수" 단위라 크레딧을 더하면 단위 불일치.
+        // 무료 유저는 다음 요청에서 rateLimit로 재계산되므로 표시 근사 허용. 환불 실패(0 반환) 시 미보정=과보고 방지.
+        if (creditCharged) remaining += parseRefunded;
         console.warn(`[IMAGE-PRO] partial: ${missedMarkers.length}/${orderedItems.length} missed, refund ${parseRefunded}`);
       }
 
@@ -1170,7 +1176,7 @@ export async function POST(request) {
     let directRefunded = 0;
     if (directMissed > 0) {
       directRefunded = await refundOnFailure('image-pro-direct-partial', partialRefundAmount(validImages.length, DIRECT_IMAGES));
-      remaining += directRefunded; // 실제 환불액만
+      if (creditCharged) remaining += directRefunded; // 크레딧 사용자만(무료는 편수 단위라 불일치)
     }
 
     const directUserId = (sessionEmail || getClientIp(request) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
