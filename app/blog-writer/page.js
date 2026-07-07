@@ -1,4 +1,4 @@
-import BlogWriter from './BlogWriter';
+import BlogWriterV2 from './BlogWriterV2';
 import MaintenancePage from '@/components/MaintenancePage';
 import { BLOG_WRITER_PAGE_ENABLED } from '@/lib/feature-flags';
 
@@ -20,5 +20,6 @@ export const metadata = {
 
 export default function BlogWriterPage() {
   if (!BLOG_WRITER_PAGE_ENABLED) return <MaintenancePage title="블로그 글 생성기" />;
-  return <BlogWriter />;
+  // v2: 훅엔진+검수 백엔드(/api/blog-v2). 구 BlogWriter.js는 재오픈 검증 후 삭제 예정.
+  return <BlogWriterV2 />;
 }
