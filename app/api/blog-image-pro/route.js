@@ -10,8 +10,6 @@ import { replaceUrlsWithR2, uploadImageUrlToR2 } from '@/lib/r2';
 import { logUsage, chargeCredits, refundCredits, getUserCredits } from '@/lib/db';
 import { registerFromUrl } from '@/lib/user-images';
 import { checkQuota } from '@/lib/user-quota';
-import { renderToBase64 } from '@/lib/satori-renderer';
-import { renderTemplate } from '@/lib/satori-templates';
 
 export const maxDuration = 300;
 
@@ -81,9 +79,9 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 200) {
   return (data.content?.[0]?.text || '').trim();
 }
 
-// ─── gpt-image-2 통합 (2026-07-07 대표 결정: 유료 전환 → AI 이미지 전 모델 gpt-image-2 high) ───
-// 이유: 한글 렌더 가장 안정 + 품질 최고(스킬 blog-publisher-v2 실측). FLUX·Imagen3·gpt-image-1.5 대체.
-// satori(표·차트 코드 렌더)는 AI 모델이 아니므로 유지 — 한글·수치 100% 정확, 비용 0.
+// ─── gpt-image-2 단일화 (2026-07-07 대표 결정: 유료 전환 → 이미지 전부 gpt-image-2 high) ───
+// 이유: 한글 렌더 가장 안정 + 품질 최고(대표 개인 블로그 스킬 실측 — 표·차트·인포그래픽까지 검증).
+// FLUX·Imagen3·gpt-image-1.5·satori(코드 렌더) 전부 대체. 정보이미지도 gpt-image-2가 그린다.
 
 const GPT_IMAGE_SIZES = {
   square: '1024x1024',    // 썸네일(1번 마커 고정)
@@ -91,7 +89,9 @@ const GPT_IMAGE_SIZES = {
   portrait: '1024x1536',  // 인물·세로 소재
 };
 
-async function callGptImage(prompt, orientation = 'landscape') {
+// 비용 확정(2026-07-07 대표, 환율 1,550원): 썸네일 high $0.211 + 본문 medium $0.041×5
+// = 편당 6장 $0.416 ≈ 645원. ⚠️ medium은 한글 깨짐 → 본문 컷은 영어 라벨만(스킬 v2.3 실측 룰).
+async function callGptImage(prompt, orientation = 'landscape', quality = 'medium') {
   const size = GPT_IMAGE_SIZES[orientation] || GPT_IMAGE_SIZES.landscape;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120000); // high는 느리다 — 넉넉히
@@ -107,7 +107,7 @@ async function callGptImage(prompt, orientation = 'landscape') {
         prompt,
         n: 1,
         size,
-        quality: 'high',
+        quality,
         output_format: 'webp',
       }),
       signal: controller.signal,
@@ -207,15 +207,22 @@ ${blogText.substring(0, 6000)}`;
   return validated;
 }
 
-async function generateByModel(model, prompt, type, orientation) {
-  // satori(코드 렌더)만 별도. 나머지는 전부 gpt-image-2 —
-  // 구 모델 문자열(fluxr/gpth/nb2)도 흡수해 옛 재생성 요청과 호환.
-  if (model === 'satori') {
-    const data = typeof prompt === 'string' ? JSON.parse(prompt) : prompt;
-    const { vnode, w, h } = renderTemplate(type, data);
-    return await renderToBase64(vnode, w, h);
+async function generateByModel(model, prompt, type, orientation, quality) {
+  // 전부 gpt-image-2. 구 모델 문자열(fluxr/gpth/nb2/satori)도 흡수해 옛 재생성 요청과 호환.
+  // 옛 satori 재생성은 prompt가 JSON(제목·항목 데이터)일 수 있음 → 인포그래픽 프롬프트로 변환.
+  let finalPrompt = prompt;
+  if (typeof prompt === 'object' || (typeof prompt === 'string' && prompt.trim().startsWith('{'))) {
+    try {
+      const d = typeof prompt === 'string' ? JSON.parse(prompt) : prompt;
+      const labels = (d.items || d.steps || d.sets || [])
+        .map((it) => [it.label || it.text || '', it.value ? `${it.value}${it.unit || ''}` : it.description || ''].filter(Boolean).join(' '))
+        .filter(Boolean).slice(0, 6);
+      finalPrompt = `modern flat vector infographic, clean editorial style, white background, coral #FF6F61 accent, short English labels: ${labels.map((l) => `"${l}"`).join(', ')}, crisp typography, no photo`;
+    } catch {
+      finalPrompt = 'modern flat vector infographic, clean editorial style, white background, coral #FF6F61 accent, crisp typography';
+    }
   }
-  return await callGptImage(prompt, orientation);
+  return await callGptImage(finalPrompt, orientation, quality);
 }
 
 async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
@@ -236,10 +243,10 @@ async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
 ## STRICT ALLOCATION RULE (반드시 지켜야 할 배분 규칙)
 ${markers.length}장의 이미지를 **정확히** 다음 비율로 배분하세요:
 - photo: **정확히 ${Math.min(5, markers.length)}장** (1번 썸네일 + 본문 사진 ${Math.min(4, markers.length - 1)}장)
-- Satori 템플릿 (data/flow/checklist/venn): **정확히 ${Math.min(3, Math.max(0, markers.length - 5))}장** (정보 시각화)
+- 인포그래픽 유형 (data/flow/checklist/venn): **정확히 ${Math.min(3, Math.max(0, markers.length - 5))}장** (정보 시각화 — gpt-image-2가 그린다)
 - poster: 0장 (특별히 요청하지 않는 한 사용하지 않음)
 
-이 비율은 **절대 규칙**입니다. 블로그 글에 숫자/비교/단계/목록 내용이 없더라도 반드시 3장은 Satori 유형으로 배정하세요.
+이 비율은 **절대 규칙**입니다. 블로그 글에 숫자/비교/단계/목록 내용이 없더라도 배분 수만큼 인포그래픽 유형으로 배정하세요.
 첫 번째 마커는 반드시 photo (대표이미지/썸네일)입니다.
 
 ## 6 IMAGE TYPES
@@ -253,30 +260,19 @@ For: 사진, 배경, 풍경, 음식, 인물, 제품, 인테리어, 감성/분위
 - End with: ", photorealistic, clean composition, no text, no letters, photography style"
 - prompt: 영어 80-150 words
 
-### 2. infographic_data → model: "satori" (비교표/차트)
-For: 수치 비교, 통계, 가격, 순위, 비율, 장단점 등 **숫자가 있는 비교**
-- prompt: JSON 객체를 문자열로: {"title":"한국어 제목","subtitle":"범위","source":"출처","items":[{"label":"항목","value":"85","unit":"%"}]}
-- items 3~6개. value는 숫자 문자열. 블로그 문맥에서 실제 데이터 추출
+### 2~5. 인포그래픽 4유형 → model: "gpt2" (flat vector 인포그래픽 — gpt-image-2가 그린다)
+- infographic_data: 수치 비교·통계·가격·순위 → comparison chart / bar chart 구성
+- infographic_flow: 절차·순서·단계·타임라인 → numbered step flow diagram 구성
+- checklist: 준비물·필수 항목·주의사항 → checklist with check marks 구성
+- venn: 개념 비교·공통점/차이점 → venn diagram / two-column comparison 구성
+- prompt 공통(영어 80-150 words): "modern flat vector infographic, clean editorial style, white background, coral #FF6F61 accent" + 위 구성 + 블로그 문맥에서 뽑은 실제 항목을 **짧은 영어 라벨**로 따옴표 지정 (예: labeled rows "Sourdough 75%" vs "Yeast 5%")
+- ⚠️ 라벨은 영어만 — 본문 이미지는 medium 품질이라 한글이 깨진다. 임의 데이터 금지, 문맥의 실제 수치·항목만.
 
-### 3. infographic_flow → model: "satori" (흐름도/프로세스)
-For: 절차, 순서, 단계, 타임라인, 준비 과정 등 **순서가 있는 프로세스**
-- prompt: JSON 객체를 문자열로: {"title":"한국어 제목","subtitle":"부제","steps":[{"label":"단계명","description":"설명"}]}
-- steps 3~6개
-
-### 4. checklist → model: "satori" (체크리스트)
-For: 준비물, 필수 항목, 팁 모음, 주의사항, 확인 사항 등 **나열형 정보**
-- prompt: JSON 객체를 문자열로: {"title":"한국어 제목","subtitle":"부제","items":[{"text":"항목 내용","checked":true}]}
-- items 4~8개
-
-### 5. venn → model: "satori" (벤다이어그램/관계도)
-For: 개념 비교, 공통점/차이점, A vs B, 겹치는 영역 등 **관계/교집합**
-- prompt: JSON 객체를 문자열로: {"title":"한국어 제목","subtitle":"부제","sets":[{"label":"집합A","description":"설명"}],"overlap":"공통점"}
-- sets 2~3개
-
-### 6. poster → model: "gpt2" (포스터/배너 — gpt-image-2는 한글 렌더 가능)
-For: 한글 타이포그래피, 공지, 배너
-- Large Korean headline in quotes (한글 문구를 정확히 그대로 — gpt-image-2 high는 한글이 깨지지 않는다), bold typography, 2-3 colors
-- prompt: 영어 80-150 words (한글 headline 텍스트만 한국어 유지)
+### 6. poster → model: "gpt2" (포스터/배너)
+For: 공지, 배너 (기본 배분 0장)
+- Bold typography poster, 2-3 colors, short English headline in quotes
+- ⚠️ 본문 이미지는 medium 품질 — 한글 텍스트는 깨지므로 넣지 않는다
+- prompt: 영어 80-150 words
 
 ## SATORI 유형 선택 가이드 (적극 발굴)
 다음 신호가 문맥에 있으면 해당 유형 우선:
@@ -286,8 +282,8 @@ For: 한글 타이포그래피, 공지, 배너
 - "A와 B의 차이", "공통점", 개념 비교 (숫자 없이) → venn
 
 ## PROMPT RULES
-1. photo/poster → prompt는 100% 영어. photo는 "no text, no letters" 필수
-2. satori 유형 → prompt는 JSON 객체를 **문자열화**하여 넣으세요
+1. 모든 prompt는 100% 영어. photo는 "no text, no letters" 필수
+2. 인포그래픽 유형은 짧은 영어 라벨을 따옴표로 지정 (한글 금지 — medium에서 깨짐)
 3. 블로그 문맥에서 실제 정보를 추출 (임의 데이터 금지)
 
 ${isRegenerate ? '\nREGENERATION: 다른 구성/시각으로 새로 생성하세요.' : ''}
@@ -295,11 +291,11 @@ ${isRegenerate ? '\nREGENERATION: 다른 구성/시각으로 새로 생성하세
 ## ORIENTATION (각 이미지의 방향 — 반드시 지정)
 - 마커 1번(썸네일): 항상 "square"
 - 본문 photo: 내용에 맞게 — 넓은 장면·공간·풍경·여러 사물 = "landscape" / 인물·세로로 긴 소재(문서·건물·전신) = "portrait"
-- satori 유형: "landscape" 고정
+- 인포그래픽 유형: "landscape" 고정
 
 ## OUTPUT FORMAT
 Return ONLY a valid JSON array. Each element:
-{"type":"[photo|infographic_data|infographic_flow|checklist|venn|poster]","model":"[gpt2|satori]","orientation":"[square|landscape|portrait]","reason":"[한국어 1문장]","prompt":"[영어 프롬프트 또는 JSON 문자열]"}`;
+{"type":"[photo|infographic_data|infographic_flow|checklist|venn|poster]","model":"gpt2","orientation":"[square|landscape|portrait]","reason":"[한국어 1문장]","prompt":"[영어 프롬프트]"}`;
 
   const userPrompt = `블로그 제목: "${blogTitle}"
 블로그 전체 주제 (첫 300자): ${blogText.substring(0, 300).trim()}${blogStructure ? `\n글 구조: ${blogStructure}` : ''}
@@ -322,33 +318,19 @@ ${markerContext}
   const validTypes = ['photo', 'infographic_data', 'infographic_flow', 'checklist', 'venn', 'poster'];
   const satoriTypes = ['infographic_data', 'infographic_flow', 'checklist', 'venn'];
 
-  function getModel(type) {
-    if (satoriTypes.includes(type)) return 'satori';
-    return 'gpt2'; // photo·poster 전부 gpt-image-2 (2026-07-07 통일)
+  function getModel() {
+    return 'gpt2'; // 전 유형 gpt-image-2 (2026-07-07 단일화 — satori 폐기)
   }
   const VALID_ORIENTATIONS = ['square', 'landscape', 'portrait'];
 
   for (let idx = 0; idx < result.length; idx++) {
     const item = result[idx];
     if (!validTypes.includes(item.type)) item.type = 'photo';
-    item.model = getModel(item.type);
-    // 방향 보정: 썸네일(1번)=정사각 고정, 나머지는 Haiku 지정값(없거나 이상하면 가로)
+    item.model = getModel();
+    // 방향·품질 보정: 썸네일(1번)=정사각·high 고정, 나머지=medium(비용 확정 2026-07-07 대표).
     item.orientation = idx === 0 ? 'square'
       : (VALID_ORIENTATIONS.includes(item.orientation) ? item.orientation : 'landscape');
-
-    if (item.model === 'satori') {
-      try {
-        const parsed = typeof item.prompt === 'string' ? JSON.parse(item.prompt) : item.prompt;
-        item.prompt = parsed;
-      } catch {
-        console.warn(`[IMAGE-PRO] Satori JSON parse failed for marker ${idx + 1}, fallback to photo`);
-        item.type = 'photo';
-        item.model = 'gpt2';
-        if (!item.prompt || typeof item.prompt !== 'string') {
-          item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, photorealistic, clean composition, no text, no letters, photography style';
-        }
-      }
-    }
+    item.quality = idx === 0 ? 'high' : 'medium';
 
     if (!item.prompt) {
       item.prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, photorealistic, clean composition, shallow depth of field, no text, photography style';
@@ -384,15 +366,15 @@ ${markerContext}
     for (let i = result.length - 1; i > 0 && deficit > 0; i--) {
       if (result[i].type === 'photo') {
         result[i].type = 'checklist';
-        result[i].model = 'satori';
-        result[i].prompt = { title: result[i].marker || '핵심 정리', subtitle: '', items: [{ text: '항목을 확인하세요', checked: true }] };
-        result[i].reason = '배분 보정 → Satori 체크리스트';
+        result[i].model = 'gpt2';
+        result[i].prompt = 'modern flat vector checklist infographic, clean editorial style, white background, coral #FF6F61 accent, 4 checked items with short English labels summarizing key points, crisp typography, no photo';
+        result[i].reason = '배분 보정 → 인포그래픽 체크리스트';
         deficit--;
       }
     }
   }
 
-  console.log(`[IMAGE-PRO] 배분 보정 완료: satori=${result.filter((r) => satoriTypes.includes(r.type)).length}, photo=${result.filter((r) => r.type === 'photo').length}, poster=${result.filter((r) => r.type === 'poster').length}`);
+  console.log(`[IMAGE-PRO] 배분 보정 완료: infographic=${result.filter((r) => satoriTypes.includes(r.type)).length}, photo=${result.filter((r) => r.type === 'photo').length}, poster=${result.filter((r) => r.type === 'poster').length}`);
 
   return result;
 }
@@ -403,47 +385,45 @@ async function callHaikuSingleMarkerPro(blogText, marker, targetType) {
   const blogTitle = firstLine.trim().substring(0, 80);
 
   const satoriTypes = ['infographic_data', 'infographic_flow', 'checklist', 'venn'];
-  const isSatoriType = satoriTypes.includes(targetType);
+  const isInfographic = satoriTypes.includes(targetType);
   const isPhotoType = targetType === 'photo';
+
+  const INFOGRAPHIC_STYLES = {
+    infographic_data: 'comparison chart / bar chart',
+    infographic_flow: 'numbered step flow diagram',
+    checklist: 'checklist with check marks',
+    venn: 'venn diagram / two-column comparison',
+  };
 
   const typeInstructions = {
     photo: `Cinematic/editorial photo prompt.
 - Describe subjects, lighting, angle, mood
 - Signs/menus → describe as blurred
 - End with: ", photorealistic, clean composition, no text, no letters, photography style"`,
-    infographic_data: `비교표 데이터 시각화 (Satori 렌더러).
-- Output JSON: {"title":"한국어 제목","subtitle":"범위","source":"출처","items":[{"label":"항목","value":"숫자","unit":"단위"}]}
-- 3-6 items. 블로그 문맥에서 실제 데이터 추출`,
-    infographic_flow: `흐름도/프로세스 (Satori 렌더러).
-- Output JSON: {"title":"한국어 제목","subtitle":"부제","steps":[{"label":"단계명","description":"설명"}]}
-- 3-6 steps`,
-    checklist: `체크리스트 (Satori 렌더러).
-- Output JSON: {"title":"한국어 제목","subtitle":"부제","items":[{"text":"항목 내용","checked":true}]}
-- 4-8 items`,
-    venn: `벤다이어그램 관계도 (Satori 렌더러).
-- Output JSON: {"title":"한국어 제목","subtitle":"부제","sets":[{"label":"집합명","description":"설명"}],"overlap":"공통점"}
-- 2-3 sets`,
-    poster: `Poster/banner for Imagen 3.
-- Large centered Korean headline in quotes, subtitle below
-- Bold typography, high contrast background, 2-3 colors max`,
+    poster: `Poster/banner (gpt-image-2, medium quality).
+- Bold typography, high contrast background, 2-3 colors max, short English headline in quotes
+- Do NOT use Korean text (medium quality breaks Korean glyphs)`,
   };
 
-  const instruction = typeInstructions[targetType] || typeInstructions.photo;
+  const instruction = isInfographic
+    ? `Flat vector infographic prompt (gpt-image-2, medium quality — 한글 금지, 영어 라벨만).
+- Style base: "modern flat vector infographic, clean editorial style, white background, coral #FF6F61 accent"
+- Composition: ${INFOGRAPHIC_STYLES[targetType]}
+- Include 3-6 short English labels in quotes with real data from the blog context (임의 데이터 금지)`
+    : (typeInstructions[targetType] || typeInstructions.photo);
 
-  const systemPrompt = `You are a blog image prompt engineer. Generate ONE new ${isSatoriType ? 'JSON data object' : 'prompt'} for SINGLE IMAGE REGENERATION.
-Type: ${targetType}. Create a COMPLETELY DIFFERENT ${isSatoriType ? 'data set' : 'composition and visual approach'}.
+  const systemPrompt = `You are a blog image prompt engineer. Generate ONE new prompt for SINGLE IMAGE REGENERATION.
+Type: ${targetType}. Create a COMPLETELY DIFFERENT composition and visual approach.
 
 ${instruction}
 
 Rules:
-${isSatoriType
-    ? '- Output JSON object as a string value'
-    : `- prompt 100% English${isPhotoType ? '' : ' (Korean text only inside double quotes)'}
+- prompt 100% English
 - 80-150 English words
 - Maintain Korean/East Asian aesthetic
-${isPhotoType ? '- Do NOT add Korean text' : '- Do NOT add "no text" — text IS the point'}`}
+${isPhotoType ? '- Do NOT add Korean text' : '- Do NOT use Korean glyphs (medium quality breaks them)'}
 
-Output: Return ONLY a JSON object: {"prompt": ${isSatoriType ? '"{\\"title\\":\\"...\\",\\"items\\":[...]}"' : '"English prompt 80-150 words..."'}}`;
+Output: Return ONLY a JSON object: {"prompt": "English prompt 80-150 words..."}`;
 
   const userPrompt = `블로그 제목: "${blogTitle}"
 블로그 요약: ${blogSummary}
@@ -622,10 +602,12 @@ export async function POST(request) {
         return jsonResponse(request, { error: '마커 정보 또는 프롬프트가 누락되었습니다.' }, { status: 400 });
       }
 
-      // 구 모델명(fluxr/nb2/gpth)이 와도 generateByModel이 gpt2로 흡수. satori만 satori 유지.
-      const targetModel = originalModel === 'satori' ? 'satori' : 'gpt2';
+      // 구 모델명(fluxr/nb2/gpth/satori)이 와도 generateByModel이 gpt2로 흡수.
+      const targetModel = 'gpt2';
       const targetType = originalType || 'photo';
       const targetOrientation = ['square', 'landscape', 'portrait'].includes(body.orientation) ? body.orientation : 'landscape';
+      // 정사각 재생성 = 썸네일로 간주 → high, 그 외 medium(비용 규칙)
+      const targetQuality = targetOrientation === 'square' ? 'high' : 'medium';
       let finalPrompt;
 
       if (markerText && blogText) {
@@ -656,7 +638,7 @@ export async function POST(request) {
       }
 
       try {
-        const url = await generateByModel(targetModel, finalPrompt, targetType, targetOrientation);
+        const url = await generateByModel(targetModel, finalPrompt, targetType, targetOrientation, targetQuality);
         if (!url) throw new Error('No image URL');
         const userId = (sessionEmail || getClientIp(request) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
         const r2Url = await uploadImageUrlToR2(url, `images-pro/${userId}/${getKSTDate()}/${Math.random().toString(36).substring(2, 10)}.png`);
@@ -667,24 +649,7 @@ export async function POST(request) {
           limit: FREE_DAILY_LIMIT,
         });
       } catch (err) {
-        console.error(`[IMAGE-PRO] Single regen ${targetModel} error:`, err.message);
-        // satori 실패 → 같은 자리 사진(gpt2)으로 1회 폴백. gpt2 실패는 그대로 에러(중복 과금 방지).
-        if (targetModel === 'satori') {
-          try {
-            const fbPrompt = 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, photorealistic, clean composition, no text, no letters, photography style';
-            const url = await generateByModel('gpt2', fbPrompt, 'photo', targetOrientation);
-            if (url) {
-              const userId = (sessionEmail || getClientIp(request) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
-              const r2Url = await uploadImageUrlToR2(url, `images-pro/${userId}/${getKSTDate()}/${Math.random().toString(36).substring(2, 10)}.png`);
-              return jsonResponse(request, {
-                mode: 'regenerate_single',
-                image: { url, marker: markerText || '', prompt: fbPrompt, type: 'photo', model: 'gpt2', r2Url },
-                remaining,
-                limit: FREE_DAILY_LIMIT,
-              });
-            }
-          } catch (_) {}
-        }
+        console.error(`[IMAGE-PRO] Single regen error:`, err.message);
         if (rateLimitKey) { try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {} }
         return jsonResponse(request, { error: '이미지 재생성에 실패했습니다.' }, { status: 500 });
       }
@@ -876,20 +841,21 @@ export async function POST(request) {
         const TRIGGER_VENN = /벤다이어그램|관계도|공통점|차이점|비교\s*분석/;
         const TRIGGER_POSTER = /포스터|배너|공지문/;
 
+        const INFO_TYPES = ['infographic_data', 'infographic_flow', 'checklist', 'venn'];
         function detectModelFromMarker(text) {
-          if (TRIGGER_DATA.test(text)) return { type: 'infographic_data', model: 'satori' };
-          if (TRIGGER_FLOW.test(text)) return { type: 'infographic_flow', model: 'satori' };
-          if (TRIGGER_CHECK.test(text)) return { type: 'checklist', model: 'satori' };
-          if (TRIGGER_VENN.test(text)) return { type: 'venn', model: 'satori' };
+          if (TRIGGER_DATA.test(text)) return { type: 'infographic_data', model: 'gpt2' };
+          if (TRIGGER_FLOW.test(text)) return { type: 'infographic_flow', model: 'gpt2' };
+          if (TRIGGER_CHECK.test(text)) return { type: 'checklist', model: 'gpt2' };
+          if (TRIGGER_VENN.test(text)) return { type: 'venn', model: 'gpt2' };
           if (TRIGGER_POSTER.test(text)) return { type: 'poster', model: 'gpt2' };
           return { type: 'photo', model: 'gpt2' };
         }
 
         const routingInfo = markers.map((mk) => ({ ...detectModelFromMarker(mk.text), marker: mk.text }));
-        const satoriCount = routingInfo.filter((r) => r.model === 'satori').length;
-        const photoCount = routingInfo.filter((r) => r.model === 'gpt2' && r.type === 'photo').length;
+        const infoCount = routingInfo.filter((r) => INFO_TYPES.includes(r.type)).length;
+        const photoCount = routingInfo.filter((r) => r.type === 'photo').length;
 
-        console.log(`[IMAGE-PRO] AI 추천 마커 라우팅: photo=${photoCount}, satori=${satoriCount}, poster=${routingInfo.filter((r) => r.type === 'poster').length}`);
+        console.log(`[IMAGE-PRO] AI 추천 마커 라우팅: photo=${photoCount}, infographic=${infoCount}, poster=${routingInfo.filter((r) => r.type === 'poster').length}`);
 
         const firstLine = blogText.split('\n').find((l) => l.trim()) || '';
         const blogTitle = firstLine.trim().substring(0, 80);
@@ -897,18 +863,15 @@ export async function POST(request) {
 
         const promptInstruction = markerTexts.map((t, i) => {
           const r = routingInfo[i];
-          if (r.model === 'gpt2' && r.type === 'photo') return `${i + 1}. ${t} [PHOTO: describe as realistic photography. End with ", photorealistic, clean composition, no text, no letters, photography style"]`;
-          if (r.type === 'infographic_data') return `${i + 1}. ${t} [DATA: output JSON {"title":"한국어","subtitle":"범위","source":"출처","items":[{"label":"항목","value":"숫자","unit":"단위"}]} 3-6 items]`;
-          if (r.type === 'infographic_flow') return `${i + 1}. ${t} [FLOW: output JSON {"title":"한국어","subtitle":"","steps":[{"label":"단계명","description":"설명"}]} 3-6 steps]`;
-          if (r.type === 'checklist') return `${i + 1}. ${t} [CHECKLIST: output JSON {"title":"한국어","subtitle":"","items":[{"text":"항목","checked":true}]} 4-8 items]`;
-          if (r.type === 'venn') return `${i + 1}. ${t} [VENN: output JSON {"title":"한국어","subtitle":"","sets":[{"label":"집합","description":"설명"}],"overlap":"공통점"} 2-3 sets]`;
-          return `${i + 1}. ${t} [POSTER: describe as poster with Korean text in quotes, layout, colors]`;
+          if (r.type === 'photo') return `${i + 1}. ${t} [PHOTO: describe as realistic photography. End with ", photorealistic, clean composition, no text, no letters, photography style"]`;
+          if (INFO_TYPES.includes(r.type)) return `${i + 1}. ${t} [INFOGRAPHIC: "modern flat vector infographic, clean editorial style, white background, coral #FF6F61 accent" + composition for ${r.type} + 3-6 short English labels in quotes from the topic. English only — no Korean glyphs]`;
+          return `${i + 1}. ${t} [POSTER: bold typography poster, short English headline in quotes, 2-3 colors. No Korean glyphs]`;
         }).join('\n');
 
         try {
           const translateRaw = await callClaude(
-            'You are a Korean blog image content generator. For each item, follow the instruction in brackets. For [PHOTO/POSTER]: generate English prompt (1-2 sentences). For [DATA/FLOW/CHECKLIST/VENN]: generate a valid JSON object string with Korean text. Output ONLY a valid JSON array of strings.',
-            `Blog topic: "${blogTitle}"\n\nGenerate content for these image descriptions:\n${promptInstruction}`,
+            'You are a Korean blog image prompt generator. For each item, follow the instruction in brackets and generate an English image prompt (1-2 sentences; 80-150 words for INFOGRAPHIC). Output ONLY a valid JSON array of strings.',
+            `Blog topic: "${blogTitle}"\n\nGenerate prompts for these image descriptions:\n${promptInstruction}`,
             3000
           );
           const translateJsonStr = extractJsonArray(translateRaw);
@@ -916,13 +879,9 @@ export async function POST(request) {
           if (translatedPrompts && translatedPrompts.length === markers.length) {
             analysisResult = translatedPrompts.map((prompt, i) => {
               const r = routingInfo[i];
-              let parsedPrompt = prompt;
-              if (r.model === 'satori') {
-                try { parsedPrompt = typeof prompt === 'string' ? JSON.parse(prompt) : prompt; } catch { /* 문자열 유지 */ }
-              }
               return {
-                marker: markers[i].text, type: r.type, model: r.model,
-                reason: `AI 추천 마커 → ${r.type}`, prompt: parsedPrompt,
+                marker: markers[i].text, type: r.type, model: 'gpt2',
+                reason: `AI 추천 마커 → ${r.type}`, prompt,
               };
             });
           } else {
@@ -933,18 +892,11 @@ export async function POST(request) {
           analysisResult = markers.map((mk, i) => {
             const r = routingInfo[i];
             const markerText = mk.text.replace(/[^\uAC00-\uD7A3a-zA-Z0-9\s]/g, '').trim();
-            let fallbackPrompt;
-            if (r.model === 'satori') {
-              fallbackPrompt = {
-                title: markerText || '정보 요약',
-                subtitle: '',
-                items: [{ label: markerText, value: '', unit: '' }],
-              };
-            } else {
-              fallbackPrompt = `editorial photography of "${markerText}", high quality Korean lifestyle scene, soft natural lighting, photorealistic, clean composition, variation ${i + 1}, no text, no letters, photography style`;
-            }
+            const fallbackPrompt = INFO_TYPES.includes(r.type)
+              ? 'modern flat vector infographic, clean editorial style, white background, coral #FF6F61 accent, short English labels, crisp typography, no photo'
+              : `editorial photography of "${markerText}", high quality Korean lifestyle scene, soft natural lighting, photorealistic, clean composition, variation ${i + 1}, no text, no letters, photography style`;
             return {
-              marker: mk.text, type: r.type, model: r.model,
+              marker: mk.text, type: r.type, model: 'gpt2',
               reason: `AI 추천 마커 → 번역 실패 → 마커 기반 폴백`,
               prompt: fallbackPrompt,
             };
@@ -1007,10 +959,12 @@ export async function POST(request) {
         return { ...found, marker: mk.text, originalIndex: i };
       });
 
-      // 어떤 분석 경로(Haiku/AI추천/번역폴백)로 왔든 방향 보정: 1번=정사각(썸네일), 나머지 기본 가로.
+      // 어떤 분석 경로(Haiku/AI추천/번역폴백)로 왔든 방향·품질 보정:
+      // 1번=정사각·high(썸네일, $0.211) / 나머지=가로·세로 medium($0.041) — 편당 6장 ≈ $0.416(645원).
       for (let i = 0; i < orderedItems.length; i++) {
         orderedItems[i].orientation = i === 0 ? 'square'
           : (['landscape', 'portrait'].includes(orderedItems[i].orientation) ? orderedItems[i].orientation : 'landscape');
+        orderedItems[i].quality = i === 0 ? 'high' : 'medium';
       }
 
       console.log(`[IMAGE-PRO] Generating ${orderedItems.length} images with gpt-image-2 (batch=4)...`);
@@ -1021,10 +975,10 @@ export async function POST(request) {
         const batch = orderedItems.slice(batchStart, batchStart + 4);
         const batchResults = await Promise.all(
           batch.map(async (item) => {
-            const modelName = item.model || 'gpt2';
-            const modelLabel = { gpt2: 'GPT Image 2', satori: 'Satori 템플릿' }[modelName] || 'GPT Image 2';
+            const modelName = 'gpt2';
+            const modelLabel = 'GPT Image 2';
             try {
-              const url = await generateByModel(modelName, item.prompt, item.type, item.orientation);
+              const url = await generateByModel(modelName, item.prompt, item.type, item.orientation, item.quality);
               console.log(`[IMAGE-PRO] ✓ "${item.marker}" → ${modelLabel} (${item.type})`);
               return {
                 url, marker: item.marker, prompt: typeof item.prompt === 'object' ? JSON.stringify(item.prompt) : item.prompt,
@@ -1035,11 +989,9 @@ export async function POST(request) {
               console.error(`[IMAGE-PRO] ✗ "${item.marker}" → ${modelLabel} FAILED:`, err.message);
               await new Promise((r) => setTimeout(r, 1000));
               try {
-                // 재시도: satori 실패 → 같은 자리 photo(gpt2)로, gpt2 실패 → 1회 재호출
-                const retryPrompt = modelName === 'satori'
-                  ? 'high quality Korean lifestyle blog photography, soft natural lighting, editorial style, photorealistic, clean composition, no text, no letters, photography style'
-                  : (typeof item.prompt === 'string' ? item.prompt : JSON.stringify(item.prompt));
-                const url = await generateByModel('gpt2', retryPrompt, 'photo', item.orientation);
+                // 1회 재시도(동일 프롬프트)
+                const retryPrompt = typeof item.prompt === 'string' ? item.prompt : JSON.stringify(item.prompt);
+                const url = await generateByModel('gpt2', retryPrompt, 'photo', item.orientation, item.quality);
                 console.log(`[IMAGE-PRO] ↩ "${item.marker}" retry → GPT Image 2 OK`);
                 return {
                   url, marker: item.marker, prompt: retryPrompt,
