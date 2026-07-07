@@ -413,6 +413,9 @@ export default function BlogImagePro() {
         index: i,
       })));
       if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
+      if (data.partial) {
+        setError1(`일부 이미지 ${data.missedMarkers?.length || ''}장이 생성되지 않아 그 몫은 환불되었어요. 빈 자리는 마커별 재생성으로 채울 수 있어요.`);
+      }
     } catch (_) {
       setError1('서버 오류가 발생했습니다.');
     } finally {
@@ -462,6 +465,9 @@ export default function BlogImagePro() {
         reason: '',
         index: i,
       })));
+      if (data.partial) {
+        setError2(`일부 이미지 ${data.missedCount || ''}장이 생성되지 않아 그 몫은 환불되었어요.`);
+      }
       if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
     } catch (_) {
       setError2('서버 오류가 발생했습니다.');

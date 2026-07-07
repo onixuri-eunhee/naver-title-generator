@@ -67,8 +67,12 @@ const moodPrompts = {
 };
 
 async function callClaude(systemPrompt, userMessage, maxTokens = 200) {
+  // 30s 타임아웃 — Haiku 프롬프트 호출이 무한 대기하면 예산 시계 밖에서 maxDuration을 잠식한다(3차 리뷰).
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal: controller.signal,
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': process.env.ANTHROPIC_API_KEY,
@@ -81,6 +85,7 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 200) {
       messages: [{ role: 'user', content: userMessage }],
     }),
   });
+  clearTimeout(timer);
   const data = await response.json();
   if (!response.ok) throw new Error(JSON.stringify(data));
   return (data.content?.[0]?.text || '').trim();
@@ -472,6 +477,8 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  // 예산 시계는 함수 진입 즉시 — maxDuration도 여기서부터 세므로 body 파싱·인증·과금 시간도 예산에 포함.
+  const requestStartedAt = Date.now();
   let body;
   try {
     body = await request.json();
@@ -533,8 +540,11 @@ export async function POST(request) {
   const shortformCount = reqMode === 'shortform_quick'
     ? Math.max(1, Math.min(2, Number(body?.count) || 1))
     : 0;
+  // 재생성: 정사각=썸네일 high($0.211)라 2크레딧, 그 외 medium 1크레딧.
+  // 가격을 품질에 연동해야 "1크레딧으로 high 강제" 원가 공격이 성립하지 않는다(3차 리뷰).
+  const regenCost = body?.orientation === 'square' ? SINGLE_REGEN_COST * 2 : SINGLE_REGEN_COST;
   const creditCost = reqMode === 'regenerate_single'
-    ? SINGLE_REGEN_COST
+    ? regenCost
     : reqMode === 'shortform_quick'
       ? shortformCount // 1 credit/장
       : FULL_COST;
@@ -572,19 +582,30 @@ export async function POST(request) {
   }
 
   // 실패 경로 공통 환불 — 500 반환은 throw가 아니라 바깥 catch의 환불이 안 돌므로 각 실패 지점에서 호출.
-  // amount 지정 시 부분 환불(기본 = 전액).
+  // amount 지정 시 부분 환불(기본 = 전액). 누적 캡: 총 환불이 청구액을 절대 못 넘는다(부분환불 후
+  // 예외가 outer catch로 흘러도 이중 환불 불가).
+  let refundedSoFar = 0;
   async function refundOnFailure(tag, amount = creditCost) {
-    if (!amount || amount <= 0) return;
+    const capped = Math.min(amount || 0, creditCost - refundedSoFar);
+    if (capped <= 0) return;
     try {
-      if (creditCharged && sessionEmail) await refundCredits(sessionEmail, amount, tag);
-      else if (rateLimitKey) await getRedis().decrby(rateLimitKey, amount);
+      if (creditCharged && sessionEmail) await refundCredits(sessionEmail, capped, tag);
+      else if (rateLimitKey) await getRedis().decrby(rateLimitKey, capped);
+      refundedSoFar += capped;
     } catch (e) {
       console.error('[IMAGE-PRO] refundOnFailure failed:', e?.message || 'unknown');
     }
   }
 
+  // 부분 환불 공식(전 모드 공통 — 복붙 드리프트 방지): 받은 장수만큼은 최소 지불.
+  // 환불 = 청구액 − max(1, ceil(청구액 × 전달/전체)). 1장이라도 받았으면 전액 환불은 불가.
+  function partialRefundAmount(delivered, total) {
+    if (delivered <= 0) return creditCost;      // 0장 = 전액
+    if (delivered >= total) return 0;
+    return Math.max(0, creditCost - Math.max(1, Math.ceil(creditCost * delivered / total)));
+  }
+
   // 시간 예산 — 모든 생성 모드 공용. 새 gpt-image-2 시도는 remainingMs() ≥ ATTEMPT_ADMIT_MS일 때만.
-  const requestStartedAt = Date.now();
   const remainingMs = () => HARD_LIMIT_MS - SAFETY_MARGIN_MS - (Date.now() - requestStartedAt);
   const canAttempt = () => remainingMs() >= ATTEMPT_ADMIT_MS;
 
@@ -688,6 +709,10 @@ export async function POST(request) {
 
       const urls = [];
       for (let i = 0; i < shortformCount; i++) {
+        if (!canAttempt()) { // 예산 게이트 — 모든 모드 공통(누락돼 있었음, 3차 리뷰)
+          console.warn(`[IMAGE-PRO] shortform_quick budget exhausted — skipping remaining ${shortformCount - i}`);
+          break;
+        }
         const variedPrompt = `${basePrompt}, ${variationHints[i % variationHints.length]}`;
         try {
           const url = await callGptImage(variedPrompt, 'portrait'); // 숏폼=세로
@@ -702,10 +727,10 @@ export async function POST(request) {
         return jsonResponse(request, { error: '이미지 생성에 실패했습니다.' }, { status: 500 });
       }
 
-      // 부분 성공 시 미생성분만큼 크레딧 환불
-      if (urls.length < shortformCount && creditCharged && sessionEmail) {
+      // 부분 성공 시 미생성분만큼 환불 — 무료(rateLimit) 사용자도 동일 적용(3차 리뷰)
+      if (urls.length < shortformCount) {
         const refundAmount = shortformCount - urls.length;
-        await refundCredits(sessionEmail, refundAmount, 'shortform-quick-partial');
+        await refundOnFailure('shortform-quick-partial', refundAmount);
       }
 
       // 보관함 자동 등록 — 쿼터 초과/에러는 비치명(이미지 자체는 반환)
@@ -745,6 +770,7 @@ export async function POST(request) {
       const { blogText, thumbnailText } = body;
       const frontMarkers = body.markers;
       if (!blogText) {
+        await refundOnFailure('image-pro-parse-invalid'); // 과금 후 400 = 환불(3차 리뷰)
         return jsonResponse(request, { error: '블로그 글을 입력해주세요.' }, { status: 400 });
       }
 
@@ -1033,11 +1059,13 @@ export async function POST(request) {
         return jsonResponse(request, { error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 });
       }
 
-      // 일부 실패(개별 오류·예산 소진 포기) = 못 받은 몫만큼 부분 환불 + 응답에 정직하게 표시
+      // 일부 실패(개별 오류·예산 소진 포기) = 못 받은 몫만큼 부분 환불 + 응답에 정직하게 표시.
+      // 공식은 partialRefundAmount 공통(받은 장수만큼은 최소 지불 — 1장 받고 전액 환불 불가).
       const missedMarkers = imageResults.filter((img) => !img.url).map((img) => img.marker);
       if (missedMarkers.length > 0) {
-        const partialAmount = Math.ceil(creditCost * missedMarkers.length / orderedItems.length);
+        const partialAmount = partialRefundAmount(validImages.length, orderedItems.length);
         await refundOnFailure('image-pro-parse-partial', partialAmount);
+        if (creditCharged) remaining += partialAmount; // 환불 반영한 잔액으로 응답(표시 오차 방지)
         console.warn(`[IMAGE-PRO] partial: ${missedMarkers.length}/${orderedItems.length} missed, refund ${partialAmount}`);
       }
 
@@ -1059,6 +1087,7 @@ export async function POST(request) {
     // ===== DIRECT 모드 =====
     const { topic, mood, thumbnailText } = body;
     if (!topic) {
+      await refundOnFailure('image-pro-direct-invalid'); // 과금 후 400 = 환불(3차 리뷰)
       return jsonResponse(request, { error: '블로그 주제를 입력해주세요.' }, { status: 400 });
     }
 
@@ -1122,10 +1151,12 @@ export async function POST(request) {
       await refundOnFailure('image-pro-direct-all-failed'); // 0장 = 전액 환불
       return jsonResponse(request, { error: '이미지 생성에 실패했습니다.' }, { status: 500 });
     }
-    // 일부 실패·예산 포기 = 못 받은 몫만큼 부분 환불(parse와 동일 정책)
+    // 일부 실패·예산 포기 = 못 받은 몫만큼 부분 환불(parse와 동일 공식)
     const directMissed = DIRECT_IMAGES - validImages.length;
     if (directMissed > 0) {
-      await refundOnFailure('image-pro-direct-partial', Math.ceil(creditCost * directMissed / DIRECT_IMAGES));
+      const directPartial = partialRefundAmount(validImages.length, DIRECT_IMAGES);
+      await refundOnFailure('image-pro-direct-partial', directPartial);
+      if (creditCharged) remaining += directPartial;
     }
 
     const directUserId = (sessionEmail || getClientIp(request) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
@@ -1135,6 +1166,8 @@ export async function POST(request) {
     return jsonResponse(request, {
       mode: 'direct',
       images: r2DirectImages,
+      partial: directMissed > 0,
+      missedCount: directMissed,
       thumbnailText: thumbnailText || '',
       remaining,
       limit: FREE_DAILY_LIMIT,
