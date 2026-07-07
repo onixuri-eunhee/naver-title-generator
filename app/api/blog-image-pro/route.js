@@ -67,28 +67,31 @@ const moodPrompts = {
 };
 
 async function callClaude(systemPrompt, userMessage, maxTokens = 200) {
-  // 30s 타임아웃 — Haiku 프롬프트 호출이 무한 대기하면 예산 시계 밖에서 maxDuration을 잠식한다(3차 리뷰).
+  // 30s 타임아웃 — Haiku 프롬프트 호출이 무한 대기하면 예산 시계 밖에서 maxDuration을 잠식한다.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 30_000);
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    signal: controller.signal,
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }],
-    }),
-  });
-  clearTimeout(timer);
-  const data = await response.json();
-  if (!response.ok) throw new Error(JSON.stringify(data));
-  return (data.content?.[0]?.text || '').trim();
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMessage }],
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(JSON.stringify(data));
+    return (data.content?.[0]?.text || '').trim();
+  } finally {
+    clearTimeout(timer); // fetch가 throw해도 타이머 누수 없게(finally) — 4차 리뷰
+  }
 }
 
 // ─── gpt-image-2 단일화 (2026-07-07 대표 결정: 유료 전환 → 이미지 전부 gpt-image-2 high) ───
@@ -540,9 +543,13 @@ export async function POST(request) {
   const shortformCount = reqMode === 'shortform_quick'
     ? Math.max(1, Math.min(2, Number(body?.count) || 1))
     : 0;
-  // 재생성: 정사각=썸네일 high($0.211)라 2크레딧, 그 외 medium 1크레딧.
-  // 가격을 품질에 연동해야 "1크레딧으로 high 강제" 원가 공격이 성립하지 않는다(3차 리뷰).
-  const regenCost = body?.orientation === 'square' ? SINGLE_REGEN_COST * 2 : SINGLE_REGEN_COST;
+  // 재생성 과금은 "실제 생성할 품질"에 연동 → high면 2크레딧, medium이면 1크레딧.
+  // 이렇게 가격을 품질에 묶으면 클라가 quality를 보내도 원가 공격이 성립하지 않는다(비싸면 비싸게 낸다).
+  // 품질 결정: 클라가 원본 quality를 주면 그대로, 없으면 정사각(썸네일 추정)=high.
+  const regenQuality = ['high', 'medium'].includes(body?.quality)
+    ? body.quality
+    : (body?.orientation === 'square' ? 'high' : 'medium');
+  const regenCost = regenQuality === 'high' ? SINGLE_REGEN_COST * 2 : SINGLE_REGEN_COST;
   const creditCost = reqMode === 'regenerate_single'
     ? regenCost
     : reqMode === 'shortform_quick'
@@ -584,25 +591,28 @@ export async function POST(request) {
   // 실패 경로 공통 환불 — 500 반환은 throw가 아니라 바깥 catch의 환불이 안 돌므로 각 실패 지점에서 호출.
   // amount 지정 시 부분 환불(기본 = 전액). 누적 캡: 총 환불이 청구액을 절대 못 넘는다(부분환불 후
   // 예외가 outer catch로 흘러도 이중 환불 불가).
+  // 실제로 환불한 크레딧 수를 반환한다(0 = 환불 안 됨/실패). 응답의 remaining·partial 표시가 이 실값을 쓴다.
   let refundedSoFar = 0;
   async function refundOnFailure(tag, amount = creditCost) {
     const capped = Math.min(amount || 0, creditCost - refundedSoFar);
-    if (capped <= 0) return;
+    if (capped <= 0) return 0;
     try {
       if (creditCharged && sessionEmail) await refundCredits(sessionEmail, capped, tag);
       else if (rateLimitKey) await getRedis().decrby(rateLimitKey, capped);
       refundedSoFar += capped;
+      return capped;
     } catch (e) {
       console.error('[IMAGE-PRO] refundOnFailure failed:', e?.message || 'unknown');
+      return 0;
     }
   }
 
-  // 부분 환불 공식(전 모드 공통 — 복붙 드리프트 방지): 받은 장수만큼은 최소 지불.
-  // 환불 = 청구액 − max(1, ceil(청구액 × 전달/전체)). 1장이라도 받았으면 전액 환불은 불가.
+  // 부분 환불 공식(전 모드 공통): 못 받은 몫을 내림(floor)으로 환불 = 사업자에 유리한 방향으로 반올림.
+  // 1장이라도 받으면 전액 환불은 불가(floor라 자연히), 거의 다 받으면(예: 8중7) 0 환불이 정직한 결과.
   function partialRefundAmount(delivered, total) {
     if (delivered <= 0) return creditCost;      // 0장 = 전액
     if (delivered >= total) return 0;
-    return Math.max(0, creditCost - Math.max(1, Math.ceil(creditCost * delivered / total)));
+    return Math.max(0, Math.floor(creditCost * (total - delivered) / total));
   }
 
   // 시간 예산 — 모든 생성 모드 공용. 새 gpt-image-2 시도는 remainingMs() ≥ ATTEMPT_ADMIT_MS일 때만.
@@ -625,9 +635,8 @@ export async function POST(request) {
       const targetModel = 'gpt2';
       const targetType = originalType || 'photo';
       const targetOrientation = ['square', 'landscape', 'portrait'].includes(body.orientation) ? body.orientation : 'landscape';
-      // quality는 서버 규칙 고정: 정사각(썸네일)=high, 그 외=medium.
-      // 클라이언트 값을 신뢰하면 1크레딧으로 high를 강제해 원가 5배 공격이 가능(리뷰 지적).
-      const targetQuality = targetOrientation === 'square' ? 'high' : 'medium';
+      // 과금과 동일한 품질 사용(regenQuality) — 낸 만큼 생성. 클라 quality 신뢰해도 과금 연동이라 안전.
+      const targetQuality = regenQuality;
       let finalPrompt;
 
       if (markerText && blogText) {
@@ -727,11 +736,13 @@ export async function POST(request) {
         return jsonResponse(request, { error: '이미지 생성에 실패했습니다.' }, { status: 500 });
       }
 
-      // 부분 성공 시 미생성분만큼 환불 — 무료(rateLimit) 사용자도 동일 적용(3차 리뷰)
+      // 부분 성공 시 미생성분만큼 환불 — 무료(rateLimit) 사용자도 동일 적용(3차 리뷰).
+      // 공식은 partialRefundAmount와 별개: shortform은 "장당 1크레딧"이라 미생성 장수 = 환불액(정확). 공유 X.
+      let quickRefunded = 0;
       if (urls.length < shortformCount) {
-        const refundAmount = shortformCount - urls.length;
-        await refundOnFailure('shortform-quick-partial', refundAmount);
+        quickRefunded = await refundOnFailure('shortform-quick-partial', shortformCount - urls.length);
       }
+      const quickNetCredits = creditCost - quickRefunded; // 실제 순청구(환불 반영)
 
       // 보관함 자동 등록 — 쿼터 초과/에러는 비치명(이미지 자체는 반환)
       const savedImages = [];
@@ -761,7 +772,7 @@ export async function POST(request) {
         mode: 'shortform_quick',
         images: savedImages,
         count: savedImages.length,
-        credits: creditCost,
+        credits: quickNetCredits, // 환불 반영한 실제 순청구(원 청구액 아님 — 4차 리뷰)
       });
     }
 
@@ -845,6 +856,7 @@ export async function POST(request) {
       markers = markers.slice(0, MAX_MARKERS);
 
       if (markers.length === 0) {
+        await refundOnFailure('image-pro-parse-no-markers'); // 과금 후 400 = 환불(4차 리뷰)
         return jsonResponse(request, { error: '블로그 글에서 (사진: ...) 또는 (이미지: ...) 마커를 찾을 수 없습니다.' }, { status: 400 });
       }
 
@@ -970,6 +982,7 @@ export async function POST(request) {
             }
           } catch (fallbackErr) {
             console.error('[IMAGE-PRO] Fallback also FAILED:', fallbackErr.message);
+            await refundOnFailure('image-pro-parse-analysis-failed'); // 과금 후 500 = 환불(4차 리뷰)
             return jsonResponse(request, { error: 'AI 이미지 분석에 실패했습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 });
           }
         }
@@ -1062,11 +1075,11 @@ export async function POST(request) {
       // 일부 실패(개별 오류·예산 소진 포기) = 못 받은 몫만큼 부분 환불 + 응답에 정직하게 표시.
       // 공식은 partialRefundAmount 공통(받은 장수만큼은 최소 지불 — 1장 받고 전액 환불 불가).
       const missedMarkers = imageResults.filter((img) => !img.url).map((img) => img.marker);
+      let parseRefunded = 0;
       if (missedMarkers.length > 0) {
-        const partialAmount = partialRefundAmount(validImages.length, orderedItems.length);
-        await refundOnFailure('image-pro-parse-partial', partialAmount);
-        if (creditCharged) remaining += partialAmount; // 환불 반영한 잔액으로 응답(표시 오차 방지)
-        console.warn(`[IMAGE-PRO] partial: ${missedMarkers.length}/${orderedItems.length} missed, refund ${partialAmount}`);
+        parseRefunded = await refundOnFailure('image-pro-parse-partial', partialRefundAmount(validImages.length, orderedItems.length));
+        remaining += parseRefunded; // 실제 환불된 만큼만(실패 시 0 반환 → 과보고 방지)
+        console.warn(`[IMAGE-PRO] partial: ${missedMarkers.length}/${orderedItems.length} missed, refund ${parseRefunded}`);
       }
 
       const userId = (sessionEmail || getClientIp(request) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
@@ -1077,6 +1090,7 @@ export async function POST(request) {
         mode: 'parse',
         images: r2Images,
         partial: missedMarkers.length > 0,
+        refunded: parseRefunded,
         missedMarkers,
         thumbnailText: thumbnailText || '',
         remaining,
@@ -1122,12 +1136,12 @@ export async function POST(request) {
         try {
           if (attempt > 1) await new Promise((r) => setTimeout(r, 500));
           const url = await callGptImage(variedPrompt, 'square');
-          if (url) return { url, prompt: variedPrompt, type: 'photo', model: 'gpt2', orientation: 'square' };
+          if (url) return { url, prompt: variedPrompt, type: 'photo', model: 'gpt2', orientation: 'square', quality: 'medium' };
         } catch (err) {
           console.error(`[IMAGE-PRO] GPT Image 2 error (direct ${slotIdx} attempt ${attempt}):`, err?.message || err);
         }
       }
-      return { url: null, prompt: variedPrompt, type: 'photo', model: 'gpt2', orientation: 'square' };
+      return { url: null, prompt: variedPrompt, type: 'photo', model: 'gpt2', orientation: 'square', quality: 'medium' };
     }
 
     const images = [];
@@ -1153,10 +1167,10 @@ export async function POST(request) {
     }
     // 일부 실패·예산 포기 = 못 받은 몫만큼 부분 환불(parse와 동일 공식)
     const directMissed = DIRECT_IMAGES - validImages.length;
+    let directRefunded = 0;
     if (directMissed > 0) {
-      const directPartial = partialRefundAmount(validImages.length, DIRECT_IMAGES);
-      await refundOnFailure('image-pro-direct-partial', directPartial);
-      if (creditCharged) remaining += directPartial;
+      directRefunded = await refundOnFailure('image-pro-direct-partial', partialRefundAmount(validImages.length, DIRECT_IMAGES));
+      remaining += directRefunded; // 실제 환불액만
     }
 
     const directUserId = (sessionEmail || getClientIp(request) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
@@ -1167,6 +1181,7 @@ export async function POST(request) {
       mode: 'direct',
       images: r2DirectImages,
       partial: directMissed > 0,
+      refunded: directRefunded,
       missedCount: directMissed,
       thumbnailText: thumbnailText || '',
       remaining,

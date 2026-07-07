@@ -409,12 +409,14 @@ export default function BlogImagePro() {
         type: img.type || 'photo',
         model: img.model || 'gpt2',
         orientation: img.orientation || null, // 재생성 시 같은 크기 유지(없으면 서버 기본)
+        quality: img.quality || null,
         reason: img.reason || '',
         index: i,
       })));
       if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
       if (data.partial) {
-        setError1(`일부 이미지 ${data.missedMarkers?.length || ''}장이 생성되지 않아 그 몫은 환불되었어요. 빈 자리는 마커별 재생성으로 채울 수 있어요.`);
+        const refundMsg = data.refunded > 0 ? ` 그 몫 ${data.refunded}크레딧은 환불했어요.` : '';
+        setError1(`일부 이미지 ${data.missedMarkers?.length || ''}장이 생성되지 않았어요.${refundMsg} 빈 자리는 마커별 재생성으로 채울 수 있어요.`);
       }
     } catch (_) {
       setError1('서버 오류가 발생했습니다.');
@@ -462,11 +464,13 @@ export default function BlogImagePro() {
         type: img.type || 'photo',
         model: img.model || 'gpt2',
         orientation: img.orientation || 'square', // direct는 정사각 생성
+        quality: img.quality || 'medium',
         reason: '',
         index: i,
       })));
       if (data.partial) {
-        setError2(`일부 이미지 ${data.missedCount || ''}장이 생성되지 않아 그 몫은 환불되었어요.`);
+        const refundMsg = data.refunded > 0 ? ` 그 몫 ${data.refunded}크레딧은 환불했어요.` : '';
+        setError2(`일부 이미지 ${data.missedCount || ''}장이 생성되지 않았어요.${refundMsg}`);
       }
       if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
     } catch (_) {
@@ -493,8 +497,9 @@ export default function BlogImagePro() {
         body.originalPrompt = item.prompt;
         body.originalModel = item.model || 'gpt2';
       }
-      // 원본과 같은 크기로 재생성(썸네일이 가로로 돌아오는 회귀 방지). 품질은 서버 규칙(정사각=high)이 정함.
+      // 원본과 같은 크기·품질로 재생성 + 과금 정확(medium 이미지는 1크레딧, high 썸네일은 2크레딧).
       if (item.orientation) body.orientation = item.orientation;
+      if (item.quality) body.quality = item.quality;
 
       const res = await fetch('/api/blog-image-pro', {
         method: 'POST',
@@ -512,6 +517,7 @@ export default function BlogImagePro() {
           type: data.image.type || it.type,
           model: data.image.model || it.model,
           orientation: data.image.orientation || it.orientation,
+          quality: data.image.quality || it.quality,
         } : it));
         if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
       } else {
@@ -569,6 +575,7 @@ export default function BlogImagePro() {
           type: img.type || 'photo',
           model: img.model || 'gpt2',
           orientation: img.orientation || null,
+          quality: img.quality || null,
           reason: img.reason || '',
           index: i,
         })));
