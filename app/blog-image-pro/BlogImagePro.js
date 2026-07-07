@@ -407,7 +407,8 @@ export default function BlogImagePro() {
         marker: img.marker,
         prompt: img.prompt,
         type: img.type || 'photo',
-        model: img.model || 'fluxr',
+        model: img.model || 'gpt2',
+        orientation: img.orientation || null, // 재생성 시 같은 크기 유지(없으면 서버 기본)
         reason: img.reason || '',
         index: i,
       })));
@@ -456,7 +457,8 @@ export default function BlogImagePro() {
         marker: null,
         prompt: img.prompt,
         type: img.type || 'photo',
-        model: img.model || 'fluxr',
+        model: img.model || 'gpt2',
+        orientation: img.orientation || 'square', // direct는 정사각 생성
         reason: '',
         index: i,
       })));
@@ -485,9 +487,8 @@ export default function BlogImagePro() {
         body.originalPrompt = item.prompt;
         body.originalModel = item.model || 'gpt2';
       }
-      // 원본과 같은 크기·품질로 재생성(썸네일이 가로 medium으로 돌아오는 회귀 방지)
+      // 원본과 같은 크기로 재생성(썸네일이 가로로 돌아오는 회귀 방지). 품질은 서버 규칙(정사각=high)이 정함.
       if (item.orientation) body.orientation = item.orientation;
-      if (item.quality) body.quality = item.quality;
 
       const res = await fetch('/api/blog-image-pro', {
         method: 'POST',
@@ -504,6 +505,7 @@ export default function BlogImagePro() {
           prompt: data.image.prompt,
           type: data.image.type || it.type,
           model: data.image.model || it.model,
+          orientation: data.image.orientation || it.orientation,
         } : it));
         if (typeof data.remaining === 'number') updateRemaining(data.remaining, data.limit);
       } else {
@@ -559,7 +561,8 @@ export default function BlogImagePro() {
           marker: img.marker,
           prompt: img.prompt,
           type: img.type || 'photo',
-          model: img.model || 'fluxr',
+          model: img.model || 'gpt2',
+          orientation: img.orientation || null,
           reason: img.reason || '',
           index: i,
         })));

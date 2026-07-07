@@ -25,9 +25,13 @@ const DIRECT_IMAGES = 8;
 
 const FULL_COST = 3;
 const SINGLE_REGEN_COST = 1;
-// 생성 총 시간 예산 — maxDuration(300s) 강제종료 전에 스스로 마무리해 과금·환불 코드가 반드시 실행되게.
-// (120s 타임아웃 × 재시도 × 2배치 = 최악 ~480s > 300s → 플랫폼 킬 → 환불 누락 사고 방지)
-const GENERATION_DEADLINE_MS = 240_000;
+// ─── 시간 예산 (maxDuration 강제종료 전에 스스로 마무리 → 과금·환불 코드가 반드시 실행) ───
+// 산술: 시도 admit 조건 = 남은예산 ≥ 호출타임아웃+여유. 남은예산 = 300s − 안전마진(R2·응답 30s) − 경과.
+// 최악: elapsed 145s에 admit → +120s 시도 = 265s + 30s 마진 = 295s < 300s. 모든 모드(parse/direct/regen) 공용.
+const GPT_IMAGE_TIMEOUT_MS = 120_000;
+const HARD_LIMIT_MS = 300_000;      // = export maxDuration
+const SAFETY_MARGIN_MS = 30_000;    // R2 업로드 + 응답 직렬화
+const ATTEMPT_ADMIT_MS = GPT_IMAGE_TIMEOUT_MS + 5_000;
 const DAILY_LIMIT_SCALED = FREE_DAILY_LIMIT * FULL_COST;
 
 function getKSTDate() {
@@ -97,7 +101,7 @@ const GPT_IMAGE_SIZES = {
 async function callGptImage(prompt, orientation = 'landscape', quality = 'medium') {
   const size = GPT_IMAGE_SIZES[orientation] || GPT_IMAGE_SIZES.landscape;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 120000); // high는 느리다 — 넉넉히
+  const timeout = setTimeout(() => controller.abort(), GPT_IMAGE_TIMEOUT_MS); // high는 느리다 — 넉넉히
   try {
     const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
@@ -568,14 +572,21 @@ export async function POST(request) {
   }
 
   // 실패 경로 공통 환불 — 500 반환은 throw가 아니라 바깥 catch의 환불이 안 돌므로 각 실패 지점에서 호출.
-  async function refundOnFailure(tag) {
+  // amount 지정 시 부분 환불(기본 = 전액).
+  async function refundOnFailure(tag, amount = creditCost) {
+    if (!amount || amount <= 0) return;
     try {
-      if (creditCharged && sessionEmail) await refundCredits(sessionEmail, creditCost, tag);
-      else if (rateLimitKey) await getRedis().decrby(rateLimitKey, creditCost);
+      if (creditCharged && sessionEmail) await refundCredits(sessionEmail, amount, tag);
+      else if (rateLimitKey) await getRedis().decrby(rateLimitKey, amount);
     } catch (e) {
       console.error('[IMAGE-PRO] refundOnFailure failed:', e?.message || 'unknown');
     }
   }
+
+  // 시간 예산 — 모든 생성 모드 공용. 새 gpt-image-2 시도는 remainingMs() ≥ ATTEMPT_ADMIT_MS일 때만.
+  const requestStartedAt = Date.now();
+  const remainingMs = () => HARD_LIMIT_MS - SAFETY_MARGIN_MS - (Date.now() - requestStartedAt);
+  const canAttempt = () => remainingMs() >= ATTEMPT_ADMIT_MS;
 
   try {
     const { mode, is_regenerate } = body;
@@ -585,7 +596,7 @@ export async function POST(request) {
       const { blogText, markerText, originalPrompt, originalType, originalModel } = body;
 
       if (!markerText && !originalPrompt) {
-        if (rateLimitKey) { try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {} }
+        await refundOnFailure('image-pro-regen-invalid'); // 크레딧 사용자도 환불(400 경로 누락 수정)
         return jsonResponse(request, { error: '마커 정보 또는 프롬프트가 누락되었습니다.' }, { status: 400 });
       }
 
@@ -593,10 +604,9 @@ export async function POST(request) {
       const targetModel = 'gpt2';
       const targetType = originalType || 'photo';
       const targetOrientation = ['square', 'landscape', 'portrait'].includes(body.orientation) ? body.orientation : 'landscape';
-      // 클라이언트가 원본 quality를 보내면 그대로, 없으면 정사각=썸네일 → high 추정(비용 규칙)
-      const targetQuality = ['high', 'medium'].includes(body.quality)
-        ? body.quality
-        : (targetOrientation === 'square' ? 'high' : 'medium');
+      // quality는 서버 규칙 고정: 정사각(썸네일)=high, 그 외=medium.
+      // 클라이언트 값을 신뢰하면 1크레딧으로 high를 강제해 원가 5배 공격이 가능(리뷰 지적).
+      const targetQuality = targetOrientation === 'square' ? 'high' : 'medium';
       let finalPrompt;
 
       if (markerText && blogText) {
@@ -632,6 +642,7 @@ export async function POST(request) {
         try {
           url = await generateByModel(targetModel, finalPrompt, targetType, targetOrientation, targetQuality);
         } catch (firstErr) {
+          if (!canAttempt()) throw firstErr; // 예산 부족 시 재시도 포기 → 아래 catch가 환불
           console.warn('[IMAGE-PRO] Single regen attempt 1 failed, retrying:', firstErr?.message || firstErr);
           await new Promise((r) => setTimeout(r, 1000));
           url = await generateByModel(targetModel, finalPrompt, targetType, targetOrientation, targetQuality);
@@ -659,10 +670,7 @@ export async function POST(request) {
     if (mode === 'shortform_quick') {
       const { topic, mood } = body;
       if (!topic || !topic.trim()) {
-        if (rateLimitKey) { try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {} }
-        if (creditCharged && sessionEmail) {
-          await refundCredits(sessionEmail, creditCost, 'shortform-quick-invalid');
-        }
+        await refundOnFailure('shortform-quick-invalid');
         return jsonResponse(request, { error: '주제가 필요합니다.' }, { status: 400 });
       }
 
@@ -690,10 +698,7 @@ export async function POST(request) {
       }
 
       if (urls.length === 0) {
-        if (rateLimitKey) { try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {} }
-        if (creditCharged && sessionEmail) {
-          await refundCredits(sessionEmail, creditCost, 'shortform-quick-all-failed');
-        }
+        await refundOnFailure('shortform-quick-all-failed');
         return jsonResponse(request, { error: '이미지 생성에 실패했습니다.' }, { status: 500 });
       }
 
@@ -966,12 +971,11 @@ export async function POST(request) {
 
       console.log(`[IMAGE-PRO] Generating ${orderedItems.length} images with gpt-image-2 (batch=4)...`);
 
-      const startedAt = Date.now();
       const imageResults = [];
       for (let batchStart = 0; batchStart < orderedItems.length; batchStart += 4) {
-        // 시간 예산 초과 → 남은 슬롯은 포기(부분 결과 반환). maxDuration 강제종료보다 낫다.
-        if (Date.now() - startedAt > GENERATION_DEADLINE_MS) {
-          console.warn(`[IMAGE-PRO] deadline exceeded — skipping remaining ${orderedItems.length - batchStart} slots`);
+        // 예산 부족 → 남은 슬롯 포기(부분 결과+부분 환불). maxDuration 강제종료(환불코드 사망)보다 낫다.
+        if (!canAttempt()) {
+          console.warn(`[IMAGE-PRO] budget exhausted — skipping remaining ${orderedItems.length - batchStart} slots`);
           imageResults.push(...orderedItems.slice(batchStart).map((item) => ({ url: null, marker: item.marker, type: item.type, model: 'gpt2', originalIndex: item.originalIndex })));
           break;
         }
@@ -992,9 +996,9 @@ export async function POST(request) {
               };
             } catch (err) {
               console.error(`[IMAGE-PRO] ✗ "${item.marker}" → ${modelLabel} FAILED:`, err.message);
-              // 예산이 얼마 안 남았으면 재시도 생략(120s 재시도가 maxDuration을 넘겨 환불 코드까지 죽이는 사고 방지)
-              if (Date.now() - startedAt > GENERATION_DEADLINE_MS - 130_000) {
-                console.warn(`[IMAGE-PRO] "${item.marker}" retry skipped — deadline near`);
+              // 남은 예산으로 재시도 가능할 때만(절대시각 아닌 잔여예산 기준 — 배치2 재시도가 억울하게 죽지 않게)
+              if (!canAttempt()) {
+                console.warn(`[IMAGE-PRO] "${item.marker}" retry skipped — budget low`);
                 return { url: null, marker: item.marker, type: item.type, model: modelName, originalIndex: item.originalIndex };
               }
               await new Promise((r) => setTimeout(r, 1000));
@@ -1029,6 +1033,14 @@ export async function POST(request) {
         return jsonResponse(request, { error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 });
       }
 
+      // 일부 실패(개별 오류·예산 소진 포기) = 못 받은 몫만큼 부분 환불 + 응답에 정직하게 표시
+      const missedMarkers = imageResults.filter((img) => !img.url).map((img) => img.marker);
+      if (missedMarkers.length > 0) {
+        const partialAmount = Math.ceil(creditCost * missedMarkers.length / orderedItems.length);
+        await refundOnFailure('image-pro-parse-partial', partialAmount);
+        console.warn(`[IMAGE-PRO] partial: ${missedMarkers.length}/${orderedItems.length} missed, refund ${partialAmount}`);
+      }
+
       const userId = (sessionEmail || getClientIp(request) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
       const r2Images = await replaceUrlsWithR2(validImages, 'images-pro', userId);
 
@@ -1036,6 +1048,8 @@ export async function POST(request) {
       return jsonResponse(request, {
         mode: 'parse',
         images: r2Images,
+        partial: missedMarkers.length > 0,
+        missedMarkers,
         thumbnailText: thumbnailText || '',
         remaining,
         limit: FREE_DAILY_LIMIT,
@@ -1075,19 +1089,24 @@ export async function POST(request) {
     async function generateOne(slotIdx) {
       const variedPrompt = `${fullPrompt}, ${variationHints[slotIdx]}`;
       for (let attempt = 1; attempt <= 2; attempt++) {
+        if (!canAttempt()) break; // 예산 부족 — maxDuration 킬로 환불코드 죽는 것 방지
         try {
           if (attempt > 1) await new Promise((r) => setTimeout(r, 500));
           const url = await callGptImage(variedPrompt, 'square');
-          if (url) return { url, prompt: variedPrompt, type: 'photo', model: 'gpt2' };
+          if (url) return { url, prompt: variedPrompt, type: 'photo', model: 'gpt2', orientation: 'square' };
         } catch (err) {
           console.error(`[IMAGE-PRO] GPT Image 2 error (direct ${slotIdx} attempt ${attempt}):`, err?.message || err);
         }
       }
-      return { url: null, prompt: variedPrompt, type: 'photo', model: 'gpt2' };
+      return { url: null, prompt: variedPrompt, type: 'photo', model: 'gpt2', orientation: 'square' };
     }
 
     const images = [];
     for (let i = 0; i < DIRECT_IMAGES; i += 4) {
+      if (!canAttempt()) { // 남은 배치 포기(부분 결과) — direct에도 동일 예산 게이트
+        console.warn(`[IMAGE-PRO] direct budget exhausted — skipping remaining ${DIRECT_IMAGES - i} slots`);
+        break;
+      }
       if (i > 0) await new Promise((r) => setTimeout(r, 300));
       const batchSize = Math.min(4, DIRECT_IMAGES - i);
       const batchResults = await Promise.all(
@@ -1103,6 +1122,11 @@ export async function POST(request) {
       await refundOnFailure('image-pro-direct-all-failed'); // 0장 = 전액 환불
       return jsonResponse(request, { error: '이미지 생성에 실패했습니다.' }, { status: 500 });
     }
+    // 일부 실패·예산 포기 = 못 받은 몫만큼 부분 환불(parse와 동일 정책)
+    const directMissed = DIRECT_IMAGES - validImages.length;
+    if (directMissed > 0) {
+      await refundOnFailure('image-pro-direct-partial', Math.ceil(creditCost * directMissed / DIRECT_IMAGES));
+    }
 
     const directUserId = (sessionEmail || getClientIp(request) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
     const r2DirectImages = await replaceUrlsWithR2(validImages, 'images-pro', directUserId);
@@ -1117,9 +1141,7 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error('[IMAGE-PRO] API Error:', error);
-    if (creditCharged && sessionEmail) {
-      await refundCredits(sessionEmail, creditCost, 'image-pro-error-refund');
-    }
+    await refundOnFailure('image-pro-error-refund'); // 크레딧 + 무료(rateLimit) 둘 다 복구
     return jsonResponse(request, { error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }
