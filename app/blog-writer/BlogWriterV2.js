@@ -87,7 +87,8 @@ export default function BlogWriterV2() {
   function goImages() {
     if (!result?.draft) return;
     try {
-      localStorage.setItem('blogTextForImagePro', result.draft.body);
+      // 첫 줄 = 제목 — 이미지 생성기가 첫 줄을 블로그 제목으로 읽는다(빼면 훅 문장을 제목으로 오인).
+      localStorage.setItem('blogTextForImagePro', `${result.draft.title}\n\n${result.draft.body}`);
     } catch {}
     router.push('/blog-image-pro');
   }

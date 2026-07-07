@@ -480,11 +480,14 @@ export default function BlogImagePro() {
         body.markerText = item.marker;
         body.originalPrompt = item.prompt;
         body.originalType = item.type || 'photo';
-        body.originalModel = item.model || 'fluxr';
+        body.originalModel = item.model || 'gpt2';
       } else {
         body.originalPrompt = item.prompt;
-        body.originalModel = item.model || 'fluxr';
+        body.originalModel = item.model || 'gpt2';
       }
+      // 원본과 같은 크기·품질로 재생성(썸네일이 가로 medium으로 돌아오는 회귀 방지)
+      if (item.orientation) body.orientation = item.orientation;
+      if (item.quality) body.quality = item.quality;
 
       const res = await fetch('/api/blog-image-pro', {
         method: 'POST',

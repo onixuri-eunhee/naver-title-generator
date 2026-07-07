@@ -25,6 +25,9 @@ const DIRECT_IMAGES = 8;
 
 const FULL_COST = 3;
 const SINGLE_REGEN_COST = 1;
+// 생성 총 시간 예산 — maxDuration(300s) 강제종료 전에 스스로 마무리해 과금·환불 코드가 반드시 실행되게.
+// (120s 타임아웃 × 재시도 × 2배치 = 최악 ~480s > 300s → 플랫폼 킬 → 환불 누락 사고 방지)
+const GENERATION_DEADLINE_MS = 240_000;
 const DAILY_LIMIT_SCALED = FREE_DAILY_LIMIT * FULL_COST;
 
 function getKSTDate() {
@@ -241,13 +244,11 @@ async function callHaikuMarkerAnalysis(blogText, markers, isRegenerate) {
   const systemPrompt = `You are a blog image prompt engineer. Classify each marker into one of 6 types and generate the appropriate prompt or structured data.
 
 ## STRICT ALLOCATION RULE (반드시 지켜야 할 배분 규칙)
-${markers.length}장의 이미지를 **정확히** 다음 비율로 배분하세요:
-- photo: **정확히 ${Math.min(5, markers.length)}장** (1번 썸네일 + 본문 사진 ${Math.min(4, markers.length - 1)}장)
-- 인포그래픽 유형 (data/flow/checklist/venn): **정확히 ${Math.min(3, Math.max(0, markers.length - 5))}장** (정보 시각화 — gpt-image-2가 그린다)
+배분 가이드(마커 내용이 우선 — 마커가 표·차트·체크리스트를 요구하면 그 유형으로):
+- photo 위주(장면·감성), 인포그래픽 유형은 마커가 정보 시각화를 요구할 때 1~3장.
 - poster: 0장 (특별히 요청하지 않는 한 사용하지 않음)
-
-이 비율은 **절대 규칙**입니다. 블로그 글에 숫자/비교/단계/목록 내용이 없더라도 배분 수만큼 인포그래픽 유형으로 배정하세요.
-첫 번째 마커는 반드시 photo (대표이미지/썸네일)입니다.
+- 첫 번째 마커는 반드시 photo (대표이미지/썸네일)입니다.
+- 마커 설명과 다른 유형으로 바꾸지 마세요 (이유: 마커는 본문 문맥에 맞춰 이미 설계됨 — 유형을 바꾸면 글과 이미지가 어긋난다).
 
 ## 6 IMAGE TYPES
 
@@ -347,34 +348,10 @@ ${markerContext}
     }
   }
 
-  const targetSatori = Math.min(3, Math.max(0, result.length - 5));
-  const currentSatori = result.filter((r, i) => i > 0 && satoriTypes.includes(r.type)).length;
-
-  if (currentSatori > targetSatori) {
-    let excess = currentSatori - targetSatori;
-    for (let i = result.length - 1; i > 0 && excess > 0; i--) {
-      if (satoriTypes.includes(result[i].type)) {
-        result[i].type = 'photo';
-        result[i].model = 'gpt2';
-        result[i].prompt = 'high quality Korean lifestyle blog photography, soft natural lighting, photorealistic, clean composition, no text, no letters, photography style';
-        result[i].reason = '배분 보정 → photo';
-        excess--;
-      }
-    }
-  } else if (currentSatori < targetSatori) {
-    let deficit = targetSatori - currentSatori;
-    for (let i = result.length - 1; i > 0 && deficit > 0; i--) {
-      if (result[i].type === 'photo') {
-        result[i].type = 'checklist';
-        result[i].model = 'gpt2';
-        result[i].prompt = 'modern flat vector checklist infographic, clean editorial style, white background, coral #FF6F61 accent, 4 checked items with short English labels summarizing key points, crisp typography, no photo';
-        result[i].reason = '배분 보정 → 인포그래픽 체크리스트';
-        deficit--;
-      }
-    }
-  }
-
-  console.log(`[IMAGE-PRO] 배분 보정 완료: infographic=${result.filter((r) => satoriTypes.includes(r.type)).length}, photo=${result.filter((r) => r.type === 'photo').length}, poster=${result.filter((r) => r.type === 'poster').length}`);
+  // 배분 강등·승격 보정은 satori 렌더 슬롯 제한 시절 유물 — gpt2 단일화로 제거(2026-07-07 리뷰).
+  // 강등은 마커와 무관한 무맥락 사진을, 승격은 근거 없는 날조 체크리스트를 만들었다.
+  // 이제 Haiku 분류(마커 내용)를 그대로 존중한다. 1번=photo(썸네일) 강제만 유지(위에서 처리).
+  console.log(`[IMAGE-PRO] 분류 결과: infographic=${result.filter((r) => satoriTypes.includes(r.type)).length}, photo=${result.filter((r) => r.type === 'photo').length}, poster=${result.filter((r) => r.type === 'poster').length}`);
 
   return result;
 }
@@ -590,6 +567,16 @@ export async function POST(request) {
     }
   }
 
+  // 실패 경로 공통 환불 — 500 반환은 throw가 아니라 바깥 catch의 환불이 안 돌므로 각 실패 지점에서 호출.
+  async function refundOnFailure(tag) {
+    try {
+      if (creditCharged && sessionEmail) await refundCredits(sessionEmail, creditCost, tag);
+      else if (rateLimitKey) await getRedis().decrby(rateLimitKey, creditCost);
+    } catch (e) {
+      console.error('[IMAGE-PRO] refundOnFailure failed:', e?.message || 'unknown');
+    }
+  }
+
   try {
     const { mode, is_regenerate } = body;
 
@@ -606,8 +593,10 @@ export async function POST(request) {
       const targetModel = 'gpt2';
       const targetType = originalType || 'photo';
       const targetOrientation = ['square', 'landscape', 'portrait'].includes(body.orientation) ? body.orientation : 'landscape';
-      // 정사각 재생성 = 썸네일로 간주 → high, 그 외 medium(비용 규칙)
-      const targetQuality = targetOrientation === 'square' ? 'high' : 'medium';
+      // 클라이언트가 원본 quality를 보내면 그대로, 없으면 정사각=썸네일 → high 추정(비용 규칙)
+      const targetQuality = ['high', 'medium'].includes(body.quality)
+        ? body.quality
+        : (targetOrientation === 'square' ? 'high' : 'medium');
       let finalPrompt;
 
       if (markerText && blogText) {
@@ -638,19 +627,27 @@ export async function POST(request) {
       }
 
       try {
-        const url = await generateByModel(targetModel, finalPrompt, targetType, targetOrientation, targetQuality);
+        // 일시 오류(429/500/타임아웃) 대응 1회 재시도 — 구 다중모델 폴백을 지우며 사라졌던 복원력 복구.
+        let url;
+        try {
+          url = await generateByModel(targetModel, finalPrompt, targetType, targetOrientation, targetQuality);
+        } catch (firstErr) {
+          console.warn('[IMAGE-PRO] Single regen attempt 1 failed, retrying:', firstErr?.message || firstErr);
+          await new Promise((r) => setTimeout(r, 1000));
+          url = await generateByModel(targetModel, finalPrompt, targetType, targetOrientation, targetQuality);
+        }
         if (!url) throw new Error('No image URL');
         const userId = (sessionEmail || getClientIp(request) || 'anonymous').replace(/[^a-zA-Z0-9]/g, '_');
         const r2Url = await uploadImageUrlToR2(url, `images-pro/${userId}/${getKSTDate()}/${Math.random().toString(36).substring(2, 10)}.png`);
         return jsonResponse(request, {
           mode: 'regenerate_single',
-          image: { url, marker: markerText || '', prompt: typeof finalPrompt === 'object' ? JSON.stringify(finalPrompt) : finalPrompt, type: targetType, model: targetModel, r2Url },
+          image: { url, marker: markerText || '', prompt: typeof finalPrompt === 'object' ? JSON.stringify(finalPrompt) : finalPrompt, type: targetType, model: targetModel, orientation: targetOrientation, quality: targetQuality, r2Url },
           remaining,
           limit: FREE_DAILY_LIMIT,
         });
       } catch (err) {
         console.error(`[IMAGE-PRO] Single regen error:`, err.message);
-        if (rateLimitKey) { try { await getRedis().decrby(rateLimitKey, creditCost); } catch (_) {} }
+        await refundOnFailure('image-pro-regen-failed'); // 크레딧 사용자도 환불(누락 사고 방지)
         return jsonResponse(request, { error: '이미지 재생성에 실패했습니다.' }, { status: 500 });
       }
     }
@@ -669,7 +666,7 @@ export async function POST(request) {
         return jsonResponse(request, { error: '주제가 필요합니다.' }, { status: 400 });
       }
 
-      const quickSystem = 'You are an image prompt translator. Convert the Korean topic into a concise English still-life or environment description (1-2 sentences). Describe ONLY inanimate objects, documents, or empty spaces as overhead flat-lay, macro close-up, or vacant environment. Compose for square 1024x1024. Always end with: ", no text, no letters, photography style". Output only the prompt.';
+      const quickSystem = 'You are an image prompt translator. Convert the Korean topic into a concise English still-life or environment description (1-2 sentences). Describe ONLY inanimate objects, documents, or empty spaces as overhead flat-lay, macro close-up, or vacant environment. Compose for vertical 1024x1536 portrait framing (shortform video background). Always end with: ", no text, no letters, photography style". Output only the prompt.';
       const englishTopic = await callClaude(quickSystem, topic, 150);
       const moodStyle = moodPrompts[mood] || moodPrompts['bright'];
       const basePrompt = `${englishTopic}, ${moodStyle}, high quality editorial still-life photography, inanimate objects only, uninhabited empty scene, overhead or macro camera angle, clean Korean aesthetic, no text, no letters, photography style`;
@@ -969,8 +966,15 @@ export async function POST(request) {
 
       console.log(`[IMAGE-PRO] Generating ${orderedItems.length} images with gpt-image-2 (batch=4)...`);
 
+      const startedAt = Date.now();
       const imageResults = [];
       for (let batchStart = 0; batchStart < orderedItems.length; batchStart += 4) {
+        // 시간 예산 초과 → 남은 슬롯은 포기(부분 결과 반환). maxDuration 강제종료보다 낫다.
+        if (Date.now() - startedAt > GENERATION_DEADLINE_MS) {
+          console.warn(`[IMAGE-PRO] deadline exceeded — skipping remaining ${orderedItems.length - batchStart} slots`);
+          imageResults.push(...orderedItems.slice(batchStart).map((item) => ({ url: null, marker: item.marker, type: item.type, model: 'gpt2', originalIndex: item.originalIndex })));
+          break;
+        }
         if (batchStart > 0) await new Promise((r) => setTimeout(r, 300));
         const batch = orderedItems.slice(batchStart, batchStart + 4);
         const batchResults = await Promise.all(
@@ -983,20 +987,27 @@ export async function POST(request) {
               return {
                 url, marker: item.marker, prompt: typeof item.prompt === 'object' ? JSON.stringify(item.prompt) : item.prompt,
                 type: item.type, model: modelName, reason: item.reason,
+                orientation: item.orientation, quality: item.quality, // 재생성 시 같은 크기·품질 유지용
                 originalIndex: item.originalIndex,
               };
             } catch (err) {
               console.error(`[IMAGE-PRO] ✗ "${item.marker}" → ${modelLabel} FAILED:`, err.message);
+              // 예산이 얼마 안 남았으면 재시도 생략(120s 재시도가 maxDuration을 넘겨 환불 코드까지 죽이는 사고 방지)
+              if (Date.now() - startedAt > GENERATION_DEADLINE_MS - 130_000) {
+                console.warn(`[IMAGE-PRO] "${item.marker}" retry skipped — deadline near`);
+                return { url: null, marker: item.marker, type: item.type, model: modelName, originalIndex: item.originalIndex };
+              }
               await new Promise((r) => setTimeout(r, 1000));
               try {
                 // 1회 재시도(동일 프롬프트)
                 const retryPrompt = typeof item.prompt === 'string' ? item.prompt : JSON.stringify(item.prompt);
-                const url = await generateByModel('gpt2', retryPrompt, 'photo', item.orientation, item.quality);
+                const url = await generateByModel('gpt2', retryPrompt, item.type, item.orientation, item.quality);
                 console.log(`[IMAGE-PRO] ↩ "${item.marker}" retry → GPT Image 2 OK`);
                 return {
                   url, marker: item.marker, prompt: retryPrompt,
-                  type: 'photo', model: 'gpt2',
+                  type: item.type, model: 'gpt2', // 유형 유지 — 'photo' 고정 시 재생성 요청이 엉뚱한 유형으로 감
                   reason: `${modelLabel} 실패 → GPT Image 2 재시도`,
+                  orientation: item.orientation, quality: item.quality,
                   originalIndex: item.originalIndex,
                 };
               } catch (retryErr) {
@@ -1014,6 +1025,7 @@ export async function POST(request) {
         .filter((img) => img.url);
 
       if (validImages.length === 0) {
+        await refundOnFailure('image-pro-parse-all-failed'); // 0장 = 전액 환불(누락 사고 방지)
         return jsonResponse(request, { error: '이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 });
       }
 
@@ -1088,6 +1100,7 @@ export async function POST(request) {
 
     const validImages = images.filter((img) => img.url);
     if (validImages.length === 0) {
+      await refundOnFailure('image-pro-direct-all-failed'); // 0장 = 전액 환불
       return jsonResponse(request, { error: '이미지 생성에 실패했습니다.' }, { status: 500 });
     }
 
