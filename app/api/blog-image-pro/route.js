@@ -26,12 +26,17 @@ const DIRECT_IMAGES = 8;
 const FULL_COST = 3;
 const SINGLE_REGEN_COST = 1;
 // ─── 시간 예산 (maxDuration 강제종료 전에 스스로 마무리 → 과금·환불 코드가 반드시 실행) ───
-// 산술: 시도 admit 조건 = 남은예산 ≥ 호출타임아웃+여유. 남은예산 = 300s − 안전마진(R2·응답 30s) − 경과.
-// 최악: elapsed 145s에 admit → +120s 시도 = 265s + 30s 마진 = 295s < 300s. 모든 모드(parse/direct/regen) 공용.
-const GPT_IMAGE_TIMEOUT_MS = 120_000;
+// 품질별 호출 타임아웃(2026-07-08 실호출 검증): gpt-image-2 high 1024²는 ~132s → 넉넉히 180s,
+// medium은 ~43~48s → 90s. (기존 전역 120s는 high 썸네일을 항상 abort시켜 대표이미지가 죽었음.)
+// abort는 진짜 행(hang)일 때만 걸린다.
+const IMAGE_TIMEOUT_BY_QUALITY = { high: 180_000, medium: 90_000, low: 90_000 };
+const imageTimeoutMs = (quality) => IMAGE_TIMEOUT_BY_QUALITY[quality] || IMAGE_TIMEOUT_BY_QUALITY.medium;
 const HARD_LIMIT_MS = 300_000;      // = export maxDuration
 const SAFETY_MARGIN_MS = 30_000;    // R2 업로드 + 응답 직렬화
-const ATTEMPT_ADMIT_MS = GPT_IMAGE_TIMEOUT_MS + 5_000;
+// admit 예약 = 다음에 돌릴 이미지의 타임아웃 + 5s 여유. 전역 최악값이 아니라 품질별로 예약해야
+// high 배치 뒤 medium 배치가 억울하게 굶지 않는다. 산술(최악): high admit 시 elapsed ≤ 300−30−185=85s,
+// +180s = 265s + 30s 마진 = 295s < 300s. 이후 medium은 예약 95s라 잔여로 충분.
+const admitMs = (quality) => imageTimeoutMs(quality) + 5_000;
 const DAILY_LIMIT_SCALED = FREE_DAILY_LIMIT * FULL_COST;
 
 function getKSTDate() {
@@ -109,7 +114,7 @@ const GPT_IMAGE_SIZES = {
 async function callGptImage(prompt, orientation = 'landscape', quality = 'medium') {
   const size = GPT_IMAGE_SIZES[orientation] || GPT_IMAGE_SIZES.landscape;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), GPT_IMAGE_TIMEOUT_MS); // high는 느리다 — 넉넉히
+  const timeout = setTimeout(() => controller.abort(), imageTimeoutMs(quality)); // high는 느리다 — 품질별
   try {
     const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
@@ -135,7 +140,7 @@ async function callGptImage(prompt, orientation = 'landscape', quality = 'medium
     return `data:image/webp;base64,${b64}`;
   } catch (err) {
     clearTimeout(timeout);
-    if (err.name === 'AbortError') throw new Error('GPT Image 120s timeout');
+    if (err.name === 'AbortError') throw new Error(`GPT Image ${Math.round(imageTimeoutMs(quality) / 1000)}s timeout`);
     throw err;
   }
 }
@@ -619,9 +624,10 @@ export async function POST(request) {
     return Math.max(0, Math.floor(creditCost * (total - delivered) / total));
   }
 
-  // 시간 예산 — 모든 생성 모드 공용. 새 gpt-image-2 시도는 remainingMs() ≥ ATTEMPT_ADMIT_MS일 때만.
+  // 시간 예산 — 모든 생성 모드 공용. 새 시도는 remainingMs() ≥ admitMs(품질)일 때만.
+  // 기본 'high'(최악)로 예약 → 품질을 모르는 호출부는 보수적으로 안전.
   const remainingMs = () => HARD_LIMIT_MS - SAFETY_MARGIN_MS - (Date.now() - requestStartedAt);
-  const canAttempt = () => remainingMs() >= ATTEMPT_ADMIT_MS;
+  const canAttempt = (quality = 'high') => remainingMs() >= admitMs(quality);
 
   try {
     const { mode, is_regenerate } = body;
@@ -676,7 +682,7 @@ export async function POST(request) {
         try {
           url = await generateByModel(targetModel, finalPrompt, targetType, targetOrientation, targetQuality);
         } catch (firstErr) {
-          if (!canAttempt()) throw firstErr; // 예산 부족 시 재시도 포기 → 아래 catch가 환불
+          if (!canAttempt(targetQuality)) throw firstErr; // 예산 부족 시 재시도 포기 → 아래 catch가 환불
           console.warn('[IMAGE-PRO] Single regen attempt 1 failed, retrying:', firstErr?.message || firstErr);
           await new Promise((r) => setTimeout(r, 1000));
           url = await generateByModel(targetModel, finalPrompt, targetType, targetOrientation, targetQuality);
@@ -722,7 +728,7 @@ export async function POST(request) {
 
       const urls = [];
       for (let i = 0; i < shortformCount; i++) {
-        if (!canAttempt()) { // 예산 게이트 — 모든 모드 공통(누락돼 있었음, 3차 리뷰)
+        if (!canAttempt('medium')) { // 숏폼=세로 medium. 예산 게이트 — 모든 모드 공통(3차 리뷰)
           console.warn(`[IMAGE-PRO] shortform_quick budget exhausted — skipping remaining ${shortformCount - i}`);
           break;
         }
@@ -1016,14 +1022,16 @@ export async function POST(request) {
 
       const imageResults = [];
       for (let batchStart = 0; batchStart < orderedItems.length; batchStart += 4) {
+        const batch = orderedItems.slice(batchStart, batchStart + 4);
+        // 배치 내 최고 품질 기준으로 예약(썸네일 high가 든 첫 배치는 180s, 나머지 medium은 90s).
+        const batchQuality = batch.some((it) => it.quality === 'high') ? 'high' : 'medium';
         // 예산 부족 → 남은 슬롯 포기(부분 결과+부분 환불). maxDuration 강제종료(환불코드 사망)보다 낫다.
-        if (!canAttempt()) {
+        if (!canAttempt(batchQuality)) {
           console.warn(`[IMAGE-PRO] budget exhausted — skipping remaining ${orderedItems.length - batchStart} slots`);
           imageResults.push(...orderedItems.slice(batchStart).map((item) => ({ url: null, marker: item.marker, type: item.type, model: 'gpt2', originalIndex: item.originalIndex })));
           break;
         }
         if (batchStart > 0) await new Promise((r) => setTimeout(r, 300));
-        const batch = orderedItems.slice(batchStart, batchStart + 4);
         const batchResults = await Promise.all(
           batch.map(async (item) => {
             const modelName = 'gpt2';
@@ -1040,7 +1048,7 @@ export async function POST(request) {
             } catch (err) {
               console.error(`[IMAGE-PRO] ✗ "${item.marker}" → ${modelLabel} FAILED:`, err.message);
               // 남은 예산으로 재시도 가능할 때만(절대시각 아닌 잔여예산 기준 — 배치2 재시도가 억울하게 죽지 않게)
-              if (!canAttempt()) {
+              if (!canAttempt(item.quality)) {
                 console.warn(`[IMAGE-PRO] "${item.marker}" retry skipped — budget low`);
                 return { url: null, marker: item.marker, type: item.type, model: modelName, originalIndex: item.originalIndex };
               }
@@ -1138,7 +1146,7 @@ export async function POST(request) {
     async function generateOne(slotIdx) {
       const variedPrompt = `${fullPrompt}, ${variationHints[slotIdx]}`;
       for (let attempt = 1; attempt <= 2; attempt++) {
-        if (!canAttempt()) break; // 예산 부족 — maxDuration 킬로 환불코드 죽는 것 방지
+        if (!canAttempt('medium')) break; // direct=square medium. 예산 부족 시 maxDuration 킬 방지
         try {
           if (attempt > 1) await new Promise((r) => setTimeout(r, 500));
           const url = await callGptImage(variedPrompt, 'square');
@@ -1152,7 +1160,7 @@ export async function POST(request) {
 
     const images = [];
     for (let i = 0; i < DIRECT_IMAGES; i += 4) {
-      if (!canAttempt()) { // 남은 배치 포기(부분 결과) — direct에도 동일 예산 게이트
+      if (!canAttempt('medium')) { // direct 전량 medium. 남은 배치 포기(부분 결과) — 동일 예산 게이트
         console.warn(`[IMAGE-PRO] direct budget exhausted — skipping remaining ${DIRECT_IMAGES - i} slots`);
         break;
       }
