@@ -121,13 +121,11 @@ export async function POST(request) {
 
     // 2) 생성 (Sonnet 5 — temperature 보내면 400이라 생략)
     const system = buildBlogV2Prompt({ industry, keyword, targetReader, userStory, tone, region }, hookBlock);
-    const raw = await callClaude({
-      system,
-      messages: [{ role: 'user', content: `키워드 "${keyword}"로 블로그 원고를 작성해줘.` }],
-      model: BLOG_V2_MODEL,
-      maxTokens: 8192,
-      temperature: null,
-    });
+    const userMsg = `키워드 "${keyword}"로 블로그 원고를 작성해줘.`;
+    // 생성·재작성 공통 파라미터 — messages만 바꿔 호출.
+    const genDraft = (messages) => callClaude({ system, messages, model: BLOG_V2_MODEL, maxTokens: 8192, temperature: null });
+
+    const raw = await genDraft([{ role: 'user', content: userMsg }]);
 
     let draft = parseBlogV2Draft(raw);
     if (!draft) {
@@ -141,17 +139,11 @@ export async function POST(request) {
     const fixInstruction = buildQualityFixInstruction(machineIssues);
     if (fixInstruction) {
       fixRounds = 1;
-      const fixedRaw = await callClaude({
-        system,
-        messages: [
-          { role: 'user', content: `키워드 "${keyword}"로 블로그 원고를 작성해줘.` },
-          { role: 'assistant', content: JSON.stringify(draft) },
-          { role: 'user', content: fixInstruction },
-        ],
-        model: BLOG_V2_MODEL,
-        maxTokens: 8192,
-        temperature: null,
-      });
+      const fixedRaw = await genDraft([
+        { role: 'user', content: userMsg },
+        { role: 'assistant', content: JSON.stringify(draft) },
+        { role: 'user', content: fixInstruction },
+      ]);
       const fixed = parseBlogV2Draft(fixedRaw);
       if (fixed) {
         const fixedIssues = runMachineChecks(fixed);
@@ -164,15 +156,16 @@ export async function POST(request) {
     }
     const human = await runHumanCheck(draft); // 실패해도 원고 전달은 막지 않는다(checked:false)
 
-    // 4) 최근기록 적재 — 다음 글의 회피 목록(non-fatal)
-    await pushRecentHooks(email, CHANNEL, {
-      combo: draft.usedPattern || combos[0]?.signature || '',
-      bank: bank.id,
-      title: draft.title,
-      motifs: draft.motifs,
-    });
-
-    await logUsage(email, 'blog-v2', keyword.slice(0, 100), getClientIp(request));
+    // 4) 후처리 — 최근기록 적재(다음 글 회피)와 사용 로그는 독립이라 병렬. 둘 다 non-fatal.
+    await Promise.all([
+      pushRecentHooks(email, CHANNEL, {
+        combo: draft.usedPattern || combos[0]?.signature || '',
+        bank: bank.id,
+        title: draft.title,
+        motifs: draft.motifs,
+      }),
+      logUsage(email, 'blog-v2', keyword.slice(0, 100), getClientIp(request)),
+    ]);
 
     return jsonResponse(request, {
       draft,

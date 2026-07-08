@@ -13,6 +13,11 @@ import { getToken } from '@/lib/auth';
 import { useAuth } from '@/components/AuthProvider';
 import styles from './page.module.css';
 
+// 결과 포맷터(전체복사·화면표시 공용 — 한 곳에서 관리).
+const fmtSummary = (s) => (s || []).map((x) => `- ${x}`).join('\n');
+const fmtFaq = (f) => (f || []).map((x) => `Q. ${x.q}\nA. ${x.a}`).join('\n\n');
+const fmtTags = (t) => (t || []).map((x) => `#${x}`).join(' ');
+
 function authHeaders() {
   const h = { 'Content-Type': 'application/json' };
   const tk = getToken();
@@ -72,10 +77,7 @@ export default function BlogWriterV2() {
   }
 
   function fullText(draft) {
-    const tags = (draft.tags || []).map((t) => `#${t}`).join(' ');
-    const faq = (draft.faq || []).map((f) => `Q. ${f.q}\nA. ${f.a}`).join('\n\n');
-    const summary = (draft.summary3 || []).map((s) => `- ${s}`).join('\n');
-    return `${draft.title}\n\n${draft.body}\n\n[3줄 요약]\n${summary}\n\n[FAQ]\n${faq}\n\n${tags}`;
+    return `${draft.title}\n\n${draft.body}\n\n[3줄 요약]\n${fmtSummary(draft.summary3)}\n\n[FAQ]\n${fmtFaq(draft.faq)}\n\n${fmtTags(draft.tags)}`;
   }
 
   async function copy(kind, text) {
@@ -181,11 +183,7 @@ export default function BlogWriterV2() {
               <span className={styles.cardLabel}>3줄 요약 · FAQ · 태그</span>
             </div>
             <p className={styles.resultText} style={{ whiteSpace: 'pre-wrap' }}>
-              {(result.draft.summary3 || []).map((s) => `- ${s}`).join('\n')}
-              {'\n\n'}
-              {(result.draft.faq || []).map((f) => `Q. ${f.q}\nA. ${f.a}`).join('\n\n')}
-              {'\n\n'}
-              {(result.draft.tags || []).map((t) => `#${t}`).join(' ')}
+              {`${fmtSummary(result.draft.summary3)}\n\n${fmtFaq(result.draft.faq)}\n\n${fmtTags(result.draft.tags)}`}
             </p>
           </div>
 

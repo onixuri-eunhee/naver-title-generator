@@ -7,16 +7,12 @@
  */
 
 import { useMemo, useState } from 'react';
-import { computeSchedule, validateGaps, DEFAULT_ANCHORS } from '@/lib/publish-schedule';
+import { computeSchedule, validateGaps, DEFAULT_ANCHORS, toKstDateStr } from '@/lib/publish-schedule';
 import { clipCopy } from '@/lib/utils';
 import styles from '../blog-writer/page.module.css';
 
-function todayKst() {
-  return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-}
-
 export default function PublishSchedule() {
-  const [startDate, setStartDate] = useState(todayKst());
+  const [startDate, setStartDate] = useState(() => toKstDateStr(new Date()));
   const [totalPosts, setTotalPosts] = useState(5);
   const [postsPerDay, setPostsPerDay] = useState(3);
   const [copied, setCopied] = useState('');
